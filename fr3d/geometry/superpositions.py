@@ -77,19 +77,11 @@ def bestrotation(a,b):
 
 # R = zBestRotation(A,B);             % find optimal rotation matrix
 
-# scale = sqrt(sum(sum(B.*B)) / sum(sum(A.*A)));  % the optimal scale
-
 # shift = (mY - mX*R')';           % the optimal shift with no scaling
-
-# sshift = (mY - scale*mX*R')';    % the optimal shift when rescaling
-
-# % Note: there is no need to calculate and return the optimal scale in our
-# % applications, since we don't want to rescale.  There should be two versions
-# % of this program, one with scaling, one without.
 
 def besttransformation(a,b):
     
 
 
 
-    return rotation, scale, shift, scaledshift
+    return rotation, shift
