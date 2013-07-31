@@ -38,10 +38,10 @@
 
 # R = [a b c]*[Ma Mb g]';
 
-def bestrotation(A,B):
+def bestrotation(a,b):
 
 
-	return R
+    return rotation
 
 
 
@@ -77,9 +77,9 @@ def bestrotation(A,B):
 # % applications, since we don't want to rescale.  There should be two versions
 # % of this program, one with scaling, one without.
 
-def besttransformation(X,Y):
-	
+def besttransformation(a,b):
+    
 
 
 
-	return R, scale, shift, sshift
+    return rotation, scale, shift, scaledshift
