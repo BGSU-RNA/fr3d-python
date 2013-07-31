@@ -1,6 +1,16 @@
 """ superpositions.py contains methods to superpose sets of 3-dimensional coordinates
 """
 
+# bestrotation(a,b) finds the 3x3 rotation matrix which optimally superimposes
+# the nx3 matrix of points a onto the nx3 matrix of points b.
+# It is assumed that the coordinates of a and b have mean 0.
+# One reference is this: http://en.wikipedia.org/wiki/Kabsch_algorithm
+# Another is a python implementation that goes with pymol, see
+# http://www.pymolwiki.org/index.php/Kabsch
+
+# Below is an older Matlab implementation, but it would be better to use the
+# SVD implementation described above
+
 # % zBestRotation(X,Y) finds the least squares rotation
 # % of points X onto points Y
 # %
