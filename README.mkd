@@ -1,0 +1,3 @@
+# FR3D #
+
+This is an implementation of the FR3D program in python.
