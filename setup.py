@@ -6,6 +6,7 @@ setup(
     packages=['fr3d'],
     url='',
     license='LICENSE.txt',
+    install_requires=[],
     description='Python implementation of FR3D',
     long_description="""
     """
