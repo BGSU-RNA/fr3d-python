@@ -1,0 +1,67 @@
+"""This is a package for generating unit ids for units from 3D structures.
+"""
+
+SEPERATOR = '|'
+
+FIELDS = ['pdb', 'model', 'chain', 'component_id', 'component_number',
+          'atom_name', 'alt_id', 'insertion_code', 'symmetry']
+
+DEFAULTS = {
+    'pdb': None,
+    'model': None,
+    'chain': None,
+    'component_id': None,
+    'component_number': None,
+    'atom_name': '',
+    'alt_id': '',
+    'insertion_code': '',
+    'symmetry': '1_555'
+}
+
+
+class InvalidUnitId(Exception):
+    """This is generated whenever we attempt to encode an invalid unit id. This
+    means we raise if this exception if we are missing required fields such as
+    PDB, model and chain.
+    """
+    pass
+
+
+def encode(data, full=False):
+    """Generate a unit ID for the given data. All possible fields in the
+    given dictonary will be used to generate the id.
+
+    :data: Dictonary of fields to use in unit id.
+    :returns: A string of the new unit id.
+    """
+
+    ordered = []
+
+    for field in FIELDS:
+        default = DEFAULTS[field]
+        if default is None and field not in data:
+            raise InvalidUnitId("Missing required field: " + field)
+
+        value = data.get(field, default)
+        if full:
+            ordered.append(value)
+        elif value and value != default:
+            ordered.append(value)
+
+    return SEPERATOR.join(ordered)
+
+
+def decode(unit_id):
+    """Turn a unit id into a dictonary of it's components. This will infer any
+    fields which are not shown, such as symmetry and atom name.
+
+    :unit_id: A unit id string.
+    :returns: A dictonary of field: value pairs for the given unit id.
+    """
+
+    parts = unit_id.split(SEPERATOR)
+    total = dict(DEFAULTS)
+    fields = FIELDS[slice(0, len(parts))]
+
+    total.update(dict(zip(fields, parts)))
+    return total
