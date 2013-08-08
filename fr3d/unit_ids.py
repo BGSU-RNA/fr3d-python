@@ -1,4 +1,5 @@
-"""This is a package for generating unit ids for units from 3D structures.
+"""This is a package for generating unit ids for units from data. This checks
+if the id is valid, which means it contains all the required fields.
 """
 
 SEPERATOR = '|'
