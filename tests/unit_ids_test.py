@@ -11,10 +11,10 @@ class ResidueUnitIDTest(TestCase):
         val = decode('2AVY|1|A|C|50||||1_555')
         ans = {
             'pdb': '2AVY',
-            'model': '1',
+            'model': 1,
             'chain': 'A',
             'component_id': 'C',
-            'component_number': '50',
+            'component_number': 50,
             'atom_name': '',
             'alt_id': '',
             'insertion_code': '',
@@ -26,10 +26,10 @@ class ResidueUnitIDTest(TestCase):
         val = decode('2AVY|1|A|C|50')
         ans = {
             'pdb': '2AVY',
-            'model': '1',
+            'model': 1,
             'chain': 'A',
             'component_id': 'C',
-            'component_number': '50',
+            'component_number': 50,
             'atom_name': '',
             'alt_id': '',
             'insertion_code': '',
@@ -40,10 +40,10 @@ class ResidueUnitIDTest(TestCase):
     def test_encodes_full_residue_id(self):
         val = encode({
             'pdb': '2AVY',
-            'model': '1',
+            'model': 1,
             'chain': 'A',
             'component_id': 'C',
-            'component_number': '50',
+            'component_number': 50,
             'atom_name': '',
             'alt_id': '',
             'insertion_code': '',

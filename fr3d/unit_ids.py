@@ -65,4 +65,10 @@ def decode(unit_id):
     fields = FIELDS[slice(0, len(parts))]
 
     total.update(dict(zip(fields, parts)))
+
+    if total['model'] is not None:
+        total['model'] = int(total['model'])
+    if total['component_number'] is not None:
+        total['component_number'] = int(total['component_number'])
+
     return total
