@@ -43,7 +43,7 @@ def encode(data, full=False):
         if default is None and field not in data:
             raise InvalidUnitId("Missing required field: " + field)
 
-        value = data.get(field, default)
+        value = str(data.get(field, default))
         if full:
             ordered.append(value)
         elif value and value != default:

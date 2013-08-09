@@ -63,6 +63,17 @@ class ResidueUnitIDTest(TestCase):
         ans = '2AVY|1|A|C|50'
         self.assertEqual(val, ans)
 
+    def test_encodes_residue_id_with_numbers(self):
+        val = encode({
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+        })
+        ans = '2AVY|1|A|C|50'
+        self.assertEqual(val, ans)
+
     def test_encodes_short_residue_id_with_default_symmetry(self):
         val = encode({
             'pdb': '2AVY',
