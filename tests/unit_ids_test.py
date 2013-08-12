@@ -146,3 +146,48 @@ class ResidueUnitIDTest(TestCase):
                 'chain': 'A',
                 'component_id': 'C',
             })
+
+
+class AtomUnitIDTest(TestCase):
+    def test_can_generate_full_atom_id(self):
+        val = encode({
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'atom_name': "C1'",
+            'alt_id': '',
+            'insertion_code': '',
+            'symmetry': '1_555'
+        }, full=True)
+        ans = "2AVY|1|A|C|50|C1'|||1_555"
+        self.assertEqual(val, ans)
+
+    def test_can_generate_short_atom_id(self):
+        val = encode({
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'atom_name': "C1'",
+            'alt_id': '',
+            'insertion_code': '',
+            'symmetry': '1_555'
+        })
+        ans = "2AVY|1|A|C|50|C1'"
+        self.assertEqual(val, ans)
+
+    def test_can_generate_full_atom_id_missing_stuff(self):
+        val = encode({
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'atom_name': "C1'",
+            'symmetry': '6_555'
+        }, full=True)
+        ans = "2AVY|1|A|C|50|C1'|||6_555"
+        self.assertEqual(val, ans)
