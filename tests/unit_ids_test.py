@@ -52,6 +52,18 @@ class ResidueUnitIDTest(TestCase):
         ans = '2AVY|1|A|C|50||||1_555'
         self.assertEqual(val, ans)
 
+    def test_encodes_residue_id_with_non_default_symmetry(self):
+        val = encode({
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'symmetry': '6_555'
+        })
+        ans = '2AVY|1|A|C|50||||6_555'
+        self.assertEqual(val, ans)
+
     def test_encodes_short_residue_id(self):
         val = encode({
             'pdb': '2AVY',
@@ -190,4 +202,50 @@ class AtomUnitIDTest(TestCase):
             'symmetry': '6_555'
         }, full=True)
         ans = "2AVY|1|A|C|50|C1'|||6_555"
+        self.assertEqual(val, ans)
+
+    def test_generate_short_with_missing_and_extra(self):
+        val = encode({
+            'pdb': '1GID',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'atom_name': "C1'",
+            'symmetry': '6_555',
+            'x': -1,
+            'y': 0,
+            'z': 0,
+        })
+        ans = "1GID|1|A|C|50|C1'|||6_555"
+        self.assertEqual(val, ans)
+
+    def test_decodes_short_atom_id(self):
+        val = decode("2AVY|1|A|C|50|C1'")
+        ans = {
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'atom_name': "C1'",
+            'alt_id': '',
+            'insertion_code': '',
+            'symmetry': '1_555'
+        }
+        self.assertEqual(val, ans)
+
+    def test_decodes_full_atom_id(self):
+        val = decode("2AVY|1|A|C|50|C1'|A|c|6_555")
+        ans = {
+            'pdb': '2AVY',
+            'model': 1,
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': 50,
+            'atom_name': "C1'",
+            'alt_id': 'A',
+            'insertion_code': 'c',
+            'symmetry': '6_555'
+        }
         self.assertEqual(val, ans)
