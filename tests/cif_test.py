@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from pdbx.reader.PdbxParser import PdbxReader as Reader
 
-from fr3d.cif import FR3DReader
+from fr3d.cif.reader import CIF
 
 
 class CifTest(TestCase):
@@ -20,7 +20,7 @@ class CifTest(TestCase):
 class FR3DReaderTest(TestCase):
     def setUp(self):
         with open('files/1GID.cif', 'rb') as raw:
-            self.reader = FR3DReader(raw)
+            self.reader = CIF(raw)
 
     def test_generates_all_unit_ids(self):
         val = len(self.reader.unit_ids())
