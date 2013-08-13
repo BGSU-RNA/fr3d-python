@@ -52,7 +52,7 @@ class ComponentTest(TestCase):
             Atom({'type': 'C', 'name': 'A', 'number': 3}),
             Atom({'type': 'C', 'name': 'B', 'number': 2}),
             Atom({'type': 'N', 'name': 'C', 'number': 1}),
-            Atom({'type': 'N', 'name': 'C'})
+            Atom({'type': 'N', 'name': 'C', 'number': 0})
         ]
         self.component = Component({
             'type': 'rna',
@@ -101,10 +101,12 @@ class ComponentTest(TestCase):
 
     def test_can_get_atoms_in_order_using_order_by(self):
         val = self.component.atoms(order_by='number')
-        ans = [self.atoms[2], self.atoms[1], self.atoms[0]]
+        ans = [self.atoms[3], self.atoms[2], self.atoms[1], self.atoms[0]]
+        sorted_atoms = list(self.atoms)
+        sorted_atoms.sort(key=lambda a: a['number'])
         self.assertEquals(val, ans)
 
-    #def test_can_get_filtered_atoms_in_order(self):
-        #val = self.component.atoms(type='C', order_by='number')
-        #ans = [self.atoms[1], self.atoms[0]]
-        #self.assertEquals(val, ans)
+    def test_can_get_filtered_atoms_in_order(self):
+        val = self.component.atoms(type='C', order_by='number')
+        ans = [self.atoms[1], self.atoms[0]]
+        self.assertEquals(val, ans)

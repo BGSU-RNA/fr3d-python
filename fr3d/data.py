@@ -28,7 +28,14 @@ class Entity(Mapping):
 
 
 class EntityContainer(object):
+    """This serves as a generic container for entities. We always want to
+    provide some methods like getting all entities in a particular order, or
+    getting all entities with a particular type. This serves to provide such
+    functionality to all classes that contain entities.
+    """
+
     def __getter__(self, obj, **kwargs):
+
         orderby = kwargs.pop('order_by', None)
         compare = kwargs.pop('cmp', None)
 
@@ -36,9 +43,10 @@ class EntityContainer(object):
         raw = [entry for entry in obj if checker(entry)]
 
         if orderby:
+            key = orderby
             if not callable(orderby):
-                orderby = lambda entry: entry.get(orderby, None)
-            raw.sort(key=orderby)
+                key = lambda entry: entry.get(orderby, None)
+            raw.sort(key=key)
 
         if compare:
             raw.sort(cmp=compare)
