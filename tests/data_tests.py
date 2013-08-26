@@ -110,3 +110,8 @@ class ComponentTest(TestCase):
         val = self.component.atoms(type='C', order_by='number')
         ans = [self.atoms[1], self.atoms[0]]
         self.assertEquals(val, ans)
+
+
+class StructureTest(TestCase):
+    def setUp(self):
+        pass

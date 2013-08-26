@@ -23,6 +23,4 @@ class FR3DReaderTest(TestCase):
             self.reader = CIF(raw)
 
     def test_generates_all_unit_ids(self):
-        val = len(self.reader.unit_ids())
-        ans = 350
-        self.assertEqual(val, ans)
+        self.fail()
