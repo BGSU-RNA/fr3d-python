@@ -49,10 +49,10 @@ class AtomTest(TestCase):
 class ComponentTest(TestCase):
     def setUp(self):
         self.atoms = [
-            Atom({'type': 'C', 'name': 'A', 'number': 3}),
-            Atom({'type': 'C', 'name': 'B', 'number': 2}),
-            Atom({'type': 'N', 'name': 'C', 'number': 1}),
-            Atom({'type': 'N', 'name': 'C', 'number': 0})
+            Atom({'type': 'C', 'name': 'a1', 'type_name': 'A', 'number': 3}),
+            Atom({'type': 'C', 'name': 'a2', 'type_name': 'B', 'number': 2}),
+            Atom({'type': 'N', 'name': 'b1', 'type_name': 'C', 'number': 1}),
+            Atom({'type': 'N', 'name': 'c2', 'type_name': 'C', 'number': 0})
         ]
         self.component = Component({
             'type': 'rna',
@@ -85,17 +85,17 @@ class ComponentTest(TestCase):
         self.assertEquals(val, ans)
 
     def test_can_filter_using_a_list(self):
-        val = self.component.atoms(name=['A', 'C'])
+        val = self.component.atoms(type_name=['A', 'C'])
         ans = [self.atoms[0], self.atoms[2], self.atoms[3]]
         self.assertEquals(val, ans)
 
     def test_can_filter_using_a_function(self):
-        val = self.component.atoms(name=lambda a: a == 'C')
+        val = self.component.atoms(type_name=lambda a: a == 'C')
         ans = self.atoms[2:4]
         self.assertEquals(val, ans)
 
     def test_can_filter_by_several_attributes(self):
-        val = self.component.atoms(type='C', name='B')
+        val = self.component.atoms(type='C', type_name='B')
         ans = [self.atoms[1]]
         self.assertEquals(val, ans)
 
@@ -110,6 +110,22 @@ class ComponentTest(TestCase):
         val = self.component.atoms(type='C', order_by='number')
         ans = [self.atoms[1], self.atoms[0]]
         self.assertEquals(val, ans)
+
+    def test_can_check_is_complete(self):
+        val = self.component.is_complete(['a1', 'a2', 'b1'])
+        self.assertTrue(val)
+
+    def test_can_check_is_not_complete(self):
+        val = self.component.is_complete(['a1', 'a2', 'g3'])
+        self.assertFalse(val)
+
+    def test_can_check_is_complete_using_custom_key(self):
+        val = self.component.is_complete([1, 2], key='number')
+        self.assertTrue(val)
+
+    def test_can_check_is_not_complete_using_custom_key(self):
+        val = self.component.is_complete([1, 2, 10], key='number')
+        self.assertFalse(val)
 
 
 class StructureTest(TestCase):

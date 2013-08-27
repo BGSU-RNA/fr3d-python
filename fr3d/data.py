@@ -204,9 +204,20 @@ class Component(Entity, EntityContainer):
         data['component_number'] = data.pop('number')
         return data
 
-    def completeness(self):
-        # TODO: Compute the completeness of this component
-        return False
+    def is_complete(self, names, key='name'):
+        """This checks if we can find all atoms in this entity with the given
+        names. This assumes that the names for each atom are unique. If you
+        wish to use something other than name use the key argument. However, it
+        must provide a unique value for each atom, if several atoms with the
+        same value are found will cause the function to behave oddly.
+
+        :names: The list of names to check for.
+        :key: The key to use for getting atoms. Defaults to name.
+        :returns: True if all atoms with the given name are present.
+        """
+        kwargs = {key: names}
+        found = self.atoms(**kwargs)
+        return len(found) == len(names)
 
     def __repr__(self):
         return '<Component %s Atoms: %s>' % (self._data, self._atoms)
