@@ -3,14 +3,12 @@ on, such as Atoms and Components.
 
 """
 
-from collections import Mapping
-
 from numpy import array
 
 from fr3d.unit_ids import encode
 
 
-class Entity(Mapping):
+class Entity(object):
     """This class is the base class for things like atoms and other units. It
     is intended to provide a simple dict like access to the data in it as well
     as have a method for generating its unit id. Currently, the data stored in
@@ -28,14 +26,10 @@ class Entity(Mapping):
 
         return encode(self.__rename__())
 
-    def __getitem__(self, item):
-        return self._data[item]
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __len__(self):
-        return len(self._data)
+    def __getattr__(self, key):
+        if key in self._data:
+            return self._data[key]
+        raise AttributeError
 
 
 class EntityContainer(object):
@@ -72,7 +66,7 @@ class EntityContainer(object):
         if orderby:
             key = orderby
             if not callable(orderby):
-                key = lambda entry: entry.get(orderby, None)
+                key = lambda entry: getattr(entry, orderby, None)
             raw.sort(key=key)
 
         if compare:
@@ -92,7 +86,7 @@ class EntityContainer(object):
         """
 
         def check(obj):
-            given = obj.get(key, None)
+            given = getattr(obj, key, None)
 
             if callable(value):
                 return value(given)
@@ -149,7 +143,7 @@ class Atom(Entity):
         return encode(comp_data)
 
     def __rename__(self):
-        data = dict(self)
+        data = dict(self._data)
         data['atom_name'] = data.pop('name')
         return data
 
@@ -158,7 +152,7 @@ class Atom(Entity):
 
         :returns: A numpy array of the x, y, z coordinates.
         """
-        return array([self['x'], self['y'], self['z']])
+        return array([self.x, self.y, self.z])
 
     def __repr__(self):
         return '<Atom: %s>' % self._data
@@ -199,7 +193,7 @@ class Component(Entity, EntityContainer):
         return array([atom.coordinates() for atom in self.atoms(**kwargs)])
 
     def __rename__(self):
-        data = dict(self)
+        data = dict(self._data)
         data['component_id'] = data.pop('sequence')
         data['component_number'] = data.pop('number')
         return data
@@ -219,6 +213,14 @@ class Component(Entity, EntityContainer):
         found = self.atoms(**kwargs)
         return len(found) == len(names)
 
+    def __len__(self):
+        """Compute the length of this Component. This is the number of atoms in
+        this residue.
+
+        :returns: The number of atoms.
+        """
+        return len(self._atoms)
+
     def __repr__(self):
         return '<Component %s Atoms: %s>' % (self._data, self._atoms)
 
@@ -229,7 +231,7 @@ class Structure(Entity, EntityContainer):
 
     def __init__(self, data, residues):
         self._residues = residues
-        super(self, Structure).__init__(data)
+        super(Structure, self).__init__(data)
 
     def residues(self, **kwargs):
         """Get residues from this structure. The keyword arguments work as
@@ -239,3 +241,12 @@ class Structure(Entity, EntityContainer):
         :returns: The requested residues.
         """
         return self.__getter__(self._residues, **kwargs)
+
+    def __len__(self):
+        """Compute the length of this Structure. That is the number of residues
+        in this structure.
+
+
+        :returns: The number of atoms.
+        """
+        return len(self._residues)

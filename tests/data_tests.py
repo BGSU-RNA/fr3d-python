@@ -22,13 +22,9 @@ class AtomTest(TestCase):
         })
 
     def test_has_item_access(self):
-        val = self.atom['x']
+        val = self.atom.x
         ans = -1
         self.assertEqual(val, ans)
-
-    def test_cannot_alter_items(self):
-        with self.assertRaises(TypeError):
-            self.atom['x'] = 10
 
     def test_computes_a_unit_id(self):
         val = self.atom.unit_id()
@@ -65,7 +61,7 @@ class ComponentTest(TestCase):
         }, self.atoms)
 
     def test_has_item_access(self):
-        val = self.component['type']
+        val = self.component.type
         ans = 'rna'
         self.assertEqual(val, ans)
 
@@ -103,7 +99,7 @@ class ComponentTest(TestCase):
         val = self.component.atoms(order_by='number')
         ans = [self.atoms[3], self.atoms[2], self.atoms[1], self.atoms[0]]
         sorted_atoms = list(self.atoms)
-        sorted_atoms.sort(key=lambda a: a['number'])
+        sorted_atoms.sort(key=lambda a: a.number)
         self.assertEquals(val, ans)
 
     def test_can_get_filtered_atoms_in_order(self):
