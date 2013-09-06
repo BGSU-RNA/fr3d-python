@@ -65,6 +65,11 @@ class ComponentTest(TestCase):
         ans = 'rna'
         self.assertEqual(val, ans)
 
+    def test_length_is_number_atoms(self):
+        val = len(self.component)
+        ans = 4
+        self.assertEqual(val, ans)
+
     def test_computes_unit_id(self):
         val = self.component.unit_id()
         ans = "1GID|1|A|C|50||||6_555"
