@@ -29,54 +29,51 @@ def besttransformation(set1, set2):
     assert length > 0
 
     # Translation Step is beginning.
-    # These add all x_{ij}'s, y_{ij}'s, z_{ij}'s for each element in 
+    # These add all x_{ij}'s, y_{ij}'s, z_{ij}'s for each element in
     # setj j=1,2
     # i=1,2,3,..length
     # /float(length) divides by length
-    # This creates a [mean x_j, mean y_j, mean z_j] for both sets of 
+    # This creates a [mean x_j, mean y_j, mean z_j] for both sets of
     # coordinates setj j=1, or 2, or the centroid of both sets.
     mean1 = numpy.sum(set1, axis=0) / float(length)
     mean2 = numpy.sum(set2, axis=0) / float(length)
 
     # Next,
-    # Subtract x_{ij} by the mean of x_j's. Here i=1,2,..length.  
+    # Subtract x_{ij} by the mean of x_j's. Here i=1,2,..length.
     # Same for y, and z.
     dev1 = set1 - mean1
     dev2 = set2 - mean2
-    #  Thus, both sets are translated, so that their centroid coincides with 
+    #  Thus, both sets are translated, so that their centroid coincides with
     # the origin of the coordinate system.
     # Translation Step is now completed.
 
-    
     # Begin Step to Compute the 3X3 Covariance Matrix, A.
-    A=numpy.dot(numpy.transpose(dev2), dev1)
+    A = numpy.dot(numpy.transpose(dev2), dev1)
     # Covariance Matrix, A, is now calculated
 
-
-    # Begin of the Computation of the optimal rotation matrix using 
-    # Singular Value Decomposition (SVD) 
+    # Begin of the Computation of the optimal rotation matrix using
+    # Singular Value Decomposition (SVD)
     V, diagS, Wt = numpy.linalg.svd(A)
     # V and Wt are 3x3 orthonormal bases, diagS is the diagonal elements of
-    # a 3x3 diagonal matrix, S, in regular SVD.  In SVD, recall that the 
+    # a 3x3 diagonal matrix, S, in regular SVD.  In SVD, recall that the
     # Covariance matrix, A, is A=V*S*transpose(W) (matrix multiplication).
     #S=numpy.diag(diagS)
     #A=numpy.dot(V,numpy.dot(S,Wt)
 
-    
-    # The next step is to decide whether we need to correct our rotation 
+    # The next step is to decide whether we need to correct our rotation
     # matrix to ensure a right-handed coordinate system
     # we just need to check for reflections and then produce
     # the rotation.  V and Wt are orthonormal, so their det's
     # are +/-1.
-    I=numpy.matrix(numpy.identity(3))
-    d=numpy.linalg.det(numpy.dot(numpy.transpose(Wt),numpy.transpose(V)))
+    I = numpy.matrix(numpy.identity(3))
+    d = numpy.linalg.det(numpy.dot(numpy.transpose(Wt), numpy.transpose(V)))
     if numpy.isclose(d, -1.0):
-        I[2,2]=d
+        I[2, 2] = d
 
     # End of the Computation of the optimal rotation matrix
 
     #The transformation matrix, U, is now V*Wt
-    U = numpy.dot(numpy.dot(numpy.transpose(Wt), I),numpy.transpose(V))
+    U = numpy.dot(numpy.dot(numpy.transpose(Wt), I), numpy.transpose(V))
 
     # rotate and translate the molecule
     #sel2 = numpy.dot((set2 - Mean2), U)
