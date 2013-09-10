@@ -38,16 +38,21 @@ def encode(data, full=False):
 
     ordered = []
 
+    defaults = DEFAULTS
+
     for field in FIELDS:
-        default = DEFAULTS[field]
+        default = defaults[field]
         if default is None and field not in data:
             raise InvalidUnitId("Missing required field: " + field)
 
         value = str(data.get(field, default))
-        if full:
-            ordered.append(value)
-        elif value and value != default:
-            ordered.append(value)
+        ordered.append(value)
+
+    if not full:
+        possible = ['symmetry', 'insertion_code', 'alt_id', 'atom_name']
+        while possible and ordered[-1] == DEFAULTS[possible[0]]:
+            ordered.pop()
+            possible.pop(0)
 
     return SEPERATOR.join(ordered)
 
