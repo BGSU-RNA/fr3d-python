@@ -91,15 +91,15 @@ class TransformationTest(TestCase):
         theta1=numpy.pi/4
         theta2=numpy.pi/3
         theta3=numpy.pi/9
-        R1 = array([[numpy.cos(theta1), -1*numpy.sin(theta1), 0.0000],
-                     [numpy.sin(theta1), numpy.cos(theta1), 0.0000],
-                     [0.0000, 0.0000, 1.0000]])
-        R2 = array([[numpy.cos(theta2), 0.0000, numpy.sin(theta2)],
+        R1 = array([[1.0000, 0.0000, 0.0000],
+                     [0.0000, numpy.cos(theta1), -1*numpy.cos(theta1)],
+                     [0.0000, numpy.sin(theta1), numpy.cos(theta1)]])
+        R2 = array([[cos(theta2), 0.0000, sin(theta2)],
                      [0.0000, 1.0000, 0.0000],
-                     [-1*numpy.sin(theta2), 0.0000, numpy.cos(theta2)]])
-        R3 = array([[1.0000, 0.0000, 0.0000],
-                     [0.0000, numpy.cos(theta3), -1*numpy.cos(theta3)],
-                     [0.0000, numpy.sin(theta3), numpy.cos(theta3)]])
+                     [-1*sin(theta2), 0.0000, cos(theta2)]])
+        R3 = array([[numpy.cos(theta3), -1*numpy.sin(theta3), 0.0000],
+                     [numpy.sin(theta3), numpy.cos(theta3), 0.0000],
+                     [0.0000, 0.0000, 1.0000]])
         ans=numpy.dot(numpy.dot(R1,R2),R3)
         a = array([[3.0000, 7.0000, 1.0000],
                    [5.0000, 9.0000, 2.0000],
