@@ -27,12 +27,6 @@ class ReaderResidueTest(TestCase):
     def setUp(self):
         self.residues = STRUCTURES[0].residues()
 
-    def test_loads_all_residues(self):
-        self.fail()
-
-    def test_assigns_residue_data(self):
-        self.fail()
-
     def test_assigns_atoms_to_residues(self):
         self.residues.sort(key=lambda r: r.number)
         val = len(self.residues[49].atoms())
@@ -50,8 +44,3 @@ class ReaderAtomTest(TestCase):
         val = len(self.atoms)
         ans = 6824
         self.assertEqual(ans, val)
-
-    def test_assigns_atom_name(self):
-        self.fail()
-
-    #def test_assigns_atom_
