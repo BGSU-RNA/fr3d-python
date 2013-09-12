@@ -7,7 +7,7 @@ import numpy
 
 def besttransformation(set1, set2):
     """This finds the 3x3 rotation matrix which optimally superimposes
-    the nx3 matrix of points a onto the nx3 matrix of points b.
+    the nx3 matrix of points in set1 onto the nx3 matrix of points set2.
     One reference is this: http://en.wikipedia.org/wiki/Kabsch_algorithm
     Another is a python implementation that goes with pymol, see
     http://www.pymolwiki.org/index.php/Kabsch
