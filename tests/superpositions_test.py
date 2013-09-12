@@ -24,8 +24,8 @@ class TransformationTest(TestCase):
         self.transformation, _, _ = besttransformation(a, b)
 
     def test_can_transform_a_3_x_6(self):
-        ans = array([[0.0000, -1.0000, 0.0000],
-                     [1.0000, 0.0000, 0.0000],
+        ans = array([[0.0000, 1.0000, 0.0000],
+                     [-1.0000, 0.0000, 0.0000],
                      [0.0000, 0.0000, 1.0000]])
         assert_almost_equal(ans, self.transformation)
 
@@ -36,8 +36,8 @@ class TransformationTest(TestCase):
         b = array([[0.0000, 1.0000, 0.0000],
                    [-1.0000, 0.0000, 0.0000],
                    [0.0000, 0.0000, 1.0000]])
-        ans = array([[-0.0000, -1.0000, 0.0000],
-                     [1.0000, 0.0000, 0.0000],
+        ans = array([[0.0000, 1.0000, 0.0000],
+                     [-1.0000, 0.0000, 0.0000],
                      [0.0000, 0.0000, 1.0000]])
         rotation, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
@@ -94,9 +94,9 @@ class TransformationTest(TestCase):
         R1 = array([[1.0000, 0.0000, 0.0000],
                      [0.0000, numpy.cos(theta1), -1*numpy.cos(theta1)],
                      [0.0000, numpy.sin(theta1), numpy.cos(theta1)]])
-        R2 = array([[cos(theta2), 0.0000, sin(theta2)],
+        R2 = array([[numpy.cos(theta2), 0.0000, numpy.sin(theta2)],
                      [0.0000, 1.0000, 0.0000],
-                     [-1*sin(theta2), 0.0000, cos(theta2)]])
+                     [-1*numpy.sin(theta2), 0.0000, numpy.cos(theta2)]])
         R3 = array([[numpy.cos(theta3), -1*numpy.sin(theta3), 0.0000],
                      [numpy.sin(theta3), numpy.cos(theta3), 0.0000],
                      [0.0000, 0.0000, 1.0000]])
