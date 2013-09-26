@@ -3,6 +3,7 @@ coordinates.
 """
 
 import numpy
+from RMSD import RMSD
 
 
 def besttransformation(set1, set2):
@@ -79,10 +80,10 @@ def besttransformation(set1, set2):
     #sel2 = numpy.dot((set2 - Mean2), U)
     new1 = numpy.dot(dev1, U)
     new2 = dev2
-
+    rmsd = RMSD(new1,new2)
     #Return the transformation matrix, the new coordinates for the two
     #set of coordinates, respectively.
-    return U, new1, new2
+    return U, new1, new2, rmsd
 
 # Below is an older Matlab implementation, but it would be better to use the
 # SVD implementation described above
