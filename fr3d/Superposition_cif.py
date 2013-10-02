@@ -9,41 +9,41 @@ os.chdir('C:/Users/zirbel/Documents/GitHub/fr3d-python')
 from fr3d.cif.reader import CIF
 from fr3d.geometry.superpositions import besttransformation
 
-with open('files\\1GID.cif', 'rb') as raw:
+with open('files/1GID.cif', 'rb') as raw:
     reader = CIF(raw)
     STRUCTURES = reader.structures()
 
 from fr3d.definitions import *
 struct = STRUCTURES[0] 
-#(above: just renaming for typing convenience, recall this is one cif file)
+# (above: just renaming for typing convenience, recall this is one cif file)
 
 for residue in struct.residues(sequence=['A', 'C', 'G', 'U']):
-#above begins loop for all residues which is classified by base
-# as with either A, C, G, or U.
+# above begins loop for all residues which is classified by base
+# as with either A, C, G, or U. (DNA would be DA, DC, DG, DT per PDB standard)
     R = [] # empty list to be filled w/ [x,y,z] of this residue's
            # heavy atoms in crystal structure of 1GIF.cif
     S = [] # empty list to be filled w/ [x,y,z] of this residue's
            # heavy atoms in standard base
-    heavy = RNAbaseheavyatoms[residue.sequence]  # imports the 
+    baseheavy = RNAbaseheavyatoms[residue.sequence]  # imports the 
            # base of the residue of interest see:
-           #  struct.residues(sequence=['A','C','U','G'])[0].sequence
+           # struct.residues(sequence=['A','C','U','G'])[0].sequence
            # Above is the base of the first entry in struct.residues(sequence=['A','C','U','G'])
-           # This exports 
+           # This exports ...
            # RNAbaseheavyatoms is a dictionary in definitions.py
-           # This dictionary gives the names for all potential positions
-           # of the base?  Or something like that.  See:
+           # Each entry in this dictionary is a list,
+           # a list of the heavy atoms in the RNA base.
            # RNAbaseheavyatoms[struct.residues(sequence=['A','C','U','G'])[0].sequence]
 
     #Now I must get the coordinates of the heavy atoms within each residue
     #in the crystal structure of 1GID.cif
-    for atom in residue.atoms(name=heavy):  
+    for atom in residue.atoms(name=baseheavy):  
         #Now pertaining to each heavy atom, we will record [x,y,z] and
         #add it to the list R for crystal structure, and S for standard
         coordinates = atom.coordinates()
         #In coordinates, the [x,y,z] coordinate of the heavy atom in current
         #loop status is stored.         
         R.append(coordinates)
-        # R now contains this [x,y,z] coordinate as an element in it's list.        
+        # R now contains this [x,y,z] coordinate as an element in its list.        
         S.append(RNAbasecoordinates[residue.sequence][atom.name])
         # Now, from definitions find the standard [x,y,z] coordinate 
         # by stating that we are considering the specific residue's 
@@ -64,7 +64,7 @@ for residue in struct.residues(sequence=['A', 'C', 'G', 'U']):
     S=numpy.array(S)
 #    R=R.tolist()
 #    S=S.tolist()
-    rotation_matrix, new, base_center, rmsd = besttransformation(R, S)
+    rotation_matrix, fitted, base_center, rmsd = besttransformation(R, S)
 
     print residue.atoms(name='P')[0].pdb, residue.atoms(name='P')[0].chain, residue.sequence, int(residue.number)+102
     print base_center

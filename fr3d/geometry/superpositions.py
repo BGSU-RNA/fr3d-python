@@ -5,7 +5,6 @@ coordinates.
 import numpy
 from RMSD import RMSD
 
-
 def besttransformation(set1, set2):
     """This finds the 3x3 rotation matrix which optimally superimposes
     the nx3 matrix of points in set1 onto the nx3 matrix of points set2.
@@ -83,7 +82,7 @@ def besttransformation(set1, set2):
     rmsd = RMSD(new1,new2)
     #Return the transformation matrix, the new coordinates for the two
     #set of coordinates, respectively.
-    return U, new1, dev1, rmsd
+    return U, new1, mean1, rmsd
 
 # Below is an older Matlab implementation, but it would be better to use the
 # SVD implementation described above
