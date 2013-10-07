@@ -17,6 +17,10 @@ class Entity(object):
 
     def __init__(self, data):
         self._data = data
+        for key, value in data.items():
+            if hasattr(self, key):
+                raise ValueError("Can't override properites")
+            setattr(self, key, value)
 
     def unit_id(self):
         """Compute the unit id for this Entity.
@@ -25,11 +29,6 @@ class Entity(object):
         """
 
         return encode(self.__rename__())
-
-    def __getattr__(self, key):
-        if key in self._data:
-            return self._data[key]
-        raise AttributeError
 
 
 class EntityContainer(object):
