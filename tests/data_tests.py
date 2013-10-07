@@ -4,6 +4,7 @@ import numpy as np
 
 from fr3d.data import Atom
 from fr3d.data import Component
+from fr3d.data import Structure
 
 
 class AtomTest(TestCase):
@@ -131,4 +132,9 @@ class ComponentTest(TestCase):
 
 class StructureTest(TestCase):
     def setUp(self):
-        pass
+        self.structure = Structure({'pdb': '1S72', 'model': 1}, [])
+
+    def test_generates_a_unit_id(self):
+        val = self.structure.unit_id()
+        ans = '1S72|1'
+        self.assertEqual(val, ans)
