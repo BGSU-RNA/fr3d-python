@@ -4,7 +4,7 @@ from numpy import array
 from numpy.testing import assert_almost_equal
 
 from fr3d.geometry.superpositions import besttransformation
-
+from fr3d.geometry.angleofrotation import angle_of_rotation
 
 class TransformationTest(TestCase):
 
@@ -56,6 +56,9 @@ class TransformationTest(TestCase):
         b = numpy.dot(a-meana,ans)
         rotation, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
+        angle = angle_of_rotation(rotation)
+        assert_almost_equal(angle, 45.0)
+
         
     def test_can_transform_a_4_x_3_45degreeyrotation(self):
         theta=numpy.pi/4.0        
@@ -71,6 +74,8 @@ class TransformationTest(TestCase):
         b = numpy.dot(a-meana,ans)
         rotation, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
+        angle = angle_of_rotation(rotation)
+        assert_almost_equal(angle, 45.0)
 
     def test_can_transform_a_4_x_3_45degreezrotation(self):
         theta = numpy.pi/4.0        
@@ -86,6 +91,8 @@ class TransformationTest(TestCase):
         b = numpy.dot(a-meana,ans)
         rotation, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
+        angle = angle_of_rotation(rotation)
+        assert_almost_equal(angle, 45.0)
 
     def test_can_transform_a_4_x_3_generalrotation(self):
         theta1 = numpy.pi/4.0
