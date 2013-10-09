@@ -241,6 +241,9 @@ class Structure(Entity, EntityContainer):
         """
         return self.__getter__(self._residues, **kwargs)
 
+    def __rename__(self):
+        return dict(self._data)
+
     def __len__(self):
         """Compute the length of this Structure. That is the number of residues
         in this structure.
