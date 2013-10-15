@@ -47,10 +47,14 @@ class AtomTest(TestCase):
 class ComponentTest(TestCase):
     def setUp(self):
         self.atoms = [
-            Atom({'type': 'C', 'name': 'a1', 'type_name': 'A', 'number': 3}),
-            Atom({'type': 'C', 'name': 'a2', 'type_name': 'B', 'number': 2}),
-            Atom({'type': 'N', 'name': 'b1', 'type_name': 'C', 'number': 1}),
-            Atom({'type': 'N', 'name': 'c2', 'type_name': 'C', 'number': 0})
+            Atom({'type': 'C', 'name': 'a1', 'type_name': 'A', 'number': 3,
+                  'x': 0.0, 'y': 0.0, 'z': 0.0}),
+            Atom({'type': 'C', 'name': 'a2', 'type_name': 'B', 'number': 2,
+                  'x': 0.0, 'y': 0.0, 'z': 0.0}),
+            Atom({'type': 'N', 'name': 'b1', 'type_name': 'C', 'number': 1,
+                  'x': 0.0, 'y': 0.0, 'z': 0.0}),
+            Atom({'type': 'N', 'name': 'c2', 'type_name': 'C', 'number': 0,
+                  'x': 0.0, 'y': 0.0, 'z': 0.0})
         ]
         self.component = Component({
             'type': 'rna',
@@ -129,6 +133,20 @@ class ComponentTest(TestCase):
     def test_can_check_is_not_complete_using_custom_key(self):
         val = self.component.is_complete([1, 2, 10], key='number')
         self.assertFalse(val)
+
+
+class ComponentCenterTest(TestCase):
+    def setUp(self):
+        self.residue = Component({'sequence': 'A'}, [
+            Atom({'name': 'N9', 'x': 3.0, 'y': 3.0, 'z': 3.0}),
+            Atom({'name': 'C4', 'x': 2.0, 'y': 2.0, 'z': 2.0}),
+            Atom({'name': 'N3', 'x': 1.0, 'y': 1.0, 'z': 1.0}),
+        ])
+
+    def test_computes_center_correctly(self):
+        val = self.residue.centers['base']
+        ans = np.array([2.0, 2.0, 2.0])
+        np.testing.assert_array_equal(val, ans)
 
 
 class StructureTest(TestCase):

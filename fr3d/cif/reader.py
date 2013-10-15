@@ -73,7 +73,8 @@ class CIF(object):
 
     def __apply_symmetry__(self, atom, symmetry):
         # TODO: Apply the symmetries
-        return atom['Cartn_x'], atom['Cartn_y'], atom['Cartn_z']
+        coords = atom['Cartn_x'], atom['Cartn_y'], atom['Cartn_z']
+        return [float(coord) for coord in coords]
         #coords = np.array([atom['x'], atom['y'], atom['z']])
         #transformed = np.mul(coords, symmetry['matrix'])
         #return transformed[0], transformed[1], transformed[2]

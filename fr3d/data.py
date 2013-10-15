@@ -3,9 +3,10 @@ on, such as Atoms and Components.
 
 """
 
-from numpy import array
+import numpy as np
 
 from fr3d.unit_ids import encode
+from fr3d.definitions import RNAbaseheavyatoms
 
 
 class Entity(object):
@@ -151,7 +152,7 @@ class Atom(Entity):
 
         :returns: A numpy array of the x, y, z coordinates.
         """
-        return array([self.x, self.y, self.z])
+        return np.array([self.x, self.y, self.z])
 
     def __repr__(self):
         return '<Atom: %s>' % self._data
@@ -172,6 +173,12 @@ class Component(Entity, EntityContainer):
         self._atoms = atoms
         super(Component, self).__init__(data)
 
+        self.centers = {}
+
+        if self.sequence in ['A', 'C', 'G', 'U']:
+            atoms = RNAbaseheavyatoms[self.sequence]
+            self.centers['base'] = self.__compute_center__(atoms)
+
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
         described by EntityContainer.__getter__.
@@ -189,7 +196,7 @@ class Component(Entity, EntityContainer):
         :kwargs: Arguments to filter and sort by.
         :returns: A numpy array of the coordinates.
         """
-        return array([atom.coordinates() for atom in self.atoms(**kwargs)])
+        return np.array([atom.coordinates() for atom in self.atoms(**kwargs)])
 
     def __rename__(self):
         data = dict(self._data)
@@ -211,6 +218,19 @@ class Component(Entity, EntityContainer):
         kwargs = {key: names}
         found = self.atoms(**kwargs)
         return len(found) == len(names)
+
+    def __compute_center__(self, atoms):
+        """Compute the center position for the given set of atoms. This is done
+        through taking the mean position of each atom. If a requested atom
+        does not exist it is ignored.
+
+        :atoms: Atoms to use to find the center.
+        :returns: The x, y, z coordinates of centers.
+        """
+        coordinates = [atom.coordinates() for atom in self.atoms(name=atoms)]
+        if not coordinates:
+            return None
+        return np.mean(coordinates, axis=0)
 
     def __len__(self):
         """Compute the length of this Component. This is the number of atoms in
