@@ -3,14 +3,14 @@ from unittest import TestCase
 from fr3d.cif.reader import CIF
 
 
-with open('files/1GID.cif', 'rb') as raw:
-    reader = CIF(raw)
-    STRUCTURES = reader.structures()
-
-
 class ReaderStructureTest(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reader = CIF('files/1GID.cif')
+
     def setUp(self):
-        self.structures = STRUCTURES
+        self.structures = self.reader.structures()
 
     def test_loads_all_structures(self):
         val = len(self.structures)
@@ -24,8 +24,13 @@ class ReaderStructureTest(TestCase):
 
 
 class ReaderResidueTest(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reader = CIF('files/1GID.cif')
+
     def setUp(self):
-        self.residues = STRUCTURES[0].residues()
+        self.residues = self.reader.structures()[0].residues()
 
     def test_assigns_atoms_to_residues(self):
         self.residues.sort(key=lambda r: r.number)
@@ -35,9 +40,14 @@ class ReaderResidueTest(TestCase):
 
 
 class ReaderAtomTest(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reader = CIF('files/1GID.cif')
+
     def setUp(self):
         self.atoms = []
-        for residue in STRUCTURES[0].residues():
+        for residue in self.reader.structures()[0].residues():
             self.atoms.extend(residue.atoms())
 
     def test_loads_all_atoms(self):

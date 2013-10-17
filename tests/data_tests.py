@@ -64,9 +64,7 @@ class ComponentTest(TestCase):
     def test_computes_unit_id(self):
         val = self.component.unit_id()
         ans = "1GID|1|A|C|50||||6_555"
-        self.assertEqual(val, ans)
 
-    def test_can_get_all_atoms(self):
         val = self.component.atoms()
         ans = self.atoms
         self.assertEquals(val, ans)
