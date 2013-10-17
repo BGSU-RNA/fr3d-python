@@ -6,7 +6,7 @@ setup(
     packages=['fr3d'],
     url='',
     license='LICENSE.txt',
-    install_requires=[],
+    install_requires=["PyCIFRW"],
     description='Python implementation of FR3D',
     long_description="""
     """
