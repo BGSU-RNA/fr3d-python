@@ -27,10 +27,10 @@ def infer_hydrogen_coordinates(residue, heavyatoms, basehydrogens,
         hydrogencoordinates = basecoordinates[residue.sequence][hydrogenatom]
         newcoordinates = base_center + \
             numpy.dot(hydrogencoordinates, numpy.transpose(rotation_matrix))
-        residue._atoms.append(Atom({'name': hydrogenatom,
-                                    'x': newcoordinates[0, 0],
-                                    'y': newcoordinates[0, 1],
-                                    'z': newcoordinates[0, 2]}))
+        residue._atoms.append(Atom(name=hydrogenatom,
+                                   x=newcoordinates[0, 0],
+                                   y=newcoordinates[0, 1],
+                                   z=newcoordinates[0, 2]))
 
 
 def infer_all_hydrogen_coordinates(struct):

@@ -10,18 +10,9 @@ from fr3d.data import Structure
 
 class AtomTest(TestCase):
     def setUp(self):
-        self.atom = Atom({
-            'pdb': '1GID',
-            'model': 1,
-            'chain': 'A',
-            'component_id': 'C',
-            'component_number': 50,
-            'name': "C1'",
-            'symmetry': '6_555',
-            'x': -1,
-            'y': 0,
-            'z': 0,
-        })
+        self.atom = Atom(pdb='1GID', model=1, chain='A', component_id='C',
+                         component_number=50, name="C1'", symmetry='6_555',
+                         x=-1, y=0, z=0)
 
     def test_has_item_access(self):
         val = self.atom.x
@@ -47,24 +38,18 @@ class AtomTest(TestCase):
 class ComponentTest(TestCase):
     def setUp(self):
         self.atoms = [
-            Atom({'type': 'C', 'name': 'a1', 'type_name': 'A', 'number': 3,
-                  'x': 0.0, 'y': 0.0, 'z': 0.0}),
-            Atom({'type': 'C', 'name': 'a2', 'type_name': 'B', 'number': 2,
-                  'x': 0.0, 'y': 0.0, 'z': 0.0}),
-            Atom({'type': 'N', 'name': 'b1', 'type_name': 'C', 'number': 1,
-                  'x': 0.0, 'y': 0.0, 'z': 0.0}),
-            Atom({'type': 'N', 'name': 'c2', 'type_name': 'C', 'number': 0,
-                  'x': 0.0, 'y': 0.0, 'z': 0.0})
+            Atom(type='C', name='a1', type_name='A', number=3,
+                 x=0.0, y=0.0, z=0.0),
+            Atom(type='C', name='a2', type_name='B', number=2,
+                 x=0.0, y=0.0, z=0.0),
+            Atom(type='N', name='b1', type_name='C', number=1,
+                 x=0.0, y=0.0, z=0.0),
+            Atom(type='N', name='c2', type_name='C', number=0,
+                 x=0.0, y=0.0, z=0.0)
         ]
-        self.component = Component({
-            'type': 'rna',
-            'pdb': '1GID',
-            'model': 1,
-            'chain': 'A',
-            'sequence': 'C',
-            'number': 50,
-            'symmetry': '6_555',
-        }, self.atoms)
+        self.component = Component(self.atoms, type='rna', pdb='1GID', model=1,
+                                   chain='A', sequence='C', number=50,
+                                   symmetry='6_555')
 
     def test_has_item_access(self):
         val = self.component.type
@@ -137,11 +122,12 @@ class ComponentTest(TestCase):
 
 class ComponentCenterTest(TestCase):
     def setUp(self):
-        self.residue = Component({'sequence': 'A'}, [
-            Atom({'name': 'N9', 'x': 3.0, 'y': 3.0, 'z': 3.0}),
-            Atom({'name': 'C4', 'x': 2.0, 'y': 2.0, 'z': 2.0}),
-            Atom({'name': 'N3', 'x': 1.0, 'y': 1.0, 'z': 1.0}),
-        ])
+        atoms = [
+            Atom(name='N9', x=3.0, y=3.0, z=3.0),
+            Atom(name='C4', x=2.0, y=2.0, z=2.0),
+            Atom(name='N3', x=1.0, y=1.0, z=1.0),
+        ]
+        self.residue = Component(atoms, sequence='A')
 
     def test_computes_center_correctly(self):
         val = self.residue.centers['base']
@@ -151,7 +137,7 @@ class ComponentCenterTest(TestCase):
 
 class StructureTest(TestCase):
     def setUp(self):
-        self.structure = Structure({'pdb': '1S72', 'model': 1}, [])
+        self.structure = Structure([], pdb='1S72', model=1)
 
     @skip
     def test_generates_a_unit_id(self):

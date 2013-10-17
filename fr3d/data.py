@@ -16,9 +16,9 @@ class Entity(object):
     this object is not mutable, but this may need to be changed.
     """
 
-    def __init__(self, data):
-        self._data = data
-        for key, value in data.items():
+    def __init__(self, **kwargs):
+        self._data = kwargs
+        for key, value in kwargs.items():
             if hasattr(self, key):
                 raise ValueError("Can't override properites")
             setattr(self, key, value)
@@ -121,12 +121,12 @@ class Atom(Entity):
     and the unit id of the component it belongs to.
     """
 
-    def __init__(self, data):
+    def __init__(self, **kwargs):
         """Create a new Atom.
 
         :data: A dictonary of data to provide access to.
         """
-        super(Atom, self).__init__(data)
+        super(Atom, self).__init__(**kwargs)
 
     def component_unit_id(self):
         """Generate the unit id of the component this atom belongs to.
@@ -163,7 +163,7 @@ class Component(Entity, EntityContainer):
     and ligands.
     """
 
-    def __init__(self, data, atoms):
+    def __init__(self, atoms, **kwargs):
         """Create a new Component.
 
         :data: The data to provide access to.
@@ -171,7 +171,7 @@ class Component(Entity, EntityContainer):
         """
 
         self._atoms = atoms
-        super(Component, self).__init__(data)
+        super(Component, self).__init__(**kwargs)
 
         self.centers = {}
 
@@ -248,9 +248,9 @@ class Structure(Entity, EntityContainer):
     """This represents a structure which is composed of components.
     """
 
-    def __init__(self, data, residues):
+    def __init__(self, residues, **kwargs):
         self._residues = residues
-        super(Structure, self).__init__(data)
+        super(Structure, self).__init__(**kwargs)
 
     def residues(self, **kwargs):
         """Get residues from this structure. The keyword arguments work as
