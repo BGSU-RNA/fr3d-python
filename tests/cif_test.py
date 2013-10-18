@@ -70,6 +70,12 @@ class ReaderResidueTest(TestCase):
         ans = 'G'
         self.assertEqual(ans, val)
 
+    def test_can_generate_unit_id(self):
+        self.residues.sort(key=lambda r: '%s%s' % (r.chain, r.number))
+        val = self.residues[0].unit_id()
+        ans = '1GID|1|A|G|103'
+        self.assertEqual(ans, val)
+
 
 class ReaderAtomTest(TestCase):
 
