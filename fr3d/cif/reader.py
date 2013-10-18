@@ -69,7 +69,7 @@ class CIF(object):
                            model=atom['label_entity_id'],
                            chain=atom['label_asym_id'],
                            component_id=atom['label_comp_id'],
-                           component_number=atom['label_seq_id'],
+                           component_number=atom['auth_seq_id'],
                            ins_code=atom['pdbx_PDB_ins_code'],
                            x=x, y=y, z=z,
                            name=atom['label_atom_id'],
