@@ -7,6 +7,10 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 from fr3d.definitions import RNAbaseheavyatoms
+from fr3d.definitions import RNAbasecoordinates
+from fr3d.definitions import RNAbasehydrogens
+from fr3d.geometry.superpositions import besttransformation
+
 
 
 class Entity(object):
@@ -242,7 +246,36 @@ class Component(Entity, EntityContainer):
 
     def __repr__(self):
         return '<Component %s Atoms: %s>' % (self._data, self._atoms)
-
+    
+    def infer_hydrogens(self):
+        """Infer the coordinates of the hydrogen atoms of this component.
+        Currently, it only works for RNA with .sequence 
+        """
+        if self.sequence not in ['A', 'C', 'G', 'U']:
+            return None
+        R = []
+        S = []
+        baseheavy = RNAbaseheavyatoms[self.sequence]
+    
+        for atom in self.atoms(name=baseheavy):
+            coordinates = atom.coordinates()
+            R.append(coordinates)
+            S.append(RNAbasecoordinates[self.sequence][atom.name])
+        
+        R = np.array(R)
+        R = R.astype(np.float)
+        S = np.array(S)
+        rotation_matrix, fitted, base_center, rmsd = besttransformation(R, S)
+        hydrogens = RNAbasehydrogens[self.sequence]
+    
+        for hydrogenatom in hydrogens:
+            hydrogencoordinates = RNAbasecoordinates[self.sequence][hydrogenatom]
+            newcoordinates = base_center + \
+            	np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
+            self._atoms.append(Atom({'name': hydrogenatom,
+            	                    'x': newcoordinates[0,0], 
+                    	            'y': newcoordinates[0,1], 
+                        	        'z': newcoordinates[0,2]}))
 
 class Structure(Entity, EntityContainer):
     """This represents a structure which is composed of components.
@@ -272,3 +305,12 @@ class Structure(Entity, EntityContainer):
         :returns: The number of atoms.
         """
         return len(self._residues)
+
+    def infer_hydrogens(self):
+    	""" Infers hydrogen atoms for all bases.
+    	"""
+    	for residue in self.residues(sequence=['A', 'C', 'G', 'U']):
+        	residue.infer_hydrogens()
+
+
+
