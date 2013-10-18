@@ -52,6 +52,10 @@ class CIF(object):
             # TODO: Set residue data
             first = atoms[0]
             residues.append(Component(atoms,
+                                      pdb=first.pdb,
+                                      model=first.model,
+                                      chain=first.chain,
+                                      symmetry=first.symmetry,
                                       sequence=first.component_id,
                                       number=first.component_number,
                                       ins_code=first.ins_code))
