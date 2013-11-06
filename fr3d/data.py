@@ -264,7 +264,14 @@ class Component(Entity, EntityContainer):
         R = np.array(R)
         R = R.astype(np.float)
         S = np.array(S)
-        rotation_matrix, fitted, base_center, rmsd = besttransformation(R, S)
+        try:
+            rotation_matrix, fitted, base_center, rmsd = \
+                besttransformation(R, S)
+        except:
+            return None
+
+        self.rotation_matrix = rotation_matrix
+
         hydrogens = RNAbasehydrogens[self.sequence]
         coordinates = RNAbasecoordinates[self.sequence]
 
