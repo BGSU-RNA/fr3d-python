@@ -120,14 +120,14 @@ class EntityContainer(object):
 
 class Atom(Entity):
     """This class represents atoms in a structure. It provides a simple dict
-    like access for data as well as a way to get it's coordiantes, unit id
+    like access for data as well as a way to get its coordinates, unit id
     and the unit id of the component it belongs to.
     """
 
     def __init__(self, **kwargs):
         """Create a new Atom.
 
-        :data: A dictonary of data to provide access to.
+        :data: A dictionary of data to provide access to.
         """
         super(Atom, self).__init__(**kwargs)
 
@@ -282,8 +282,9 @@ class Structure(Entity, EntityContainer):
     """This represents a structure which is composed of components.
     """
 
-    def __init__(self, residues, **kwargs):
+    def __init__(self, residues, polymers=None, **kwargs):
         self._residues = residues
+        self._polymers = polymers
         super(Structure, self).__init__(**kwargs)
 
     def residues(self, **kwargs):
@@ -294,6 +295,14 @@ class Structure(Entity, EntityContainer):
         :returns: The requested residues.
         """
         return self.__getter__(self._residues, **kwargs)
+
+    def polymers(self, **kwargs):
+        """A generator that yields each polymer in the structure.
+        :yields: Gives a list of residues that are in polymers.
+        """
+        for polymer in self._polymers:
+            residues = self._residues[polymer[0], polymer[1]]
+            yield residues
 
     def __rename__(self):
         return dict(self._data)
