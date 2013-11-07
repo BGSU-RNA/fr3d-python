@@ -40,7 +40,11 @@ class CIF(object):
     def __structure__(self, name):
         entry = self._data[name]
         residues = self.__residues__(entry, name)
-        return Structure(residues, pdb=name)
+        polymers = self.__polymers__(entry)
+        return Structure(residues, polymers=polymers, pdb=name)
+
+    def __polymers__(self, block):
+        pass
 
     def __residues__(self, entry, pdb):
         mapping = defaultdict(list)
@@ -58,6 +62,7 @@ class CIF(object):
                                       symmetry=first.symmetry,
                                       sequence=first.component_id,
                                       number=first.component_number,
+                                      index=first.component_index,
                                       ins_code=first.ins_code))
         return residues
 
@@ -69,11 +74,15 @@ class CIF(object):
                     raise InvalidSymmetry
 
                 x, y, z = self.__apply_symmetry__(atom, symmetry)
+                index = atom['label_seq_id']
+                if index != '.':
+                    index = int(index)
                 yield Atom(pdb=pdb,
                            model=atom['label_entity_id'],
                            chain=atom['label_asym_id'],
                            component_id=atom['label_comp_id'],
                            component_number=atom['auth_seq_id'],
+                           component_index=index,
                            ins_code=atom['pdbx_PDB_ins_code'],
                            x=x, y=y, z=z,
                            name=atom['label_atom_id'],
