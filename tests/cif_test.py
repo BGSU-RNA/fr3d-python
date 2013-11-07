@@ -1,5 +1,9 @@
 from unittest import TestCase
 
+#from itertools import izip
+#from itertools import chain
+#from itertools import repeat
+
 from fr3d.cif.reader import CIF
 
 READER = CIF("files/1GID.cif")
@@ -75,6 +79,12 @@ class ReaderResidueTest(TestCase):
         val = self.residues[0].unit_id()
         ans = '1GID|1|A|G|103'
         self.assertEqual(ans, val)
+
+    #def test_orders_using_poly_seq(self):
+        #val = [(res.number, res.chain) for res in self.residues]
+        #ans = list(chain(izip(repeat(103, 260), repeat('A')),
+                         #izip(repeat(103, 260), repeat('B'))))
+        #self.assertEquals(val, ans)
 
 
 class ReaderAtomTest(TestCase):
