@@ -21,7 +21,10 @@ class AtomProxyTest(TestCase):
             Atom(type='N', name='c2', type_name='C', number=0,
                  x=0.0, y=1.0, z=0.0)
         ]
-        self.proxy = AtomProxy(atoms)
+        component = Component(atoms, type='rna', pdb='1GID', model=1,
+                              chain='A', sequence='C', number=50,
+                              symmetry='6_555')
+        self.proxy = AtomProxy(component)
 
     def test_can_set_a_value(self):
         ans = 10

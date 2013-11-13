@@ -126,13 +126,14 @@ class AtomProxy(col.MutableMapping):
     as a center.
     """
 
-    def __init__(self, atoms):
-        self._atoms = atoms
+    def __init__(self, component):
+        self._component = component
         self._data = {}
 
     def __getitem__(self, key):
         if key not in self._data:
-            for atom in self._atoms:
+            print(self._component)
+            for atom in self._component._atoms:
                 if atom.name == key:
                     return atom.coordinates()
         return self._data[key]
@@ -147,11 +148,11 @@ class AtomProxy(col.MutableMapping):
         for key in self._data.keys():
             yield key
 
-        for atom in self._atoms:
+        for atom in self._component._atoms:
             yield atom.name
 
     def __len__(self):
-        return len(self._data) + len(self._atoms)
+        return len(self._data) + len(self._component._atoms)
 
 
 class Atom(Entity):
@@ -212,7 +213,7 @@ class Component(Entity, EntityContainer):
         self._atoms = atoms
         super(Component, self).__init__(**kwargs)
 
-        self.centers = AtomProxy(self._atoms)
+        self.centers = AtomProxy(self)
 
         if self.sequence in ['A', 'C', 'G', 'U']:
             atoms = RNAbaseheavyatoms[self.sequence]
