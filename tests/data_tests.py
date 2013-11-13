@@ -4,8 +4,57 @@ from unittest import TestCase
 import numpy as np
 
 from fr3d.data import Atom
+from fr3d.data import AtomProxy
 from fr3d.data import Component
 from fr3d.data import Structure
+
+
+class AtomProxyTest(TestCase):
+    def setUp(self):
+        atoms = [
+            Atom(type='C', name='a1', type_name='A', number=3,
+                 x=1.0, y=0.0, z=0.0),
+            Atom(type='C', name='a2', type_name='B', number=2,
+                 x=2.0, y=0.0, z=0.0),
+            Atom(type='N', name='b1', type_name='C', number=1,
+                 x=3.0, y=0.0, z=0.0),
+            Atom(type='N', name='c2', type_name='C', number=0,
+                 x=0.0, y=1.0, z=0.0)
+        ]
+        self.proxy = AtomProxy(atoms)
+
+    def test_can_set_a_value(self):
+        ans = 10
+        self.proxy['bob'] = ans
+        val = self.proxy['bob']
+        self.assertEqual(val, ans)
+
+    def test_can_get_atom_value(self):
+        ans = np.array([0.0, 1.0, 0.0])
+        val = self.proxy['c2']
+        np.testing.assert_almost_equal(ans, val)
+
+    def test_knows_is_missing_a_value(self):
+        self.assertFalse('bob' in self.proxy)
+
+    def test_can_test_has_value(self):
+        self.proxy['bob'] = 1
+        self.assertTrue('bob' in self.proxy)
+
+    def test_knows_has_atom(self):
+        self.assertTrue('a1' in self.proxy)
+
+    def test_lets_override_proxy_lookup(self):
+        ans = 'a'
+        self.proxy['a1'] = ans
+        val = self.proxy['a1']
+        self.assertEqual(val, ans)
+
+    def test_length_counts_atoms(self):
+        self.proxy['steve'] = 3
+        ans = 5
+        val = len(self.proxy)
+        self.assertEqual(val, ans)
 
 
 class AtomTest(TestCase):

@@ -3,6 +3,8 @@ on, such as Atoms and Components.
 
 """
 
+import collections as col
+
 import numpy as np
 
 from fr3d.unit_ids import encode
@@ -118,6 +120,40 @@ class EntityContainer(object):
         return checker
 
 
+class AtomProxy(col.MutableMapping):
+    """This class is meant to serve as a way to provide both dictonary like
+    access to center data, as well as allow for getting the position of an atom
+    as a center.
+    """
+
+    def __init__(self, atoms):
+        self._atoms = atoms
+        self._data = {}
+
+    def __getitem__(self, key):
+        if key not in self._data:
+            for atom in self._atoms:
+                if atom.name == key:
+                    return atom.coordinates()
+        return self._data[key]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+
+    def __delitem__(self, key):
+        del self._data[key]
+
+    def __iter__(self):
+        for key in self._data.keys():
+            yield key
+
+        for atom in self._atoms:
+            yield atom.name
+
+    def __len__(self):
+        return len(self._data) + len(self._atoms)
+
+
 class Atom(Entity):
     """This class represents atoms in a structure. It provides a simple dict
     like access for data as well as a way to get its coordinates, unit id
@@ -176,7 +212,7 @@ class Component(Entity, EntityContainer):
         self._atoms = atoms
         super(Component, self).__init__(**kwargs)
 
-        self.centers = {}
+        self.centers = AtomProxy(self._atoms)
 
         if self.sequence in ['A', 'C', 'G', 'U']:
             atoms = RNAbaseheavyatoms[self.sequence]
