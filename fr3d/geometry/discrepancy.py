@@ -42,16 +42,10 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
         nt1 = ntlist1[i]
         nt2 = ntlist2[i]
         for c in centers:
-            coords1 = list(nt1.coordinates(name=center))
-            coords2 = list(nt2.coordinates(name=center))
 
             if c in nt1.centers:
                 R.append(nt1.centers[c])
                 S.append(nt2.centers[c])
-                W.append(weights[i])
-            elif coords1:
-                R.append(coords1[0])
-                S.append(coords2[0])
                 W.append(weights[i])
             else:
                 raise MissingBaseException(center)
