@@ -21,10 +21,10 @@ class AtomProxyTest(TestCase):
             Atom(type='N', name='c2', type_name='C', number=0,
                  x=0.0, y=1.0, z=0.0)
         ]
-        component = Component(atoms, type='rna', pdb='1GID', model=1,
-                              chain='A', sequence='C', number=50,
-                              symmetry='6_555')
-        self.proxy = AtomProxy(component)
+        self.component = Component(atoms, type='rna', pdb='1GID', model=1,
+                                   chain='A', sequence='C', number=50,
+                                   symmetry='6_555')
+        self.proxy = AtomProxy(self.component)
 
     def test_can_set_a_value(self):
         ans = 10
@@ -58,6 +58,12 @@ class AtomProxyTest(TestCase):
         ans = 5
         val = len(self.proxy)
         self.assertEqual(val, ans)
+
+    def test_can_find_new_atom_positions(self):
+        self.component._atoms.append(Atom(name='s', x=3.0, y=2.0, z=1.0))
+        val = self.proxy['s']
+        ans = np.array([3.0, 2.0, 1.0])
+        np.testing.assert_almost_equal(ans, val)
 
 
 class AtomTest(TestCase):
@@ -262,6 +268,7 @@ class ComponentCenterTest(TestCase):
             Atom(name='N3', x=1.0, y=1.0, z=1.0),
         ]
         self.residue = Component(atoms, sequence='A')
+        print(self.residue)
 
     def test_computes_center_correctly(self):
         val = self.residue.centers['base']
