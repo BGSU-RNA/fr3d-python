@@ -154,6 +154,9 @@ class AtomProxy(col.MutableMapping):
     def __len__(self):
         return len(self._data) + len(self._component._atoms)
 
+    def __repr__(self):
+        return str(self._data)
+
 
 class Atom(Entity):
     """This class represents atoms in a structure. It provides a simple dict
@@ -281,7 +284,8 @@ class Component(Entity, EntityContainer):
         return len(self._atoms)
 
     def __repr__(self):
-        return '<Component %s Atoms: %s>' % (self._data, self._atoms)
+        return '<Component %s Centers: %s Atoms: %s>' % \
+            (self._data, self.centers, self._atoms)
 
     def infer_hydrogens(self):
         """Infer the coordinates of the hydrogen atoms of this component.
