@@ -132,7 +132,6 @@ class AtomProxy(col.MutableMapping):
 
     def __getitem__(self, key):
         if key not in self._data:
-            print(self._component)
             for atom in self._component._atoms:
                 if atom.name == key:
                     return atom.coordinates()
