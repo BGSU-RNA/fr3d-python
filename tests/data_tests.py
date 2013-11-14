@@ -11,7 +11,7 @@ from fr3d.data import Structure
 
 class AtomProxyTest(TestCase):
     def setUp(self):
-        atoms = [
+        self.atoms = [
             Atom(type='C', name='a1', type_name='A', number=3,
                  x=1.0, y=0.0, z=0.0),
             Atom(type='C', name='a2', type_name='B', number=2,
@@ -21,10 +21,7 @@ class AtomProxyTest(TestCase):
             Atom(type='N', name='c2', type_name='C', number=0,
                  x=0.0, y=1.0, z=0.0)
         ]
-        self.component = Component(atoms, type='rna', pdb='1GID', model=1,
-                                   chain='A', sequence='C', number=50,
-                                   symmetry='6_555')
-        self.proxy = AtomProxy(self.component)
+        self.proxy = AtomProxy(self.atoms)
 
     def test_can_set_a_value(self):
         ans = 10
@@ -60,7 +57,7 @@ class AtomProxyTest(TestCase):
         self.assertEqual(val, ans)
 
     def test_can_find_new_atom_positions(self):
-        self.component._atoms.append(Atom(name='s', x=3.0, y=2.0, z=1.0))
+        self.atoms.append(Atom(name='s', x=3.0, y=2.0, z=1.0))
         val = self.proxy['s']
         ans = np.array([3.0, 2.0, 1.0])
         np.testing.assert_almost_equal(ans, val)
