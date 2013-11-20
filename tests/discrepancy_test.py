@@ -39,7 +39,26 @@ nt10_0.rotation_matrix
 # it would be helpful to have the location error separately from the orientation error
 
 d = discrepancy([nt10_0, nt11_0, nt12_0, nt13_0, nt14_0],[nt15_0,nt16_0,nt17_0,nt18_0,nt19_0])
+# discrepancy should be about 0.9402
+# discrepancy is sqrt(L^2 + A1^2 + A2^2 + ... + A7^2)/7, where L is location error and A1 ... A7 are angles between bases in radians
+# angles between bases should be about     0.9014    0.3105    0.1999    0.2084    0.2959
+# or else twice that, not quite sure
+
+# rotation matrix should be about:
+#   -0.9933    0.0681   -0.0929
+#   -0.0533   -0.9867   -0.1537
+#   -0.1022   -0.1478    0.9837
 
 d = discrepancy([nt10_0, nt11_0, nt12_0, nt13_0, nt14_0],[nt15_0,nt16_0,nt17_0,nt18_0,nt19_0],['P'])
 
 d = discrepancy([nt10_0, nt12_0, nt14_0, nt16_0, nt18_0],[nt11_0,nt13_0,nt15_0,nt17_0,nt19_0])
+# discrepancy should be about 1.1414
+# discrepancy is sqrt(L^2 + A1^2 + A2^2 + ... + A7^2)/7, where L is location error and A1 ... A7 are angles between bases in radians
+# angles between bases should be about     0.7006    0.1180    0.2260    0.2561    0.1276
+
+# or else twice that, not quite sure
+
+# rotation matrix should be about:
+#    0.6357    0.7690    0.0672
+#   -0.7708    0.6371    0.0006
+#   -0.0424   -0.0522    0.9977

@@ -35,6 +35,8 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
     if not isinstance(weights, list):
         weights = [weights] * len(centers)
 
+    print weights
+
     R = []
     S = []
     W = []
@@ -65,6 +67,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
             R2 = ntlist2[i].rotation_matrix
             # calculate angle in radians
             angle = angle_of_rotation(np.dot(np.dot(R1,rotation_matrix), R2))
+            print i, angle
             orientationerror += np.square(angle)
 
     discrepancy = np.sqrt(np.square(RMSD) + angleweight*orientationerror) / len(ntlist1)

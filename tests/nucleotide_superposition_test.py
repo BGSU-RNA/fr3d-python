@@ -6,11 +6,13 @@ Created on Wed Nov 20 12:50:43 2013
 """
 
 
-import define_1S72_nucleotides
+from fr3d.tests import define_1S72_nucleotides
+from fr3d.geometry import discrepancy
 
 # Test:  superimpose 7 nucleotides:
 
-superimpose([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9,nt103_9,nt104_9],[nt212_0,nt213_0,nt214_0,nt215_0,nt225_0,nt226_0,nt227_0])
+d = discrepancy([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9,nt103_9,nt104_9],[nt212_0,nt213_0,nt214_0,nt215_0,nt225_0,nt226_0,nt227_0])
+print d
 
 # discrepancy should be about 0.1159
 # discrepancy is sqrt(L^2 + A1^2 + A2^2 + ... + A7^2)/7, where L is location error and A1 ... A7 are angles between bases in radians
@@ -24,7 +26,8 @@ superimpose([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9,nt103_9,nt104_9],[nt212_0,nt213
 
 # Test:  superimpose 5 nucleotides:
 
-superimpose([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9],[nt212_0,nt213_0,nt214_0,nt215_0,nt225_0])
+d = discrepancy([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9],[nt212_0,nt213_0,nt214_0,nt215_0,nt225_0])
+print d
 
 # discrepancy should be about 0.0748
 # discrepancy is sqrt(L^2 + A1^2 + A2^2 + ... + A7^2)/7, where L is location error and A1 ... A7 are angles between bases in radians
