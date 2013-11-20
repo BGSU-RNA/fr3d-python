@@ -2,7 +2,7 @@ import numpy
 
 def angle_of_rotation(rotation_matrix):  
                    
-    angle = numpy.arccos((numpy.trace(rotation_matrix)-1)/2.0)*180/numpy.pi
+    angle = numpy.arccos((numpy.trace(rotation_matrix)-1)/2.0)
     
     return angle
     

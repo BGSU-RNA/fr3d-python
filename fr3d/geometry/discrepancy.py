@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-
-import fr3d.geometry.angleofrotation
+from fr3d.geometry.angleofrotation import angle_of_rotation
+from fr3d.geometry.superpositions import besttransformation
 
 
 class MissingBaseException(Exception):
@@ -26,7 +26,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
     :returns: The geometric discrepancy.
     """
 
-    assert length(ntlist1) == length(ntlist2)
+    assert len(ntlist1) == len(ntlist2)
 
     # TODO: Should we allow users to pass a tuple too?
     if not isinstance(centers, list):
@@ -37,7 +37,8 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
 
     R = []
     S = []
-
+    W = []
+    
     for i in xrange(len(ntlist1)):
         nt1 = ntlist1[i]
         nt2 = ntlist2[i]
@@ -48,23 +49,24 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                 S.append(nt2.centers[c])
                 W.append(weights[i])
             else:
-                raise MissingBaseException(center)
+                raise MissingBaseException(centers)
 
     # superimpose R and S
-    rotation_matrix, RMSD = superimposeweighted(R, S, W)
+    rotation_matrix, _, _, RMSD = besttransformation(R, S)
+    # Superimpose R and S with weights? I need to make changes.
+    #rotation_matrix, RMSD = superimposeweighted(R, S, W)
 
     # loop through the bases and calculate angles between them
-
     orientationerror = 0
 
     if 'base' in centers:
         for i in xrange(len(ntlist1)):
             R1 = ntlist1[i].rotation_matrix
             R2 = ntlist2[i].rotation_matrix
+            # calculate angle in radians
+            angle = angle_of_rotation(np.dot(np.dot(R1,rotation_matrix), R2))
+            orientationerror += np.square(angle)
 
-            # calculate angle in radians, or adjust with angleweight factor
-            angle = angleofrotation(R1 * rotation_matrix * R2')
+    discrepancy = np.sqrt(np.square(RMSD) + angleweight*orientationerror) / len(ntlist1)
 
-            orientationerror += angle^2
-
-    discrepancy = sqrt(RMSD^2 + angleweight*orientationerror) / length(ntlist1)
+    return discrepancy
