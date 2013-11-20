@@ -14,6 +14,6 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
-import tests.a_1S72_nucleotides
+import tests.define_1S72_nucleotides
 
 
