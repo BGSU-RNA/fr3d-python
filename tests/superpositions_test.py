@@ -57,7 +57,7 @@ class TransformationTest(TestCase):
         rotation, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
-        assert_almost_equal(angle, 45.0)
+        assert_almost_equal(angle, 45.0*numpy.pi/180.)
 
         
     def test_can_transform_a_4_x_3_45degreeyrotation(self):
@@ -75,7 +75,7 @@ class TransformationTest(TestCase):
         rotation, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
-        assert_almost_equal(angle, 45.0)
+        assert_almost_equal(angle, 45.0*numpy.pi/180.)
 
     def test_can_transform_a_4_x_3_45degreezrotation(self):
         theta = numpy.pi/4.0        
@@ -92,7 +92,7 @@ class TransformationTest(TestCase):
         rotation, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
-        assert_almost_equal(angle, 45.0)
+        assert_almost_equal(angle, 45.0*numpy.pi/180.)
 
     def test_can_transform_a_4_x_3_generalrotation(self):
         theta1 = numpy.pi/4.0
