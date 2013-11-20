@@ -35,8 +35,6 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
     if not isinstance(weights, list):
         weights = [weights] * len(centers)
 
-    print weights
-
     R = []
     S = []
     W = []
@@ -49,18 +47,21 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
             if c in nt1.centers:
                 R.append(nt1.centers[c])
                 S.append(nt2.centers[c])
-                W.append(weights[i])
+                #W.append(weights[i])
+                #The above weights were out of range.  Need to make default weights
+                #To have same dimension as the list of nucleotides.
             else:
                 raise MissingBaseException(centers)
 
-    # superimpose R and S
     rotation_matrix, _, _, RMSD = besttransformation(R, S)
     # Superimpose R and S with weights? I need to make changes.
     #rotation_matrix, RMSD = superimposeweighted(R, S, W)
+    rotation_matrix = np.transpose(rotation_matrix)
+    #The rotation_matrix that is outputted from besttransformation is the 
+    #transpose of the one you want.
 
     # loop through the bases and calculate angles between them
     orientationerror = 0
-
     if 'base' in centers:
         for i in xrange(len(ntlist1)):
             R1 = ntlist1[i].rotation_matrix
@@ -69,7 +70,6 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
             angle = angle_of_rotation(np.dot(np.dot(R1,rotation_matrix), R2))
             print i, angle
             orientationerror += np.square(angle)
-
     discrepancy = np.sqrt(np.square(RMSD) + angleweight*orientationerror) / len(ntlist1)
-
     return discrepancy
+    #I must be calculating this part incorrectly, since rotation_matrix is cor

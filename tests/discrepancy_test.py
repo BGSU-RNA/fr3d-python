@@ -5,7 +5,7 @@ Created on Wed Nov 13 17:06:14 2013
 @author: zirbel
 """
 
-from fr3d.geometry import discrepancy
+from fr3d.geometry.discrepancy import discrepancy
 
 from fr3d.data import Atom
 from fr3d.data import Component
