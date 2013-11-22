@@ -1,40 +1,48 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov 22 11:12:22 2013
-
-@author: zirbel
-"""
+import unittest
 
 from fr3d.geometry.convex_regions import totheleft
-
-v = totheleft([0, 1],[1, 0])
-print v
-# should be true
-
-v = totheleft([1, 0], [0, 1])
-print v
-# should be false
-
-v = totheleft([0, 1],[0, 1])
-print v
-# should be true, being on the line is OK
-
+from fr3d.geometry.convex_regions import counterclockwiseinside
 from fr3d.geometry.convex_regions import testcounterclockwiseconvex
 
-v = testcounterclockwiseconvex([[0,0],[2,0],[3,1],[2,2],[0,2]])
-# should be true
 
-v = testcounterclockwiseconvex([[0,0],[2,0],[3,1],[1,1],[2,2],[0,2]])
-# should be false
+class ToTheLeftTest(unittest.TestCase):
+    def test_to_left_matches_left(self):
+        val = totheleft([0, 1], [1, 0])
+        self.assertTrue(val)
 
-v = testcounterclockwiseconvex([[0,0],[-1,-1],[2,0],[3,1],[2,2],[0,2]])
-# should be false
+    def test_to_left_rejects_right(self):
+        val = totheleft([1, 0], [0, 1])
+        self.assertFalse(val)
 
-from fr3d.geometry.convex_regions import counterclockwiseinside
+    def test_to_left_matches_on_line(self):
+        val = totheleft([0, 1], [0, 1])
+        self.assertTrue(val)
 
-v = counterclockwiseinside([1,1], [[0,0],[2,0],[3,1],[2,2],[0,2]])
-# should be true
 
-v = counterclockwiseinside([6,1], [[0,0],[2,0],[3,1],[2,2],[0,2]])
-# should be false
+class CounterClockWiseConvexTest(unittest.TestCase):
+    def test_matches_counter_clockwise(self):
+        val = testcounterclockwiseconvex([[0, 0], [2, 0], [3, 1], [2, 2],
+                                          [0, 2]])
+        self.assertTrue(val)
 
+    def test_rejects_clockwise(self):
+        val = testcounterclockwiseconvex([[0, 0], [2, 0], [3, 1], [1, 1],
+                                          [2, 2], [0, 2]])
+        self.assertFalse(val)
+
+    def test_rejects_another_clockwise(self):
+        val = testcounterclockwiseconvex([[0, 0], [-1, -1], [2, 0], [3, 1],
+                                          [2, 2], [0, 2]])
+        self.assertFalse(val)
+
+
+class CounterClockWiseInsideTest(unittest.TestCase):
+    def test_matches_correctly(self):
+        val = counterclockwiseinside([1, 1],
+                                     [[0, 0], [2, 0], [3, 1], [2, 2], [0, 2]])
+        self.assertTrue(val)
+
+    def test_rejects_correctly(self):
+        val = counterclockwiseinside([6, 1],
+                                     [[0, 0], [2, 0], [3, 1], [2, 2], [0, 2]])
+        self.assertFalse(val)
