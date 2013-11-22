@@ -305,7 +305,7 @@ class Component(Entity, EntityContainer):
         R = R.astype(np.float)
         S = np.array(S)
         try:
-            rotation_matrix, fitted, base_center, rmsd = \
+            rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
         except:
             return None

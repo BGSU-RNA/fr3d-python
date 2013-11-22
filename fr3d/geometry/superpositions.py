@@ -4,6 +4,7 @@ coordinates.
 
 import numpy
 from RMSD import RMSD
+from RMSD import sumsquarederror
 
 def besttransformation(set1, set2):
     """This finds the 3x3 rotation matrix which optimally superimposes
@@ -80,9 +81,10 @@ def besttransformation(set1, set2):
     new1 = numpy.dot(dev1, U)
     new2 = dev2
     rmsd = RMSD(new1,new2)
+    sse = sumsquarederror(new1,new2)
     #Return the transformation matrix, the new coordinates for the two
     #set of coordinates, respectively.
-    return U, new1, mean1, rmsd
+    return U, new1, mean1, rmsd, sse
 
 def besttransformation_weighted(set1, set2, weights=[1.0]):
     """This finds the besttransformation rotation matrix with predetermined 
@@ -111,8 +113,9 @@ def besttransformation_weighted(set1, set2, weights=[1.0]):
     new1 = numpy.dot(dev1, U)
     new2 = dev2
     rmsd = RMSD(new1,new2)
+    sse = sumsquarederror(new1,new2)
     rotation_matrix = U
-    return rotation_matrix, rmsd
+    return rotation_matrix, new1, mean1, rmsd, sse
 
 #For weighted discrepancies, I think you just set up a diagonal matrix with 
 #non-negative weights on the diagonal, then multiply this diagonal matrix 
