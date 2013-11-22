@@ -84,13 +84,47 @@ def besttransformation(set1, set2):
     #set of coordinates, respectively.
     return U, new1, mean1, rmsd
 
-def besttransformation_weighted(set1, set2, weight):
+def besttransformation_weighted(set1, set2, weights=[1.0]):
     """This finds the besttransformation rotation matrix with predetermined 
     weights.  The weights are used to give some coordinates more influence than
     others.
     """
-    #Obviously this needs changed.
-    rotation_matrix = 0
     
+    assert len(set1) == len(set2)
+    length = len(set1)
+    assert length > 0
+    if len(weights) == len(set1):
+        diagonal=numpy.diag(weights)
+    else:
+        diagonal=numpy.diag(numpy.ones(len(set1)))
+    mean1 = numpy.sum(set1, axis=0) / float(length)
+    mean2 = numpy.sum(set2, axis=0) / float(length)
+    dev1 = set1 - mean1
+    dev2 = set2 - mean2
+    A = numpy.dot(numpy.transpose(dev2), numpy.dot(diagonal,dev1))
+    V, diagS, Wt = numpy.linalg.svd(A)
+    I = numpy.matrix(numpy.identity(3))
+    d = numpy.linalg.det(numpy.dot(numpy.transpose(Wt), numpy.transpose(V)))
+    if numpy.isclose(d, -1.0):
+        I[2, 2] = d
+    U = numpy.dot(numpy.dot(numpy.transpose(Wt), I), numpy.transpose(V))
+    new1 = numpy.dot(dev1, U)
+    new2 = dev2
+    rmsd = RMSD(new1,new2)
+    rotation_matrix = U
     return rotation_matrix, rmsd
-    
+
+#For weighted discrepancies, I think you just set up a diagonal matrix with 
+#non-negative weights on the diagonal, then multiply this diagonal matrix 
+#BETWEEN the two matrices being multiplied here:  
+#A = numpy.dot(numpy.transpose(dev2), dev1) 
+#You can test this by making all the weights 2, there should be no 
+#change in the rotation matrix.  
+#Then, make half the weights 0 and half 1 and compare the rotation matrix 
+#you get to the situation where you simply leave out the rows of the nx3 
+#matrices corresponding to the rows where the weights are 0.  That is, you can 
+#leave points out either by literally leaving them out or by making their 
+#weights 0.
+
+
+
