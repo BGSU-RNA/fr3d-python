@@ -97,10 +97,12 @@ def besttransformation_weighted(set1, set2, weights=[1.0]):
     assert length > 0
     if len(weights) == len(set1):
         diagonal=numpy.diag(weights)
+        mean1 = numpy.average(set1, axis=0, weights=numpy.array(weights))
+        mean2 = numpy.average(set2, axis=0, weights=numpy.array(weights))
     else:
         diagonal=numpy.diag(numpy.ones(len(set1)))
-    mean1 = numpy.sum(set1, axis=0) / float(length)
-    mean2 = numpy.sum(set2, axis=0) / float(length)
+        mean1 = numpy.sum(set1, axis=0) / float(length)
+        mean2 = numpy.sum(set2, axis=0) / float(length)
     dev1 = set1 - mean1
     dev2 = set2 - mean2
     A = numpy.dot(numpy.transpose(dev2), numpy.dot(diagonal,dev1))
