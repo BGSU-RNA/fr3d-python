@@ -18,6 +18,12 @@ class MissingPhosphateException(Exception):
     """
     pass
 
+class MissingC1starException(Exception):
+    """An exception that is raised when the C1* atoms are not present in
+    inputted model.
+    """
+    pass
+
 def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                 angleweight=1.0):
     """Compute the geometric discrepancy between two lists of components.
@@ -68,6 +74,12 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                         S.append(nt2.coordinates(type = 'P'))
                     else:
                         raise MissingPhosphateException(centers)
+                if c=='C1*':
+                    if nt1.coordinates(type = 'C1*')!=[] and nt2.coordinates(type = 'C1*')!=[]:
+                        R.append(nt1.coordinates(type = 'C1*'))
+                        S.append(nt2.coordinates(type = 'C1*'))
+                    else:
+                        raise MissingC1starException(centers)
     #rotation_matrix, _, _, RMSD = besttransformation(R, S)
     # Superimpose R and S with weights? I need to make changes.
     rotation_matrix, new1, mean1, RMSD, sse = besttransformation_weighted(R, S, W)
