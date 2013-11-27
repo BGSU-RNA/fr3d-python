@@ -24,8 +24,8 @@ class MissingC1starException(Exception):
     """
     pass
 
-def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
-                angleweight=1.0):
+def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
+                P_weights=1.0, C1star_weights = 1.0, angleweight=1.0):
     """Compute the geometric discrepancy between two lists of components.
 
     :ntlist1: The first list of components.
@@ -44,12 +44,24 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
     if not isinstance(centers, list):
         centers = [centers]
 
-    if not isinstance(weights, list):
-        weights = [weights] * len(centers)
+    if not isinstance(base_weights, list):
+        base_weights = [base_weights] * len(ntlist1)
     
-    if len(weights) != len(ntlist1):
-        weights = np.ones(len(ntlist1))
-        
+    if len(base_weights) != len(ntlist1):
+        base_weights = np.ones(len(ntlist1))
+    
+    if not isinstance(P_weights, list):
+        P_weights = [P_weights] * len(ntlist1)
+    
+    if len(P_weights) != len(ntlist1):
+        P_weights = np.ones(len(ntlist1))
+
+    if not isinstance(C1star_weights, list):
+        C1star_weights = [C1star_weights] * len(ntlist1)
+    
+    if len(C1star_weights) != len(ntlist1):
+        C1star_weights = np.ones(len(ntlist1))
+
     R = []
     S = []
     W = []
@@ -62,7 +74,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
             if c in nt1.centers:
                 R.append(nt1.centers[c])
                 S.append(nt2.centers[c])
-                W.append(weights[i])
+                W.append(base_weights[i])
                 #The above weights were out of range.  Need to make default weights
                 #To have same dimension as the list of nucleotides.
             else:
@@ -72,12 +84,14 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                     if nt1.coordinates(type = 'P')!=[] and nt2.coordinates(type = 'P')!=[]:
                         R.append(nt1.coordinates(type = 'P'))
                         S.append(nt2.coordinates(type = 'P'))
+                        W.append(P_weights[i])
                     else:
                         raise MissingPhosphateException(centers)
                 if c=='C1*':
                     if nt1.coordinates(type = 'C1*')!=[] and nt2.coordinates(type = 'C1*')!=[]:
                         R.append(nt1.coordinates(type = 'C1*'))
                         S.append(nt2.coordinates(type = 'C1*'))
+                        W.append(C1star_weights[i])
                     else:
                         raise MissingC1starException(centers)
     #rotation_matrix, _, _, RMSD = besttransformation(R, S)
