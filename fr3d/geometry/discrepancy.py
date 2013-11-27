@@ -12,6 +12,11 @@ class MissingBaseException(Exception):
     """
     pass
 
+class MissingPhosphateException(Exception):
+    """An exception that is raised when the phospate atoms are not present in
+    inputted model.
+    """
+    pass
 
 def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                 angleweight=1.0):
@@ -55,8 +60,14 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                 #The above weights were out of range.  Need to make default weights
                 #To have same dimension as the list of nucleotides.
             else:
-                raise MissingBaseException(centers)
-
+                if c=='base':
+                    raise MissingBaseException(centers)
+                if c=='P':
+                    if nt1.coordinates(type = 'P')!=[]:
+                        R.append(nt1.coordinates(type = 'P'))
+                        S.append(nt2.coordinates(type = 'P'))
+                    else:
+                        raise MissingPhosphateException(centers)
     #rotation_matrix, _, _, RMSD = besttransformation(R, S)
     # Superimpose R and S with weights? I need to make changes.
     rotation_matrix, new1, mean1, RMSD, sse = besttransformation_weighted(R, S, W)

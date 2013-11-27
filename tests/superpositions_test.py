@@ -21,7 +21,7 @@ class TransformationTest(TestCase):
                    [0.0000, -1.0000, 0.0000],
                    [1.0000, 0.0000, 0.0000],
                    [0.0000, 0.0000, -1.0000]])
-        self.transformation, _, _, _ = besttransformation(a, b)
+        self.transformation, _, _, _, _ = besttransformation(a, b)
 
     def test_can_transform_a_3_x_6(self):
         ans = array([[0.0000, 1.0000, 0.0000],
@@ -39,7 +39,7 @@ class TransformationTest(TestCase):
         ans = array([[0.0000, 1.0000, 0.0000],
                      [-1.0000, 0.0000, 0.0000],
                      [0.0000, 0.0000, 1.0000]])
-        rotation, _, _, _ = besttransformation(a, b)
+        rotation, _, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
 
     def test_can_transform_a_4_x_3_45degreexrotation(self):
@@ -54,7 +54,7 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _ = besttransformation(a, b)
+        rotation, _, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
         assert_almost_equal(angle, 45.0*numpy.pi/180.)
@@ -72,7 +72,7 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _ = besttransformation(a, b)
+        rotation, _, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
         assert_almost_equal(angle, 45.0*numpy.pi/180.)
@@ -89,7 +89,7 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _ = besttransformation(a, b)
+        rotation, _, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
         assert_almost_equal(angle, 45.0*numpy.pi/180.)
@@ -115,5 +115,5 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _ = besttransformation(a, b)
+        rotation, _, _, _, _ = besttransformation(a, b)
         assert_almost_equal(ans, rotation)
