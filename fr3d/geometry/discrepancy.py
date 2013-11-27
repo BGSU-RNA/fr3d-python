@@ -63,7 +63,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], weights=1.0,
                 if c=='base':
                     raise MissingBaseException(centers)
                 if c=='P':
-                    if nt1.coordinates(type = 'P')!=[]:
+                    if nt1.coordinates(type = 'P')!=[] and nt2.coordinates(type = 'P')!=[]:
                         R.append(nt1.coordinates(type = 'P'))
                         S.append(nt2.coordinates(type = 'P'))
                     else:
