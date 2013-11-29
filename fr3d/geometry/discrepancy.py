@@ -88,7 +88,6 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
         nt1 = ntlist1[i]
         nt2 = ntlist2[i]
         for c in centers:
-
             if c in nt1.centers:
                 R.append(nt1.centers[c])
                 S.append(nt2.centers[c])
@@ -102,14 +101,18 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
                 if nt1.coordinates(type = 'P')!=[]:
                     R.append(nt1.coordinates(type = 'P')[0])
                     S.append(nt2.coordinates(type = 'P')[0])
-                    W.append(P_weights[i])
+                    l=len(nt1.coordinates(type = 'P'))                
+                    for z in range(0,l):                
+                        W.append(P_weights[i])
                 else:
                     raise MissingPhosphateException(centers)
             if c=='C1*':
                 if nt1.coordinates(type = 'C1*')!=[] and nt2.coordinates(type = 'C1*')!=[]:
                     R.append(nt1.coordinates(type = 'C1*')[0])
                     S.append(nt2.coordinates(type = 'C1*')[0])
-                    W.append(C1star_weights[i])
+                    l=len(nt1.coordinates(type = 'C1*'))                
+                    for q in range(0,l):                
+                        W.append(C1star_weights[i])
                 else:
                     raise MissingPhosphateException(centers)
     #rotation_matrix, _, _, RMSD = besttransformation(R, S)
