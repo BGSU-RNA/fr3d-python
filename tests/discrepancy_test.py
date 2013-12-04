@@ -35,12 +35,10 @@ nt19_0.infer_hydrogens()
 
 # print nt10_0.rotation_matrix
 
-# we'll also want to know the "right" numbers from Matlab
-# it would be helpful to have the location error separately from the orientation error
 
 d = discrepancy([nt10_0, nt11_0, nt12_0, nt13_0, nt14_0],[nt15_0,nt16_0,nt17_0,nt18_0,nt19_0])
 print "Discrepancy", d
-# location error (squared) is 17.7790
+# location error (squared) is 17.7790, from Matlab
 # discrepancy should be about 0.9402
 # discrepancy is sqrt(L^2 + A1^2 + A2^2 + ... + A5^2)/5, where L is location error and A1 ... A5 are angles between bases in radians
 # angles between bases should be about     0.9014    0.3105    0.1999    0.2084    0.2959
@@ -57,7 +55,7 @@ print "Discrepancy", d
 d = discrepancy([nt10_0, nt12_0, nt14_0, nt16_0, nt18_0],[nt11_0,nt13_0,nt15_0,nt17_0,nt19_0])
 print "Discrepancy", d
 
-# location error (squared) is 30.0211
+# location error (squared) is 30.0211, from Matlab
 # discrepancy should be about 1.1414
 # discrepancy is sqrt(L^2 + A1^2 + A2^2 + ... + A5^2)/5, where L is location error and A1 ... A5 are angles between bases in radians
 # angles between bases should be about     0.7006    0.1180    0.2260    0.2561    0.1276

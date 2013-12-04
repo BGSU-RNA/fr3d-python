@@ -122,6 +122,17 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     #The rotation_matrix that is outputted from besttransformation is the 
     #transpose of the one you want.
 
+    print 'discrepancy: R is:'
+    print R
+
+    print 'discrepancy: W is:'
+    print W
+
+    print 'discrepancy: mean1 is:'
+    print mean1
+
+    print 'discrepancy: rotation_matrix is:'
+    print rotation_matrix
     #print "Sum of squared errors", sse
     
     #print "Rotation matrix"
