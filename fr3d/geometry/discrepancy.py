@@ -88,15 +88,14 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
         nt1 = ntlist1[i]
         nt2 = ntlist2[i]
         for c in centers:
-            if c in nt1.centers:
-                R.append(nt1.centers[c])
-                S.append(nt2.centers[c])
-                W.append(base_weights[i])
-                #The above weights were out of range.  Need to make default weights
-                #To have same dimension as the list of nucleotides.
-            else:
-                if c=='base':
-                    raise MissingBaseException(centers)
+            if c=='base':
+                if c in nt1.centers:
+                    R.append(nt1.centers[c])
+                    S.append(nt2.centers[c])
+                    W.append(base_weights[i])
+                else:
+                    if c=='base':
+                        raise MissingBaseException(centers)
             if c=='P':
                 if nt1.coordinates(type = 'P')!=[]:
                     R.append(nt1.coordinates(type = 'P')[0])
