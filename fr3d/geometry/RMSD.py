@@ -24,4 +24,5 @@ def sumsquarederror(set1, set2):
     L = len(set1)
     assert L > 0
     distance=numpy.sum(numpy.power(set1 - set2,2))
+    #Need to fix this for weighting.
     return distance

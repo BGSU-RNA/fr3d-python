@@ -76,3 +76,18 @@ print "Discrepancy", d
 #   -0.2964   -0.7539   -0.5863
 #   -0.8374    0.5004   -0.2201
 
+d = discrepancy([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9],[nt212_0,nt213_0,nt214_0,nt215_0,nt225_0],centers=['P'],P_weights=[1,1,1,1,1])
+print "Discrepancy", d
+
+d = discrepancy([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9],[nt77_9,nt78_9,nt79_9,nt80_9,nt102_9],centers=['P'],P_weights=[1,1,1,1,1])
+print "Discrepancy", d
+# discrepancy should be near 0.  It is.
+
+d = discrepancy([nt77_9,nt78_9,nt79_9,nt80_9,nt102_9],[nt212_0,nt213_0,nt214_0,nt215_0,nt225_0],centers=['P'],P_weights=[1,1,1,0,0])
+print "Discrepancy", d*5
+# 
+
+d = discrepancy([nt77_9,nt78_9,nt79_9],[nt212_0,nt213_0,nt214_0],centers=['P'],P_weights=[1,1,1])
+print "Discrepancy", d*3
+# discrepancy should match the previous discrepancy.  It currently does not 
+# However, the rotation matrix matches.  
