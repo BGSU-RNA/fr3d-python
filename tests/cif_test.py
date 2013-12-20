@@ -98,3 +98,24 @@ class ReaderAtomTest(TestCase):
         val = len(self.atoms)
         ans = 6824
         self.assertEqual(ans, val)
+
+
+class ReaderSymmetryTest(TestCase):
+
+    def load_cif(self):
+        reader = CIF("files/4FTE.cif")
+        self.structure = reader.structures()[0]
+
+    def setUp(self):
+        self.atoms = []
+        self.residues = self.structure.residues()
+        for residue in self.residues:
+            self.atoms.extend(residue.atoms())
+
+    def test_loads_all_atoms(self):
+        self.fail()
+
+    def test_loads_all_residues(self):
+        val = len(self.residues)
+        ans = 77287
+        self.assertEqual(val, ans)
