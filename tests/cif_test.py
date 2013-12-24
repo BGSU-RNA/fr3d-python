@@ -102,13 +102,14 @@ class ReaderAtomTest(TestCase):
 
 class ReaderSymmetryTest(TestCase):
 
-    def load_cif(self):
+    @classmethod
+    def setUpClass(cls):
         reader = CIF("files/4FTE.cif")
-        self.structure = reader.structures()[0]
+        cls.structure = reader.structures()[0]
 
     def setUp(self):
         self.atoms = []
-        self.residues = self.structure.residues()
+        self.residues = self.__class__.structure.residues()
         for residue in self.residues:
             self.atoms.extend(residue.atoms())
 
