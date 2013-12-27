@@ -47,10 +47,10 @@ def testcounterclockwiseconvex(P):
         out1 = ptinlefthalf(P[i-2],P[i-1],P[i])
         Logic.append(out1)
     
-    out1 = ptinlefthalf(P[l-1],P[1],P[1])
+    out1 = ptinlefthalf(P[l-1],P[0],P[1])
     Logic.append(out1)
     
-    if all(Logic)==True:
+    if all(Logic)==True:  
         out = True
     else:
         out = False

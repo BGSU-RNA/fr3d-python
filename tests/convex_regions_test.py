@@ -31,7 +31,7 @@ class CounterClockWiseConvexTest(unittest.TestCase):
         self.assertFalse(val)
 
     def test_rejects_another_clockwise(self):
-        val = testcounterclockwiseconvex([[0, 0], [-1, -1], [2, 1], [3, 1],
+        val = testcounterclockwiseconvex([[0, 0], [-1, -1], [2, 0], [3, 1],
                                           [2, 2], [0, 2]])
         self.assertFalse(val)
 
