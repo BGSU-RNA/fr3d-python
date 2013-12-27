@@ -39,7 +39,7 @@ def testcounterclockwiseconvex(P):
         if not ptinlefthalf(P[i-2], P[i-1], P[i]):
             return False
 
-    return ptinlefthalf(P[l-1], P[1], P[1])
+    return ptinlefthalf(P[l-1], P[0], P[1])
 
 
 def counterclockwiseinside(a, b):
