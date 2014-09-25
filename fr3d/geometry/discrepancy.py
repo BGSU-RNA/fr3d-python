@@ -18,19 +18,19 @@ class MissingPhosphateException(Exception):
     pass
 
 class LengthofBaseWeightError(Exception):
-    """An exception that is raised when the list of base weights is not equal 
+    """An exception that is raised when the list of base weights is not equal
     in length to the list of nucleotides.
     """
     pass
 
 class LengthofPWeightError(Exception):
-    """An exception that is raised when the list of phosphate weights is not 
+    """An exception that is raised when the list of phosphate weights is not
     equal in length to the list of nucleotides.
     """
     pass
 
 class LengthofC1starWeightError(Exception):
-    """An exception that is raised when the list of C1* weights is not equal in 
+    """An exception that is raised when the list of C1* weights is not equal in
     length to the list of nucleotides.
     """
     pass
@@ -43,14 +43,14 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     :ntlist2: The second list of components.
     :centers: A list of center names to use, such as
         ['base', 'P', 'C1*', 'ribose']
-    :base_weights: The base weights to use. If only one weight is given 
-    it is used for all centers.  Otherwise, provide list of base weights with 
+    :base_weights: The base weights to use. If only one weight is given
+    it is used for all centers.  Otherwise, provide list of base weights with
     same length as the length of ntlist1
-    :P_weigths: The phosphate weights to use. If only one weight is given 
-    it is used for all.  Otherwise, provide list of phosphate weights 
+    :P_weigths: The phosphate weights to use. If only one weight is given
+    it is used for all.  Otherwise, provide list of phosphate weights
     with same length as the length of ntlist1
-    :C1star_weights: The C1* weights to use. If only one weight is given 
-    it is used for all.  Otherwise, provide list of C1* weights with 
+    :C1star_weights: The C1* weights to use. If only one weight is given
+    it is used for all.  Otherwise, provide list of C1* weights with
     same length as the length of ntlist1
     :angleweight: The weighting for angles to use.
     :returns: The geometric discrepancy.
@@ -67,23 +67,23 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
 
     if len(base_weights)!= len(ntlist1):
         raise LengthofBaseWeightError('Weight length does not match # of nucl.')
-        
+
     if not isinstance(P_weights, list):
         P_weights = [P_weights] * len(ntlist1)
 
     if len(P_weights)!= len(ntlist1):
         raise LengthofPWeightError('Weight length does not match # of nucl.')
-    
+
     if not isinstance(C1star_weights, list):
         C1star_weights = [C1star_weights] * len(ntlist1)
-        
+
     if len(C1star_weights)!= len(ntlist1):
         raise LengthofC1starWeightError('Weight length does not match # of nucl.')
 
     R = []
     S = []
     W = []
-    
+
     for i in xrange(len(ntlist1)):
         nt1 = ntlist1[i]
         nt2 = ntlist2[i]
@@ -100,8 +100,8 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
                 if nt1.coordinates(type = 'P')!=[]:
                     R.append(nt1.coordinates(type = 'P')[0])
                     S.append(nt2.coordinates(type = 'P')[0])
-                    l=len(nt1.coordinates(type = 'P'))                
-                    for z in range(0,l):                
+                    l=len(nt1.coordinates(type = 'P'))
+                    for z in range(0,l):
                         W.append(P_weights[i])
                 else:
                     raise MissingPhosphateException(centers)
@@ -109,8 +109,8 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
                 if nt1.coordinates(type = 'C1*')!=[] and nt2.coordinates(type = 'C1*')!=[]:
                     R.append(nt1.coordinates(type = 'C1*')[0])
                     S.append(nt2.coordinates(type = 'C1*')[0])
-                    l=len(nt1.coordinates(type = 'C1*'))                
-                    for q in range(0,l):                
+                    l=len(nt1.coordinates(type = 'C1*'))
+                    for q in range(0,l):
                         W.append(C1star_weights[i])
                 else:
                     raise MissingPhosphateException(centers)
@@ -118,24 +118,8 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     # Superimpose R and S with weights? I need to make changes.
     rotation_matrix, new1, mean1, RMSD, sse = besttransformation_weighted(R, S, W)
     rotation_matrix = np.transpose(rotation_matrix)
-    #The rotation_matrix that is outputted from besttransformation is the 
+    #The rotation_matrix that is outputted from besttransformation is the
     #transpose of the one you want.
-
-    print 'discrepancy: R is:'
-    print R
-
-    print 'discrepancy: W is:'
-    print W
-
-    print 'discrepancy: mean1 is:'
-    print mean1
-
-    print 'discrepancy: rotation_matrix is:'
-    print rotation_matrix
-    #print "Sum of squared errors", sse
-    
-    #print "Rotation matrix"
-    #print rotation_matrix
 
     # loop through the bases and calculate angles between them
     orientationerror = 0
