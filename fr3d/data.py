@@ -246,7 +246,7 @@ class Component(Entity, EntityContainer):
         :kwargs: As for atoms.
         :returns: A new Component
         """
-        return Component(self.atoms(**kwargs))
+        return Component(self.atoms(**kwargs), **self._data)
 
     def __rename__(self):
         data = dict(self._data)
