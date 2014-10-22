@@ -119,9 +119,6 @@ class ComponentTest(TestCase):
     def test_computes_unit_id(self):
         val = self.component.unit_id()
         ans = "1GID|1|A|C|50||||6_555"
-
-        val = self.component.atoms()
-        ans = self.atoms
         self.assertEquals(val, ans)
 
     def test_can_get_filtered_atoms(self):
@@ -171,6 +168,34 @@ class ComponentTest(TestCase):
     def test_can_check_is_not_complete_using_custom_key(self):
         val = self.component.is_complete([1, 2, 10], key='number')
         self.assertFalse(val)
+
+
+class SubComponentTest(TestCase):
+    def setUp(self):
+        self.atoms = [
+            Atom(type='C', name='a1', type_name='A', number=3,
+                 x=0.0, y=0.0, z=0.0),
+            Atom(type='C', name='a2', type_name='B', number=2,
+                 x=0.0, y=0.0, z=0.0),
+            Atom(type='N', name='b1', type_name='C', number=1,
+                 x=0.0, y=0.0, z=0.0),
+            Atom(type='N', name='c2', type_name='C', number=0,
+                 x=0.0, y=0.0, z=0.0)
+        ]
+        self.component = Component(self.atoms, type='rna', pdb='1GID', model=1,
+                                   chain='A', sequence='C', number=50,
+                                   symmetry='6_555')
+        self.sub = self.component.select(name=['a1', 'a2'])
+
+    def test_can_create_new_component_with_same_data(self):
+        val = self.sub.symmetry
+        ans = '6_555'
+        self.assertEquals(ans, val)
+
+    def test_can_create_new_component_with_corrent_atoms(self):
+        val = self.sub.atoms()
+        ans = self.atoms[0:2]
+        self.assertEquals(ans, val)
 
 
 class InferHydrogenTest(TestCase):
