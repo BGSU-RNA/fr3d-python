@@ -240,6 +240,14 @@ class Component(Entity, EntityContainer):
         """
         return np.array([atom.coordinates() for atom in self.atoms(**kwargs)])
 
+    def select(self, **kwargs):
+        """Select a group of atoms to create a new component out of.
+
+        :kwargs: As for atoms.
+        :returns: A new Component
+        """
+        return Component(self.atoms(**kwargs))
+
     def __rename__(self):
         data = dict(self._data)
         data['component_id'] = data.pop('sequence')
