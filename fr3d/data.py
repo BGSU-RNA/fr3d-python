@@ -332,15 +332,69 @@ class Component(Entity, EntityContainer):
                                     y=newcoordinates[0, 1],
                                     z=newcoordinates[0, 2]))
 
+class Model(Entity, EntityContainer):
+    def __init__(self, chains, **kwargs):
+        self.chains = chains
+        super(Model, self).__init__(**kwargs)
+
+    def chain(self, name):
+        for chain in self.chains:
+            if chain.chain == name:
+                return chain
+        return None
+
+    def residues(self):
+        for chain in self.chains:
+            for residue in chain.residues:
+                yield residues
+
+    def __repr__(self):
+        return '<Model: %s|%s>' % (self.pdb, self.model)
+
+class Chain(Entity, EntityContainer):
+    def __init__(self, residues, **kwargs):
+        self.residues = residues
+        super(Chain, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return '<Chain: %s|%s|%s>' % (self.pdb, self.model, self.chain)
+
 
 class Structure(Entity, EntityContainer):
     """This represents a structure which is composed of components.
     """
 
     def __init__(self, residues, polymers=None, **kwargs):
-        self._residues = residues
         self._polymers = polymers
         super(Structure, self).__init__(**kwargs)
+        self.models = self.__group__(residues)
+
+    def model(self, model):
+        """Get a model by number. The number is the same as in the cif file.
+        Will raise an IndexException if asking for an unknown model.
+
+        :model: Integer for the model to get.
+        :returns: A model.
+        """
+        # TODO: We are assuming models are sorted correctly
+        return self.models[model - 1]
+
+    def chains(self):
+        for model in self.models:
+            print(model)
+            for chain in model.chains:
+                yield chain
+
+    def chain(self, operator, model_number, chain_id):
+        model = self.model(operator, model_number)
+        if not model:
+            return None
+        return model.chain(chain_id)
+
+    def polymers(self):
+        for chain in self.chains():
+            for polymer in chain.polymers():
+                yield polymer
 
     def residues(self, **kwargs):
         """Get residues from this structure. The keyword arguments work as
@@ -349,15 +403,35 @@ class Structure(Entity, EntityContainer):
         :kwargs: Keywords for filtering and ordering
         :returns: The requested residues.
         """
-        return self.__getter__(self._residues, **kwargs)
+        for chain in self.chains():
+            for residue in chain.residues:
+                yield residue
 
-    def polymers(self, **kwargs):
-        """A generator that yields each polymer in the structure.
-        :yields: Gives a list of residues that are in polymers.
+    def infer_hydrogens(self):
+        """ Infers hydrogen atoms for all bases.
         """
-        for polymer in self._polymers:
-            residues = self._residues[polymer[0], polymer[1]]
-            yield residues
+        for residue in self.residues():
+            residue.infer_hydrogens()
+
+    def __group__(self, residues):
+        """This is a method to group a list of residues into chains and models.
+        """
+        mapping = col.defaultdict(lambda: col.defaultdict(list))
+        for residue in residues:
+            chain = residue.chain
+            model = residue.model
+            mapping[model][chain].append(residue)
+
+        models = []
+        for model_id, chains in mapping.items():
+            model_chains = []
+            for chain_id, residues in chains.items():
+                print(Chain)
+                chain = Chain(residues, pdb=self.pdb, model=model_id,
+                              chain=chain_id)
+                model_chains.append(chain)
+            models.append(Model(model_chains, pdb=self.pdb, model=model_id))
+        return models
 
     def __rename__(self):
         return dict(self._data)
@@ -371,8 +445,5 @@ class Structure(Entity, EntityContainer):
         """
         return len(self._residues)
 
-    def infer_hydrogens(self):
-        """ Infers hydrogen atoms for all bases.
-        """
-        for residue in self.residues(sequence=['A', 'C', 'G', 'U']):
-            residue.infer_hydrogens()
+    def __repr__(self):
+        return '<Structure: %s>' % self.pdb
