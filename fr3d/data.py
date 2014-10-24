@@ -385,8 +385,8 @@ class Structure(Entity, EntityContainer):
             for chain in model.chains:
                 yield chain
 
-    def chain(self, operator, model_number, chain_id):
-        model = self.model(operator, model_number)
+    def chain(self, model_number, chain_id):
+        model = self.model(model_number)
         if not model:
             return None
         return model.chain(chain_id)

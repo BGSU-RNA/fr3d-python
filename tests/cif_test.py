@@ -181,12 +181,12 @@ class ReaderStructureTest(ReaderTest):
         self.assertRaises(IndexError, self.structure.model, 2)
 
     def test_can_get_a_chain(self):
-        val = self.structure.chain(1, 'A').chain
+        val = self.structure.chain(0, 'A').chain
         ans = 'A'
         self.assertEqual(ans, val)
 
     def test_fails_getting_invalid_chain(self):
-        self.assertRaises(IndexError, self.structure.chain, 1, 'C')
+        self.assertTrue(self.structure.chain(1, 'C') is None)
 
 
 class ReaderResidueTest(ReaderTest):
