@@ -34,19 +34,21 @@ class SimpleCIFTest(ReaderTest):
         self.assertRaises(AttributeError, lambda: self.cif.bob)
 
     def test_knows_if_something_is_water(self):
-        pass
+        self.assertTrue(self.cif.is_water('5'))
 
     def test_knows_if_something_is_not_water(self):
-        pass
+        self.assertFalse(self.cif.is_water('1'))
 
     def test_knows_if_an_atom_is_polymeric(self):
-        pass
+        self.assertTrue(self.cif.is_polymeric('1'))
 
     def test_knows_if_an_atom_is_not_polymeric(self):
-        pass
+        self.assertFalse(self.cif.is_polymeric('2'))
 
     def test_can_get_symmetry_operator_by_asym_id(self):
-        pass
+        val = [op['name'] for op in self.cif.operators('A')]
+        ans = ['1_555']
+        self.assertEqual(ans, val)
 
 
 class SimpleTableTest(ReaderTest):
@@ -147,12 +149,3 @@ class SimpleTableTest(ReaderTest):
 
     def test_get_item_on_too_big_int_gives_index(self):
         self.assertRaises(IndexError, lambda: self.data[90000])
-
-
-class CifPolymersTest(ReaderTest):
-    name = '2UUA'
-
-    def test_can_find_mappings(self):
-        pass
-
-    # def test_can_find

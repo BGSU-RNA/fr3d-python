@@ -45,6 +45,7 @@ class CIF(object):
         self.data = []
         reader.read(self.data)
         self.data = self.data[0]
+        self.pdb = self.data.getName()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
 
@@ -75,6 +76,57 @@ class CIF(object):
         pdb = self.data.getName()
         residues = self.__residues__(pdb)
         return Structure(residues, pdb=pdb)
+
+    def experimental_sequence(self, chain):
+        sequence = []
+        for row in self.pdbx_poly_seq_scheme:
+            if chain != row['asym_id']:
+                continue
+            sequence.append(row['mon_id'])
+        return sequence
+
+    def experimental_sequence_mapping(self, chain):
+        mapping = []
+        seen = set()
+        for row in self.pdbx_poly_seq_scheme:
+            if chain != row['asym_id']:
+                continue
+
+            insertion_code = row['pdb_ins_code']
+            if insertion_code == '.':
+                insertion_code = None
+
+            auth_number = row['auth_seq_num']
+            if auth_number == '?':
+                unit_id = None
+            else:
+                unit_id = UIDGenerator({
+                    'pdb': self['pdb'],
+                    'model': '*',
+                    'chain': chain,
+                    'residue': row['auth_mon_id'],
+                    'number': auth_number,
+                    'insertion_code': insertion_code,
+                    'symmetry_operator': '*',
+                })
+
+            seq_id = '%s|Sequence|%s|%s|%s' % (self['pdb'], self['chain'],
+                                               row['mon_id'], row['seq_id'])
+
+            if seq_id in seen:
+                raise ValueError("Can't map one sequence residue twice")
+            if unit_id and unit_id in seen:
+                raise ValueError("Can't map unit %s twice", unit_id)
+
+            seen.add(seq_id)
+            seen.add(unit_id)
+            mapping.append((row['mon_id'], seq_id, unit_id))
+
+        return mapping
+
+
+    def __breaks__(self):
+        pass
 
     def __residues__(self, pdb):
         mapping = coll.defaultdict(list)
@@ -128,6 +180,7 @@ class CIF(object):
         """Compute the symmetry operator for the atom.
         """
         # TODO: Find the symmetries
+        return self.operators(atom['label_asym_id'])
 
         return [{
             'name': '1_555',

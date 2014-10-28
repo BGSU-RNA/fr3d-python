@@ -4,6 +4,7 @@ on, such as Atoms and Components.
 """
 
 import collections as col
+import itertools as it
 
 import numpy as np
 
@@ -50,10 +51,9 @@ class EntityContainer(object):
         everything else is used by __checker__ for filtering. The order_by
         keyword may be either a string or a function. If it is a string
         then we create a function which gets that key from the entities
-        in obj and uses that as the key function in sorting. The cmp keyword
-        is used as the cmp function in sorting. All other keywords are used as
-        described in __checker__. If no keywords are given then the object is
-        simply returned.
+        in obj and uses that as the key function in sorting. All other keywords
+        are used as described in __checker__. If no keywords are given then
+        the object is simply returned.
 
         :obj: An iterable to filter and sort
         :kwargs: Keyword arguments for filtering and sorting.
@@ -62,22 +62,8 @@ class EntityContainer(object):
         if not kwargs:
             return obj
 
-        orderby = kwargs.pop('order_by', None)
-        compare = kwargs.pop('cmp', None)
-
         checker = self.__checker__(**kwargs)
-        raw = [entry for entry in obj if checker(entry)]
-
-        if orderby:
-            key = orderby
-            if not callable(orderby):
-                key = lambda entry: getattr(entry, orderby, None)
-            raw.sort(key=key)
-
-        if compare:
-            raw.sort(cmp=compare)
-
-        return raw
+        return list(it.ifilter(checker, obj))
 
     def __make_check__(self, key, value):
         """Generate a function for filtering. If the given value is a callable
@@ -196,6 +182,14 @@ class Atom(Entity):
         """
         return np.array([self.x, self.y, self.z])
 
+    def __sub__(self, atom):
+        """Compute the distance between this atom and another atom.
+
+        :atom: Another atom.
+        :returns: The distance.
+        """
+        return np.linalg.norm(self.coordinates() - atom.coordinates())
+
     def __repr__(self):
         return '<Atom: %s>' % self._data
 
@@ -248,12 +242,6 @@ class Component(Entity, EntityContainer):
         """
         return Component(self.atoms(**kwargs), **self._data)
 
-    def __rename__(self):
-        data = dict(self._data)
-        data['component_id'] = data.pop('sequence')
-        data['component_number'] = data.pop('number')
-        return data
-
     def is_complete(self, names, key='name'):
         """This checks if we can find all atoms in this entity with the given
         names. This assumes that the names for each atom are unique. If you
@@ -268,31 +256,6 @@ class Component(Entity, EntityContainer):
         kwargs = {key: names}
         found = self.atoms(**kwargs)
         return len(found) == len(names)
-
-    def __compute_center__(self, atoms):
-        """Compute the center position for the given set of atoms. This is done
-        through taking the mean position of each atom. If a requested atom
-        does not exist it is ignored.
-
-        :atoms: Atoms to use to find the center.
-        :returns: The x, y, z coordinates of centers.
-        """
-        coordinates = [atom.coordinates() for atom in self.atoms(name=atoms)]
-        if not coordinates:
-            return None
-        return np.mean(coordinates, axis=0)
-
-    def __len__(self):
-        """Compute the length of this Component. This is the number of atoms in
-        this residue.
-
-        :returns: The number of atoms.
-        """
-        return len(self._atoms)
-
-    def __repr__(self):
-        return '<Component %s Centers: %s Atoms: %s>' % \
-            (self._data, self.centers, self._atoms)
 
     def infer_hydrogens(self):
         """Infer the coordinates of the hydrogen atoms of this component.
@@ -332,6 +295,37 @@ class Component(Entity, EntityContainer):
                                     y=newcoordinates[0, 1],
                                     z=newcoordinates[0, 2]))
 
+    def __rename__(self):
+        data = dict(self._data)
+        data['component_id'] = data.pop('sequence')
+        data['component_number'] = data.pop('number')
+        return data
+
+    def __compute_center__(self, atoms):
+        """Compute the center position for the given set of atoms. This is done
+        through taking the mean position of each atom. If a requested atom
+        does not exist it is ignored.
+
+        :atoms: Atoms to use to find the center.
+        :returns: The x, y, z coordinates of centers.
+        """
+        coordinates = [atom.coordinates() for atom in self.atoms(name=atoms)]
+        if not coordinates:
+            return None
+        return np.mean(coordinates, axis=0)
+
+    def __len__(self):
+        """Compute the length of this Component. This is the number of atoms in
+        this residue.
+
+        :returns: The number of atoms.
+        """
+        return len(self._atoms)
+
+    def __repr__(self):
+        return '<Component %s>' % self.unit_id()
+
+
 class Model(Entity, EntityContainer):
     def __init__(self, chains, **kwargs):
         self.chains = chains
@@ -343,28 +337,78 @@ class Model(Entity, EntityContainer):
                 return chain
         return None
 
-    def residues(self):
+    def polymers(self):
+        for chain in self.chains:
+            for polymer in chain.polymers():
+                yield polymer
+
+    def residues(self, **kwargs):
         for chain in self.chains:
             for residue in chain.residues:
-                yield residues
+                yield residue
+
+    def atoms(self, **kwargs):
+        for residue in self.residues(**kwargs):
+            for atom in residue.atoms():
+                yield atom
 
     def __repr__(self):
         return '<Model: %s|%s>' % (self.pdb, self.model)
 
+
 class Chain(Entity, EntityContainer):
-    def __init__(self, residues, **kwargs):
+    def __init__(self, residues, breaks=None, **kwargs):
         self.residues = residues
+        self._breaks = breaks
+        self._sequence = None
         super(Chain, self).__init__(**kwargs)
+
+    @property
+    def sequence(self):
+        if self._sequence is None:
+            self._sequence = [r['residue'] for r in self.residue_iterator()]
+        return self._sequence
+
+    def first(self):
+        return self.residues[0]
+
+    def last(self):
+        return self.residues[1]
+
+    def endpoints(self):
+        return (self.first(), self.last())
+
+    def polymers(self):
+        if not self._breaks:
+            yield self
+            return
+
+        for (start, stop) in self._breaks:
+            yield Chain(self.residues[start:stop], **self._data)
+
+    def atoms(self):
+        for residue in self.residues:
+            for atom in residue.atoms():
+                yield atom
+
+    def __getitem__(self, index):
+        return self.residues[index]
 
     def __repr__(self):
         return '<Chain: %s|%s|%s>' % (self.pdb, self.model, self.chain)
 
 
 class Structure(Entity, EntityContainer):
-    """This represents a structure which is composed of components.
-    """
 
     def __init__(self, residues, polymers=None, **kwargs):
+        """Create a new Structure.
+
+        :residues: A list of Components that represent the residues in this
+        Structure.
+        :polymers: A list of tuples of the endpoints of polymers in this
+        structure.
+        :kwargs: Keyword arguments to set as properites of this Structure.
+        """
         self._polymers = polymers
         super(Structure, self).__init__(**kwargs)
         self.models = self.__group__(residues)
@@ -380,12 +424,21 @@ class Structure(Entity, EntityContainer):
         return self.models[model - 1]
 
     def chains(self):
+        """Get an iterator over all chains in in this Structure.
+
+        :returns: An iterator for all chains.
+        """
         for model in self.models:
-            print(model)
             for chain in model.chains:
                 yield chain
 
     def chain(self, model_number, chain_id):
+        """Get a specific chain.
+
+        :model_number: The model number to use.
+        :chain_id: The chain id to get.
+        :returns: A Chain or None if no chain is present.
+        """
         model = self.model(model_number)
         if not model:
             return None
@@ -426,7 +479,6 @@ class Structure(Entity, EntityContainer):
         for model_id, chains in mapping.items():
             model_chains = []
             for chain_id, residues in chains.items():
-                print(Chain)
                 chain = Chain(residues, pdb=self.pdb, model=model_id,
                               chain=chain_id)
                 model_chains.append(chain)
