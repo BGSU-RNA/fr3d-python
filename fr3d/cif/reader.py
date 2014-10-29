@@ -34,6 +34,12 @@ class UnusableUnobservedTable(Exception):
     pass
 
 
+class MissingSymmetry(Exception):
+    """This is raised when we cannot determine a symmetry operator for an atom.
+    """
+    pass
+
+
 class CIF(object):
     """Top level container for all CIF related data. This assumes that each
     mmCIF file contains a single datablock. This doesn't have to be true but
@@ -48,17 +54,21 @@ class CIF(object):
         self.pdb = self.data.getName()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
+        self._chem = self.__load_chem_comp__()
 
     def __load_assemblies__(self):
         operators = dict((op['id'], op) for op in self.pdbx_struct_oper_list)
         assemblies = coll.defaultdict(list)
+        seen = coll.defaultdict(set)
         for assembly in self.pdbx_struct_assembly_gen:
             operator = assembly['oper_expression']
             if operator not in operators:
                 raise ComplexOperatorException()
             for asym_ids in assembly['asym_id_list'].split(','):
                 for asym_id in asym_ids:
-                    assemblies[asym_id].append(operators[operator])
+                    if operators[operator]['id'] not in seen[asym_id]:
+                        assemblies[asym_id].append(operators[operator])
+                        seen[asym_id].add(operators[operator]['id'])
         return assemblies
 
     def __load_entities__(self):
@@ -66,6 +76,12 @@ class CIF(object):
         for entity in self.entity:
             entities[entity['id']] = entity
         return entities
+
+    def __load_chem_comp__(self):
+        chem = {}
+        for obj in self.chem_comp:
+            chem[obj['id']] = obj
+        return chem
 
     def structure(self):
         """Get the list of a structures in the CIF file.
@@ -124,7 +140,6 @@ class CIF(object):
 
         return mapping
 
-
     def __breaks__(self):
         pass
 
@@ -137,9 +152,13 @@ class CIF(object):
         for comp_id, atoms in mapping.items():
             # TODO: Set residue data
             first = atoms[0]
+            type = self._chem.get(first.component_id)
+            if type:
+                type = type['type']
             residues.append(Component(atoms,
                                       pdb=first.pdb,
                                       model=first.model,
+                                      type=type,
                                       chain=first.chain,
                                       symmetry=first.symmetry,
                                       sequence=first.component_id,
@@ -150,9 +169,10 @@ class CIF(object):
 
     def __atoms__(self, pdb):
         for atom in self.atom_site:
-            for symmetry in self.__find_symmetries__(atom):
+            for symmetry in self.operators(atom['label_asym_id']):
                 if not symmetry:
-                    raise InvalidSymmetry
+                    raise MissingSymmetry("Could not find symmetry for %s" %
+                                          atom)
 
                 x, y, z = self.__apply_symmetry__(atom, symmetry)
                 index = atom['label_seq_id']
@@ -161,6 +181,7 @@ class CIF(object):
                 ins_code = atom['pdbx_PDB_ins_code']
                 if ins_code == '?':
                     ins_code = None
+
                 yield Atom(pdb=pdb,
                            model=int(atom['pdbx_PDB_model_num']),
                            chain=atom['auth_asym_id'],
@@ -175,20 +196,6 @@ class CIF(object):
     def __apply_symmetry__(self, atom, symmetry):
         coords = [atom['Cartn_x'], atom['Cartn_y'], atom['Cartn_z']]
         return [float(coord) for coord in coords]
-
-    def __find_symmetries__(self, atom):
-        """Compute the symmetry operator for the atom.
-        """
-        # TODO: Find the symmetries
-        return self.operators(atom['label_asym_id'])
-
-        return [{
-            'name': '1_555',
-            'translate': 0,
-            'rotate': np.array([[1.0, 0.0, 0.0],
-                                [0.0, 1.0, 0.0],
-                                [0.0, 0.0, 1.0]])
-        }]
 
     # def symmetry_operators(self, **kwargs):
     #     atoms = sorted(self.atom_site.rows, key=atom_sorter)

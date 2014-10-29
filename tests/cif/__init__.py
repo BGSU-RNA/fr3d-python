@@ -14,4 +14,5 @@ class ReaderTest(TestCase):
             cls.structure = cls.cif.structure()
 
     def setUp(self):
+        self.cif = self.__class__.cif
         self.structure = self.__class__.structure
