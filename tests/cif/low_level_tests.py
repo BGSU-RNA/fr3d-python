@@ -1,3 +1,5 @@
+import numpy as np
+
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
 
@@ -149,3 +151,25 @@ class SimpleTableTest(ReaderTest):
 
     def test_get_item_on_too_big_int_gives_index(self):
         self.assertRaises(IndexError, lambda: self.data[90000])
+
+
+class StructureWithSymmetry(ReaderTest):
+    name = '1WMQ'
+
+    def test_loads_the_vector(self):
+        val = [op['vector'] for op in self.cif.operators('A')]
+        ans = [np.array([0.0, 0.0, 0.0])] * 3
+        np.testing.assert_array_almost_equal(ans, val)
+
+    def test_loads_the_matrix(self):
+        val = [op['matrix'] for op in self.cif.operators('A')]
+        ans = [np.array([[1.0, 0.0, 0.0],
+                         [0.0, 1.0, 0.0],
+                         [0.0, 0.0, 1.0]]),
+               np.array([[-0.5, -0.8660254,  0],
+                         [0.8660254, -0.5, 0],
+                         [0, 0, 1]]),
+               np.array([[-0.5,  0.8660254,  0],
+                         [-0.8660254, -0.5, 0],
+                         [0, 0, 1]])]
+        np.testing.assert_array_almost_equal(ans, val)

@@ -52,23 +52,38 @@ class CIF(object):
         reader.read(self.data)
         self.data = self.data[0]
         self.pdb = self.data.getName()
+        self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
         self._chem = self.__load_chem_comp__()
 
+    def __load_operators__(self):
+        operators = {}
+        for op in self.pdbx_struct_oper_list:
+            op['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
+            op['vector'] = [None] * 3
+            for row in range(3):
+                op['vector'][row] = float(op['vector[%s]' % str(row + 1)])
+                for column in range(3):
+                    key = 'matrix[%s][%s]' % (str(row + 1), str(column + 1))
+                    op['matrix'][row][column] = float(op[key])
+            op['matrix'] = np.array(op['matrix'])
+            op['vector'] = np.array(op['vector'])
+            operators[op['id']] = op
+        return operators
+
     def __load_assemblies__(self):
-        operators = dict((op['id'], op) for op in self.pdbx_struct_oper_list)
         assemblies = coll.defaultdict(list)
-        seen = coll.defaultdict(set)
         for assembly in self.pdbx_struct_assembly_gen:
-            operator = assembly['oper_expression']
-            if operator not in operators:
-                raise ComplexOperatorException()
-            for asym_ids in assembly['asym_id_list'].split(','):
-                for asym_id in asym_ids:
-                    if operators[operator]['id'] not in seen[asym_id]:
-                        assemblies[asym_id].append(operators[operator])
-                        seen[asym_id].add(operators[operator]['id'])
+            if '(' in assembly['oper_expression']:
+                raise ComplexOperatorException("Can't handle viral yet")
+
+            operators = assembly['oper_expression'].split(',')
+
+            for asym_id in assembly['asym_id_list'].split(','):
+                for operator in operators:
+                    op = self._operators[operator]
+                    assemblies[asym_id].append(op)
         return assemblies
 
     def __load_entities__(self):
@@ -197,32 +212,10 @@ class CIF(object):
                            polymeric=self.is_polymeric_atom(atom))
 
     def __apply_symmetry__(self, atom, symmetry):
-        coords = [atom['Cartn_x'], atom['Cartn_y'], atom['Cartn_z']]
+        coords = [float(atom['Cartn_x']),
+                  float(atom['Cartn_y']),
+                  float(atom['Cartn_z'])]
         return [float(coord) for coord in coords]
-
-    # def symmetry_operators(self, **kwargs):
-    #     atoms = sorted(self.atom_site.rows, key=atom_sorter)
-    #     for operator in self.pdbx_struct_oper_list:
-    #         fn = lambda a: operator in self.operators(a['label_asym_id'])
-    #         yield Symmetry(self, operator, it.ifilter(fn, atoms), **kwargs)
-
-    # def symmetry_operator(self, name, **kwargs):
-    #     operator = None
-    #     for row in self.pdbx_struct_oper_list:
-    #         if row['name'] == name:
-    #             operator = row
-    #             break
-
-    #     if not operator:
-    #         return None
-
-    #     atoms = sorted(self.atom_site.rows, key=atom_sorter)
-    #     fn = lambda a: operator in self.operators(a['label_asym_id'])
-    #     op = Symmetry(self, operator, it.ifilter(fn, atoms), **kwargs)
-
-    #     if not op:
-    #         return None
-    #     return op
 
     def table(self, name):
         return Table(self, self.__block__(name))
