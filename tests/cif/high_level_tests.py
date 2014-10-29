@@ -1,5 +1,7 @@
 from tests.cif import ReaderTest
 
+from pprint import pprint
+
 
 class StructureTest(ReaderTest):
     name = '1GID'
@@ -21,18 +23,13 @@ class StructureTest(ReaderTest):
 
     def test_loads_all_components(self):
         val = len(list(self.structure.residues()))
-        ans = 340
+        ans = 316
         self.assertEqual(ans, val)
 
-    # def test_loads_all_rna(self):
-    #     val = len(list(self.structure.residues(type='rna')))
-    #     ans = None
-    #     self.assertEqual(ans, val)
-
-    # def test_loads_all_atoms(self):
-    #     val = len(list(self.structure.atoms()))
-    #     ans = None
-    #     self.assertEqual(ans, val)
+    def test_loads_all_rna(self):
+        val = len(list(self.structure.residues(type='RNA linking')))
+        ans = 316
+        self.assertEqual(ans, val)
 
     def test_can_get_a_model(self):
         val = self.structure.model(1).model
@@ -114,44 +111,51 @@ class ResidueTest(ReaderTest):
         self.assertEqual(ans, val)
 
 
-# class ChainTest(ReaderTest):
-#     name = '1FAT'
+class ChainTest(ReaderTest):
+    name = '1FAT'
 
-#     def setUp(self):
-#         self.data = self.__class__.structure.chain(1, 'D')
+    def setUp(self):
+        self.data = self.__class__.structure.chain(1, 'D')
 
-#     def test_it_knows_the_chain_id(self):
-#         val = self.data.chain
-#         ans = 'D'
-#         self.assertEqual(ans, val)
+    def test_it_knows_the_chain_id(self):
+        val = self.data.chain
+        ans = 'D'
+        self.assertEqual(ans, val)
 
-#     def test_it_only_has_rows_from_correct_chain(self):
-#         val = list(set([a.chain for a in self.data.atoms()]))
-#         ans = ['D']
-#         self.assertEqual(ans, val)
+    def test_it_only_has_rows_from_correct_chain(self):
+        val = list(set([a.chain for a in self.data.atoms()]))
+        ans = ['D']
+        self.assertEqual(ans, val)
 
-#     def test_it_can_find_unit_id_for_index(self):
-#         val = self.data[1].unit_id()
-#         ans = '1FAT|1|D|ASN|2'
-#         self.assertEqual(val, ans)
+    def test_can_get_all_residues(self):
+        val = len(self.data.residues())
+        ans = 231
+        self.assertEqual(ans, val)
 
-#     def test_it_can_get_the_first_residue(self):
-#         val = self.data.first().unit_id()
-#         ans = '1FAT|1|D|SER|1'
-#         self.assertEqual(val, ans)
+    def test_it_gets_residues_in_the_correct_order(self):
+        val = [res.number for res in self.data.residues()]
+        ans = range(1, 234)
+        del ans[36]  # Number 36, 35 are unobserved so not in the chain
+        del ans[35]
+        self.assertEqual(ans, val)
 
-#     def test_it_can_get_the_last_residue(self):
-#         val = self.data.last().unit_id()
-#         ans = '1FAT|1|D|SER|233'
-#         self.assertEqual(val, ans)
+    def test_it_can_find_unit_id_for_index(self):
+        val = self.data[1].unit_id()
+        ans = '1FAT|1|D|ASN|2'
+        self.assertEqual(val, ans)
 
-#     def tes_it_knows_if_it_has_breaks(self):
-#         self.assertTrue(self.data.has_breaks())
+    def test_it_can_get_the_first_residue(self):
+        val = self.data.first().unit_id()
+        ans = '1FAT|1|D|SER|1'
+        self.assertEqual(val, ans)
 
-#     def test_can_get_all_residues(self):
-#         val = len(list(self.data.residues()))
-#         ans = 232
-#         self.assertEqual(ans, val)
+    def test_it_can_get_the_last_residue(self):
+        val = self.data.last().unit_id()
+        ans = '1FAT|1|D|SER|233'
+        self.assertEqual(val, ans)
+
+    def tes_it_knows_if_it_has_breaks(self):
+        self.assertTrue(self.data.has_breaks())
 
 
 # class BasicChainPolymersTest(ReaderTest):

@@ -344,7 +344,7 @@ class Model(Entity, EntityContainer):
 
     def residues(self, **kwargs):
         for chain in self.chains:
-            for residue in chain.residues:
+            for residue in chain.residues(**kwargs):
                 yield residue
 
     def atoms(self, **kwargs):
@@ -358,10 +358,17 @@ class Model(Entity, EntityContainer):
 
 class Chain(Entity, EntityContainer):
     def __init__(self, residues, breaks=None, **kwargs):
-        self.residues = residues
+        self._residues = residues
         self._breaks = breaks
         self._sequence = None
         super(Chain, self).__init__(**kwargs)
+
+    def residues(self, **kwargs):
+        if 'polymeric' not in kwargs:
+            kwargs['polymeric'] = True
+        if kwargs.get('polymeric', False) is None:
+            kwargs.pop('polymeric')
+        return self.__getter__(self._residues, **kwargs)
 
     @property
     def sequence(self):
@@ -369,11 +376,11 @@ class Chain(Entity, EntityContainer):
             self._sequence = [r['residue'] for r in self.residue_iterator()]
         return self._sequence
 
-    def first(self):
-        return self.residues[0]
+    def first(self, **kwargs):
+        return self.residues(**kwargs)[0]
 
-    def last(self):
-        return self.residues[1]
+    def last(self, **kwargs):
+        return self.residues(**kwargs)[-1]
 
     def endpoints(self):
         return (self.first(), self.last())
@@ -384,15 +391,15 @@ class Chain(Entity, EntityContainer):
             return
 
         for (start, stop) in self._breaks:
-            yield Chain(self.residues[start:stop], **self._data)
+            yield Chain(self._residues[start:stop], **self._data)
 
-    def atoms(self):
-        for residue in self.residues:
+    def atoms(self, **kwargs):
+        for residue in self.residues(**kwargs):
             for atom in residue.atoms():
                 yield atom
 
     def __getitem__(self, index):
-        return self.residues[index]
+        return self._residues[index]
 
     def __repr__(self):
         return '<Chain: %s|%s|%s>' % (self.pdb, self.model, self.chain)
@@ -457,7 +464,7 @@ class Structure(Entity, EntityContainer):
         :returns: The requested residues.
         """
         for chain in self.chains():
-            for residue in chain.residues:
+            for residue in chain.residues(**kwargs):
                 yield residue
 
     def infer_hydrogens(self):
@@ -491,7 +498,6 @@ class Structure(Entity, EntityContainer):
     def __len__(self):
         """Compute the length of this Structure. That is the number of residues
         in this structure.
-
 
         :returns: The number of atoms.
         """

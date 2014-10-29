@@ -164,7 +164,9 @@ class CIF(object):
                                       sequence=first.component_id,
                                       number=first.component_number,
                                       index=first.component_index,
-                                      ins_code=first.ins_code))
+                                      ins_code=first.ins_code,
+                                      polymeric=first.polymeric))
+        residues.sort(key=lambda r: r.number)
         return residues
 
     def __atoms__(self, pdb):
@@ -191,7 +193,8 @@ class CIF(object):
                            ins_code=ins_code,
                            x=x, y=y, z=z,
                            name=atom['label_atom_id'],
-                           symmetry=symmetry['name'])
+                           symmetry=symmetry['name'],
+                           polymeric=self.is_polymeric_atom(atom))
 
     def __apply_symmetry__(self, atom, symmetry):
         coords = [atom['Cartn_x'], atom['Cartn_y'], atom['Cartn_z']]
