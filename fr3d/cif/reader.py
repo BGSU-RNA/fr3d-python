@@ -215,7 +215,7 @@ class CIF(object):
         coords = [float(atom['Cartn_x']),
                   float(atom['Cartn_y']),
                   float(atom['Cartn_z'])]
-        return [float(coord) for coord in coords]
+        return np.dot(np.array(coords), symmetry['matrix'])
 
     def table(self, name):
         return Table(self, self.__block__(name))

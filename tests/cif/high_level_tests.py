@@ -1,3 +1,5 @@
+import numpy as np
+
 from tests.cif import ReaderTest
 
 from pprint import pprint
@@ -156,6 +158,24 @@ class ChainTest(ReaderTest):
 
     def tes_it_knows_if_it_has_breaks(self):
         self.assertTrue(self.data.has_breaks())
+
+
+class StructureWithSymmetry(ReaderTest):
+    name = '1WMQ'
+
+    def setUp(self):
+        super(StructureWithSymmetry, self).setUp()
+        self.data = list(self.structure.residues())
+
+    def test_can_compute_correct_transformed_coordinates(self):
+        val = self.data[0].centers['N']
+        ans = np.array([-22.297, -17.982, 74.534])
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
+    def test_can_compute_correct_standard_coordinates(self):
+        val = self.data[2].centers['N']
+        ans = np.array([-4.424, 28.301, 74.534])
+        np.testing.assert_array_almost_equal(ans, val)
 
 
 # class BasicChainPolymersTest(ReaderTest):
