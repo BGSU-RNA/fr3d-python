@@ -22,7 +22,7 @@ def main(filename):
         for chain in model.chains:
             print(' chain: %s' % chain.chain)
             for residue in chain.residues():
-                print('  residue: %s' % str(residue.number))
+                print('  residue: %s' % residue.unit_id())
 
     # You can use residues to iterate over the residues of a structure
     # directly.
