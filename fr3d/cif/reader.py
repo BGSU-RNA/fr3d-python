@@ -8,6 +8,7 @@ from pdbx.reader.PdbxParser import PdbxReader as Reader
 from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
+from fr3d.unit_ids import encode
 
 
 class MissingBlockException(Exception):
@@ -119,6 +120,8 @@ class Cif(object):
     def experimental_sequence_mapping(self, chain):
         mapping = []
         seen = set()
+        pdb = self.data.getName()
+
         for row in self.pdbx_poly_seq_scheme:
             if chain != row['asym_id']:
                 continue
@@ -131,18 +134,17 @@ class Cif(object):
             if auth_number == '?':
                 unit_id = None
             else:
-                unit_id = UIDGenerator({
-                    'pdb': self['pdb'],
-                    'model': '*',
+                unit_id = encode({
+                    'pdb': pdb,
+                    'model': '1',
                     'chain': chain,
-                    'residue': row['auth_mon_id'],
-                    'number': auth_number,
-                    'insertion_code': insertion_code,
-                    'symmetry_operator': '*',
+                    'component_id': row['auth_mon_id'],
+                    'component_number': auth_number,
+                    'insertion_code': insertion_code
                 })
 
-            seq_id = '%s|Sequence|%s|%s|%s' % (self['pdb'], self['chain'],
-                                               row['mon_id'], row['seq_id'])
+            seq_data = (pdb, chain, row['mon_id'], row['seq_id'])
+            seq_id = '%s|Sequence|%s|%s|%s' % seq_data
 
             if seq_id in seen:
                 raise ValueError("Can't map one sequence residue twice")

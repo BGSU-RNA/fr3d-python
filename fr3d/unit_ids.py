@@ -45,8 +45,11 @@ def encode(data, full=False):
         if default is None and field not in data:
             raise InvalidUnitId("Missing required field: " + field)
 
-        value = str(data.get(field, default))
-        ordered.append(value)
+        value = data.get(field, default)
+        if value is None:
+            ordered.append('')
+        else:
+            ordered.append(str(value))
 
     if not full:
         possible = ['symmetry', 'insertion_code', 'alt_id', 'atom_name']

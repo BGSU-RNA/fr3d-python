@@ -173,3 +173,16 @@ class StructureWithSymmetry(ReaderTest):
                          [-0.8660254, -0.5, 0],
                          [0, 0, 1]])]
         np.testing.assert_array_almost_equal(ans, val)
+
+
+class SequenceMappingTest(ReaderTest):
+    name = '1GID'
+
+    def setUp(self):
+        super(SequenceMappingTest, self).setUp()
+        self.data = self.cif.experimental_sequence_mapping('A')
+
+    def test_can_compute_mapping(self):
+        val = self.data[-1]
+        ans = ('C', '1GID|Sequence|A|C|158', '1GID|1|A|C|260')
+        self.assertEqual(ans, val)
