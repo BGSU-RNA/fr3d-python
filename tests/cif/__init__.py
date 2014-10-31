@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 
-from fr3d.cif.reader import CIF
+from fr3d.cif.reader import Cif
 
 
 class ReaderTest(TestCase):
@@ -10,7 +10,7 @@ class ReaderTest(TestCase):
     @classmethod
     def setUpClass(cls):
         with open(os.path.join('files', cls.name + '.cif'), 'rb') as raw:
-            cls.cif = CIF(raw)
+            cls.cif = Cif(raw)
             cls.structure = cls.cif.structure()
 
     def setUp(self):

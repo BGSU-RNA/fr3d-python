@@ -40,8 +40,8 @@ class MissingSymmetry(Exception):
     pass
 
 
-class CIF(object):
-    """Top level container for all CIF related data. This assumes that each
+class Cif(object):
+    """Top level container for all Cif related data. This assumes that each
     mmCIF file contains a single datablock. This doesn't have to be true but
     makes things easier.
     """
@@ -99,9 +99,9 @@ class CIF(object):
         return chem
 
     def structure(self):
-        """Get the list of a structures in the CIF file.
+        """Get the list of a structures in the Cif file.
 
-        :returns: A list of all structures in the CIF file.
+        :returns: A list of all structures in the Cif file.
         """
 
         pdb = self.data.getName()

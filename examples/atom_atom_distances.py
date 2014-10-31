@@ -1,4 +1,4 @@
-"""Read a CIF file and get all nucleotides near an amino acid.
+"""Read a mmCIF file and get all nucleotides near an amino acid.
 """
 
 import os
@@ -17,7 +17,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 fr3d = os.path.abspath(os.path.join(here, ".."))
 sys.path.insert(0, fr3d)
 
-from fr3d.cif.reader import CIF
+from fr3d.cif.reader import Cif
 
 
 def generate_peptide_tree(structure):
@@ -47,7 +47,7 @@ def generate_rna_tree(structure):
 
 def main(filename):
     with open(filename, 'rb') as raw:
-        structure = CIF(raw).structure()
+        structure = Cif(raw).structure()
 
     aa_mapping, aa_tree = generate_peptide_tree(structure)
     rna_mapping, rna_tree = generate_rna_tree(structure)

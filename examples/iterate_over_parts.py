@@ -9,12 +9,12 @@ here = os.path.abspath(os.path.dirname(__file__))
 fr3d = os.path.abspath(os.path.join(here, ".."))
 sys.path.insert(0, fr3d)
 
-from fr3d.cif.reader import CIF
+from fr3d.cif.reader import Cif
 
 
 def main(filename):
     with open(filename, 'rb') as raw:
-        structure = CIF(raw).structure()
+        structure = Cif(raw).structure()
 
     print('Iterating over all parts')
     for model in structure.models:
@@ -52,6 +52,6 @@ def main(filename):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument("cif", help="CIF file to read")
+    parser.add_argument("cif", help="mmCIF file to read")
     args = parser.parse_args()
     main(args.cif)
