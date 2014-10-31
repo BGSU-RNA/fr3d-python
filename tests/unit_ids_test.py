@@ -115,49 +115,44 @@ class ResidueUnitIDTest(TestCase):
         self.assertEqual(val, ans)
 
     def test_fails_encoding_residue_id_missing_pdb(self):
-        with self.assertRaises(InvalidUnitId):
-            encode({
-                'model': '1',
-                'chain': 'A',
-                'component_id': 'C',
-                'component_number': '50',
-            })
+        self.assertRaises(InvalidUnitId, encode, {
+            'model': '1',
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': '50',
+        })
 
     def test_fails_encoding_residue_id_missing_model(self):
-        with self.assertRaises(InvalidUnitId):
-            encode({
-                'pdb': '2AVY',
-                'chain': 'A',
-                'component_id': 'C',
-                'component_number': '50',
-            })
+        self.assertRaises(InvalidUnitId, encode, {
+            'pdb': '2AVY',
+            'chain': 'A',
+            'component_id': 'C',
+            'component_number': '50',
+        })
 
     def test_fails_encoding_residue_id_missing_chain(self):
-        with self.assertRaises(InvalidUnitId):
-            encode({
-                'pdb': '2AVY',
-                'model': '1',
-                'component_id': 'C',
-                'component_number': '50',
-            })
+        self.assertRaises(InvalidUnitId, encode, {
+            'pdb': '2AVY',
+            'model': '1',
+            'component_id': 'C',
+            'component_number': '50',
+        })
 
     def test_fails_encoding_residue_id_missing_component_id(self):
-        with self.assertRaises(InvalidUnitId):
-            encode({
-                'pdb': '2AVY',
-                'model': '1',
-                'chain': 'A',
-                'component_number': '50',
-            })
+        self.assertRaises(InvalidUnitId, encode, {
+            'pdb': '2AVY',
+            'model': '1',
+            'chain': 'A',
+            'component_number': '50',
+        })
 
     def test_fails_encoding_residue_id_missing_component_number(self):
-        with self.assertRaises(InvalidUnitId):
-            encode({
-                'pdb': '2AVY',
-                'model': '1',
-                'chain': 'A',
-                'component_id': 'C',
-            })
+        self.assertRaises(InvalidUnitId, encode, {
+            'pdb': '2AVY',
+            'model': '1',
+            'chain': 'A',
+            'component_id': 'C',
+        })
 
 
 class AtomUnitIDTest(TestCase):
