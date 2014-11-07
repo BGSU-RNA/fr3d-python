@@ -122,7 +122,7 @@ class AtomProxy(col.MutableMapping):
             if atom.name in names:
                 coordinates.append(atom.coordinates())
 
-        if not coordinates:
+        if len(coordinates) < len(names):
             raise KeyError("Unknown key(s): %s" % names)
 
         if len(coordinates) == 1:

@@ -60,6 +60,14 @@ class AtomProxyTest(TestCase):
         ans = np.array([3.0, 2.0, 1.0])
         np.testing.assert_almost_equal(ans, val)
 
+    def test_fails_if_given_several_with_missing_name(self):
+        self.assertRaises(KeyError, lambda: self.proxy['a1', 'c1'])
+
+    def test_can_get_average_of_several_atoms(self):
+        val = self.proxy['a1', 'c2']
+        ans = np.array([0.5, 0.5, 0.0])
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
 
 class InferHydrogenTest(TestCase):
     def setUp(self):
