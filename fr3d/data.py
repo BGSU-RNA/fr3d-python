@@ -131,7 +131,6 @@ class AtomProxy(col.MutableMapping):
         return np.average(coordinates, axis=0)
 
     def __getitem__(self, key):
-        print(key)
         if key not in self._data:
             if isinstance(key, tuple):
                 return self.__coordinates__(set(key))
