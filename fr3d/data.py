@@ -506,6 +506,11 @@ class Structure(Entity, EntityContainer):
             models.append(Model(model_chains, pdb=self.pdb, model=model_id))
         return models
 
+    def atoms(self, **kwargs):
+        for residue in self.residues():
+            for atom in residue.atoms(**kwargs):
+                yield atom
+
     def __rename__(self):
         return dict(self._data)
 
