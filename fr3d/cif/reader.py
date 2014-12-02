@@ -209,6 +209,8 @@ class Cif(object):
                            component_index=index,
                            ins_code=ins_code,
                            x=x, y=y, z=z,
+                           group=atom['group_PDB'],
+                           type=atom['type_symbol'],
                            name=atom['label_atom_id'],
                            symmetry=symmetry['name'],
                            polymeric=self.is_polymeric_atom(atom))
