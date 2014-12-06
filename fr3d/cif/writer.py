@@ -41,7 +41,7 @@ class CifAtom(object):
             return (atom.symmetry, atom.model, atom.chain,
                     atom.component_number, atom.insertion_code)
 
-        for index, atom in enumerate(sorted(atoms, key=key)):
+        for index, atom in enumerate(sorted(structure.atoms(), key=key)):
             alt_id = getattr(atom, 'alt_id', '.')
             data = [atom.group, index, atom.type, atom.name,
                     alt_id, atom.component_id, atom.chain,
