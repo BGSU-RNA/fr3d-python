@@ -169,9 +169,8 @@ class Cif(object):
         for comp_id, atoms in mapping.items():
             # TODO: Set residue data
             first = atoms[0]
-            type = self._chem.get(first.component_id)
-            if type:
-                type = type['type']
+            type = self._chem.get(first.component_id, {})
+            type = type.get('type', None)
             residues.append(Component(atoms,
                                       pdb=first.pdb,
                                       model=first.model,
@@ -183,6 +182,7 @@ class Cif(object):
                                       index=first.component_index,
                                       insertion_code=first.insertion_code,
                                       polymeric=first.polymeric))
+
         residues.sort(key=lambda r: r.number)
         return residues
 
