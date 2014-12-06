@@ -37,7 +37,11 @@ class CifAtom(object):
         for field in fields:
             atoms.appendAttribute(field)
 
-        for index, atom in enumerate(structure.atoms()):
+        def key(atom):
+            return (atom.symmetry, atom.model, atom.chain,
+                    atom.component_number, atom.insertion_code)
+
+        for index, atom in enumerate(sorted(atoms, key=key)):
             alt_id = getattr(atom, 'alt_id', '.')
             data = [atom.group, index, atom.type, atom.name,
                     alt_id, atom.component_id, atom.chain,
