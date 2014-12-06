@@ -181,7 +181,7 @@ class Cif(object):
                                       sequence=first.component_id,
                                       number=first.component_number,
                                       index=first.component_index,
-                                      ins_code=first.ins_code,
+                                      insertion_code=first.insertion_code,
                                       polymeric=first.polymeric))
         residues.sort(key=lambda r: r.number)
         return residues
@@ -207,7 +207,7 @@ class Cif(object):
                            component_id=atom['label_comp_id'],
                            component_number=int(atom['auth_seq_id']),
                            component_index=index,
-                           ins_code=ins_code,
+                           insertion_code=ins_code,
                            x=x, y=y, z=z,
                            group=atom['group_PDB'],
                            type=atom['type_symbol'],

@@ -41,7 +41,7 @@ class CifAtom(object):
             alt_id = getattr(atom, 'alt_id', '.')
             data = [atom.group, index, atom.type, atom.name,
                     alt_id, atom.component_id, atom.chain,
-                    '?', atom.component_number, atom.ins_code,
+                    '?', atom.component_number, atom.insertion_code,
                     atom.x, atom.y, atom.z, '?',
                     '?', '?', '?',
                     '?', '?', '?',

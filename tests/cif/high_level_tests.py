@@ -91,7 +91,7 @@ class ResidueTest(ReaderTest):
         self.assertEqual(ans, val)
 
     def test_assigns_ins_code(self):
-        val = self.residues[0].ins_code
+        val = self.residues[0].insertion_code
         ans = None
         self.assertEqual(ans, val)
 
@@ -176,7 +176,6 @@ class StructureWithSymmetry(ReaderTest):
         val = self.data[2].centers['N']
         ans = np.array([-4.424, 28.301, 74.534])
         np.testing.assert_array_almost_equal(ans, val)
-
 
 # class BasicChainPolymersTest(ReaderTest):
 #     name = '1FAT'

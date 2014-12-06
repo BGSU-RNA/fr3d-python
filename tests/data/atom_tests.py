@@ -35,3 +35,23 @@ class AtomTest(ut.TestCase):
         val = self.atom - Atom(x=1, y=0, z=0)
         ans = 2.0
         self.assertEqual(ans, val)
+
+
+class AtomUnitIdTest(ut.TestCase):
+    def test_can_build_problematic_id(self):
+        atom = Atom(pdb='3V27',
+                    model=1,
+                    chain='A',
+                    component_id='G',
+                    component_number=94,
+                    component_index=1,
+                    insertion_code='A',
+                    x=None, y=None, z=None,
+                    group='ATOM',
+                    type='OP1',
+                    name='P',
+                    symmetry='1_555',
+                    polymeric=False)
+        val = atom.component_unit_id()
+        ans = '3V27|1|A|G|94|||A'
+        self.assertEquals(ans, val)
