@@ -5,3 +5,4 @@
 build/
 dist/
 fr3d.egg-info/
+files/*.cifatoms
