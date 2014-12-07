@@ -177,6 +177,50 @@ class StructureWithSymmetry(ReaderTest):
         ans = np.array([-4.424, 28.301, 74.534])
         np.testing.assert_array_almost_equal(ans, val)
 
+
+class AtomTest(ReaderTest):
+    name = '4NMG'
+
+    def setUp(self):
+        super(AtomTest, self).setUp()
+        self.data = list(self.structure.atoms())
+
+    def test_reads_in_atom_group(self):
+        val = self.data[0].group
+        ans = 'ATOM'
+        self.assertEquals(ans, val)
+
+    def test_reads_in_alt_id(self):
+        val = self.data[20].alt_id
+        ans = 'A'
+        self.assertEquals(ans, val)
+
+    def test_reads_in_type(self):
+        val = self.data[0].type
+        ans = 'O'
+        self.assertEquals(ans, val)
+
+    def test_reads_in_polymeric(self):
+        val = self.data[0].polymeric
+        ans = True
+        self.assertEquals(ans, val)
+
+    def test_reads_in_name(self):
+        val = self.data[0].name
+        ans = "O5'"
+        self.assertEquals(ans, val)
+
+    def test_reads_in_the_symmetry(self):
+        val = self.data[0].symmetry
+        ans = '1_555'
+        self.assertEquals(ans, val)
+
+    def test_generates_the_correct_unit_id(self):
+        val = self.data[18].unit_id()
+        ans = '4NMG|1|A|G|2648|P|A'
+        self.assertEquals(ans, val)
+
+
 # class BasicChainPolymersTest(ReaderTest):
 #     name = '1FAT'
 

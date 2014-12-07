@@ -208,6 +208,7 @@ class Cif(object):
                            component_number=int(atom['auth_seq_id']),
                            component_index=index,
                            insertion_code=ins_code,
+                           alt_id=atom['label_alt_id'],
                            x=x, y=y, z=z,
                            group=atom['group_PDB'],
                            type=atom['type_symbol'],
