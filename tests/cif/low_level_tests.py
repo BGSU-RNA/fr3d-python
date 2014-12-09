@@ -175,6 +175,30 @@ class StructureWithSymmetry(ReaderTest):
         np.testing.assert_array_almost_equal(ans, val)
 
 
+class StructureWithTransformationVector(ReaderTest):
+    name = '4NGG'
+
+    def test_it_builds_the_correct_rotation_matrix(self):
+        val = self.cif._operators['1']['matrix']
+        ans = np.array([[1.0, 0.0, 0.0],
+                        [0.0, -1.0, 0.0],
+                        [0.0, 0.0, -1.0]])
+        np.testing.assert_array_almost_equal(ans, val)
+
+    def test_it_builds_the_corect_symmetry_vector(self):
+        val = self.cif._operators['1']['vector']
+        ans = np.array([0.0, 97.240, 0.0])
+        np.testing.assert_array_almost_equal(ans, val)
+
+    def test_it_builds_the_correct_transformation_matrix(self):
+        val = self.cif._operators['1']['transform']
+        ans = np.array([[1.0, 0.0, 0.0, 0.0],
+                        [0.0, -1.0, 0.0, 97.240],
+                        [0.0, 0.0, -1.0, 0.0],
+                        [0.0, 0.0, 0.0, 1.0]])
+        np.testing.assert_array_almost_equal(ans, val)
+
+
 class SequenceMappingTest(ReaderTest):
     name = '1GID'
 

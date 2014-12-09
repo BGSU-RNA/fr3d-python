@@ -63,13 +63,23 @@ class Cif(object):
         for op in self.pdbx_struct_oper_list:
             op['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
             op['vector'] = [None] * 3
+
             for row in range(3):
                 op['vector'][row] = float(op['vector[%s]' % str(row + 1)])
+
                 for column in range(3):
                     key = 'matrix[%s][%s]' % (str(row + 1), str(column + 1))
                     op['matrix'][row][column] = float(op[key])
+
+            transform = np.zeros((4, 4))
+            transform[0:3, 0:3] = op['matrix']
+            transform[0:3, 3] = op['vector']
+            transform[3, 3] = 1.0
+
             op['matrix'] = np.array(op['matrix'])
             op['vector'] = np.array(op['vector'])
+            op['transform'] = np.array(transform)
+
             operators[op['id']] = op
         return operators
 
@@ -220,7 +230,7 @@ class Cif(object):
         coords = [float(atom['Cartn_x']),
                   float(atom['Cartn_y']),
                   float(atom['Cartn_z'])]
-        return np.dot(np.array(coords), symmetry['matrix'])
+        return np.array(coords) # np.cross(symmetry['transform'], np.array(coords))[0:3]
 
     def table(self, name):
         return Table(self, self.__block__(name))
