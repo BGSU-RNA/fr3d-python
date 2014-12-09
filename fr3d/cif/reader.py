@@ -229,8 +229,10 @@ class Cif(object):
     def __apply_symmetry__(self, atom, symmetry):
         coords = [float(atom['Cartn_x']),
                   float(atom['Cartn_y']),
-                  float(atom['Cartn_z'])]
-        return np.array(coords) # np.cross(symmetry['transform'], np.array(coords))[0:3]
+                  float(atom['Cartn_z']),
+                  1.0]
+        result = np.dot(symmetry['transform'], np.array(coords))
+        return result[0:3].T
 
     def table(self, name):
         return Table(self, self.__block__(name))

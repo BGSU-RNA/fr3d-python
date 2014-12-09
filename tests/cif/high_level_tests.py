@@ -169,13 +169,32 @@ class StructureWithSymmetry(ReaderTest):
 
     def test_can_compute_correct_transformed_coordinates(self):
         val = self.data[0].centers['N']
-        ans = np.array([-22.297, -17.982, 74.534])
+        ans = np.array([26.721, -10.319, 74.534])
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
     def test_can_compute_correct_standard_coordinates(self):
         val = self.data[2].centers['N']
         ans = np.array([-4.424, 28.301, 74.534])
         np.testing.assert_array_almost_equal(ans, val)
+
+
+class StructureWithTransformationMatrix(ReaderTest):
+    name = '4NGG'
+
+    def setUp(self):
+        super(StructureWithTransformationMatrix, self).setUp()
+        self.data = list(self.structure.atoms())
+        self.data = list(self.structure.residues(chain='B', number=1))
+
+    def test_can_compute_correct_transformed_coordinates(self):
+        val = self.data[0].centers["C4'"]
+        ans = np.array([-19.794, 41.314, 11.949])
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
+    def test_can_compute_standard_coordinates(self):
+        val = self.data[1].centers["C4'"]
+        ans = np.array([-19.794, 55.926, -11.949])
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
 
 class AtomTest(ReaderTest):
