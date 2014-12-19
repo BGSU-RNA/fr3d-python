@@ -172,7 +172,6 @@ class Cif(object):
         pass
 
     def __residues__(self, pdb):
-        symmetries = []
         mapping = it.groupby(self.__atoms__(pdb),
                              lambda a: a.component_unit_id())
 
@@ -194,9 +193,7 @@ class Cif(object):
                                       insertion_code=first.insertion_code,
                                       polymeric=first.polymeric))
 
-        # residues.sort(key=lambda r: r.number)
         return residues
-        # return list(it.chain.from_iterable(symmetries))
 
     def __atoms__(self, pdb):
         for atom in self.atom_site:
