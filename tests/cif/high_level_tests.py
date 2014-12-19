@@ -2,8 +2,6 @@ import numpy as np
 
 from tests.cif import ReaderTest
 
-from pprint import pprint
-
 
 class StructureTest(ReaderTest):
     name = '1GID'
@@ -24,8 +22,8 @@ class StructureTest(ReaderTest):
         self.assertEqual(ans, val)
 
     def test_loads_all_components(self):
-        val = len(list(self.structure.residues()))
-        ans = 316
+        val = len(list(self.structure.residues(polymeric=None)))
+        ans = 350
         self.assertEqual(ans, val)
 
     def test_loads_all_rna(self):
