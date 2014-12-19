@@ -1,5 +1,6 @@
 RNAbaseheavyatoms = {}
 RNAbasehydrogens = {}
+RNAconnections = {}
 RNAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
 RNAbasehydrogens['A'] = ['H2','H8','H9','1H6','2H6']
 RNAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
@@ -8,6 +9,98 @@ RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2'
 RNAbasehydrogens['G'] = ['H1','H8','H9','1H2','2H2']
 RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
 RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
+
+RNAconnections['A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']   
+RNAconnections['C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']            
+RNAconnections['U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']            
+RNAconnections['G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']   
+
+backbone = ['N','CA','C','O']
+
+aa_backbone = {}
+aa_linker = {}
+aa_sidechain = {}
+
+aa_backbone['ARG'] = backbone
+aa_linker['ARG'] = ['CB','CG','CD']
+aa_sidechain['ARG'] = ['NE','CZ','NH1','NH2']
+
+
+aa_backbone['LYS'] = backbone
+aa_linker['LYS'] = ['CB','CG','CD','CE']
+aa_sidechain['LYS'] = ['NZ']
+                 
+aa_backbone['HIS'] = backbone
+aa_linker['HIS'] = ['CB']
+aa_sidechain['HIS'] = ['CG','CE1','NE2','CD2','ND1']
+
+aa_backbone['GLN'] = backbone
+aa_linker['GLN'] = ['CB','CG']
+aa_sidechain['GLN'] = ['CD','OE1','NE2']
+
+aa_backbone['ASN'] = backbone
+aa_linker['ASN'] = []
+aa_sidechain['ASN'] = ['CB','CG','OD1','ND2']
+
+aa_backbone['GLU'] = backbone
+aa_linker['GLU'] = ['CB']
+aa_sidechain['GLU'] = ['CG','CD','OE1','OE2']
+
+aa_backbone['ASP'] = backbone
+aa_linker['ASP'] = []
+aa_sidechain['ASP'] = ['CB','CG','OD1','OD2']
+
+aa_backbone['TRP'] = backbone
+aa_linker['TRP'] = ['CB']
+aa_sidechain['TRP'] = ['CG','CD1','NE1','CE2','CD2','CE3','CZ3','CH2','CZ2']
+
+aa_backbone['TYR'] = backbone
+aa_linker['TYR'] = ['CB']
+aa_sidechain['TYR'] = ['CG','CD1','CE1','CZ','OH','CZ','CE2','CD2']
+
+aa_backbone['PHE'] = backbone
+aa_linker['PHE'] = ['CB']
+aa_sidechain['PHE'] = ['CG','CD1','CD2','CE1','CZ','CE2']
+
+aa_backbone['PRO'] = backbone
+aa_linker['PRO'] = []
+aa_sidechain['PRO'] = ['CA','CB','C','O','CG','CD']
+
+aa_backbone['MET'] = backbone
+aa_linker['MET'] = []
+aa_sidechain['MET'] = ['CB','CG','SD','CE']
+
+aa_backbone['ILE'] = backbone
+aa_linker['ILE'] = []
+aa_sidechain['ILE'] = ['CB','CG1','CG2','CD1']
+
+aa_backbone['LEU'] = backbone
+aa_linker['LEU'] = []
+aa_sidechain['LEU'] = ['CB','CG','CD2','CD1']
+
+aa_backbone['VAL'] = backbone
+aa_linker['VAL'] = []
+aa_sidechain['VAL'] = ['CB','CG1','CG2']
+
+aa_backbone['ALA'] = backbone
+aa_linker['ALA'] = []
+aa_sidechain['ALA'] = ['CB']
+
+aa_backbone['GLY'] = backbone
+aa_linker['GLY'] = []
+aa_sidechain['GLY'] = []
+
+aa_backbone['SER'] = backbone
+aa_linker['SER'] = []
+aa_sidechain['SER'] = ['CB','OG']
+
+aa_backbone['THR'] = backbone
+aa_linker['THR'] = []
+aa_sidechain['THR'] = ['CB','OG1','CG2']
+
+aa_backbone['CYS'] = backbone
+aa_linker['CYS'] = []
+aa_sidechain['CYS'] = ['CB','SG']
 
 # Quantum mechanics optimized base atom locations, by Jiri Sponer
 # OK to change the listing of nucleotides to a Numpy array, if that helps
