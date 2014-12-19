@@ -167,13 +167,13 @@ class StructureWithSymmetry(ReaderTest):
         super(StructureWithSymmetry, self).setUp()
         self.data = list(self.structure.residues())
 
-    def test_can_compute_correct_transformed_coordinates(self):
-        val = self.data[0].centers['N']
+    def test_can_compute_correct_standard_coordinates(self):
+        val = self.data[2].centers['N']
         ans = np.array([26.721, -10.319, 74.534])
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
-    def test_can_compute_correct_standard_coordinates(self):
-        val = self.data[2].centers['N']
+    def test_can_compute_correct_transformed_coordinates(self):
+        val = self.data[0].centers['N']
         ans = np.array([-4.424, 28.301, 74.534])
         np.testing.assert_array_almost_equal(ans, val)
 

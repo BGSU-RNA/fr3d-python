@@ -1,4 +1,5 @@
 import re
+import itertools as it
 import collections as coll
 
 import numpy as np
@@ -171,13 +172,13 @@ class Cif(object):
         pass
 
     def __residues__(self, pdb):
-        mapping = coll.defaultdict(list)
-        for atom in self.__atoms__(pdb):
-            mapping[atom.component_unit_id()].append(atom)
+        symmetries = []
+        mapping = it.groupby(self.__atoms__(pdb),
+                             lambda a: a.component_unit_id())
 
         residues = []
-        for comp_id, atoms in mapping.items():
-            # TODO: Set residue data
+        for comp_id, atoms in mapping:
+            atoms = list(atoms)
             first = atoms[0]
             type = self._chem.get(first.component_id, {})
             type = type.get('type', None)
@@ -193,8 +194,9 @@ class Cif(object):
                                       insertion_code=first.insertion_code,
                                       polymeric=first.polymeric))
 
-        residues.sort(key=lambda r: r.number)
+        # residues.sort(key=lambda r: r.number)
         return residues
+        # return list(it.chain.from_iterable(symmetries))
 
     def __atoms__(self, pdb):
         for atom in self.atom_site:
