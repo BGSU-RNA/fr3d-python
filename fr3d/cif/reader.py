@@ -48,11 +48,18 @@ class Cif(object):
     makes things easier.
     """
 
-    def __init__(self, handle):
-        reader = Reader(handle)
-        self.data = []
-        reader.read(self.data)
-        self.data = self.data[0]
+    def __init__(self, handle=None, data=None):
+        if data is None:
+            reader = Reader(handle)
+            self.data = []
+            reader.read(self.data)
+            self.data = self.data[0]
+        else:
+            self.data = data
+
+        if handle is None and data is None:
+            raise ValueError("Must give either handle or data")
+
         self.pdb = self.data.getName()
         self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
