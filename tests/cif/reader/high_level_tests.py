@@ -47,6 +47,9 @@ class StructureTest(ReaderTest):
     def test_fails_getting_invalid_chain(self):
         self.assertTrue(self.structure.chain(1, 'C') is None)
 
+    def test_knows_if_structure_is_true(self):
+        self.assertTrue(self.structure)
+
 
 class ResidueTest(ReaderTest):
     name = '1GID'

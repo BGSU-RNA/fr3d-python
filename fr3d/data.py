@@ -530,7 +530,7 @@ class Structure(Entity, EntityContainer):
 
         :returns: The number of atoms.
         """
-        return len(self._residues)
+        return len(self.models)
 
     def __repr__(self):
         return '<Structure: %s>' % self.pdb
