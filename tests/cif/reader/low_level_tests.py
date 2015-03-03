@@ -210,3 +210,14 @@ class SequenceMappingTest(ReaderTest):
         val = self.data[-1]
         ans = ('C', '1GID|Sequence|A|C|158', '1GID|1|A|C|260')
         self.assertEqual(ans, val)
+
+
+class LargeSequenceMappingTest(ReaderTest):
+    name = '1S72'
+
+    def setUp(self):
+        super(LargeSequenceMappingTest, self).setUp()
+        self.data = self.cif.experimental_sequence_mapping('0')
+
+    def test_can_compute_full_mapping(self):
+        self.assertEqual(2922, len(self.data))

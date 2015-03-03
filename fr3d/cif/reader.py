@@ -130,7 +130,7 @@ class Cif(object):
     def experimental_sequence(self, chain):
         sequence = []
         for row in self.pdbx_poly_seq_scheme:
-            if chain != row['asym_id']:
+            if chain != row['pdb_strand_id']:
                 continue
             sequence.append(row['mon_id'])
         return sequence
@@ -140,8 +140,8 @@ class Cif(object):
         seen = set()
         pdb = self.data.getName()
 
-        for row in self.pdbx_poly_seq_scheme:
-            if chain != row['asym_id']:
+        for index, row in enumerate(self.pdbx_poly_seq_scheme):
+            if chain != row['pdb_strand_id']:
                 continue
 
             insertion_code = row['pdb_ins_code']
