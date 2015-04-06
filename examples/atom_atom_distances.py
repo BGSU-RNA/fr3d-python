@@ -20,10 +20,11 @@ sys.path.insert(0, fr3d)
 from fr3d.cif.reader import Cif
 
 
-def generate_peptide_tree(structure):
+def generate_peptide_tree(structure, limits={}):
     """Generate a KDTree for all peptides in a structure.
     """
-    aa = structure.residues(type=['L-peptide linking', 'PEPTIDE LINKING'])
+    aa = structure.residues(type=['L-peptide linking', 'PEPTIDE LINKING'],
+                            **limits)
     data = []
     mapping = []
     for residue in aa:
@@ -33,24 +34,25 @@ def generate_peptide_tree(structure):
     return mapping, KDTree(np.array(data))
 
 
-def generate_rna_tree(structure):
+def generate_rna_tree(structure, limits={}):
     """Generate a KDTree for all residues in a structure.
     """
     data = []
     mapping = []
-    for residue in structure.residues(type='RNA linking'):
+    for residue in structure.residues(type='RNA linking', **limits):
         for atom in residue.atoms():
             data.append(atom.coordinates())
             mapping.append(residue)
     return mapping, KDTree(np.array(data))
 
 
-def main(filename):
+def main(filename, limits):
     with open(filename, 'rb') as raw:
         structure = Cif(raw).structure()
 
-    aa_mapping, aa_tree = generate_peptide_tree(structure)
-    rna_mapping, rna_tree = generate_rna_tree(structure)
+    aa_mapping, aa_tree = generate_peptide_tree(structure,
+                                                limits.get('residue', {}))
+    rna_mapping, rna_tree = generate_rna_tree(structure, limits.get('nt', {}))
 
     # This produces a list of (rna_atom_index, aa_atom_index)
     # The query_ball_tree method goes through all points in rna_tree and finds
@@ -86,6 +88,15 @@ def main(filename):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
+    parser.add_argument("--residue", default='', dest='residue',
+                        help="Type of residue to limit to")
+    parser.add_argument("--nucleotide", default='', dest='nt',
+                        help="Type of nucleotide to limit to")
     parser.add_argument("cif", help="CIF file to read")
     args = parser.parse_args()
-    main(args.cif)
+    limits = {}
+    if args.nt:
+        limits['nt'] = {'sequence': args.nt}
+    if args.residue:
+        limits['residue'] = {'sequence': args.residue}
+    main(args.cif, limits)
