@@ -125,9 +125,9 @@ class Cif(object):
                 warnings.warn('Cannot compute symmetries from complex '
                               'expressions. Using a simple identity '
                               'transformation')
-                return 'I'
-
-            operators = oper_expression.split(',')
+                operators = ['I']
+            else:
+                operators = oper_expression.split(',')
 
             for asym_id in assembly['asym_id_list'].split(','):
                 for operator in operators:
@@ -247,6 +247,8 @@ class Cif(object):
                 if ins_code == '?':
                     ins_code = None
 
+                symmetry_name = symmetry.get('name', 'P%s' % symmetry['id'])
+
                 yield Atom(pdb=pdb,
                            model=int(atom['pdbx_PDB_model_num']),
                            chain=atom['auth_asym_id'],
@@ -259,7 +261,7 @@ class Cif(object):
                            group=atom['group_PDB'],
                            type=atom['type_symbol'],
                            name=atom['label_atom_id'],
-                           symmetry=symmetry['name'],
+                           symmetry=symmetry_name,
                            polymeric=self.is_polymeric_atom(atom))
 
     def __apply_symmetry__(self, atom, symmetry):

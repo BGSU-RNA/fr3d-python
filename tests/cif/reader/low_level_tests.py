@@ -228,3 +228,12 @@ class LargeSequenceMappingTest(ReaderTest):
 
     def test_can_compute_full_mapping(self):
         self.assertEqual(2922, len(self.data))
+
+
+class ProblematicReadingTest(ReaderTest):
+    name = '1AQ3'
+
+    def test_can_set_default_name(self):
+        atoms = self.structure.atoms()
+        atom = next(atom for atom in atoms if atom.symmetry != 'I')
+        self.assertEquals('P1', atom.symmetry)
