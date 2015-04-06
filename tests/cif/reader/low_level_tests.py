@@ -1,4 +1,5 @@
 import numpy as np
+from nose import SkipTest
 
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
@@ -51,6 +52,12 @@ class SimpleCIFTest(ReaderTest):
         val = [op['name'] for op in self.cif.operators('A')]
         ans = ['1_555']
         self.assertEqual(ans, val)
+
+    def test_loads_all_symmetry_operators(self):
+        self.assertEqual(2, len(self.cif._operators))
+
+    def test_loads_correct_symmetry_operatrs(self):
+        raise SkipTest
 
 
 class SimpleTableTest(ReaderTest):

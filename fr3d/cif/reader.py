@@ -1,6 +1,7 @@
 import re
 import itertools as it
 import collections as coll
+import warnings
 
 import numpy as np
 
@@ -10,6 +11,10 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 from fr3d.unit_ids import encode
+
+
+""" The set of symbols that mark an operator expression as complex """
+COMPLEX_SYMBOLS = set('()-')
 
 
 class MissingBlockException(Exception):
@@ -89,15 +94,40 @@ class Cif(object):
             op['transform'] = np.array(transform)
 
             operators[op['id']] = op
+
+        identity = self.__identity_operator__()
+        operators[identity['id']] = identity
+
         return operators
+
+    def __identity_operator__(self):
+        mat = np.identity(3)
+        vector = np.array([1, 1, 1])
+        trans = np.zeros((4, 4))
+        trans[0:3, 0:3] = mat
+        trans[0:3, 3] = vector
+        trans[3, 3] = 1.0
+        return {
+            'id': 'I',
+            'name': 'I',
+            'vector': vector,
+            'matrix': mat,
+            'transform': trans
+        }
 
     def __load_assemblies__(self):
         assemblies = coll.defaultdict(list)
         for assembly in self.pdbx_struct_assembly_gen:
-            if '(' in assembly['oper_expression']:
-                raise ComplexOperatorException("Can't handle viral yet")
+            oper_expression = assembly['oper_expression']
 
-            operators = assembly['oper_expression'].split(',')
+            # TODO: Implement computation of complex operators
+            if COMPLEX_SYMBOLS & set(oper_expression):
+                warnings.warn('Cannot compute symmetries from complex '
+                              'expressions. Using a simple identity '
+                              'transformation')
+                return 'I'
+
+            operators = oper_expression.split(',')
 
             for asym_id in assembly['asym_id_list'].split(','):
                 for operator in operators:
@@ -156,7 +186,7 @@ class Cif(object):
                     'pdb': pdb,
                     'model': '1',
                     'chain': chain,
-                    'component_id': row['auth_mon_id'],
+                    'component_id': row['pdb_mon_id'],
                     'component_number': auth_number,
                     'insertion_code': insertion_code
                 })
