@@ -170,7 +170,7 @@ class StructureWithSymmetry(ReaderTest):
 
     def test_can_compute_correct_standard_coordinates(self):
         val = self.data[2].centers['N']
-        ans = np.array([26.721, -10.319, 74.534])
+        ans = np.array([0.089, 30.369, 78.24])
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
     def test_can_compute_correct_transformed_coordinates(self):
@@ -206,6 +206,7 @@ class AtomTest(ReaderTest):
         self.data = list(self.structure.atoms())
 
     def test_reads_in_atom_group(self):
+        print(self.data)
         val = self.data[0].group
         ans = 'ATOM'
         self.assertEquals(ans, val)
@@ -239,6 +240,15 @@ class AtomTest(ReaderTest):
         val = self.data[18].unit_id()
         ans = '4NMG|1|A|G|2648|P|A'
         self.assertEquals(ans, val)
+
+
+class UnsortedAtomsTest(ReaderTest):
+    name = '4CS1'
+
+    def test_loads_all_residues(self):
+        residues = self.structure.residues(polymeric=None)
+        val = len([res.unit_id() for res in residues])
+        self.assertEquals(88, val)
 
 
 # class BasicChainPolymersTest(ReaderTest):

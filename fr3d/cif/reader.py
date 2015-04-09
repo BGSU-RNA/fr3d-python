@@ -233,36 +233,56 @@ class Cif(object):
         return residues
 
     def __atoms__(self, pdb):
-        for atom in self.atom_site:
-            for symmetry in self.operators(atom['label_asym_id']):
-                if not symmetry:
-                    raise MissingSymmetry("Could not find symmetry for %s" %
-                                          atom)
+        max_operators = max(len(op) for op in self._assemblies.values())
 
-                x, y, z = self.__apply_symmetry__(atom, symmetry)
-                index = atom['label_seq_id']
-                if index != '.':
-                    index = int(index)
-                ins_code = atom['pdbx_PDB_ins_code']
-                if ins_code == '?':
-                    ins_code = None
+        if not max_operators:
+            raise ValueError("Could not find any operators")
 
-                symmetry_name = symmetry.get('name', 'P%s' % symmetry['id'])
+        def operator(entry):
+            pdb, atom, index = entry
+            operators = self.operators(atom['label_asym_id'])
+            if index < len(operators):
+                return pdb, atom, operators[index]
+            return None
 
-                yield Atom(pdb=pdb,
-                           model=int(atom['pdbx_PDB_model_num']),
-                           chain=atom['auth_asym_id'],
-                           component_id=atom['label_comp_id'],
-                           component_number=int(atom['auth_seq_id']),
-                           component_index=index,
-                           insertion_code=ins_code,
-                           alt_id=atom['label_alt_id'],
-                           x=x, y=y, z=z,
-                           group=atom['group_PDB'],
-                           type=atom['type_symbol'],
-                           name=atom['label_atom_id'],
-                           symmetry=symmetry_name,
-                           polymeric=self.is_polymeric_atom(atom))
+        atoms = []
+        for index in xrange(max_operators):
+            indexes = it.repeat(index, len(self.atom_site))
+            pdbs = it.repeat(pdb, len(self.atom_site))
+            zipped = it.izip(pdbs, self.atom_site, indexes)
+            with_operators = it.imap(operator, zipped)
+            filtered = it.ifilter(None, with_operators)
+            atoms.append(it.imap(lambda a: self.__atom__(*a), filtered))
+
+        return it.chain.from_iterable(atoms)
+
+    def __atom__(self, pdb, atom, symmetry):
+        x, y, z = self.__apply_symmetry__(atom, symmetry)
+
+        index = atom['label_seq_id']
+        if index != '.':
+            index = int(index)
+
+        ins_code = atom['pdbx_PDB_ins_code']
+        if ins_code == '?':
+            ins_code = None
+
+        symmetry_name = symmetry.get('name', 'P%s' % symmetry['id'])
+
+        return Atom(pdb=pdb,
+                    model=int(atom['pdbx_PDB_model_num']),
+                    chain=atom['auth_asym_id'],
+                    component_id=atom['label_comp_id'],
+                    component_number=int(atom['auth_seq_id']),
+                    component_index=index,
+                    insertion_code=ins_code,
+                    alt_id=atom['label_alt_id'],
+                    x=x, y=y, z=z,
+                    group=atom['group_PDB'],
+                    type=atom['type_symbol'],
+                    name=atom['label_atom_id'],
+                    symmetry=symmetry_name,
+                    polymeric=self.is_polymeric_atom(atom))
 
     def __apply_symmetry__(self, atom, symmetry):
         coords = [float(atom['Cartn_x']),
