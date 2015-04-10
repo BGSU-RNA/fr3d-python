@@ -4,6 +4,8 @@ from nose import SkipTest
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
 
+from fr3d.unit_ids import decode
+
 from tests.cif import ReaderTest
 
 
@@ -237,3 +239,29 @@ class ProblematicReadingTest(ReaderTest):
         atoms = self.structure.atoms()
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
         self.assertEquals('P1', atom.symmetry)
+
+
+class MutipleEntriesInExpSeqTest(ReaderTest):
+    name = '1I9K'
+
+    def test_can_map_exp_seq(self):
+        mapping = self.cif.experimental_sequence_mapping('A')
+        self.assertEquals(6, len(mapping))
+
+
+class MappingWithMissingTest(ReaderTest):
+    name = '1IBK'
+
+    def test_can_create_correct_mappings(self):
+        mapping = self.cif.experimental_sequence_mapping('A')
+        val = mapping[0][2]
+        self.assertEquals(None, val)
+
+
+class ExperimentalMappingWithNoIdentityOperator(ReaderTest):
+    name = '4OQ8'
+
+    def test_can_generate_a_mapping(self):
+        mapping = self.cif.experimental_sequence_mapping('B')
+        val = decode(mapping[0][2])
+        self.assertEquals('P1', val['symmetry'])

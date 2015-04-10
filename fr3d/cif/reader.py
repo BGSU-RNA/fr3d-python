@@ -183,6 +183,11 @@ class Cif(object):
             if insertion_code == '.':
                 insertion_code = None
 
+            operators = self.operators(chain)
+            symmetry = '1_555'
+            if operators:
+                symmetry = self.__symmetry_name__(operators[0])
+
             number = row['pdb_seq_num']
             if number == '?' or row['auth_seq_num'] == '?':
                 unit_id = None
@@ -193,7 +198,8 @@ class Cif(object):
                     'chain': chain,
                     'component_id': row['pdb_mon_id'],
                     'component_number': number,
-                    'insertion_code': insertion_code
+                    'insertion_code': insertion_code,
+                    'symmetry': symmetry
                 })
 
             seq_data = (pdb, chain, row['mon_id'], row['seq_id'])
@@ -268,13 +274,11 @@ class Cif(object):
         if index != '.':
             index = int(index)
 
+        symmetry_name = self.__symmetry_name__(symmetry)
+
         ins_code = atom['pdbx_PDB_ins_code']
         if ins_code == '?':
             ins_code = None
-
-        symmetry_name = symmetry.get('name')
-        if not symmetry_name or symmetry_name == '?':
-            symmetry_name = 'P%s' % symmetry['id']
 
         return Atom(pdb=pdb,
                     model=int(atom['pdbx_PDB_model_num']),
@@ -298,6 +302,12 @@ class Cif(object):
                   1.0]
         result = np.dot(symmetry['transform'], np.array(coords))
         return result[0:3].T
+
+    def __symmetry_name__(self, symmetry):
+        symmetry_name = symmetry.get('name')
+        if not symmetry_name or symmetry_name == '?':
+            symmetry_name = 'P%s' % symmetry['id']
+        return symmetry_name
 
     def table(self, name):
         return Table(self, self.__block__(name))
