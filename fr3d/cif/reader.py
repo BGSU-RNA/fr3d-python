@@ -183,7 +183,7 @@ class Cif(object):
             if insertion_code == '.':
                 insertion_code = None
 
-            operators = self.operators(chain)
+            operators = self.operators(row['asym_id'])
             symmetry = '1_555'
             if operators:
                 symmetry = self.__symmetry_name__(operators[0])
