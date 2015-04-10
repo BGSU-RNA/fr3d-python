@@ -271,6 +271,14 @@ class DuplicateWithPointSymmetryTest(ReaderTest):
         self.assertEquals(894, len(val))
 
 
+class MutipleEntriesInExpSeqTest(ReaderTest):
+    name = '1I9K'
+
+    def test_can_map_exp_seq(self):
+        mapping = self.cif.experimental_sequence_mapping('A')
+        self.assertEquals(6, len(mapping))
+
+
 # class BasicChainPolymersTest(ReaderTest):
 #     name = '1FAT'
 

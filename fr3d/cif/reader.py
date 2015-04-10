@@ -183,7 +183,7 @@ class Cif(object):
             if insertion_code == '.':
                 insertion_code = None
 
-            auth_number = row['auth_seq_num']
+            auth_number = row['pdb_seq_num']
             if auth_number == '?':
                 unit_id = None
             else:
@@ -198,6 +198,7 @@ class Cif(object):
 
             seq_data = (pdb, chain, row['mon_id'], row['seq_id'])
             seq_id = '%s|Sequence|%s|%s|%s' % seq_data
+            print(row, unit_id)
 
             if seq_id in seen:
                 raise ValueError("Can't map one sequence residue twice")
