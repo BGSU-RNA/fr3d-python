@@ -213,7 +213,7 @@ class SequenceMappingTest(ReaderTest):
 
     def setUp(self):
         super(SequenceMappingTest, self).setUp()
-        self.data = self.cif.experimental_sequence_mapping('A')
+        self.data = list(self.cif.experimental_sequence_mapping('A'))
 
     def test_can_compute_mapping(self):
         val = self.data[-1]
@@ -226,7 +226,7 @@ class LargeSequenceMappingTest(ReaderTest):
 
     def setUp(self):
         super(LargeSequenceMappingTest, self).setUp()
-        self.data = self.cif.experimental_sequence_mapping('0')
+        self.data = list(self.cif.experimental_sequence_mapping('0'))
 
     def test_can_compute_full_mapping(self):
         self.assertEqual(2922, len(self.data))
@@ -245,7 +245,7 @@ class MutipleEntriesInExpSeqTest(ReaderTest):
     name = '1I9K'
 
     def test_can_map_exp_seq(self):
-        mapping = self.cif.experimental_sequence_mapping('A')
+        mapping = list(self.cif.experimental_sequence_mapping('A'))
         self.assertEquals(6, len(mapping))
 
 
@@ -254,7 +254,7 @@ class MappingWithMissingTest(ReaderTest):
 
     def test_can_create_correct_mappings(self):
         mapping = self.cif.experimental_sequence_mapping('A')
-        val = mapping[0][2]
+        val = next(mapping)[2]
         self.assertEquals(None, val)
 
 
@@ -263,7 +263,7 @@ class ExperimentalMappingWithNoIdentityOperator(ReaderTest):
 
     def test_can_generate_a_mapping(self):
         mapping = self.cif.experimental_sequence_mapping('B')
-        val = decode(mapping[0][2])
+        val = decode(next(mapping)[2])
         self.assertEquals('P1', val['symmetry'])
 
 
@@ -272,7 +272,7 @@ class ExperimentalMappingWithNoIdentityOperators2(ReaderTest):
 
     def test_can_generate_mappings(self):
         mapping = self.cif.experimental_sequence_mapping('1')
-        val = decode(mapping[0][2])
+        val = decode(next(mapping)[2])
         self.assertEquals('P1', val['symmetry'])
 
 
@@ -281,5 +281,5 @@ class MappingWithNonStandardModel(ReaderTest):
 
     def test_can_generate_mapping_to_model_0(self):
         mapping = self.cif.experimental_sequence_mapping('B')
-        val = decode(mapping[0][2])
+        val = decode(next(mapping)[2])
         self.assertEquals(0, val['model'])

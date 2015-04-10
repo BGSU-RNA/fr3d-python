@@ -171,14 +171,14 @@ class Cif(object):
         return sequence
 
     def experimental_sequence_mapping(self, chain):
-        mapping = []
         seen = set()
         pdb = self.data.getName()
 
-        for index, row in enumerate(self.pdbx_poly_seq_scheme):
-            if chain != row['pdb_strand_id']:
-                continue
+        entries = self.pdbx_poly_seq_scheme
+        filtered = it.ifilter(lambda r: r['pdb_strand_id'] == chain, entries)
+        model = self.atom_site[0]['pdbx_PDB_model_num']
 
+        for index, row in enumerate(filtered):
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
                 insertion_code = None
@@ -187,8 +187,6 @@ class Cif(object):
             symmetry = '1_555'
             if operators:
                 symmetry = self.__symmetry_name__(operators[0])
-
-            model = self.atom_site[0]['pdbx_PDB_model_num']
 
             number = row['pdb_seq_num']
             if number == '?' or row['auth_seq_num'] == '?':
@@ -214,9 +212,7 @@ class Cif(object):
 
             seen.add(seq_id)
             seen.add(unit_id)
-            mapping.append((row['mon_id'], seq_id, unit_id))
-
-        return mapping
+            yield (row['mon_id'], seq_id, unit_id)
 
     def __breaks__(self):
         pass
