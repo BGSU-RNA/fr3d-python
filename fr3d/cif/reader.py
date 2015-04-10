@@ -183,7 +183,7 @@ class Cif(object):
             if insertion_code == '.':
                 insertion_code = None
 
-            auth_number = row['auth_seq_num']
+            auth_number = row['pdb_seq_num']
             if auth_number == '?':
                 unit_id = None
             else:
