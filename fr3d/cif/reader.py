@@ -183,8 +183,8 @@ class Cif(object):
             if insertion_code == '.':
                 insertion_code = None
 
-            auth_number = row['pdb_seq_num']
-            if auth_number == '?':
+            number = row['pdb_seq_num']
+            if number == '?' or row['auth_seq_num'] == '?':
                 unit_id = None
             else:
                 unit_id = encode({
@@ -192,7 +192,7 @@ class Cif(object):
                     'model': '1',
                     'chain': chain,
                     'component_id': row['pdb_mon_id'],
-                    'component_number': auth_number,
+                    'component_number': number,
                     'insertion_code': insertion_code
                 })
 
