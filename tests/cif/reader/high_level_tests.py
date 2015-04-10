@@ -206,7 +206,6 @@ class AtomTest(ReaderTest):
         self.data = list(self.structure.atoms())
 
     def test_reads_in_atom_group(self):
-        print(self.data)
         val = self.data[0].group
         ans = 'ATOM'
         self.assertEquals(ans, val)
