@@ -251,6 +251,26 @@ class UnsortedAtomsTest(ReaderTest):
         self.assertEquals(88, val)
 
 
+class DuplicateOperatorsTest(ReaderTest):
+    name = '4MCE'
+
+    def test_loads_all_residues(self):
+        residues = self.structure.residues(polymeric=None)
+        self.cif.structure()
+        val = [res.unit_id() for res in residues]
+        self.assertEquals(291, len(val))
+
+
+class DuplicateWithPointSymmetryTest(ReaderTest):
+    name = '4OQ8'
+
+    def test_loads_all_residues(self):
+        residues = self.structure.residues(polymeric=None)
+        self.cif.structure()
+        val = [res.unit_id() for res in residues]
+        self.assertEquals(894, len(val))
+
+
 # class BasicChainPolymersTest(ReaderTest):
 #     name = '1FAT'
 

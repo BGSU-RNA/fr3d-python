@@ -123,9 +123,9 @@ class Cif(object):
             # TODO: Implement computation of complex operators
             if COMPLEX_SYMBOLS & set(oper_expression):
                 warnings.warn('Cannot compute symmetries from complex '
-                              'expressions. Using a simple identity '
-                              'transformation')
-                operators = ['I']
+                              'expressions. Will use a simple identity '
+                              'transformation if no others possible')
+                operators = []
             else:
                 operators = oper_expression.split(',')
 
@@ -133,6 +133,11 @@ class Cif(object):
                 for operator in operators:
                     op = self._operators[operator]
                     assemblies[asym_id].append(op)
+
+        for asym_id, ops in assemblies.items():
+            if not ops:
+                assemblies[asym_id].append(self._operators['I'])
+
         return assemblies
 
     def __load_entities__(self):
@@ -239,10 +244,10 @@ class Cif(object):
             raise ValueError("Could not find any operators")
 
         def operator(entry):
-            pdb, atom, index = entry
+            pdb, atom, number = entry
             operators = self.operators(atom['label_asym_id'])
-            if index < len(operators):
-                return pdb, atom, operators[index]
+            if number < len(operators):
+                return pdb, atom, operators[number]
             return None
 
         atoms = []
@@ -267,7 +272,9 @@ class Cif(object):
         if ins_code == '?':
             ins_code = None
 
-        symmetry_name = symmetry.get('name', 'P%s' % symmetry['id'])
+        symmetry_name = symmetry.get('name')
+        if not symmetry_name or symmetry_name == '?':
+            symmetry_name = 'P%s' % symmetry['id']
 
         return Atom(pdb=pdb,
                     model=int(atom['pdbx_PDB_model_num']),
@@ -296,7 +303,14 @@ class Cif(object):
         return Table(self, self.__block__(name))
 
     def operators(self, asym_id):
-        return self._assemblies[asym_id]
+        matching = []
+        seen = set()
+        assemblies = self._assemblies[asym_id]
+        for assembly in assemblies:
+            if assembly['id'] not in seen:
+                seen.add(assembly['id'])
+                matching.append(assembly)
+        return matching
 
     def is_water(self, entity_id):
         return self._entities[entity_id]['type'] == 'water'
