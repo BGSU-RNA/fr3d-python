@@ -188,13 +188,15 @@ class Cif(object):
             if operators:
                 symmetry = self.__symmetry_name__(operators[0])
 
+            model = self.atom_site[0]['pdbx_PDB_model_num']
+
             number = row['pdb_seq_num']
             if number == '?' or row['auth_seq_num'] == '?':
                 unit_id = None
             else:
                 unit_id = encode({
                     'pdb': pdb,
-                    'model': '1',
+                    'model': model,
                     'chain': chain,
                     'component_id': row['pdb_mon_id'],
                     'component_number': number,

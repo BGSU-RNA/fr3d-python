@@ -274,3 +274,12 @@ class ExperimentalMappingWithNoIdentityOperators2(ReaderTest):
         mapping = self.cif.experimental_sequence_mapping('1')
         val = decode(mapping[0][2])
         self.assertEquals('P1', val['symmetry'])
+
+
+class MappingWithNonStandardModel(ReaderTest):
+    name = '4R3I'
+
+    def test_can_generate_mapping_to_model_0(self):
+        mapping = self.cif.experimental_sequence_mapping('B')
+        val = decode(mapping[0][2])
+        self.assertEquals(0, val['model'])
