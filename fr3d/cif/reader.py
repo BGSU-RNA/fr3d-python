@@ -2,6 +2,7 @@ import re
 import itertools as it
 import collections as coll
 import warnings
+import logging
 
 import numpy as np
 
@@ -70,6 +71,7 @@ class Cif(object):
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
         self._chem = self.__load_chem_comp__()
+        self.logger = logging.getLogger('fr3d.cif.reader.Cif')
 
     def __load_operators__(self):
         operators = {}
@@ -136,6 +138,8 @@ class Cif(object):
 
         for asym_id, ops in assemblies.items():
             if not ops:
+                self.logger.info("Adding default identity operator for %s",
+                                 asym_id)
                 assemblies[asym_id].append(self._operators['I'])
 
         return assemblies
@@ -194,6 +198,8 @@ class Cif(object):
                 unit_id = None
             else:
                 if prev_number == number:
+                    self.logger.warning("Duplicate pdbx_poly_seq_scheme "
+                                        "entry at %s", number)
                     continue
 
                 prev_number = number
