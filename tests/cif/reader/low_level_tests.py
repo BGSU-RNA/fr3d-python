@@ -283,3 +283,24 @@ class MappingWithNonStandardModel(ReaderTest):
         mapping = self.cif.experimental_sequence_mapping('B')
         val = decode(next(mapping)[2])
         self.assertEquals(0, val['model'])
+
+
+class MappingWithDuplicateEntries(ReaderTest):
+    name = '4X4N'
+
+    def setUp(self):
+        super(MappingWithDuplicateEntries, self).setUp()
+        self.mapping = list(self.cif.experimental_sequence_mapping('G'))
+
+    def test_it_creates_correct_number_of_mappings(self):
+        self.assertEquals(32, len(self.mapping))
+
+    def test_it_takes_the_first_entry(self):
+        val = self.mapping[28]
+        ans = ('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|A|29')
+        self.assertEquals(ans, val)
+
+    def test_it_does_duplicae(self):
+        val = self.mapping[29]
+        ans = ('U', '4X4N|Sequence|G|U|30', '4X4N|1|G|U|30')
+        self.assertEquals(ans, val)

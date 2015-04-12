@@ -178,6 +178,7 @@ class Cif(object):
         filtered = it.ifilter(lambda r: r['pdb_strand_id'] == chain, entries)
         model = self.atom_site[0]['pdbx_PDB_model_num']
 
+        prev_number = None
         for index, row in enumerate(filtered):
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
@@ -192,6 +193,10 @@ class Cif(object):
             if number == '?' or row['auth_seq_num'] == '?':
                 unit_id = None
             else:
+                if prev_number == number:
+                    continue
+
+                prev_number = number
                 unit_id = encode({
                     'pdb': pdb,
                     'model': model,
@@ -221,25 +226,22 @@ class Cif(object):
         mapping = it.groupby(self.__atoms__(pdb),
                              lambda a: a.component_unit_id())
 
-        residues = []
         for comp_id, atoms in mapping:
             atoms = list(atoms)
             first = atoms[0]
             type = self._chem.get(first.component_id, {})
             type = type.get('type', None)
-            residues.append(Component(atoms,
-                                      pdb=first.pdb,
-                                      model=first.model,
-                                      type=type,
-                                      chain=first.chain,
-                                      symmetry=first.symmetry,
-                                      sequence=first.component_id,
-                                      number=first.component_number,
-                                      index=first.component_index,
-                                      insertion_code=first.insertion_code,
-                                      polymeric=first.polymeric))
-
-        return residues
+            yield Component(atoms,
+                            pdb=first.pdb,
+                            model=first.model,
+                            type=type,
+                            chain=first.chain,
+                            symmetry=first.symmetry,
+                            sequence=first.component_id,
+                            number=first.component_number,
+                            index=first.component_index,
+                            insertion_code=first.insertion_code,
+                            polymeric=first.polymeric)
 
     def __atoms__(self, pdb):
         max_operators = max(len(op) for op in self._assemblies.values())
