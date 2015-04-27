@@ -37,6 +37,34 @@ class AtomTest(ut.TestCase):
         self.assertEqual(ans, val)
 
 
+class AtomTransformationTest(ut.TestCase):
+
+    def setUp(self):
+        self.atom = Atom(pdb='1GID', model=1, chain='A', component_id='C',
+                         component_number=50, name="C1'", symmetry='6_555',
+                         x=-1, y=0, z=2)
+
+    def test_transform_moves_coordiantes(self):
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        atom = self.atom.transform(trans)
+        val = [atom.x, atom.y, atom.z]
+        ans = [-1.0, 97.240, -2.0]
+        self.assertEquals(ans, val)
+
+    def test_transform_preserves_unit_id(self):
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        atom = self.atom.transform(trans)
+        val = atom.unit_id()
+        ans = self.atom.unit_id()
+        self.assertEquals(ans, val)
+
+
 class AtomUnitIdTest(ut.TestCase):
     def test_can_build_problematic_id(self):
         atom = Atom(pdb='3V27',

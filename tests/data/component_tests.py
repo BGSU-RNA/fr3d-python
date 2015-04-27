@@ -115,3 +115,35 @@ class CenterTest(ut.TestCase):
         val = self.residue.centers['base']
         ans = np.array([2.0, 2.0, 2.0])
         np.testing.assert_array_equal(val, ans)
+
+
+class TransformTest(ut.TestCase):
+    def setUp(self):
+        atoms = [
+            Atom(name='N9', x=3.0, y=3.0, z=3.0),
+            Atom(name='C4', x=2.0, y=2.0, z=2.0),
+            Atom(name='N3', x=1.0, y=1.0, z=1.0),
+        ]
+        self.residue = Component(atoms, type='rna', pdb='1GID', model=1,
+                                 chain='A', sequence='C', number=50,
+                                 symmetry='6_555')
+
+    def test_can_transform_atoms(self):
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        residue = self.residue.transform(trans)
+        val = list(residue.atoms()[-1].coordinates())
+        ans = [1.0, 96.240, -1.0]
+        self.assertEquals(ans, val)
+
+    def test_preserves_unit_id(self):
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        residue = self.residue.transform(trans)
+        val = residue.unit_id()
+        ans = "1GID|1|A|C|50||||6_555"
+        self.assertEquals(ans, val)

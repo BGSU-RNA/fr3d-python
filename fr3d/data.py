@@ -191,6 +191,21 @@ class Atom(Entity):
         data['atom_name'] = data.pop('name')
         return data
 
+    def transform(self, transform):
+        """Create a new atom based of this one, but with transformed
+        coordinates.
+        """
+
+        coords = [self.x, self.y, self.z, 1.0]
+        result = np.dot(transform, np.array(coords))
+        x, y, z = result[0:3].T
+        data = dict(self._data)
+        data['x'] = x
+        data['y'] = y
+        data['z'] = z
+
+        return Atom(**data)
+
     def coordinates(self):
         """Return a numpy array of the x, y, z coordinates for this atom.
 
@@ -318,6 +333,19 @@ class Component(Entity, EntityContainer):
                                     x=newcoordinates[0, 0],
                                     y=newcoordinates[0, 1],
                                     z=newcoordinates[0, 2]))
+
+    def transform(self, transform):
+        """Create a new component from this one by applying a transformation
+        matrix.
+
+        :transform: The transformation matrix to apply.
+        :returns: A new Component with the same properties by rotated atoms.
+        """
+        transformed = []
+        for atom in self.atoms():
+            transformed.append(atom.transform(transform))
+        data = dict(self._data)
+        return Component(transformed, **data)
 
     def __rename__(self):
         data = dict(self._data)
