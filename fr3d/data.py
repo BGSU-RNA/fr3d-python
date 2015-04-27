@@ -12,8 +12,9 @@ from fr3d.unit_ids import encode
 from fr3d.definitions import RNAbaseheavyatoms
 from fr3d.definitions import RNAbasecoordinates
 from fr3d.definitions import RNAbasehydrogens
-from fr3d.definitions import aa_sidechain
+from fr3d.definitions import aa_fg
 from fr3d.definitions import aa_backbone
+from fr3d.definitions import nt_backbone
 from fr3d.geometry.superpositions import besttransformation
 
 
@@ -231,9 +232,13 @@ class Component(Entity, EntityContainer):
             atoms = RNAbaseheavyatoms[self.sequence]
             self.centers['base'] = self.__compute_center__(atoms)
 
+        if self.sequence in ['A', 'C', 'G', 'U']:
+            atoms = nt_backbone[self.sequence]
+            self.centers['nt_backbone'] = self.__compute_center__(atoms)
+
         if self.sequence in ['ARG', 'LYS', 'HIS', 'GLN','ASN','GLU','ASP','TRP','TYR','PHE','PRO','MET','ILE','LEU','VAL','ALA','SER','CYS','THR']:
-            atoms = aa_sidechain[self.sequence]
-            self.centers['aa_sidechain'] = self.__compute_center__(atoms)
+            atoms = aa_fg[self.sequence]
+            self.centers['aa_fg'] = self.__compute_center__(atoms)
 
         if self.sequence in ['ARG', 'LYS', 'HIS', 'GLN','ASN','GLU','ASP','TRP','TYR','PHE','PRO','MET','ILE','LEU','VAL','ALA','GLY','SER','CYS','THR']:
             atoms = aa_backbone[self.sequence]
