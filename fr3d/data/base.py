@@ -51,8 +51,7 @@ class EntitySelector(object):
             elif callable(value):
                 filtered = it.ifilter(self.__callable_filter__(key, value),
                                       filtered)
-            elif isinstance(value, list) or isinstance(value, set) or \
-                    isinstance(value, tuple):
+            elif isinstance(value, (list, set, tuple)):
                 filtered = it.ifilter(self.__collection_filter__(key, value),
                                       filtered)
             else:
