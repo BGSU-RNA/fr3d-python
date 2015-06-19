@@ -79,7 +79,10 @@ class AtomProxy(col.MutableMapping):
         :name: The name of the center.
         :atoms: A list of atoms to use to compute the center.
         """
-        self._data[name] = set(atoms)
+        if isinstance(atoms, basestring):
+            self._data[name] = set([atoms])
+        else:
+            self._data[name] = set(atoms)
 
     def lookup(self, names, allow_missing=True):
         """Lookup a center but allow for missing atoms. This will attempt to lookup
@@ -88,26 +91,27 @@ class AtomProxy(col.MutableMapping):
         simple [] this will not raise a KeyError if an atom is missing.
 
         :names: The name(s) to use to compute the center.
-        :allow_missing: Flag for allowing missing atoms.
+        :allow_missing: Boolean for allowing missing atoms, defaults to True.
         """
         return self.__handle_key__(names, allow_missing=allow_missing)
 
     def __coordinates__(self, names, allow_missing=False):
-        coordinates = []
-        for atom in self._atoms:
-            if atom.name in names or names == set('*'):
-                coordinates.append(atom.coordinates())
+        coords = []
+        if names == set('*'):
+            coords = [atom.coordinates() for atom in self._atoms]
+        else:
+            coords = [a.coordinates() for a in self._atoms if a.name in names]
 
-        if len(coordinates) < len(names) and not allow_missing:
+        if len(coords) < len(names) and not allow_missing:
             raise KeyError("Missing coordinates for: %s" % ', '.join(names))
 
-        if len(coordinates) == 0:
-            return []
+        if not coords:
+            return coords
 
-        if len(coordinates) == 1:
-            return coordinates[0]
+        if len(coords) == 1:
+            return coords[0]
 
-        return np.average(coordinates, axis=0)
+        return np.average(coords, axis=0)
 
     def __handle_key__(self, key, **kwargs):
         if isinstance(key, (list, set, tuple)):
@@ -115,11 +119,13 @@ class AtomProxy(col.MutableMapping):
         elif key not in self._data:
             return self.__coordinates__(set([key]), **kwargs)
         elif isinstance(self._data[key], set):
+            print(self._data[key])
             self._data[key] = self.__coordinates__(self._data[key], **kwargs)
+            print(self._data[key])
 
         if not kwargs.get('allow_missing'):
             return self._data[key]
-        return self._data.get('allow_missing', [])
+        return self._data.get(key, [])
 
     def __getitem__(self, key):
         return self.__handle_key__(key, allow_missing=False)

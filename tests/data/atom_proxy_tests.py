@@ -74,6 +74,11 @@ class AtomProxyTest(TestCase):
         ans = np.array([0.5, 0.5, 0.0])
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
+    def test_can_get_all_atoms_with_star(self):
+        val = self.proxy['*']
+        ans = np.array([1.5, 0.25, 0.0])
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
     def test_can_get_average_from_set_of_atoms(self):
         atoms = set(['a1', 'c2'])
         val = self.proxy[atoms]
@@ -86,10 +91,21 @@ class AtomProxyTest(TestCase):
         val = self.proxy['bob']
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
+    def test_can_define_a_center_for_one_atom(self):
+        self.proxy.define('bob', 'a1')
+        ans = np.array([1.0, 0.0, 0.0])
+        val = self.proxy['bob']
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
+    def test_can_define_a_center_with_missing_atoms(self):
+        self.proxy.define('bob', ['a1', 'c2', 'steve'])
+        ans = np.array([0.5, 0.5, 0.0])
+        val = self.proxy.lookup('bob')
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
     def test_defining_stores_a_key(self):
-        raise SkipTest()
-        # self.proxy.define('bob', 'a1')
-        # self.assertTrue('bob' in self.proxy)
+        self.proxy.define('bob', 'a1')
+        self.assertTrue('bob' in self.proxy)
 
     def test_can_lookup_with_missing_values(self):
         val = self.proxy.lookup(['a1', 'c2', '3'], allow_missing=True)
