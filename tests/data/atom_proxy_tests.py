@@ -103,6 +103,17 @@ class AtomProxyTest(TestCase):
         val = self.proxy.lookup('bob')
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
+    def test_can_define_a_center_with_missing_atoms_but_fail_access(self):
+        self.proxy.define('bob', ['a1', 'c2', 'steve'])
+        self.assertRaises(KeyError, lambda: self.proxy['bob'])
+
+    def test_can_defining_and_accessing_prevents_future_failures(self):
+        self.proxy.define('bob', ['a1', 'c2', 'steve'])
+        self.proxy.lookup('bob')
+        ans = np.array([0.5, 0.5, 0.0])
+        val = self.proxy['bob']
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
     def test_defining_stores_a_key(self):
         self.proxy.define('bob', 'a1')
         self.assertTrue('bob' in self.proxy)
