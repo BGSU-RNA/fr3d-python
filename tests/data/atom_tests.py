@@ -12,9 +12,7 @@ class AtomTest(ut.TestCase):
                          x=-1, y=0, z=0)
 
     def test_has_item_access(self):
-        val = self.atom.x
-        ans = -1
-        self.assertEqual(val, ans)
+        self.assertEqual(-1, self.atom.x)
 
     def test_computes_a_unit_id(self):
         val = self.atom.unit_id()
@@ -32,9 +30,8 @@ class AtomTest(ut.TestCase):
         np.testing.assert_array_equal(val, ans)
 
     def test_can_get_distance_between_atoms(self):
-        val = self.atom - Atom(x=1, y=0, z=0)
-        ans = 2.0
-        self.assertEqual(ans, val)
+        val = self.atom.distance(Atom(x=1, y=0, z=0))
+        self.assertEqual(2.0, val)
 
 
 class AtomTransformationTest(ut.TestCase):
@@ -42,27 +39,28 @@ class AtomTransformationTest(ut.TestCase):
     def setUp(self):
         self.atom = Atom(pdb='1GID', model=1, chain='A', component_id='C',
                          component_number=50, name="C1'", symmetry='6_555',
-                         x=-1, y=0, z=2)
-
-    def test_transform_moves_coordiantes(self):
+                         x=-1, y=0, z=2, type='Bob', polymeric=True)
         trans = np.array([[1.0, 0.0, 0.0, 0.0],
                           [0.0, -1.0, 0.0, 97.240],
                           [0.0, 0.0, -1.0, 0.0],
                           [0.0, 0.0, 0.0, 1.0]])
-        atom = self.atom.transform(trans)
-        val = [atom.x, atom.y, atom.z]
+        self.trans = self.atom.transform(trans)
+
+    def test_transform_moves_coordiantes(self):
+        val = [self.trans.x, self.trans.y, self.trans.z]
         ans = [-1.0, 97.240, -2.0]
         self.assertEquals(ans, val)
 
     def test_transform_preserves_unit_id(self):
-        trans = np.array([[1.0, 0.0, 0.0, 0.0],
-                          [0.0, -1.0, 0.0, 97.240],
-                          [0.0, 0.0, -1.0, 0.0],
-                          [0.0, 0.0, 0.0, 1.0]])
-        atom = self.atom.transform(trans)
-        val = atom.unit_id()
+        val = self.trans.unit_id()
         ans = self.atom.unit_id()
         self.assertEquals(ans, val)
+
+    def test_perserves_the_type(self):
+        self.assertEquals('Bob', self.trans.type)
+
+    def test_perserves_the_polymeric(self):
+        self.assertEquals(True, self.trans.polymeric)
 
 
 class AtomUnitIdTest(ut.TestCase):

@@ -9,13 +9,13 @@ from fr3d.data import Component
 class BasicTest(ut.TestCase):
     def setUp(self):
         self.atoms = [
-            Atom(type='C', name='a1', type_name='A', number=3,
+            Atom(type='C', name='a1', polymeric='A', component_number=3,
                  x=0.0, y=0.0, z=0.0),
-            Atom(type='C', name='a2', type_name='B', number=2,
+            Atom(type='C', name='a2', polymeric='B', component_number=2,
                  x=0.0, y=0.0, z=0.0),
-            Atom(type='N', name='b1', type_name='C', number=1,
+            Atom(type='N', name='b1', polymeric='C', component_number=1,
                  x=0.0, y=0.0, z=0.0),
-            Atom(type='N', name='c2', type_name='C', number=0,
+            Atom(type='N', name='c2', polymeric='C', component_number=0,
                  x=0.0, y=0.0, z=0.0)
         ]
         self.component = Component(self.atoms, type='rna', pdb='1GID', model=1,
@@ -38,22 +38,22 @@ class BasicTest(ut.TestCase):
         self.assertEquals(val, ans)
 
     def test_can_get_filtered_atoms(self):
-        val = self.component.atoms(type='C')
+        val = list(self.component.atoms(type='C'))
         ans = self.atoms[0:2]
         self.assertEquals(val, ans)
 
     def test_can_filter_using_a_list(self):
-        val = self.component.atoms(type_name=['A', 'C'])
+        val = list(self.component.atoms(polymeric=['A', 'C']))
         ans = [self.atoms[0], self.atoms[2], self.atoms[3]]
         self.assertEquals(val, ans)
 
     def test_can_filter_using_a_function(self):
-        val = self.component.atoms(type_name=lambda a: a == 'C')
+        val = list(self.component.atoms(polymeric=lambda a: a == 'C'))
         ans = self.atoms[2:4]
         self.assertEquals(val, ans)
 
     def test_can_filter_by_several_attributes(self):
-        val = self.component.atoms(type='C', type_name='B')
+        val = list(self.component.atoms(type='C', polymeric='B'))
         ans = [self.atoms[1]]
         self.assertEquals(val, ans)
 
@@ -66,28 +66,28 @@ class BasicTest(ut.TestCase):
         self.assertFalse(val)
 
     def test_can_check_is_complete_using_custom_key(self):
-        val = self.component.is_complete([1, 2], key='number')
+        val = self.component.is_complete([1, 2], key='component_number')
         self.assertTrue(val)
 
     def test_can_check_is_not_complete_using_custom_key(self):
-        val = self.component.is_complete([1, 2, 10], key='number')
+        val = self.component.is_complete([1, 2, 10], key='component_number')
         self.assertFalse(val)
 
 
 class SubComponentTest(ut.TestCase):
     def setUp(self):
         self.atoms = [
-            Atom(type='C', name='a1', type_name='A', number=3,
+            Atom(type='C', name='a1', polymeric='A',
                  x=0.0, y=0.0, z=0.0),
-            Atom(type='C', name='a2', type_name='B', number=2,
+            Atom(type='C', name='a2', polymeric='B',
                  x=0.0, y=0.0, z=0.0),
-            Atom(type='N', name='b1', type_name='C', number=1,
+            Atom(type='N', name='b1', polymeric='C',
                  x=0.0, y=0.0, z=0.0),
-            Atom(type='N', name='c2', type_name='C', number=0,
+            Atom(type='N', name='c2', polymeric='C',
                  x=0.0, y=0.0, z=0.0)
         ]
         self.component = Component(self.atoms, type='rna', pdb='1GID', model=1,
-                                   chain='A', sequence='C', number=50,
+                                   chain='A', sequence='C',
                                    symmetry='6_555')
         self.sub = self.component.select(name=['a1', 'a2'])
 
@@ -97,7 +97,7 @@ class SubComponentTest(ut.TestCase):
         self.assertEquals(ans, val)
 
     def test_can_create_new_component_with_corrent_atoms(self):
-        val = self.sub.atoms()
+        val = list(self.sub.atoms())
         ans = self.atoms[0:2]
         self.assertEquals(ans, val)
 
@@ -134,7 +134,7 @@ class TransformTest(ut.TestCase):
                           [0.0, 0.0, -1.0, 0.0],
                           [0.0, 0.0, 0.0, 1.0]])
         residue = self.residue.transform(trans)
-        val = list(residue.atoms()[-1].coordinates())
+        val = list(list(residue.atoms())[-1].coordinates())
         ans = [1.0, 96.240, -1.0]
         self.assertEquals(ans, val)
 
@@ -147,3 +147,91 @@ class TransformTest(ut.TestCase):
         val = residue.unit_id()
         ans = "1GID|1|A|C|50||||6_555"
         self.assertEquals(ans, val)
+
+
+class InferHydrogenTest(ut.TestCase):
+    def setUp(self):
+        some_atoms = [
+            Atom(insertion_code='?', component_id='G', name='P', symmetry='1_555',
+                 component_number='118', chain='B', y=54.015, x=47.242,
+                 model='1', z=51.393, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='OP1', symmetry='1_555',
+                 component_number='118', chain='B', y=53.619, x=45.943,
+                 model='1', z=50.812, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='OP2', symmetry='1_555',
+                 component_number='118', chain='B', y=55.016, x=48.096,
+                 model='1', z=50.668, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="O5'", symmetry='1_555',
+                 component_number='118', chain='B', y=54.52, x=47.009,
+                 model='1', z=52.887, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="C5'", symmetry='1_555',
+                 component_number='118', chain='B', y=53.848, x=46.12,
+                 model='1', z=53.764, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="C4'", symmetry='1_555',
+                 component_number='118', chain='B', y=54.529, x=46.123,
+                 model='1', z=55.11, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="O4'", symmetry='1_555',
+                 component_number='118', chain='B', y=54.338, x=47.426,
+                 model='1', z=55.73, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="C3'", symmetry='1_555',
+                 component_number='118', chain='B', y=56.037, x=45.94,
+                 model='1', z=55.051, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="O3'", symmetry='1_555',
+                 component_number='118', chain='B', y=56.374, x=44.553,
+                 model='1', z=54.993, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="C2'", symmetry='1_555',
+                 component_number='118', chain='B', y=56.495, x=46.647,
+                 model='1', z=56.326, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="O2'", symmetry='1_555',
+                 component_number='118', chain='B', y=56.349, x=45.878,
+                 model='1', z=57.494, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name="C1'", symmetry='1_555',
+                 component_number='118', chain='B', y=55.528, x=47.827,
+                 model='1', z=56.387, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='N9', symmetry='1_555',
+                 component_number='118', chain='B', y=56.026, x=49.033,
+                 model='1', z=55.738, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='C8', symmetry='1_555',
+                 component_number='118', chain='B', y=55.785, x=49.442,
+                 model='1', z=54.455, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='N7', symmetry='1_555',
+                 component_number='118', chain='B', y=56.371, x=50.566,
+                 model='1', z=54.161, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='C5', symmetry='1_555',
+                 component_number='118', chain='B', y=57.031, x=50.913,
+                 model='1', z=55.323, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='C6', symmetry='1_555',
+                 component_number='118', chain='B', y=57.827, x=52.019,
+                 model='1', z=55.608, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='O6', symmetry='1_555',
+                 component_number='118', chain='B', y=58.131, x=52.969,
+                 model='1', z=54.873, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='N1', symmetry='1_555',
+                 component_number='118', chain='B', y=58.301, x=51.975,
+                 model='1', z=56.907, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='C2', symmetry='1_555',
+                 component_number='118', chain='B', y=58.033, x=50.991,
+                 model='1', z=57.814, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='N2', symmetry='1_555',
+                 component_number='118', chain='B', y=58.557, x=51.138,
+                 model='1', z=59.032, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='N3', symmetry='1_555',
+                 component_number='118', chain='B', y=57.299, x=49.949,
+                 model='1', z=57.556, pdb='1GID'),
+            Atom(insertion_code='?', component_id='G', name='C4', symmetry='1_555',
+                 component_number='118', chain='B', y=56.828, x=49.974,
+                 model='1', z=56.301, pdb='1GID')
+        ]
+
+        self.res = Component(some_atoms, type='rna', pdb='1GID', model=1,
+                             chain='A', sequence='G', number=50,
+                             symmetry='6_555')
+
+    def test_has_no_hydrogens_initially(self):
+        atoms = list(self.res.atoms(name=['H1', 'H8', 'H9', '1H2', '2H2']))
+        self.assertEqual(len(atoms), 0)
+
+    def test_hydrogen_infers_on_residue(self):
+        self.res.infer_hydrogens()
+        atoms = list(self.res.atoms(name=['H1', 'H8', 'H9', '1H2', '2H2']))
+        self.assertEqual(len(atoms), 5)
