@@ -1,4 +1,5 @@
 from unittest import TestCase
+from nose import SkipTest
 
 import numpy as np
 
@@ -84,6 +85,11 @@ class AtomProxyTest(TestCase):
         ans = np.array([0.5, 0.5, 0.0])
         val = self.proxy['bob']
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
+    def test_defining_stores_a_key(self):
+        raise SkipTest()
+        # self.proxy.define('bob', 'a1')
+        # self.assertTrue('bob' in self.proxy)
 
     def test_can_lookup_with_missing_values(self):
         val = self.proxy.lookup(['a1', 'c2', '3'], allow_missing=True)

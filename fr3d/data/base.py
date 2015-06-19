@@ -72,9 +72,24 @@ class AtomProxy(col.MutableMapping):
         self._data = {}
 
     def define(self, name, atoms):
-        self._data[name] = tuple(atoms)
+        """Define a center to be computed later. This will make it possible to
+        use the name to access the center, but unlike simply setting it, the
+        center will not be computed until accessed.
+
+        :name: The name of the center.
+        :atoms: A list of atoms to use to compute the center.
+        """
+        self._data[name] = set(atoms)
 
     def lookup(self, names, allow_missing=True):
+        """Lookup a center but allow for missing atoms. This will attempt to lookup
+        all atoms but simply ignore those that are missing when computing the
+        center. If no atoms are present an empty list is returned. Unlike a
+        simple [] this will not raise a KeyError if an atom is missing.
+
+        :names: The name(s) to use to compute the center.
+        :allow_missing: Flag for allowing missing atoms.
+        """
         return self.__handle_key__(names, allow_missing=allow_missing)
 
     def __coordinates__(self, names, allow_missing=False):
@@ -86,24 +101,25 @@ class AtomProxy(col.MutableMapping):
         if len(coordinates) < len(names) and not allow_missing:
             raise KeyError("Missing coordinates for: %s" % ', '.join(names))
 
+        if len(coordinates) == 0:
+            return []
+
         if len(coordinates) == 1:
             return coordinates[0]
 
         return np.average(coordinates, axis=0)
 
     def __handle_key__(self, key, **kwargs):
-        if isinstance(key, list) or isinstance(key, set) or \
-                key not in self._data:
-            if isinstance(key, tuple) or isinstance(key, list) or \
-                    isinstance(key, set):
-                return self.__coordinates__(set(key), **kwargs)
+        if isinstance(key, (list, set, tuple)):
+            return self.__coordinates__(set(key), **kwargs)
+        elif key not in self._data:
             return self.__coordinates__(set([key]), **kwargs)
-        elif isinstance(self._data[key], tuple):
-            self._data[key] = self.__coordinates__(set(self._data[key]),
-                                                   **kwargs)
+        elif isinstance(self._data[key], set):
+            self._data[key] = self.__coordinates__(self._data[key], **kwargs)
+
         if not kwargs.get('allow_missing'):
             return self._data[key]
-        return kwargs.get('allow_missing', [])
+        return self._data.get('allow_missing', [])
 
     def __getitem__(self, key):
         return self.__handle_key__(key, allow_missing=False)
