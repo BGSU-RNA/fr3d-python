@@ -168,6 +168,11 @@ class Component(EntitySelector):
                          polymeric=self.polymeric)
 
     def unit_id(self):
+        """Compute the unit id of this Component.
+
+        :returns: The unit id.
+        """
+
         return encode({
             'pdb': self.pdb,
             'model': self.model,

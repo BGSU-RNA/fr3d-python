@@ -157,16 +157,25 @@ class Cif(object):
         return chem
 
     def structure(self):
-        """Get the list of a structures in the Cif file.
+        """Get the structure from the Cif file.
 
-        :returns: A list of all structures in the Cif file.
+        :returns: The first structure in the cif file.
         """
 
         pdb = self.data.getName()
         residues = self.__residues__(pdb)
-        return Structure(residues, pdb=pdb)
+        return Structure(list(residues), pdb=pdb)
 
     def experimental_sequence(self, chain):
+        """Get the experimental sequence for a given chain.
+
+        :chain: The chain name to use, should be the pdb_strand_id in the cif
+        file.
+        :returns: A list of the sequence. The entries in the list may be 1, 2
+        or 3 character entries if the chain is RNA, DNA or amino acids
+        respectively.
+        """
+
         sequence = []
         for row in self.pdbx_poly_seq_scheme:
             if chain != row['pdb_strand_id']:
@@ -175,6 +184,9 @@ class Cif(object):
         return sequence
 
     def experimental_sequence_mapping(self, chain):
+        """Create a mapping between the
+        """
+
         seen = set()
         pdb = self.data.getName()
 
@@ -229,7 +241,8 @@ class Cif(object):
         pass
 
     def __residues__(self, pdb):
-        mapping = it.groupby(self.__atoms__(pdb),
+        mapping = it.groupby(sorted(self.__atoms__(pdb),
+                                    key=lambda a: a.component_unit_id()),
                              lambda a: a.component_unit_id())
 
         for comp_id, atoms in mapping:
@@ -237,10 +250,14 @@ class Cif(object):
             first = atoms[0]
             type = self._chem.get(first.component_id, {})
             type = type.get('type', None)
+            alt_id = first.alt_id
+            if alt_id == '.':
+                alt_id = None
             yield Component(atoms,
                             pdb=first.pdb,
                             model=first.model,
                             type=type,
+                            alt_id=alt_id,
                             chain=first.chain,
                             symmetry=first.symmetry,
                             sequence=first.component_id,

@@ -70,18 +70,18 @@ class Pairs(object):
             cutoff = float(cutoff)
             if cutoff <= 0.0:
                 raise ValueError("Must give a cutoff greater than 0")
-            self._distances['cutoff'] = cutoff
+            self._distance['cutoff'] = cutoff
 
         if first_atoms:
-            self._distances['first_atoms'] = set(first_atoms)
+            self._distance['first_atoms'] = set(first_atoms)
 
         if second_atoms:
-            self._distances['second_atoms'] = set(second_atoms)
+            self._distance['second_atoms'] = set(second_atoms)
 
         if use:
             if use not in set('atoms', 'center'):
                 raise ValueError("Use must be atoms or center")
-            self._distances['use'] = use
+            self._distance['use'] = use
 
     def __iter__(self):
         """Create the iterator.
@@ -101,13 +101,13 @@ class Pairs(object):
                            self.structure.residues(**self._second))
 
         first_atoms = self._distance.get('first_atoms')
-        second_atoms = self._distances.get('second_atoms')
+        second_atoms = self._distance.get('second_atoms')
 
-        if self._distances:
+        if self._distance:
             fn = center_filter(first_atoms, second_atoms, self._distance['cutoff'])
             pairs = it.ifilter(fn, pairs)
 
-        if self._distances.get('use') == 'atoms':
+        if self._distance.get('use') == 'atoms':
             fn = atom_filter(first_atoms, second_atoms, self._distance['cutoff'])
             pairs = it.ifilter(fn, pairs)
 

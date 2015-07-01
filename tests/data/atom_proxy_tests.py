@@ -35,6 +35,9 @@ class AtomProxyTest(TestCase):
     def test_knows_is_missing_a_value(self):
         self.assertFalse('bob' in self.proxy)
 
+    def test_it_knows_if_has_atom(self):
+        self.assertTrue('a1' in self.proxy)
+
     def test_can_test_has_value(self):
         self.proxy['bob'] = 1
         self.assertTrue('bob' in self.proxy)
@@ -60,8 +63,9 @@ class AtomProxyTest(TestCase):
         ans = np.array([3.0, 2.0, 1.0])
         np.testing.assert_almost_equal(ans, val)
 
-    def test_fails_if_given_several_with_missing_name(self):
-        self.assertRaises(KeyError, lambda: self.proxy['a1', 'c1'])
+    def test_does_not_fail_if_given_several_with_missing_name(self):
+        np.testing.assert_almost_equal(np.array([1.0, 0.0, 0.0]),
+                                       self.proxy['a1', 'c1'])
 
     def test_can_get_average_of_several_atoms(self):
         val = self.proxy['a1', 'c2']
@@ -103,9 +107,11 @@ class AtomProxyTest(TestCase):
         val = self.proxy.lookup('bob')
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
-    def test_can_define_a_center_with_missing_atoms_but_fail_access(self):
+    def test_can_define_a_center_with_missing_atoms_but_accesss(self):
         self.proxy.define('bob', ['a1', 'c2', 'steve'])
-        self.assertRaises(KeyError, lambda: self.proxy['bob'])
+        val = self.proxy['bob']
+        ans = np.array([0.5, 0.5, 0.0])
+        np.testing.assert_array_almost_equal(ans, val, decimal=3)
 
     def test_can_defining_and_accessing_prevents_future_failures(self):
         self.proxy.define('bob', ['a1', 'c2', 'steve'])

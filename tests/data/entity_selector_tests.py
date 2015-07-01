@@ -25,6 +25,11 @@ class BasicSelectionTest(TestCase):
         val = len(list(EntitySelector(self.atoms)))
         self.assertEquals(4, val)
 
+    def test_matches_everything_with_empty_filter(self):
+        filter = {}
+        val = len(list(EntitySelector(self.atoms), **filter))
+        self.assertEquals(4, val)
+
     def test_gives_nothing_if_no_match(self):
         val = list(EntitySelector(self.atoms, name='bob'))
         self.assertEquals([], val)

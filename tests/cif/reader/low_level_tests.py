@@ -1,3 +1,5 @@
+import itertools as it
+
 import numpy as np
 from nose import SkipTest
 
@@ -236,7 +238,8 @@ class ProblematicReadingTest(ReaderTest):
     name = '1AQ3'
 
     def test_can_set_default_name(self):
-        atoms = self.structure.atoms()
+        atoms = it.imap(lambda r: r.atoms(), self.structure.residues())
+        atoms = it.chain.from_iterable(atoms)
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
         self.assertEquals('P1', atom.symmetry)
 

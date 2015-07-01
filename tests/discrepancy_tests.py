@@ -12,7 +12,6 @@ from fr3d.geometry.discrepancy import discrepancy
 
 from fr3d.data import Atom
 from fr3d.data import Component
-from fr3d.data import Container
 
 nt10_0 = Component([Atom(type='N', name='N1',x=19.679762,y=146.510834,z=106.455235),
                     Atom(type='C', name='C2',x=19.459715,y=146.692932,z=107.816836),

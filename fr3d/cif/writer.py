@@ -1,3 +1,5 @@
+import itertools as it
+
 from pdbx.writer.PdbxWriter import PdbxWriter as Writer
 
 from pdbx.reader.PdbxContainers import DataCategory
@@ -41,7 +43,10 @@ class CifAtom(object):
             return (atom.symmetry, atom.model, atom.chain,
                     atom.component_number, atom.insertion_code)
 
-        for index, atom in enumerate(sorted(structure.atoms(), key=key)):
+        all_atoms = it.imap(lambda r: r.atoms(),
+                            structure.residues(polymeric=None))
+        all_atoms = it.chain.from_iterable(all_atoms)
+        for index, atom in enumerate(sorted(all_atoms, key=key)):
             alt_id = getattr(atom, 'alt_id', '.')
             data = [atom.group, index, atom.type, atom.name,
                     alt_id, atom.component_id, atom.chain,

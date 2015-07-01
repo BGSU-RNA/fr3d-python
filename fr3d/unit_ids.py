@@ -13,9 +13,9 @@ DEFAULTS = {
     'chain': None,
     'component_id': None,
     'component_number': None,
-    'atom_name': '',
-    'alt_id': '',
-    'insertion_code': '',
+    'atom_name': None,
+    'alt_id': None,
+    'insertion_code': None,
     'symmetry': '1_555'
 }
 
@@ -38,13 +38,15 @@ def encode(data, full=False):
 
     ordered = []
 
-    defaults = DEFAULTS
+    if 'component_id' in data and 'component_number' not in data:
+        raise InvalidUnitId("Must give number if giving component_id")
+
+    if 'alt_id' in data and 'component_number' not in data and \
+            'atom_name' not in data:
+        raise InvalidUnitId("Must give number or atom name with alt_id")
 
     for field in FIELDS:
-        default = defaults[field]
-        if default is None and field not in data:
-            raise InvalidUnitId("Missing required field: " + field)
-
+        default = DEFAULTS[field]
         value = data.get(field, default)
         if value is None:
             ordered.append('')
@@ -52,8 +54,10 @@ def encode(data, full=False):
             ordered.append(str(value))
 
     if not full:
-        possible = ['symmetry', 'insertion_code', 'alt_id', 'atom_name']
-        while possible and ordered[-1] == DEFAULTS[possible[0]]:
+        possible = ['symmetry', 'insertion_code', 'alt_id', 'atom_name',
+                    'component_number', 'component_id', 'chain', 'model']
+        while possible and ordered[-1] == DEFAULTS[possible[0]] or \
+                not ordered[-1]:
             ordered.pop()
             possible.pop(0)
 
@@ -74,9 +78,13 @@ def decode(unit_id):
 
     total.update(dict(zip(fields, parts)))
 
-    if total['model'] is not None:
+    for key, value in total.items():
+        if not value:
+            total[key] = None
+
+    if total['model']:
         total['model'] = int(total['model'])
-    if total['component_number'] is not None:
+    if total['component_number']:
         total['component_number'] = int(total['component_number'])
 
     return total

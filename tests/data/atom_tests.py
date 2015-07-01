@@ -34,6 +34,20 @@ class AtomTest(ut.TestCase):
         self.assertEqual(2.0, val)
 
 
+class AlternativeAtomTest(ut.TestCase):
+    def setUp(self):
+        self.atom = Atom(pdb='4OQ8', model=1, chain='A', component_id='SER',
+                         component_number=27, name='CA', alt_id='A',
+                         symmetry='PP')
+
+    def test_has_a_unit_id(self):
+        self.assertEquals('4OQ8|1|A|SER|27|CA|A||PP', self.atom.unit_id())
+
+    def test_has_a_component_id(self):
+        self.assertEquals('4OQ8|1|A|SER|27||A||PP',
+                          self.atom.component_unit_id())
+
+
 class AtomTransformationTest(ut.TestCase):
 
     def setUp(self):
