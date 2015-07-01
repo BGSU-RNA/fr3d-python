@@ -5,6 +5,7 @@ on, such as Atoms and Components.
 
 import collections as col
 import itertools as it
+import operator as op
 
 import numpy as np
 
@@ -20,15 +21,16 @@ class EntitySelector(object):
         self.obj = obj
         self.options = kwargs
 
-    def __collection_filter__(self, key, collection):
-        data = set(collection)
-        return lambda obj: getattr(obj, key, None) in data
-
     def __callable_filter__(self, key, func):
         return lambda obj: func(getattr(obj, key, None))
 
-    def __basic_filter__(self, key, value):
-        return lambda obj: getattr(obj, key, None) == value
+    def __basic_filter__(self, key, value, compare):
+        def fn(obj):
+            attr = getattr(obj, key, None)
+            if callable(attr):
+                return compare(attr(), value)
+            return compare(attr, value)
+        return fn
 
     def __iter__(self):
         """This method is a way to sort and filter an object easily. The
@@ -52,11 +54,12 @@ class EntitySelector(object):
                 filtered = it.ifilter(self.__callable_filter__(key, value),
                                       filtered)
             elif isinstance(value, (list, set, tuple)):
-                filtered = it.ifilter(self.__collection_filter__(key, value),
-                                      filtered)
+                func = self.__basic_filter__(key, set(value),
+                                             lambda a, b: op.contains(b, a))
+                filtered = it.ifilter(func, filtered)
             else:
-                filtered = it.ifilter(self.__basic_filter__(key, value),
-                                      filtered)
+                func = self.__basic_filter__(key, value, op.eq)
+                filtered = it.ifilter(func, filtered)
 
         return filtered
 
@@ -95,7 +98,7 @@ class AtomProxy(col.MutableMapping):
         """
         return self.__handle_key__(names, allow_missing=allow_missing)
 
-    def __coordinates__(self, names, allow_missing=False):
+    def __coordinates__(self, names, allow_missing=True):
         coords = []
         if names == set('*'):
             coords = [atom.coordinates() for atom in self._atoms]
@@ -119,16 +122,14 @@ class AtomProxy(col.MutableMapping):
         elif key not in self._data:
             return self.__coordinates__(set([key]), **kwargs)
         elif isinstance(self._data[key], set):
-            print(self._data[key])
             self._data[key] = self.__coordinates__(self._data[key], **kwargs)
-            print(self._data[key])
 
         if not kwargs.get('allow_missing'):
             return self._data[key]
         return self._data.get(key, [])
 
     def __getitem__(self, key):
-        return self.__handle_key__(key, allow_missing=False)
+        return self.__handle_key__(key, allow_missing=True)
 
     def __setitem__(self, key, value):
         self._data[key] = value
@@ -142,6 +143,15 @@ class AtomProxy(col.MutableMapping):
 
         for atom in self._atoms:
             yield atom.name
+
+    def __contains__(self, key):
+        if key in self._data:
+            return True
+
+        for atom in self._atoms:
+            if atom.name == key:
+                return True
+        return False
 
     def __len__(self):
         return len(self._data) + len(self._atoms)
