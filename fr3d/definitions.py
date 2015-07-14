@@ -2,10 +2,19 @@ RNAbaseheavyatoms = {}
 RNAbasehydrogens = {}
 RNAconnections = {}
 Ribophos_connect = {}
-
+tilt_cutoff = {}
+#dist_cent_cutoff = {}
 aa_connections = {}
 aa_backconnect = {}
 
+#Creating dictionaries for detecting edges of nts
+
+WC = {}
+Hoogsteen = {}
+Sugar = {}
+#Defining center-to-center and tilt cutoffs for stacking
+#dist_cent_cutoff = {'TRP':7,'TYR': 7,'PHE':7, 'ALA':6,'ARG':6}
+tilt_cutoff= {'ALA': 2,'VAL': 0.6,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 2.9,'CYS': 1.0}
 #Definitions for drawing the amino acids
 
 aa_backconnect['ARG']=['N','CA','CA','C','C','O','C','CA']
@@ -36,9 +45,9 @@ aa_connections['GLN'] =['CA','CB','CB','CG','CG','CD','CD','OE1','CD','NE2']
 aa_connections['ASN'] =['CA','CB','CB','CG','CG','ND2']
 aa_connections['GLU'] =['CA','CB','CB','CG','CG','CD','CD','OE1','CD','OE2']
 aa_connections['ASP'] =['CA','CB','CB','CG','CG','OD2']
-aa_connections['TRP'] =['CA','CB','CB','CG','CG','CD1','CD1','NE1','NE1','CE2','CE2','CD2','CD2','CE3','CE3','CZ3','CZ3','CH2','CH2','CZ2','CZ2','CE2']
+aa_connections['TRP'] =['CA','CB','CB','CG','CG','CD1','CD1','NE1','NE1','CE2','CE2','CD2','CD2','CG','CD2','CE3','CE3','CZ3','CZ3','CH2','CH2','CZ2','CZ2','CE2']
 aa_connections['TYR'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','OH','CZ','CE2','CE2','CD2','CG']
-aa_connections['PHE'] =['CA','CB','CB','CG','CG','CD1','CD1','CD2','CD2','CE1','CE1','CZ','CZ','CE2']
+aa_connections['PHE'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','CE2','CE2','CD2','CD2','CG']
 aa_connections['PRO'] =['CA','CB','CB','CG','CG','CD','CD','N']
 aa_connections['MET'] =['CA','CB','CB','CG','CG','SD','SD','CE']
 aa_connections['ILE'] =['CA','CB','CB','CG1','CG1','CG2','CG2','CD1']
@@ -62,7 +71,7 @@ Ribophos_connect['U'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O
 Ribophos_connect['G'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
 Ribophos_connect['C'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
 
-#RNA-amino acid computation definitions
+#RNA computation definitions
 """Defining the parts of nt that we use to compute RNA-amino acid interactions"""
 
 RNAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
@@ -73,7 +82,7 @@ RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2'
 RNAbasehydrogens['G'] = ['H1','H8','H9','1H2','2H2']
 RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
 RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
-sugar_back = ["C1'","C2'","C3'","C4'","O4'""C5'"]
+sugar_back = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'","P","OP1","OP2"]
 
 nt_backbone = {}
 
@@ -81,6 +90,8 @@ nt_backbone['A'] = sugar_back
 nt_backbone['U'] = sugar_back
 nt_backbone['C'] = sugar_back
 nt_backbone['G'] = sugar_back
+
+#Amino acid computation definitions
 
 """Defining the functional groups of sidechains of amino acids that interact
 with nts by Hydrogenbonding. aa_fg refers to the functional group of the
@@ -102,7 +113,7 @@ aa_fg['LYS'] = ['NZ']
                  
 aa_backbone['HIS'] = backbone
 aa_linker['HIS'] = ['CB']
-aa_fg['HIS'] = ['CG','CE1','NE2','CD2','ND1']
+aa_fg['HIS'] = ['CG','CD2','NE2','CE1','ND1']
 
 aa_backbone['GLN'] = backbone
 aa_linker['GLN'] = ['CB','CG']
@@ -171,6 +182,23 @@ aa_fg['THR'] = ['CB','OG1','CG2']
 aa_backbone['CYS'] = backbone
 aa_linker['CYS'] = []
 aa_fg['CYS'] = ['CB','SG']
+
+#Defining edges of each nt
+WC['A']=['C2','N1','C6','N6']
+Hoogsteen['A']=['N6','C6','C5','N7','C8']
+Sugar['A'] =['C2','N3','C4','N9']
+
+WC['G']=['C2','N1','C6','O6']
+Hoogsteen['G']=['O6','C6','C5','N7','C8']
+Sugar['G'] =['C2','N3','C4','N9']
+
+WC['C']= ['C2','O2','N3','C4','N4']
+Hoogsteen['C']= ['N4','C4','C5']
+Sugar['C']= ['O2','C2','N1','C6']
+
+WC['U']= ['C2','O2','N3','C4','O4']
+Hoogsteen['U']= ['O4','C4','C5']
+Sugar['U']= ['O2','C2','N1','C6']
 
 # Quantum mechanics optimized base atom locations, by Jiri Sponer
 # OK to change the listing of nucleotides to a Numpy array, if that helps

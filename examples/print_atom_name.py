@@ -11,7 +11,7 @@ def main(filename):
     with open(filename, 'rb') as raw:
         structure = Cif(raw).structure()
         print('Iterating over atoms')
-    for residue in structure.residues(chain='A', sequence=['C']):
+    for residue in structure.residues(chain='A', sequence = 'U'):
         for atom in residue.atoms():
             print residue            
             print(atom.name)
