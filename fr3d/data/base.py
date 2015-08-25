@@ -73,6 +73,7 @@ class AtomProxy(col.MutableMapping):
     def __init__(self, atoms):
         self._atoms = atoms
         self._data = {}
+        self._definitions = {}
 
     def define(self, name, atoms):
         """Define a center to be computed later. This will make it possible to
@@ -82,10 +83,22 @@ class AtomProxy(col.MutableMapping):
         :name: The name of the center.
         :atoms: A list of atoms to use to compute the center.
         """
+
+        self._definitions[name] = atoms
+
         if isinstance(atoms, basestring):
             self._data[name] = set([atoms])
         else:
             self._data[name] = set(atoms)
+
+    def definition(self, name):
+        """Get the definition for the given name. If the name is not defined
+        then None is returned.
+
+        :name: The name of the center.
+        :returns: The set of atoms, if defined.
+        """
+        return self._definitions.get(name)
 
     def lookup(self, names, allow_missing=True):
         """Lookup a center but allow for missing atoms. This will attempt to lookup
@@ -145,7 +158,7 @@ class AtomProxy(col.MutableMapping):
             yield atom.name
 
     def __contains__(self, key):
-        if key in self._data:
+        if key in self._data or key == '*':
             return True
 
         for atom in self._atoms:
