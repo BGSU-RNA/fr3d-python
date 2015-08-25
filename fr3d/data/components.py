@@ -61,6 +61,13 @@ class Component(EntitySelector):
         :kwargs: The keyword arguments to filter and sort by.
         :returns: A list of the requested atoms.
         """
+
+        name = kwargs.get('name')
+        if isinstance(name, basestring):
+            definition = self.centers.definition(name)
+            if definition:
+                kwargs['name'] = definition
+
         return EntitySelector(self._atoms, **kwargs)
 
     def coordinates(self, **kwargs):
@@ -193,15 +200,37 @@ class Component(EntitySelector):
         :to: The atoms from the other component to compare against.
         :cutoff: The distances atoms must be within. Default 4.0
         """
+
+        kw1 = {}
+        if using:
+            kw1['name'] = using
+
+        kw2 = {}
+        if to:
+            kw2['name'] = to
+
+        print(kw1, kw2)
+        print(list(self.atoms(**kw1)))
+        print(self.centers._definitions)
+
+        for atom1 in self.atoms(**kw1):
+            for atom2 in other.atoms(**kw2):
+                if atom1.distance(atom2) <= abs(cutoff):
+                    return True
         return False
 
     def distance(self, other, using='*', to='*'):
         """Compute a center center distance between this and another component.
 
-        :using: A list
+        :other: The other component to get distance to.
+        :using: A list of atom names to use for this component. Defaults to '*'
+        meaning all atoms.
+        :to: A list of atoms names for the second component. Defaults to '*'
+        meaning all atoms.
+        :returns: The distance between the two centers.
         """
-        coordinates = self.center[using]
-        other_coord = other.center[using]
+        coordinates = self.centers[using]
+        other_coord = other.centers[to]
         distance = np.subtract(coordinates, other_coord)
         return np.linalg.norm(distance)
 

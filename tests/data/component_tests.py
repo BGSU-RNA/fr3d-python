@@ -300,3 +300,25 @@ class AtomsWithin(ut.TestCase):
         val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
                                            using=['C4', 'N3'], cutoff=1.0)
         self.assertFalse(val)
+
+
+class AtomTest(ut.TestCase):
+    def setUp(self):
+        self.atoms = [
+            Atom(name='N9', x=3.0, y=3.0, z=3.0),
+            Atom(name='C4', x=2.0, y=2.0, z=2.0),
+            Atom(name='N3', x=1.0, y=1.0, z=1.0),
+            Atom(name='C3', x=0.0, y=0.0, z=0.0),
+        ]
+        self.component = Component(self.atoms)
+
+    def test_it_can_get_atoms_by_name(self):
+        val = list(self.component.atoms(name=['N3', 'C4']))
+        ans = [self.atoms[1], self.atoms[2]]
+        self.assertEquals(ans, val)
+
+    def test_it_can_get_atoms_by_defined_names(self):
+        self.component.centers.define('example', ['N9', 'C3'])
+        val = list(self.component.atoms(name='example'))
+        ans = [self.atoms[0], self.atoms[-1]]
+        self.assertEquals(ans, val)

@@ -1,8 +1,6 @@
 import unittest as ut
 from random import shuffle
 
-from nose import SkipTest
-
 from fr3d.data import Structure
 
 from tests import define_1S72_nucleotides as nts
@@ -93,18 +91,3 @@ class FindingAResidueTest(ut.TestCase):
 
     def test_raises_exception_if_missing_index(self):
         self.assertRaises(IndexError, lambda: self.structure.residue(1000000))
-
-
-class PairsTest(ut.TestCase):
-    def setUp(self):
-        self.structure = Structure([nts.nt77_9, nts.nt78_9, nts.nt79_9,
-                                    nts.nt80_9], pdb="1S72")
-
-    def test_can_get_all_pairs_by_attributes(self):
-        val = list(self.structure.pairs(first={'sequence': 'A'},
-                                        second={'sequence': 'U'}))
-        ans = [(nts.nt77_9, nts.nt79_9), (nts.nt80_9, nts.nt79_9)]
-        self.assertEquals(ans, val)
-
-    def test_can_get_using_distance(self):
-        raise SkipTest()

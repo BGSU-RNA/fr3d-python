@@ -4,16 +4,17 @@
 import itertools as it
 
 
-def atom_filter(first_atoms, second_atoms, cutoff):
+def by_atom(first_atoms, second_atoms, cutoff):
     """Create a function to filter pairs by atom atom distances.
     """
     def filter(pair):
+        print('by_atom', pair[0], pair[1])
         return pair[0].atoms_within(pair[1], using=first_atoms,
                                     to=second_atoms, cutoff=cutoff)
     return filter
 
 
-def center_filter(first_atoms, second_atoms, cutoff):
+def by_center(first_atoms, second_atoms, cutoff):
     """Create a function to filter pairs by center-center distances.
     """
     def filter(p):
@@ -50,6 +51,7 @@ class Pairs(object):
 
     def distance(self, first_atoms=None, second_atoms=None, cutoff=None,
                  use=None):
+
         """Define the distance cutoffs. This allows the definition of the
         cutoff to use, weather or not to use atom-atom or center-center and the
         sets of atoms to use. If the sets of atoms to use are specified then
@@ -73,15 +75,22 @@ class Pairs(object):
             self._distance['cutoff'] = cutoff
 
         if first_atoms:
-            self._distance['first_atoms'] = set(first_atoms)
+            self._distance['first_atoms'] = first_atoms
 
         if second_atoms:
-            self._distance['second_atoms'] = set(second_atoms)
+            self._distance['second_atoms'] = second_atoms
 
         if use:
-            if use not in set('atoms', 'center'):
+            if use not in set(['atoms', 'center']):
                 raise ValueError("Use must be atoms or center")
             self._distance['use'] = use
+
+        if use == 'center':
+            if first_atoms is None:
+                self._distance['first_atoms'] = '*'
+
+            if second_atoms is None:
+                self._distance['second_atoms'] = '*'
 
     def __iter__(self):
         """Create the iterator.
@@ -97,18 +106,22 @@ class Pairs(object):
         if self._distance and 'cutoff' not in self._distance:
             raise ValueError("Cannot filter by distance without cutoff")
 
+        # Lazily compute all possible pairs
         pairs = it.product(self.structure.residues(**self._first),
                            self.structure.residues(**self._second))
+
+        # Exclude pairs of 1 component
+        pairs = it.ifilter(lambda (a, b): a != b, pairs)
 
         first_atoms = self._distance.get('first_atoms')
         second_atoms = self._distance.get('second_atoms')
 
         if self._distance:
-            fn = center_filter(first_atoms, second_atoms, self._distance['cutoff'])
+            fn = by_center(first_atoms, second_atoms, self._distance['cutoff'])
             pairs = it.ifilter(fn, pairs)
 
         if self._distance.get('use') == 'atoms':
-            fn = atom_filter(first_atoms, second_atoms, self._distance['cutoff'])
+            fn = by_atom(first_atoms, second_atoms, self._distance['cutoff'])
             pairs = it.ifilter(fn, pairs)
 
         return pairs
