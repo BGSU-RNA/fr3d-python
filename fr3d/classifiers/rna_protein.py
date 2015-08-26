@@ -9,9 +9,9 @@ class Classifier(BaseClassifier):
     def __init__(self):
         first = {'sequence': defs.RNAbaseheavyatoms.keys()}
         second = {'sequence': defs.aa_backconnect.keys()}
-        distance = {'center': 4.0}
-        super(BaseClassifier, self).__init__(first=first, second=second,
-                                             distance=distance)
+        distance = {'use': 'center', 'cutoff': 4.0}
+        super(Classifier, self).__init__(first=first, second=second,
+                                         distance=distance)
 
     def classification(self, first, second):
         pass
