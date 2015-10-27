@@ -241,7 +241,7 @@ class ProblematicReadingTest(ReaderTest):
         atoms = it.imap(lambda r: r.atoms(), self.structure.residues())
         atoms = it.chain.from_iterable(atoms)
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
-        self.assertEquals('P1', atom.symmetry)
+        self.assertEquals('P_1', atom.symmetry)
 
 
 class MutipleEntriesInExpSeqTest(ReaderTest):
@@ -267,7 +267,7 @@ class ExperimentalMappingWithNoIdentityOperator(ReaderTest):
     def test_can_generate_a_mapping(self):
         mapping = self.cif.experimental_sequence_mapping('B')
         val = decode(next(mapping)[2])
-        self.assertEquals('P1', val['symmetry'])
+        self.assertEquals('P_1', val['symmetry'])
 
 
 class ExperimentalMappingWithNoIdentityOperators2(ReaderTest):
@@ -276,7 +276,7 @@ class ExperimentalMappingWithNoIdentityOperators2(ReaderTest):
     def test_can_generate_mappings(self):
         mapping = self.cif.experimental_sequence_mapping('1')
         val = decode(next(mapping)[2])
-        self.assertEquals('P1', val['symmetry'])
+        self.assertEquals('P_1', val['symmetry'])
 
 
 class MappingWithNonStandardModel(ReaderTest):

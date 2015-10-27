@@ -329,7 +329,7 @@ class Cif(object):
     def __symmetry_name__(self, symmetry):
         symmetry_name = symmetry.get('name')
         if not symmetry_name or symmetry_name == '?':
-            symmetry_name = 'P%s' % symmetry['id']
+            symmetry_name = 'P_%s' % symmetry['id']
         return symmetry_name
 
     def table(self, name):
