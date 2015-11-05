@@ -74,6 +74,12 @@ class BasicTest(ut.TestCase):
         val = self.component.is_complete([1, 2, 10], key='component_number')
         self.assertFalse(val)
 
+    def test_knows_is_equal_to_itself(self):
+        self.assertTrue(self.component == self.component)
+
+    def test_knows_is_equal_to_equivelant_component(self):
+        self.assertTrue(self.component == self.component.select())
+
 
 class SubComponentTest(ut.TestCase):
     def setUp(self):

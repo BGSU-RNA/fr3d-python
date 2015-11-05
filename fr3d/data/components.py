@@ -86,7 +86,7 @@ class Component(EntitySelector):
         :kwargs: As for atoms.
         :returns: A new Component
         """
-        return Component(self.atoms(**kwargs),
+        return Component(list(self.atoms(**kwargs)),
                          pdb=self.pdb,
                          model=self.model,
                          type=self.type,
@@ -237,6 +237,17 @@ class Component(EntitySelector):
         :returns: The number of atoms.
         """
         return len(self._atoms)
+
+    def __eq__(self, other):
+        return isinstance(other, Component) and \
+            self.pdb == other.pdb and \
+            self.model == other.model and \
+            self.chain == other.chain and \
+            self.symmetry == other.symmetry and \
+            self.sequence == other.sequence and \
+            self.number == other.number and \
+            self.insertion_code == other.insertion_code and \
+            self.alt_id == other.alt_id
 
     def __repr__(self):
         return '<Component %s>' % self.unit_id()
