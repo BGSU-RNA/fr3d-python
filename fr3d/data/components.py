@@ -209,10 +209,6 @@ class Component(EntitySelector):
         if to:
             kw2['name'] = to
 
-        print(kw1, kw2)
-        print(list(self.atoms(**kw1)))
-        print(self.centers._definitions)
-
         for atom1 in self.atoms(**kw1):
             for atom2 in other.atoms(**kw2):
                 if atom1.distance(atom2) <= abs(cutoff):
