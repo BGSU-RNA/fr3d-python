@@ -296,14 +296,36 @@ class MappingWithDuplicateEntries(ReaderTest):
         self.mapping = list(self.cif.experimental_sequence_mapping('G'))
 
     def test_it_creates_correct_number_of_mappings(self):
-        self.assertEquals(32, len(self.mapping))
+        # 14 (unosbered) + 2 * 18 (observed with 2 alt ids each)
+        self.assertEquals(50, len(self.mapping))
+
+    def test_it_can_map_to_none(self):
+        val = self.mapping[28]
+        ans = ('C', '4X4N|Sequence|G|C|20', None)
+        self.assertEquals(ans, val)
 
     def test_it_takes_the_first_entry(self):
-        val = self.mapping[28]
-        ans = ('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|A|29')
+        val = self.mapping[43:45]
+        ans = [('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|A|29||A'),
+               ('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|G|29||B')]
         self.assertEquals(ans, val)
 
-    def test_it_does_duplicae(self):
-        val = self.mapping[29]
-        ans = ('U', '4X4N|Sequence|G|U|30', '4X4N|1|G|U|30')
+    def test_it_does_duplicate(self):
+        val = self.mapping[45]
+        ans = ('U', '4X4N|Sequence|G|U|30', '4X4N|1|G|C|30||B')
         self.assertEquals(ans, val)
+
+
+class MappingWithAltidsTest(ReaderTest):
+    name = '2G32'
+
+    def setUp(self):
+        super(MappingWithAltidsTest, self).setUp()
+        self.mapping = list(self.cif.experimental_sequence_mapping('L'))
+
+    def test_it_builds_all_mappings(self):
+        self.assertEquals(16, len(self.mapping))
+
+    def test_it_build_mappings_using_alt_ids(self):
+        val = self.mapping[0]
+        self.assertEquals('2G32|1|L|0C|90||A', val[2])

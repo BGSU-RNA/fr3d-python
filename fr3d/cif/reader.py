@@ -184,30 +184,40 @@ class Cif(object):
         return sequence
 
     def experimental_sequence_mapping(self, chain):
-        """Create a mapping between the
+        """Create a mapping between the observed sequences and the experimental
+        sequences. This allows the determination of what residues are
+        unobserved and which are observed as well as where the gaps in the
+        structure are. This will prevent duplicate mappings from being created.
+        In some cases, like 4X4N, there are duplicate entries for a single unit
+        id like position.
+
+        :chain: Name of the chain to use.
+        :returns: An iterable that produces the sequence, the sequence unit id,
+        the unit id.
         """
 
-        seen = set()
         pdb = self.data.getName()
+        mapping = coll.defaultdict(list)
+        for residue in self.__residues__(pdb):
+            if residue.chain == chain:
+                key = (residue.number, residue.insertion_code)
+                mapping[key].append(residue.unit_id())
+        mapping = dict(mapping)
 
         entries = self.pdbx_poly_seq_scheme
         filtered = it.ifilter(lambda r: r['pdb_strand_id'] == chain, entries)
-        model = self.atom_site[0]['pdbx_PDB_model_num']
+        # model = self.atom_site[0]['pdbx_PDB_model_num']
 
+        seen = set()
         prev_number = None
         for index, row in enumerate(filtered):
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
                 insertion_code = None
 
-            operators = self.operators(row['asym_id'])
-            symmetry = '1_555'
-            if operators:
-                symmetry = self.__symmetry_name__(operators[0])
-
             number = row['pdb_seq_num']
             if number == '?' or row['auth_seq_num'] == '?':
-                unit_id = None
+                unit_ids = [None]
             else:
                 if prev_number == number:
                     self.logger.warning("Duplicate pdbx_poly_seq_scheme "
@@ -215,27 +225,23 @@ class Cif(object):
                     continue
 
                 prev_number = number
-                unit_id = encode({
-                    'pdb': pdb,
-                    'model': model,
-                    'chain': chain,
-                    'component_id': row['pdb_mon_id'],
-                    'component_number': number,
-                    'insertion_code': insertion_code,
-                    'symmetry': symmetry
-                })
+                key = (int(number), insertion_code)
+
+                if key not in mapping:
+                    raise ValueError("Could not find unit for %s", key)
+
+                unit_ids = mapping[key]
 
             seq_data = (pdb, chain, row['mon_id'], row['seq_id'])
             seq_id = '%s|Sequence|%s|%s|%s' % seq_data
 
             if seq_id in seen:
                 raise ValueError("Can't map one sequence residue twice")
-            if unit_id and unit_id in seen:
-                raise ValueError("Can't map unit %s twice", unit_id)
 
             seen.add(seq_id)
-            seen.add(unit_id)
-            yield (row['mon_id'], seq_id, unit_id)
+            for unit_id in unit_ids:
+                seen.add(unit_id)
+                yield (row['mon_id'], seq_id, unit_id)
 
     def __breaks__(self):
         pass
