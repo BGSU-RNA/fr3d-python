@@ -244,3 +244,8 @@ class AltIdTest(ReaderTest):
         residues = list(self.structure.residues(symmetry='P_25'))
         val = list(residues[0].atoms())[0]
         self.assertEquals(None, val.alt_id)
+
+    def test_it_builds_atoms_with_correct_component_unit_id(self):
+        residues = list(self.structure.residues(symmetry='P_25'))
+        val = list(residues[0].atoms())[0]
+        self.assertEquals(residues[0].unit_id(), val.component_unit_id())
