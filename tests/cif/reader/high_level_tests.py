@@ -226,3 +226,21 @@ class UniqueUnitIdsTest(ReaderTest):
         val = len(set(r.unit_id() for r in self.structure.residues()))
         ans = len(list(r.unit_id() for r in self.structure.residues()))
         self.assertEquals(ans, val)
+
+
+class AltIdTest(ReaderTest):
+    name = '1CGM'
+
+    def test_it_has_no_duplicate_unit_ids(self):
+        val = len(set(r.unit_id() for r in self.structure.residues()))
+        ans = len(list(r.unit_id() for r in self.structure.residues()))
+        self.assertEquals(ans, val)
+
+    def test_it_builds_all_units(self):
+        val = list(self.structure.residues(symmetry='P_25'))
+        self.assertEquals(164, len(val))
+
+    def test_it_build_atoms_with_empty_alt_id(self):
+        residues = list(self.structure.residues(symmetry='P_25'))
+        val = list(residues[0].atoms())[0]
+        self.assertEquals(None, val.alt_id)
