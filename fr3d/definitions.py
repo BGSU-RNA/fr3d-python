@@ -7,9 +7,7 @@ Normal_residue = {}
 aa_connections = {}
 aa_backconnect = {}
 
-#Hard-coding for Maryam's code
-
-                       
+                      
 #List of amino acids for perpendicular interactions
 
 Perp_aa = set(['ARG','LYS','GLU','ASP','GLN','ASN','HIS','TYR','TRP','PHE'])
