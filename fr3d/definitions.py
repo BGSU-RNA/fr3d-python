@@ -8,51 +8,12 @@ aa_connections = {}
 aa_backconnect = {}
 
 #Hard-coding for Maryam's code
-ChainNames = {}
 
-ChainNames ['5AJ3'] = {'B' :'uS2m' , 'C': 'uS3m/ uS24m', 'E':'uS5m', 'F':'bS6m',
-                       'G':'uS7m', 'I':'uS9m', 'J':'uS10m', 'K':'uS11m', 'L':'uS12m',
-                       'N':'uS14m', 'O':'uS15m','P':'bS16m','Q':'uS17m',
-                       'R':'uS18m/ uS18c', 'T':'bL19m', 'U':'bS21m','a':'mS22',
-                       'b':'mS23', 'c':'mS25', 'd': 'mS26', 'e':'mS27', 'f':'bS1m/mS28',
-                       'g':'mS29','h':'mS31','i':'mS33','j':'mS34','k':'mS35','m':'mS37',
-                       'n':'mS38','o':'mS39','p':'mS40'}
-
-
-ChainNames ['3J9M'] = {'B' :'uS2m' , 'C': 'uS3m/ uS24m', 'D':'uS5m',
-                       'E':'bS6m', 'F':'uS7m', 'G':'uS9m', 'H':'uS10m',
-                       'I':'uS11m', 'J':'uS12m', 'K':'uS14m', 'L':'uS15m',
-                       'M':'bS16m', 'N':'uS17m', 'O':'bS18b/ mS40','P':'uS18m/ uS18c',
-                       'Q':'bS21m', 'R':'mS22', 'S':'mS23', 'T':'mS25', 'U':'mS26',
-                       'V': 'mS27', 'W':'bL27m','X':'mS29', 'Y':'mS31','Z':'mS33','0': 'bL32m',
-                       '1': 'bL33m', '2': 'bL34m', '3': 'bL35m', '4': 'bL36m',
-                       '5': 'mL37','6': 'mL38','7': 'mL39', '8': 'mL40','9': 'mL41',
-                       'a':'mS34', 'b':'mS35', 'c':'mS37', 'd': 'mS38', 'e':'ms39', 'f':'mL48',
-                       'g':'mL49','h':'mL50','i':'mL51','j':'mL52','k':'mL53','l':'mL54',
-                       'm':'bL31m', 'o':'mL63','p':'mL62','q':'mL62', 'r':'mL66/bS18a',
-                       's':'mL65/ mS30', 'AB':'uS2m','AC':'uS3m', 'AD':'uS5m',
-                       'AE':'bS6m', 'AF':'uS7m','AG':'uS9m', 'AH':'uS10m','AI':'uS11m',
-                       'AJ':'uS12m', 'AK':'uS14m', 'AL':'uS15m','AM':'bS16m','AN':'uS17m',
-                       'AO':'mS40/ bS18b', 'AP':'bS18m/ bS18c','AQ':'bS21m','AR':'mS22',
-                       'AS': 'mS23','AT': 'mS25','AU': 'mS26','AV': 'mS27','AW': 'bS21m',
-                       'AX': 'mS29','AY': 'mS31','AZ': 'mS33','A0': 'mS34','A1': 'mS35',
-                       'A2': 'mS37','A3': 'mS38','A4': 'mS39',}
-
-ChainNames ['3I8G'] = {'B':'bS1', 'E' :'uS2', 'F' :'uS3', 'G' :'uS4', 'H' :'uS5', 'I' :'bS6',
-                       'J' :'uS7', 'K' :'uS8', 'L' :'uS9', 'M' :'uS10', 'N' :'uS11',
-                       'O' :'uS12', 'P' :'uS13', 'Q': 'uS14', 'R' :'uS15', 'S' :'bS16',
-                       'T' :'bS17', 'U' :'uS18', 'V' :'uS19', 'W' :'bS20', 'X' :'bS21'}
-
-ChainNames ['2AW7'] = {'B' :'uS2', 'C' :'uS3', 'D' :'uS4', 'E' :'uS5', 'F' :'bS6',
-                       'G' :'uS7', 'H' :'uS8', 'I' :'uS9', 'J' :'uS10', 'K' :'uS11',
-                       'L' :'uS12', 'M' :'uS13', 'N': 'uS14', 'O' :'uS15', 'P' :'bS16',
-                       'Q' :'uS17', 'R' :'bS18', 'S' :'uS19', 'T' :'bS20', 'U' :'bS21'}
-                       
 #List of amino acids for perpendicular interactions
 
 Perp_aa = set(['ARG','LYS','GLU','ASP','GLN','ASN','HIS','TYR','TRP','PHE'])
 
-#Dictionaries for normal to plane calculations
+#Dictionaries for normal to plane calculations for aafg-base/ aafg-ntbb interactions
 
 Normal_residue['A'] = ['C4','C5','N3']
 Normal_residue['U'] = ['C2','N1','N3']
@@ -81,29 +42,9 @@ Normal_residue['SER'] =['CB','OG','CA']
 Normal_residue['THR'] =['CB','OG1','CG2']                       
 Normal_residue['CYS'] =['CB','SG','CB']
 
-
-
-#Creating dictionaries for detecting edges of nts
-
-"""WC_1 = {}
-WC_2 = {}
-WC_3 = {}
-Hoogsteen_1 = {}
-Hoogsteen_2 = {}
-Sugar = {}
-
-WC_1['A']['HIS']= [6.000, 6.000, 5.500]
-WC_2['A']['HIS']= [4.000, 4.000, 4.500]
-WC_3['A']['HIS']= [6.000, 6.000, 6.500]
-
-Hoogsteen_1['A']['HIS']= [-1.000, -1.000, -1.100]
-Hoogsteen_2['A']['HIS']= [-3.000, -3.000, -3.000]
-
-Sugar['A']['HIS']= [4.000, 2.000, 4.000]
-"""
 #Defining center-to-center and tilt cutoffs for stacking
 #dist_cent_cutoff = {'TRP':7,'TYR': 7,'PHE':7, 'ALA':6,'ARG':6}
-tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 3.1,'CYS': 1.0, 'MET': 1.5}
+tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 2.5,'CYS': 1.0, 'MET': 1.5}
 
 #Definitions for drawing the amino acids
 
