@@ -103,8 +103,7 @@ class AtomProxy(col.MutableMapping):
     def lookup(self, names, allow_missing=True):
         """Lookup a center but allow for missing atoms. This will attempt to lookup
         all atoms but simply ignore those that are missing when computing the
-        center. If no atoms are present an empty list is returned. Unlike a
-        simple [] this will not raise a KeyError if an atom is missing.
+        center. If no atoms are present an empty numpy array is returned.
 
         :names: The name(s) to use to compute the center.
         :allow_missing: Boolean for allowing missing atoms, defaults to True.
@@ -122,7 +121,7 @@ class AtomProxy(col.MutableMapping):
             raise KeyError("Missing coordinates for: %s" % ', '.join(names))
 
         if not coords:
-            return coords
+            return np.array(coords)
 
         if len(coords) == 1:
             return coords[0]
@@ -139,7 +138,7 @@ class AtomProxy(col.MutableMapping):
 
         if not kwargs.get('allow_missing'):
             return self._data[key]
-        return self._data.get(key, [])
+        return self._data.get(key, np.array([]))
 
     def __getitem__(self, key):
         return self.__handle_key__(key, allow_missing=True)
