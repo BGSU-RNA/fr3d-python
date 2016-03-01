@@ -5,5 +5,5 @@ python:
     - "2.6"
     - "2.7"
 install:
-    - ./install-deps.sh
+    - .ci/install-deps.sh
 script: nosetests test/
