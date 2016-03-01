@@ -1,15 +1,13 @@
-from distutils.core import setup
+from distutils.core import setup, find_packages
 
 setup(
     name='pdbx',
     version='0.0.1',
     author='NDB',
     author_email='',
-    packages=['pdbx', 'pdbx.alternate', 'pdbx.bird', 'pdbx.cc', 'pdbx.core',
-              'pdbx.ndb', 'pdbx.pdb', 'pdbx.persist', 'pdbx.reader',
-              'pdbx.writer'],
+    packages=find_packages(include=['pdbx', 'pdbx.*']),
     url='',
     license='LICENSE.txt',
     description='Pure python tools to work with cif data from PDB',
-    long_description=open('README.mkd').read(),
+    long_description='Pure python tools to work with cif data from PDB',
 )
