@@ -1,3 +1,5 @@
 # FR3D #
 
+[[!Build Status](https://api.travis-ci.org/BGSU-RNA/fr3d-python.svg?branch=develop)](https://travis-ci.org/BGSU-RNA/fr3d-python)
+
 This is an implementation of the FR3D program in python.
