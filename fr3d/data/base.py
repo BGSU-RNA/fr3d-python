@@ -9,6 +9,8 @@ import operator as op
 
 import numpy as np
 
+from scipy import spatial as sp
+
 
 class EntitySelector(object):
     """This serves as a generic container for entities. We always want to
@@ -178,3 +180,57 @@ class AtomProxy(col.MutableMapping):
 
     def __repr__(self):
         return str(self._data)
+
+
+class CoordinateTree(object):
+    """This is a simple wrapper around scipy's KDTree to return components
+    instead of just indexes in a list.
+    """
+
+    def __init__(self, generator):
+        """Create a new CoordinateTree. The given generator should yield 2
+        values each time, the residue and a coordinate to use for it. This may
+        yield the same residue many times but should not duplicate coordinate
+        values.
+
+        :param iterable generator: The generator to use.
+        """
+
+        self._residues = []
+        coordinates = []
+        for residue, coordinate in generator:
+            coordinates.append(coordinate)
+            self._residues.append(residue)
+        self.tree = sp.cKDTree(coordinates)
+
+    def count_neighbors(self, other, r, *p):
+        """Return the counts of neighbors in the other tree. Argumetns are as
+        for cKDTree.count_neighbors, except other is a CoordinateTree.
+
+        :returns: The counts.
+        """
+        return self.tree.count_neighbors(other.tree, r, *p)
+
+    def pairs(self, distance, **kwargs):
+        """Create a generator over all pairs in this tree which are within the
+        given distance cutoff.
+
+        :param float distance: The cutoff.
+        :kwargs: Keyword arguments to cKDTree.query_pairs.
+        """
+
+        for first, second in self.tree.query_pairs(distance, **kwargs):
+            yield self._residues[first], self._residues[second]
+
+    def neighbors(self, other, distance, **kwargs):
+        """Create a generator over all points which are within some distance
+        cutoff between this tree and another one.
+
+        :param CoordinateTree other: The other tree.
+        :param float distance: The cutoff.
+        :kwargs: Keyword arguments to cKDTree.query_ball_tree.
+        """
+
+        results = self.tree.query_ball_tree(other.tree, distance, **kwargs)
+        for first, second in results:
+            yield self._residues[first], other._residues[second]
