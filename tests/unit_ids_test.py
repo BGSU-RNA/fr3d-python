@@ -1,5 +1,6 @@
 from unittest import TestCase
-from nose import SkipTest
+
+import pytest
 
 from fr3d.unit_ids import decode
 from fr3d.unit_ids import encode
@@ -136,8 +137,8 @@ class ResidueUnitIDTest(TestCase):
         val = encode(decode(ans))
         self.assertEqual(val, ans)
 
+    @pytest.mark.skip()
     def test_fails_encoding_residue_id_missing_pdb(self):
-        raise SkipTest()
         self.assertRaises(InvalidUnitId, encode, {
             'model': '1',
             'chain': 'A',
@@ -145,8 +146,8 @@ class ResidueUnitIDTest(TestCase):
             'component_number': '50',
         })
 
+    @pytest.mark.skip()
     def test_fails_encoding_residue_id_missing_model(self):
-        raise SkipTest()
         self.assertRaises(InvalidUnitId, encode, {
             'pdb': '2AVY',
             'chain': 'A',
@@ -154,8 +155,8 @@ class ResidueUnitIDTest(TestCase):
             'component_number': '50',
         })
 
+    @pytest.mark.skip()
     def test_fails_encoding_residue_id_missing_chain(self):
-        raise SkipTest()
         self.assertRaises(InvalidUnitId, encode, {
             'pdb': '2AVY',
             'model': '1',

@@ -1,6 +1,6 @@
 import unittest as ut
-from nose import SkipTest
 
+import pytest
 import numpy as np
 
 from fr3d.data import Atom
@@ -243,8 +243,9 @@ class InferHydrogenTest(ut.TestCase):
         atoms = list(self.res.atoms(name=['H1', 'H8', 'H9', '1H2', '2H2']))
         self.assertEqual(len(atoms), 5)
 
+    @pytest.mark.skip()
     def test_infers_correct_location(self):
-        raise SkipTest()
+        pass
 
 
 class AtomsWithin(ut.TestCase):

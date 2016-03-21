@@ -1,7 +1,7 @@
 import itertools as it
 
+import pytest
 import numpy as np
-from nose import SkipTest
 
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
@@ -60,8 +60,9 @@ class SimpleCIFTest(ReaderTest):
     def test_loads_all_symmetry_operators(self):
         self.assertEqual(2, len(self.cif._operators))
 
+    @pytest.mark.skip()
     def test_loads_correct_symmetry_operatrs(self):
-        raise SkipTest
+        pass
 
 
 class SimpleTableTest(ReaderTest):

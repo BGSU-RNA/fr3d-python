@@ -1,5 +1,5 @@
+import pytest
 import numpy as np
-from nose import SkipTest
 
 from tests.cif import ReaderTest
 
@@ -22,13 +22,13 @@ class StructureTest(ReaderTest):
         ans = 316
         self.assertEqual(ans, val)
 
+    @pytest.mark.skip()
     def test_can_get_a_model(self):
-        raise SkipTest()
         val = self.structure.select(model=1).unit_id()
         self.assertEqual('1GID|1', val)
 
+    @pytest.mark.skip()
     def test_can_get_a_chain(self):
-        raise SkipTest()
         val = self.structure.select(model=0, chain='A').unit_id()
         self.assertEqual('1GID|0|A', val)
 

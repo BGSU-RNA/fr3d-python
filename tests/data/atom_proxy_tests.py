@@ -1,5 +1,4 @@
 from unittest import TestCase
-from nose import SkipTest
 
 import numpy as np
 
