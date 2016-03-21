@@ -235,7 +235,7 @@ class SequenceTest(PersistedBase):
 
     def setUp(self):
         super(SequenceTest, self).setUp()
-        self.data = self.cif.experimental_sequence_mapping('A')
+        self.data = list(self.cif.experimental_sequence_mapping('A'))
 
     def test_can_compute_mapping(self):
         val = self.data[-1]
