@@ -204,33 +204,68 @@ class CoordinateTree(object):
         self.tree = sp.cKDTree(coordinates)
 
     def count_neighbors(self, other, r, *p):
-        """Return the counts of neighbors in the other tree. Argumetns are as
-        for cKDTree.count_neighbors, except other is a CoordinateTree.
+        """Return the counts of neighbors in the other tree. Arguments are as
+        for cKDTree.count_neighbors, except other is a CoordinateTree. This
+        does not uniquify the neighbors before counting.
 
         :returns: The counts.
         """
         return self.tree.count_neighbors(other.tree, r, *p)
 
-    def pairs(self, distance, **kwargs):
+    def pairs(self, distance, unique=False, **kwargs):
         """Create a generator over all pairs in this tree which are within the
         given distance cutoff.
 
         :param float distance: The cutoff.
+        :param bool unique: Only get the unique pairs of residues found.
+        Uniquess is determined by unit ids.
         :kwargs: Keyword arguments to cKDTree.query_pairs.
+        :returns: A generator for the pairs.
         """
 
-        for first, second in self.tree.query_pairs(distance, **kwargs):
-            yield self._residues[first], self._residues[second]
+        def fn():
+            results = self.tree.query_pairs(distance, **kwargs)
+            if results:
+                for first, second in results:
+                    yield self._residues[first], self._residues[second]
 
-    def neighbors(self, other, distance, **kwargs):
+        if unique:
+            return self.__as_unique__(fn())
+        return fn()
+
+    def neighbors(self, other, distance, unique=False, **kwargs):
         """Create a generator over all points which are within some distance
         cutoff between this tree and another one.
 
         :param CoordinateTree other: The other tree.
         :param float distance: The cutoff.
+        :param bool unique: Only get the unique pairs of found. Uniqueness is
+        determined by the unit ids.
         :kwargs: Keyword arguments to cKDTree.query_ball_tree.
+        :returns: A generator for the neighbors.
         """
 
-        results = self.tree.query_ball_tree(other.tree, distance, **kwargs)
-        for first, second in results:
-            yield self._residues[first], other._residues[second]
+        def fn():
+            results = self.tree.query_ball_tree(other.tree, distance, **kwargs)
+            if results:
+                for first, second in results:
+                    yield self._residues[first], other._residues[second]
+
+        if unique:
+            return self.__as_unique__(fn())
+        return fn()
+
+    def __as_unique__(self, generator):
+        """Make sure the given generator returns only unique pairs, according
+        to the unit_id method.
+
+        :param generator: The generator to make unique.
+        :returns: A new generator.
+        """
+
+        seen = set()
+        for first, second in generator:
+            pair = (first.unit_id(), second.unit_id())
+            if pair not in seen:
+                yield first, second
+                seen.add(pair)
