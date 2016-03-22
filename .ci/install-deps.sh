@@ -14,3 +14,4 @@ popd
 rm -r pdbx
 pip install --upgrade setuptools
 pip install --upgrade pytest
+pip install .
