@@ -191,7 +191,7 @@ class Component(EntitySelector):
             'symmetry': self.symmetry
         })
 
-    def atoms_within(self, other, using=None, to=None, cutoff=4.0):
+    def atoms_within(self, other, cutoff, using=None, to=None, min_number=1):
         """Determine if there are any atoms from another component within some
         distance.
 

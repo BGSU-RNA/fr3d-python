@@ -263,49 +263,46 @@ class AtomsWithin(ut.TestCase):
         ])
 
     def test_knows_if_an_atom_is_within(self):
-        val = self.component1.atoms_within(self.component2, cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0)
         self.assertTrue(val)
 
     def test_works_with_negative_cutoff(self):
-        val = self.component1.atoms_within(self.component2, cutoff=-1.0)
+        val = self.component1.atoms_within(self.component2, -1.0)
         self.assertTrue(val)
 
     def test_knows_if_no_atoms_within_cutoff(self):
-        val = self.component1.atoms_within(self.component2, cutoff=0.5)
+        val = self.component1.atoms_within(self.component2, 0.5)
         self.assertFalse(val)
 
     def test_knows_if_no_atoms_within_negative_cutoff(self):
-        val = self.component1.atoms_within(self.component2, cutoff=-0.5)
+        val = self.component1.atoms_within(self.component2, -0.5)
         self.assertFalse(val)
 
     def test_can_use_given_list_for_first_atoms(self):
-        val = self.component1.atoms_within(self.component2, using=['C3', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           using=['C3', 'N3'])
         self.assertTrue(val)
 
     def test_knows_if_with_given_list_nothing_is_within(self):
-        val = self.component1.atoms_within(self.component2, using=['C4', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0, using=['C4', 'N3'])
         self.assertFalse(val)
 
     def test_can_use_to_list_to_detect_near(self):
-        val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0, to=['N1', 'N3'])
         self.assertTrue(val)
 
     def test_can_use_to_list_to_detect_not_near(self):
-        val = self.component1.atoms_within(self.component2, to=['C2', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0, to=['C2', 'N3'])
         self.assertFalse(val)
 
     def test_can_use_both_to_detect_near(self):
-        val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
-                                           using=['C3', 'N3'], cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0, to=['N1', 'N3'],
+                                           using=['C3', 'N3'])
         self.assertTrue(val)
 
     def test_can_use_both_to_detect_not_near(self):
-        val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
-                                           using=['C4', 'N3'], cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0, to=['N1', 'N3'],
+                                           using=['C4', 'N3'])
         self.assertFalse(val)
 
 
