@@ -45,22 +45,41 @@ Normal_residue['CYS'] =['CB','SG','CB']
 
 #Creating dictionaries for detecting edges of nts
 
-"""WC_1 = {}
+WC_1 = {}
 WC_2 = {}
-WC_3 = {}
 Hoogsteen_1 = {}
 Hoogsteen_2 = {}
-Sugar = {}
+Sugar_1 = {}
+Sugar_2 = {}
 
-WC_1['A']['HIS']= [6.000, 6.000, 5.500]
-WC_2['A']['HIS']= [4.000, 4.000, 4.500]
-WC_3['A']['HIS']= [6.000, 6.000, 6.500]
+WC_1['A']= ["C2"]
+WC_1['A']= ["C6", "N6"]
+Hoogsteen_1['A']= ["C6", "N6"]
+Hoogsteen_2['A']= ["C8"]
+Sugar_1['A']= ["N1","C1'"]
+Sugar_2['A']= ["C2"]
 
-Hoogsteen_1['A']['HIS']= [-1.000, -1.000, -1.100]
-Hoogsteen_2['A']['HIS']= [-3.000, -3.000, -3.000]
+WC_1['G']= ["C2", "N2"]
+WC_1['G']= ["C6", "O6"]
+Hoogsteen_1['G']= ["C6", "O6"]
+Hoogsteen_2['G']= ["C8"]
+Sugar_1['G']= ["N1","C1'"]
+Sugar_2['G']= ["C2", "N2"]
 
-Sugar['A']['HIS']= [4.000, 2.000, 4.000]
-"""
+WC_1['U']= ["C2", "O2"]
+WC_1['U']= ["C4", "O4"]
+Hoogsteen_1['U']= ["C4", "O4"]
+Hoogsteen_2['U']= ["C5"]
+Sugar_1['U']= ["N1","C1'"]
+Sugar_2['U']= ["C2", "O2"]
+
+WC_1['C']= ["C2", "O2"]
+WC_1['C']= ["C4", "N4"]
+Hoogsteen_1['C']= ["C4", "N4"]
+Hoogsteen_2['C']= ["C5"]
+Sugar_1['C']= ["N1","C1'"]
+Sugar_2['C']= ["C2", "O2"]
+
 #Defining center-to-center and tilt cutoffs for stacking
 #dist_cent_cutoff = {'TRP':7,'TYR': 7,'PHE':7, 'ALA':6,'ARG':6}
 tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 3.1,'CYS': 1.0, 'MET': 1.5}
