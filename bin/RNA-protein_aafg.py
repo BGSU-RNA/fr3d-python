@@ -220,7 +220,7 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
             return stacking_tilt(aa_residue, aa_coordinates)
 
     elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in pseudopair_aa:
-            angle= calculate_angle(base_residue, aa_residue)
+            angle= angle_between_normals(base_residue, aa_residue)
             #print "pseudopair"
             #print base_residue.unit_id(), aa_residue.unit_id(), mean_z, angle
             
@@ -229,16 +229,9 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
                 return "pseudopair"
          
             
-def calculate_angle (base_residue, aa_residue):
-    vec1 = vector_calculation(base_residue)
-    vec2 = vector_calculation(aa_residue)
-                
-    angle = angle_between_planes(vec1, vec2)
-    return angle
-
 def stacking_angle (base_residue, aa_residue, min_dist):
-    vec1 = vector_calculation(base_residue)
-    vec2 = vector_calculation(aa_residue)
+    vec1 = normal_calculation(base_residue)
+    vec2 = normal_calculation(aa_residue)
     
     stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE", "PRO", "ASN", "GLN"])       
     perpendicular_aa = set (["TYR", "HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE"])
@@ -269,21 +262,6 @@ def stacking_tilt(aa_residue, aa_coordinates):
     if diff <= tilt_cutoff[aa_residue.sequence]:
         return "stacked"
     
-def vector_calculation(residue):
-    key = residue.sequence
-    P1 = residue.centers[Normal_residue[key][0]]
-    P2 = residue.centers[Normal_residue[key][1]]
-    P3 = residue.centers[Normal_residue[key][2]]
-    #print P1, P2, P3
-    vector = np.cross((P2 - P1),(P3-P1))
-    return vector
-
-def angle_between_planes (vec1, vec2):
-    cosang = np.dot(vec1, vec2)
-    sinang = np.linalg.norm(np.cross(vec1, vec2))
-    angle = np.arctan2(sinang, cosang)
-    return angle
-
 
 def translate_rotate(atom, reference, rotation_matrix):
      atom_coord = atom.coordinates()

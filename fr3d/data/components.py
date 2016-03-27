@@ -8,6 +8,21 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 
+def angle_between_normals (base_residue, aa_residue):
+    vec1 = vector_calculation(base_residue)
+    vec2 = vector_calculation(aa_residue)
+                
+    angle = angle_between_planes(vec1, vec2)
+    return angle
+
+def normal_calculation(residue):
+    key = residue.sequence
+    P1 = residue.centers[Normal_residue[key][0]]
+    P2 = residue.centers[Normal_residue[key][1]]
+    P3 = residue.centers[Normal_residue[key][2]]
+    #print P1, P2, P3
+    vector = np.cross((P2 - P1),(P3-P1))
+    return vector
 
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules

@@ -3,7 +3,6 @@ RNAbasehydrogens = {}
 RNAconnections = {}
 Ribophos_connect = {}
 tilt_cutoff = {}
-Normal_residue = {}
 aa_connections = {}
 aa_backconnect = {}
 
@@ -13,35 +12,32 @@ aa_backconnect = {}
 Perp_aa = set(['ARG','LYS','GLU','ASP','GLN','ASN','HIS','TYR','TRP','PHE'])
 
 #Dictionaries for normal to plane calculations
+planar_atoms = {}
+planar_atoms['A'] = ['C4','C5','N3']
+planar_atoms['U'] = ['C2','N1','N3']
+planar_atoms['C'] = ['C6','N1','C5']
+planar_atoms['G'] = ['C4','C5','N3']
 
-Normal_residue['A'] = ['C4','C5','N3']
-Normal_residue['U'] = ['C2','N1','N3']
-Normal_residue['C'] = ['C6','N1','C5']
-Normal_residue['G'] = ['C4','C5','N3']
-
-Normal_residue['ARG'] =['CZ','NH1', 'NH2']
-Normal_residue['LYS'] =['CE','CD','NZ']
-#Normal_residue['HIS'] = ['ND1','CE1','CG']
-Normal_residue['HIS'] = ['NE2','CD2','CE1']
-Normal_residue['GLN'] =['CD','OE1','NE2']
-Normal_residue['ASN'] =['CG','OD1','ND2']
-Normal_residue['GLU'] =['CD','OE1','OE2']
-Normal_residue['ASP'] =['CG','OD1','OD2']
-Normal_residue['TRP'] =['CD2','CG','CE2']
-Normal_residue['TYR'] =['CE2','CZ','CE1']
-Normal_residue['PHE'] =['CG','CD1','CZ']
-Normal_residue['PRO'] =['CG','CD','CB']
-Normal_residue['MET'] =['SD','CG','CE']
-Normal_residue['ILE'] =['CG1','CB','CD1']
-Normal_residue['LEU'] =['CG','CD1','CD2']
-#Normal_residue['ALA'] =[]
-#Normal_residue['GLY'] =[]
-Normal_residue['VAL'] =['CB','CG1','CG2']
-Normal_residue['SER'] =['CB','OG','CA']
-Normal_residue['THR'] =['CB','OG1','CG2']                       
-Normal_residue['CYS'] =['CB','SG','CB']
-
-
+planar_atoms['ARG'] =['CZ','NH1', 'NH2']
+planar_atoms['LYS'] =['CE','CD','NZ']
+planar_atoms['HIS'] = ['NE2','CD2','CE1']
+planar_atoms['GLN'] =['CD','OE1','NE2']
+planar_atoms['ASN'] =['CG','OD1','ND2']
+planar_atoms['GLU'] =['CD','OE1','OE2']
+planar_atoms['ASP'] =['CG','OD1','OD2']
+planar_atoms['TRP'] =['CD2','CG','CE2']
+planar_atoms['TYR'] =['CE2','CZ','CE1']
+planar_atoms['PHE'] =['CG','CD1','CZ']
+planar_atoms['PRO'] =['CG','CD','CB']
+planar_atoms['MET'] =['SD','CG','CE']
+planar_atoms['ILE'] =['CG1','CB','CD1']
+planar_atoms['LEU'] =['CG','CD1','CD2']
+#planar_atoms['ALA'] =[]
+#planar_atoms['GLY'] =[]
+planar_atoms['VAL'] =['CB','CG1','CG2']
+planar_atoms['SER'] =['CB','OG','CA']
+planar_atoms['THR'] =['CB','OG1','CG2']                       
+planar_atoms['CYS'] =['CB','SG','CB']
 
 #Creating dictionaries for detecting edges of nts
 
