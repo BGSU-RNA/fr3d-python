@@ -9,7 +9,6 @@ class ReaderTest(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        print(cls.name)
         with open(os.path.join('files', cls.name + '.cif'), 'rb') as raw:
             cls.cif = Cif(raw)
             cls.structure = cls.cif.structure()
