@@ -234,7 +234,7 @@ class MultipleSequenceMappingTest(ReaderTest):
         self.chain_b = list(self.cif.experimental_sequence_mapping('B'))
 
     def test_can_get_for_both_chains(self):
-        val = {d[1].split('|')[2] for d in self.data}
+        val = set(d[1].split('|')[2] for d in self.data)
         assert val == set('AB')
 
     def test_finds_no_duplicates(self):
