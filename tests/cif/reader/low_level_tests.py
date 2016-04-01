@@ -224,6 +224,36 @@ class SequenceMappingTest(ReaderTest):
         self.assertEqual(ans, val)
 
 
+class MultipleSequenceMappingTest(ReaderTest):
+    name = '1GID'
+
+    def setUp(self):
+        super(MultipleSequenceMappingTest, self).setUp()
+        self.data = list(self.cif.experimental_sequence_mapping(['A', 'B']))
+        self.chain_a = list(self.cif.experimental_sequence_mapping('A'))
+        self.chain_b = list(self.cif.experimental_sequence_mapping('B'))
+
+    def test_can_get_for_both_chains(self):
+        val = {d[1].split('|')[2] for d in self.data}
+        assert val == set('AB')
+
+    def test_finds_no_duplicates(self):
+        assert len(self.data) == len(set(self.data))
+
+    def test_can_compute_all_mappings(self):
+        assert len(self.data) == len(self.chain_a) + len(self.chain_b)
+
+    def test_gets_all_mappings(self):
+        total = list(self.chain_a)
+        total.extend(self.chain_b)
+        val = set(self.data)
+        assert val == set(total)
+
+    def test_it_does_not_have_duplicate_unit_ids(self):
+        unit_ids = [d[2] for d in self.data]
+        assert len(unit_ids) == len(set(unit_ids))
+
+
 class LargeSequenceMappingTest(ReaderTest):
     name = '1S72'
 

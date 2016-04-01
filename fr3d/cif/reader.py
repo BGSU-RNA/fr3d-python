@@ -3,6 +3,8 @@ import itertools as it
 import collections as coll
 import warnings
 import logging
+import operator as op
+import functools as ft
 
 import numpy as np
 
@@ -196,21 +198,27 @@ class Cif(object):
         the unit id.
         """
 
+        chain_compare = ft.partial(op.eq, chain)
+        if isinstance(chain, (list, tuple, set)):
+            chain_compare = ft.partial(op.contains, set(chain))
+
         pdb = self.data.getName()
         mapping = coll.defaultdict(list)
         for residue in self.__residues__(pdb):
-            if residue.chain == chain:
-                key = (residue.number, residue.insertion_code)
+            if chain_compare(residue.chain):
+                key = (residue.chain, residue.number, residue.insertion_code)
                 mapping[key].append(residue.unit_id())
         mapping = dict(mapping)
 
         entries = self.pdbx_poly_seq_scheme
-        filtered = it.ifilter(lambda r: r['pdb_strand_id'] == chain, entries)
+        filtered = it.ifilter(lambda r: chain_compare(r['pdb_strand_id']),
+                              entries)
         # model = self.atom_site[0]['pdbx_PDB_model_num']
 
         seen = set()
         prev_number = None
         for index, row in enumerate(filtered):
+            current_chain = row['pdb_strand_id']
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
                 insertion_code = None
@@ -225,14 +233,14 @@ class Cif(object):
                     continue
 
                 prev_number = number
-                key = (int(number), insertion_code)
+                key = (current_chain, int(number), insertion_code)
 
                 if key not in mapping:
                     raise ValueError("Could not find unit for %s", key)
 
                 unit_ids = mapping[key]
 
-            seq_data = (pdb, chain, row['mon_id'], row['seq_id'])
+            seq_data = (pdb, current_chain, row['mon_id'], row['seq_id'])
             seq_id = '%s|Sequence|%s|%s|%s' % seq_data
 
             if seq_id in seen:
