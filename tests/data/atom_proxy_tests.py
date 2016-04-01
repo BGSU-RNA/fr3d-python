@@ -147,3 +147,8 @@ class AtomProxyTest(TestCase):
         val = self.proxy.lookup(['a1', 'c2', '3'])
         ans = np.array([0.5, 0.5, 0.0])
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
+    def test_can_get_name_of_defined_centers(self):
+        self.proxy.define('bob', ['a1', 'c2'])
+        self.proxy.define('other', ['c2', 'b1'])
+        assert sorted(self.proxy.definitions()) == sorted(['bob', 'other'])
