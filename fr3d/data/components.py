@@ -8,22 +8,6 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 
-def angle_between_normals (base_residue, aa_residue):
-    vec1 = vector_calculation(base_residue)
-    vec2 = vector_calculation(aa_residue)
-                
-    angle = angle_between_planes(vec1, vec2)
-    return angle
-
-def normal_calculation(residue):
-    key = residue.sequence
-    P1 = residue.centers[Normal_residue[key][0]]
-    P2 = residue.centers[Normal_residue[key][1]]
-    P3 = residue.centers[Normal_residue[key][2]]
-    #print P1, P2, P3
-    vector = np.cross((P2 - P1),(P3-P1))
-    return vector
-
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
     and ligands.
@@ -206,7 +190,7 @@ class Component(EntitySelector):
             'symmetry': self.symmetry
         })
 
-    def atoms_within(self, other, using=None, to=None, cutoff=4.0):
+    def atoms_within(self, other, cutoff, using=None, to=None, min_number=1):
         """Determine if there are any atoms from another component within some
         distance.
 
@@ -224,11 +208,14 @@ class Component(EntitySelector):
         if to:
             kw2['name'] = to
 
+        n = 0
         for atom1 in self.atoms(**kw1):
             for atom2 in other.atoms(**kw2):
                 if atom1.distance(atom2) <= abs(cutoff):
-                    return True
-        return False
+                    n = n+1
+        if n>= min_number:
+            return True
+        
 
     def distance(self, other, using='*', to='*'):
         """Compute a center center distance between this and another component.
@@ -266,3 +253,17 @@ class Component(EntitySelector):
 
     def __repr__(self):
         return '<Component %s>' % self.unit_id()
+
+    def angle_between_normals (self, aa_residue):
+        vec1 = normal_calculation(self)
+        vec2 = normal_calculation(aa_residue)
+        return angle_between_planes(vec1, vec2)
+        
+
+    def normal_calculation(self):
+        key = self.sequence
+        P1 = self.centers[planar_atoms[key][0]]
+        P2 = self.centers[planar_atoms[key][1]]
+        P3 = self.centers[planar_atoms[key][2]]
+        vector = np.cross((P2 - P1),(P3-P1))
+        return vector

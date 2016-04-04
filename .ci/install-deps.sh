@@ -12,3 +12,5 @@ cp "../.ci/setup.py" .
 python setup.py install
 popd
 rm -r pdbx
+pip install --upgrade setuptools
+pip install --upgrade pytest
