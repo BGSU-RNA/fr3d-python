@@ -100,6 +100,14 @@ class AtomProxy(col.MutableMapping):
         """
         return self._definitions.get(name)
 
+    def definitions(self):
+        """Get all defined centers. This will not return the list of atom
+        names and is given in no particular order.
+
+        :returns: A list of key names.
+        """
+        return self._definitions.keys()
+
     def lookup(self, names, allow_missing=True):
         """Lookup a center but allow for missing atoms. This will attempt to lookup
         all atoms but simply ignore those that are missing when computing the
