@@ -1,5 +1,7 @@
 from fr3d import definitions as defs
 from fr3d.classifiers.generic import Classifier as BaseClassifier
+from fr3d.geometry import angleofrotation as angrot
+from fr3d.data import components as compnt
 import numpy as np
 
 
@@ -17,6 +19,11 @@ class Classifier(BaseClassifier):
     def classification(self, first, second):
         squared_xy_dist_list = []
         aa_z =[]
+
+         """Defines different sets of amino acids"""
+    stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE", "PRO", "THR"])
+    pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "LYS", "ARG", "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE", "MET"])
+
         for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
             key = aa_atom.name
             aa_x= second[key][0]
@@ -30,36 +37,52 @@ class Classifier(BaseClassifier):
         mean_z = np.mean(aa_z)
     
         if min(squared_xy_dist_list) <= 3:
-            if second.sequence in set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN", "GLN"]):
+            if second.sequence in stacked_aa:
                 return stacking_angle(first, second)
             else:
                 return stacking_tilt(second)
             
         elif 3.1 < min(squared_xy_dist_list)< 35.2 and -2.0 <= mean_z < 2.0:
-            if second.sequence in set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "LYS", "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE"]):
-                angle= calculate_angle(first, second)
+            if second.sequence in pseudopair_aa::
+                angle= compnt.angle_between_normals(first, second)
     
-            if -1.3 <= angle <= 0.83 or 2.25 <= angle <= 3.14:
+            if -1.3 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
                 return "pseudopair"
+            else:
+                return None
     
-    def calculate_angle (base_residue, aa_residue):
-        vec1 = vector_calculation(base_residue)
-        vec2 = vector_calculation(aa_residue)
-                
-        angle = angle_between_planes(vec1, vec2)
-        return angle
+    
+def enough_HBs(base_residue, aa_residue, base_atoms):
+    """Calculates atom to atom distance of part "aa_part" of neighboring amino acids
+    of type "aa" from each atom of base. Only returns a pair of aa/nt if two
+    or more atoms are within the cutoff distance"""
+    min_distance = 4
+    HB_atoms = set(['N', 'NH1','NH2','NE','NZ','ND1','NE2','O','OD1','OE1','OE2', 'OG', 'OH'])
+    n = 0
+    for base_atom in base_residue.atoms(name=base_atoms):
+        for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
+
+            distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+            distance = np.linalg.norm(distance)
+            if distance <= min_distance and aa_atom.name in HB_atoms:
+                n = n+1
+    if n>=2:
+        return True
 
 def stacking_angle (base_residue, aa_residue):
-    vec1 = vector_calculation(base_residue)
-    vec2 = vector_calculation(aa_residue)
+    vec1 = compnt.normal_calculation(base_residue)
+    vec2 = compnt.normal_calculation(aa_residue)
+
+    stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE", "PRO", "ASN", "GLN"])       
+    perpendicular_aa = set (["TYR", "HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE"])
                 
-    angle = angle_between_planes(vec1, vec2)
+    angle = angrot.angle_between_planes(vec1, vec2)
     
-    if aa_residue.sequence in set (["TRP", "TYR", "PHE", "HIS", "ARG"]):
-        if angle <=0.79 or 2.35 <= angle <= 3.15:
+    if aa_residue.sequence in set stacked_aa:
+        if angle <=0.67 or 2.43 <= angle <= 3.15:
             return "stacked"
-        elif aa_residue.sequence in set (["TYR", "HIS", "ARG", "LYS", "ASN", "GLN"]):
-            if 1.32<= angle <=1.64:
+        elif aa_residue.sequence in perpendicular_aa:
+            if 1.2<= angle <=1.64:
                 return "perpendicular"
 
 def stacking_tilt(second):
@@ -71,22 +94,7 @@ def stacking_tilt(second):
         baa_dist_list.append(aa_z)        
     max_baa = max(baa_dist_list)
     min_baa = min(baa_dist_list)
-    #print 'max distance: %s' % max_baa + ' min distance: %s' % min_baa
+    
     diff = max_baa - min_baa
-    #print aa_residue.unit_id(), diff
     return diff <= defs.tilt_cutoff[second.sequence]
     
-def vector_calculation(residue):
-    key = residue.sequence
-    P1 = residue.centers[defs.Normal_residue[key][0]]
-    P2 = residue.centers[defs.Normal_residue[key][1]]
-    P3 = residue.centers[defs.Normal_residue[key][2]]
-    #print P1, P2, P3
-    vector = np.cross((P2 - P1),(P3-P1))
-    return vector
-
-def angle_between_planes (vec1, vec2):
-    cosang = np.dot(vec1, vec2)
-    sinang = np.linalg.norm(np.cross(vec1, vec2))
-    angle = np.arctan2(sinang, cosang)
-    return angle
