@@ -17,6 +17,9 @@ from fr3d.geometry.discrepancy import matrix_discrepancy
 from fr3d.data import Atom
 from fr3d.data import Component
 
+from tests.cif import ReaderTest
+
+
 nt10_0 = Component([Atom(type='N', name='N1',x=19.679762,y=146.510834,z=106.455235),
                     Atom(type='C', name='C2',x=19.459715,y=146.692932,z=107.816836),
                     Atom(type='O', name='O2',x=19.354777,y=147.785831,z=108.333165),
@@ -329,9 +332,20 @@ class MatrixDiscrepancyTest(TestCase):
         nts2 = [nt11_0, nt13_0, nt15_0, nt17_0, nt19_0]
         args = self.matrices(nts1, nts2)
         val = matrix_discrepancy(*args)
-        args = self.matrices(nts1, nts2)
-        val = matrix_discrepancy(*args)
         np.testing.assert_almost_equal(1.1414, val, decimal=3)
+
+    def test_it_complains_given_empty_center_and_rotation_sizes(self):
+        with pytest.raises(AssertionError):
+            matrix_discrepancy([], [], [], [])
+
+    def test_it_complains_given_mismatched_center_and_rotation_sizes(self):
+        nts1 = [nt10_0, nt12_0, nt14_0, nt16_0, nt18_0]
+        nts2 = [nt11_0, nt13_0, nt15_0, nt17_0, nt19_0]
+        args = self.matrices(nts1, nts2)
+        args[2].pop()
+        args[3].pop()
+        with pytest.raises(AssertionError):
+            matrix_discrepancy(*args)
 
 
 # d = discrepancy([nt10_0, nt11_0, nt12_0, nt13_0, nt14_0],[nt15_0,nt16_0,nt17_0,nt18_0,nt19_0])
