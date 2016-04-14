@@ -3,6 +3,8 @@ from fr3d.data.base import AtomProxy
 from fr3d.data.atoms import Atom
 from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
+from fr3d.geometry import angleofrotation as angrot
+
 
 import numpy as np
 
@@ -255,15 +257,15 @@ class Component(EntitySelector):
         return '<Component %s>' % self.unit_id()
 
     def angle_between_normals (self, aa_residue):
-        vec1 = normal_calculation(self)
-        vec2 = normal_calculation(aa_residue)
-        return angle_between_planes(vec1, vec2)
+        vec1 = self.normal_calculation()
+        vec2= aa_residue.normal_calculation()
+        return angrot.angle_between_planes(vec1, vec2)
         
 
     def normal_calculation(self):
         key = self.sequence
-        P1 = self.centers[planar_atoms[key][0]]
-        P2 = self.centers[planar_atoms[key][1]]
-        P3 = self.centers[planar_atoms[key][2]]
+        P1 = self.centers[defs.planar_atoms[key][0]]
+        P2 = self.centers[defs.planar_atoms[key][1]]
+        P3 = self.centers[defs.planar_atoms[key][2]]
         vector = np.cross((P2 - P1),(P3-P1))
         return vector
