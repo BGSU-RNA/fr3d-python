@@ -5,7 +5,7 @@ Ribophos_connect = {}
 tilt_cutoff = {}
 aa_connections = {}
 aa_backconnect = {}
-
+modified_nucleotides = {}
                       
 #List of amino acids for perpendicular interactions
 
@@ -312,3 +312,19 @@ RNAbasecoordinates['U'][ 'H5'] = [ -2.450997,   1.102115,   0.000000]
 RNAbasecoordinates['U'][ 'H1'] = [ -0.326420,  -2.523369,   0.000000]
 RNAbasecoordinates['U'][ 'H3'] = [  1.765732,   0.930757,   0.000000]
 RNAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
+
+#List of modified nucleotides, their corresponding standard base, and their atom correspondences
+
+modified_nucleotides['4SU'] = {
+    "standard":'U'
+    "atoms" = {
+        'N1':'N1',
+        'C2':'C2',
+        'O2':'O2',
+        'N3':'N3',
+        'C4':'C4',
+        'O4':'O4',
+        'C5':'C5',
+        'C6':'C6'
+        }
+    }
