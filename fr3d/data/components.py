@@ -55,6 +55,10 @@ class Component(EntitySelector):
             atoms = defs.aa_backbone[self.sequence]
             self.centers.define('aa_backbone', atoms)
 
+        if self.sequence in defs.modified_nucleotides:
+            atoms = defs.modified_nucleotides[self.sequence]["atoms"].values()
+            self.centers.define('modified_nucleotides', atoms)
+
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
         described by EntitySelector.
@@ -119,16 +123,22 @@ class Component(EntitySelector):
         """Infer the coordinates of the hydrogen atoms of this component.
         Currently, it only works for RNA with .sequence
         """
-        if self.sequence not in defs.RNAbaseheavyatoms:
+        if self.sequence not in defs.RNAbaseheavyatoms or self.sequence not in defs.modified_nucleotides:
             return None
         R = []
         S = []
-        baseheavy = defs.RNAbaseheavyatoms[self.sequence]
 
-        for atom in self.atoms(name=baseheavy):
-            coordinates = atom.coordinates()
-            R.append(coordinates)
-            S.append(defs.RNAbasecoordinates[self.sequence][atom.name])
+        if self.sequence in defs.modified_nucleotides:
+            for standard, modified in modified_nucleotides[self.sequence]["atoms"].items():
+                R.append(self.atoms(name = modified).coordinates())
+                S.append(RNAbasecoordinates[current_modified["standard"]][standard])
+
+        if self.sequence in defs.RNAbaseheavyatoms:
+            baseheavy = defs.RNAbaseheavyatoms[self.sequence]
+            for atom in self.atoms(name=baseheavy):
+                coordinates = atom.coordinates()
+                R.append(coordinates)
+                S.append(defs.RNAbasecoordinates[self.sequence][atom.name])
 
         R = np.array(R)
         R = R.astype(np.float)
