@@ -316,7 +316,7 @@ RNAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 #List of modified nucleotides, their corresponding standard base, and their atom correspondences
 
 modified_nucleotides['4SU'] = {
-    "standard": 'U'
+    "standard": 'U',
     "atoms": {
         'N1':'N1',
         'C2':'C2',
