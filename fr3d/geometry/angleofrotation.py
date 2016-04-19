@@ -2,7 +2,9 @@ import numpy as np
 
 
 def angle_of_rotation(rotation_matrix):
-    return np.arccos((np.trace(rotation_matrix) - 1) / 2.0)
+    value = (np.trace(rotation_matrix) - 1.0) / 2.0
+    value = np.clip(value, -1, 1)
+    return np.arccos(value)
 
 
 def axis_of_rotation(rotation_matrix):
