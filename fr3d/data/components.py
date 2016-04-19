@@ -123,7 +123,7 @@ class Component(EntitySelector):
         """Infer the coordinates of the hydrogen atoms of this component.
         Currently, it only works for RNA with .sequence
         """
-        if self.sequence not in defs.RNAbaseheavyatoms or self.sequence not in defs.modified_nucleotides:
+        if self.sequence not in defs.RNAbaseheavyatoms and self.sequence not in defs.modified_nucleotides:
             return None
         R = []
         S = []
