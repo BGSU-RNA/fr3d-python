@@ -1,12 +1,10 @@
-import itertools as it
-
 import pytest
+
 import numpy as np
+import itertools as it
 
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
-
-from fr3d.unit_ids import decode
 
 from tests.cif import ReaderTest
 
@@ -211,60 +209,6 @@ class StructureWithTransformationVector(ReaderTest):
         np.testing.assert_array_almost_equal(ans, val)
 
 
-class SequenceMappingTest(ReaderTest):
-    name = '1GID'
-
-    def setUp(self):
-        super(SequenceMappingTest, self).setUp()
-        self.data = list(self.cif.experimental_sequence_mapping('A'))
-
-    def test_can_compute_mapping(self):
-        val = self.data[-1]
-        ans = ('C', '1GID|Sequence|A|C|158', '1GID|1|A|C|260')
-        self.assertEqual(ans, val)
-
-
-class MultipleSequenceMappingTest(ReaderTest):
-    name = '1GID'
-
-    def setUp(self):
-        super(MultipleSequenceMappingTest, self).setUp()
-        self.data = list(self.cif.experimental_sequence_mapping(['A', 'B']))
-        self.chain_a = list(self.cif.experimental_sequence_mapping('A'))
-        self.chain_b = list(self.cif.experimental_sequence_mapping('B'))
-
-    def test_can_get_for_both_chains(self):
-        val = set(d[1].split('|')[2] for d in self.data)
-        assert val == set('AB')
-
-    def test_finds_no_duplicates(self):
-        assert len(self.data) == len(set(self.data))
-
-    def test_can_compute_all_mappings(self):
-        assert len(self.data) == len(self.chain_a) + len(self.chain_b)
-
-    def test_gets_all_mappings(self):
-        total = list(self.chain_a)
-        total.extend(self.chain_b)
-        val = set(self.data)
-        assert val == set(total)
-
-    def test_it_does_not_have_duplicate_unit_ids(self):
-        unit_ids = [d[2] for d in self.data]
-        assert len(unit_ids) == len(set(unit_ids))
-
-
-class LargeSequenceMappingTest(ReaderTest):
-    name = '1S72'
-
-    def setUp(self):
-        super(LargeSequenceMappingTest, self).setUp()
-        self.data = list(self.cif.experimental_sequence_mapping('0'))
-
-    def test_can_compute_full_mapping(self):
-        self.assertEqual(2922, len(self.data))
-
-
 class ProblematicReadingTest(ReaderTest):
     name = '1AQ3'
 
@@ -273,90 +217,3 @@ class ProblematicReadingTest(ReaderTest):
         atoms = it.chain.from_iterable(atoms)
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
         self.assertEquals('P_1', atom.symmetry)
-
-
-class MutipleEntriesInExpSeqTest(ReaderTest):
-    name = '1I9K'
-
-    def test_can_map_exp_seq(self):
-        mapping = list(self.cif.experimental_sequence_mapping('A'))
-        self.assertEquals(6, len(mapping))
-
-
-class MappingWithMissingTest(ReaderTest):
-    name = '1IBK'
-
-    def test_can_create_correct_mappings(self):
-        mapping = self.cif.experimental_sequence_mapping('A')
-        val = next(mapping)[2]
-        self.assertEquals(None, val)
-
-
-class ExperimentalMappingWithNoIdentityOperator(ReaderTest):
-    name = '4OQ8'
-
-    def test_can_generate_a_mapping(self):
-        mapping = self.cif.experimental_sequence_mapping('B')
-        val = decode(next(mapping)[2])
-        self.assertEquals('P_1', val['symmetry'])
-
-
-class ExperimentalMappingWithNoIdentityOperators2(ReaderTest):
-    name = '4OQ9'
-
-    def test_can_generate_mappings(self):
-        mapping = self.cif.experimental_sequence_mapping('1')
-        val = decode(next(mapping)[2])
-        self.assertEquals('P_1', val['symmetry'])
-
-
-class MappingWithNonStandardModel(ReaderTest):
-    name = '4R3I'
-
-    def test_can_generate_mapping_to_model_0(self):
-        mapping = self.cif.experimental_sequence_mapping('B')
-        val = decode(next(mapping)[2])
-        self.assertEquals(0, val['model'])
-
-
-class MappingWithDuplicateEntries(ReaderTest):
-    name = '4X4N'
-
-    def setUp(self):
-        super(MappingWithDuplicateEntries, self).setUp()
-        self.mapping = list(self.cif.experimental_sequence_mapping('G'))
-
-    def test_it_creates_correct_number_of_mappings(self):
-        # 14 (unosbered) + 2 * 18 (observed with 2 alt ids each)
-        self.assertEquals(50, len(self.mapping))
-
-    def test_it_can_map_to_none(self):
-        val = self.mapping[28]
-        ans = ('C', '4X4N|Sequence|G|C|20', None)
-        self.assertEquals(ans, val)
-
-    def test_it_takes_the_first_entry(self):
-        val = self.mapping[43:45]
-        ans = [('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|A|29||A'),
-               ('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|G|29||B')]
-        self.assertEquals(ans, val)
-
-    def test_it_does_duplicate(self):
-        val = self.mapping[45]
-        ans = ('U', '4X4N|Sequence|G|U|30', '4X4N|1|G|C|30||B')
-        self.assertEquals(ans, val)
-
-
-class MappingWithAltidsTest(ReaderTest):
-    name = '2G32'
-
-    def setUp(self):
-        super(MappingWithAltidsTest, self).setUp()
-        self.mapping = list(self.cif.experimental_sequence_mapping('L'))
-
-    def test_it_builds_all_mappings(self):
-        self.assertEquals(16, len(self.mapping))
-
-    def test_it_build_mappings_using_alt_ids(self):
-        val = self.mapping[0]
-        self.assertEquals('2G32|1|L|0C|90||A', val[2])

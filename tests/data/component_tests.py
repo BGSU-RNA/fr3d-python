@@ -244,6 +244,10 @@ class InferHydrogenTest(ut.TestCase):
         self.assertEqual(len(atoms), 5)
 
     @pytest.mark.skip()
+    def test_infers_correct_rotation_matrix_for_normal_base(self):
+        pass
+
+    @pytest.mark.skip()
     def test_infers_correct_location(self):
         pass
 

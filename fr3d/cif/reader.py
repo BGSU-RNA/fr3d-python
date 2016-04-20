@@ -13,7 +13,6 @@ from pdbx.reader.PdbxParser import PdbxReader as Reader
 from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
-from fr3d.unit_ids import encode
 
 
 """ The set of symbols that mark an operator expression as complex """
@@ -46,6 +45,19 @@ class UnusableUnobservedTable(Exception):
 
 class MissingSymmetry(Exception):
     """This is raised when we cannot determine a symmetry operator for an atom.
+    """
+    pass
+
+
+class UnmppedResidueException(Exception):
+    """This is raised if we do not map all residues in a chain to the
+    experimental sequence.
+    """
+    pass
+
+
+class TooManyMappedResidueException(Exception):
+    """Raised if too many units are mapped.
     """
     pass
 
@@ -213,43 +225,67 @@ class Cif(object):
         entries = self.pdbx_poly_seq_scheme
         filtered = it.ifilter(lambda r: chain_compare(r['pdb_strand_id']),
                               entries)
-        # model = self.atom_site[0]['pdbx_PDB_model_num']
 
+        # So in some structures, such as 4X4N, there is more than one entry for
+        # the same seq id but with a different sequence, ie, position 29 has
+        # two entries one as an A and one as a G. Looking at the PDB page I see
+        # that it uses the first entry and A. Without being able to pick which
+        # one is 'correct', we will just use the first one. Thus our usage of a
+        # prev parameter to allow use to skip producing a mapping if the last
+        # unit we have seen is the same as the current unit. This also forces
+        # us into having an index variable, and not just using enumerate.
+        prev = None
+        index = 0
         seen = set()
-        prev_number = None
-        for index, row in enumerate(filtered):
+        for row in filtered:
             current_chain = row['pdb_strand_id']
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
                 insertion_code = None
 
             number = row['pdb_seq_num']
-            if number == '?' or row['auth_seq_num'] == '?':
-                unit_ids = [None]
-            else:
-                if prev_number == number:
-                    self.logger.warning("Duplicate pdbx_poly_seq_scheme "
-                                        "entry at %s", number)
-                    continue
+            if number == '?':
+                self.logger.warning("Bad seq number pdbx_poly_seq_scheme "
+                                    "entry at %s", row)
+                continue
 
-                prev_number = number
-                key = (current_chain, int(number), insertion_code)
+            number = int(number)
+            key = (current_chain, number, insertion_code)
 
-                if key not in mapping:
-                    raise ValueError("Could not find unit for %s", key)
+            # Here is where we skip if we have a duplicate seq_id entry. We do
+            # not skip at the level of unit_id because there may be more than
+            # one unit mapping to a seq_id for units with alt ids.
+            if prev is not None and key == prev:
+                continue
 
-                unit_ids = mapping[key]
-
-            seq_data = (pdb, current_chain, row['mon_id'], row['seq_id'])
+            prev = key
+            unit_ids = mapping.get(key, [None])
+            seq_data = (pdb, current_chain, row['mon_id'], number)
             seq_id = '%s|Sequence|%s|%s|%s' % seq_data
+            if insertion_code:
+                seq_id += ('|||%s' % insertion_code)
 
             if seq_id in seen:
-                raise ValueError("Can't map one sequence residue twice")
+                raise ValueError("Can't map one sequence residue %s twice" %
+                                 seq_id)
 
             seen.add(seq_id)
             for unit_id in unit_ids:
-                seen.add(unit_id)
-                yield (row['mon_id'], seq_id, unit_id)
+                if unit_id in seen:
+                    raise ValueError("Can't map one unit id %s twice" %
+                                     unit_id)
+
+                if unit_id is not None:
+                    seen.add(unit_id)
+
+                yield {
+                    'unit_id': unit_id,
+                    'seq_id': seq_id,
+                    'seq_unit': row['mon_id'],
+                    'index': index,
+                    'number': number,
+                }
+            index += 1
 
     def __breaks__(self):
         pass
