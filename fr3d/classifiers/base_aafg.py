@@ -46,19 +46,57 @@ class Classifier(BaseClassifier):
                 angle= compnt.angle_between_normals(first, second)
     
             if -1.3 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
-                return "pseudopair"
+                if second.enough_HBs(first, second):
+                    return "pseudopair"
             else:
                 return None
+
+    def detect_edge(self, base_residue, aa_residue):
+        aa_x = 0
+        aa_y = 0
+        n = 0
+        base_x = 0
+        base_y = 0
+        aa_coordinates = aa_residue.compnt.transform()
+        base_coordinates = base_residue.compnt.transform()
+        
+        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            key = aa_atom.name
+            aa_x+= aa_coordinates[key][0]
+            aa_y+= aa_coordinates[key][1]
+            n +=1
+        aa_center_x = aa_x/n        
+        aa_center_y = aa_y/n        
+          
+        for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_residue.sequence]):
+            key = base_atom.name
+            base_x+= base_coordinates[key][0]
+            base_y+= base_coordinates[key][1]
+            n +=1
+        base_center_x = aa_x/n        
+        base_center_y = aa_y/n  
     
+        y = aa_center_y - base_center_y
+        x = aa_center_x - base_center_x
+        angle_aa = np.arctan2(y,x)
     
-    def enough_HBs(self, aa_residue, base_atoms):
+        if -1 <= angle_aa <= 0:
+            return "Sugar"
+        elif angle_aa <=1:
+            return "WC"
+        elif 1.4 <= angle_aa <= 3.2:
+            return "Hoogsteen"
+    
+        
+    def enough_HBs(self, base_residue, aa_residue):
         """Calculates atom to atom distance of part "aa_part" of neighboring amino acids
     of type "aa" from each atom of base. Only returns a pair of aa/nt if two
     or more atoms are within the cutoff distance"""
         min_distance = 4
         HB_atoms = set(['N', 'NH1','NH2','NE','NZ','ND1','NE2','O','OD1','OE1','OE2', 'OG', 'OH'])
         n = 0
-        for base_atom in self.atoms(name=base_atoms):
+        base_seq = base_residue.sequence()
+        for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_seq]):
             for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
 
                 distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
