@@ -258,6 +258,13 @@ class Cif(object):
             if prev is not None and key == prev:
                 continue
 
+            # It is possible that this is error prone, since I think there is a
+            # formal constraint on pdbx_poly_seq_scheme to require that units
+            # appear grouped by chain. That said, I've never seen a case where
+            # this isn't true.
+            if prev is not None and prev[0] != current_chain:
+                index = 0
+
             prev = key
             unit_ids = mapping.get(key, [None])
             seq_data = (pdb, current_chain, row['mon_id'], number)

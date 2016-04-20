@@ -74,6 +74,13 @@ class MultipleChainTest(ExperimentalSequenceMappingTest):
         # Two chains of length 158
         assert len(self.data) == 158 * 2
 
+    def test_resets_the_index(self):
+        chain_of = lambda d: decode(d['unit_id'])['chain']
+        chain_a = [d['index'] for d in self.data if chain_of(d) == 'A']
+        chain_b = [d['index'] for d in self.data if chain_of(d) == 'B']
+        assert chain_a == range(0, 158)
+        assert chain_b == range(0, 158)
+
 
 class LargeSequenceMappingTest(ExperimentalSequenceMappingTest):
     name = '1S72'
