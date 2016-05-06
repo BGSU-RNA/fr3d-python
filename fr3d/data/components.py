@@ -134,8 +134,10 @@ class Component(EntitySelector):
             current = defs.modified_nucleotides[self.sequence]
             standard_coords = defs.RNAbasecoordinates[current["standard"]]
             for standard, modified in current["atoms"].items():
-                R.append(self.atoms(name=modified).coordinates())
-                S.append(standard_coords[standard])
+                coords = list(self.centers[modified])
+                if coords:
+                    R.append(coords)
+                    S.append(standard_coords[standard])
 
         if self.sequence in defs.RNAbaseheavyatoms:
             baseheavy = defs.RNAbaseheavyatoms[self.sequence]
@@ -155,17 +157,18 @@ class Component(EntitySelector):
 
         self.rotation_matrix = rotation_matrix
 
-        hydrogens = defs.RNAbasehydrogens[self.sequence]
-        coordinates = defs.RNAbasecoordinates[self.sequence]
+        if self.sequence in defs.RNAbasehydrogens:
+            hydrogens = defs.RNAbasehydrogens[self.sequence]
+            coordinates = defs.RNAbasecoordinates[self.sequence]
 
-        for hydrogenatom in hydrogens:
-            hydrogencoordinates = coordinates[hydrogenatom]
-            newcoordinates = base_center + \
-                np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
-            self._atoms.append(Atom(name=hydrogenatom,
-                                    x=newcoordinates[0, 0],
-                                    y=newcoordinates[0, 1],
-                                    z=newcoordinates[0, 2]))
+            for hydrogenatom in hydrogens:
+                hydrogencoordinates = coordinates[hydrogenatom]
+                newcoordinates = base_center + \
+                    np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
+                self._atoms.append(Atom(name=hydrogenatom,
+                                        x=newcoordinates[0, 0],
+                                        y=newcoordinates[0, 1],
+                                        z=newcoordinates[0, 2]))
 
     def transform(self, transform):
         """Create a new component from this one by applying a transformation
