@@ -123,15 +123,19 @@ class Component(EntitySelector):
         """Infer the coordinates of the hydrogen atoms of this component.
         Currently, it only works for RNA with .sequence
         """
-        if self.sequence not in defs.RNAbaseheavyatoms and self.sequence not in defs.modified_nucleotides:
+        if self.sequence not in defs.RNAbaseheavyatoms and \
+                self.sequence not in defs.modified_nucleotides:
             return None
         R = []
         S = []
 
-        if self.sequence in defs.modified_nucleotides:
-            for standard, modified in modified_nucleotides[self.sequence]["atoms"].items():
-                R.append(self.atoms(name = modified).coordinates())
-                S.append(RNAbasecoordinates[current_modified["standard"]][standard])
+        mod_nts = defs.modified_nucleotides
+        if self.sequence in mod_nts:
+            current = defs.modified_nucleotides[self.sequence]
+            standard_coords = defs.RNAbasecoordinates[current["standard"]]
+            for standard, modified in current["atoms"].items():
+                R.append(self.atoms(name=modified).coordinates())
+                S.append(standard_coords[standard])
 
         if self.sequence in defs.RNAbaseheavyatoms:
             baseheavy = defs.RNAbaseheavyatoms[self.sequence]
@@ -227,7 +231,7 @@ class Component(EntitySelector):
                     n = n+1
         if n>= min_number:
             return True
-        
+
 
     def distance(self, other, using='*', to='*'):
         """Compute a center center distance between this and another component.
@@ -270,7 +274,7 @@ class Component(EntitySelector):
         vec1 = self.normal_calculation()
         vec2= aa_residue.normal_calculation()
         return angrot.angle_between_planes(vec1, vec2)
-        
+
 
     def normal_calculation(self):
         key = self.sequence
