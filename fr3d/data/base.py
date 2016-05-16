@@ -198,11 +198,15 @@ class CoordinateTree(object):
 
         self._residues = []
         coordinates = []
+        self.tree = None
         for residue, coordinate in generator:
+            print(residue, coordinate)
             if len(coordinate) > 0:
+                print(coordinate)
                 coordinates.append(coordinate)
                 self._residues.append(residue)
-        self.tree = sp.cKDTree(coordinates)
+        if coordinates:
+            self.tree = sp.cKDTree(coordinates)
 
     def count_neighbors(self, other, r, *p):
         """Return the counts of neighbors in the other tree. Arguments are as
@@ -211,6 +215,10 @@ class CoordinateTree(object):
 
         :returns: The counts.
         """
+
+        if not self.tree:
+            return 0
+
         return self.tree.count_neighbors(other.tree, r, *p)
 
     def pairs(self, distance, unique=False, **kwargs):
@@ -223,6 +231,9 @@ class CoordinateTree(object):
         :kwargs: Keyword arguments to cKDTree.query_pairs.
         :returns: A generator for the pairs.
         """
+
+        if not self.tree:
+            return []
 
         def fn():
             results = self.tree.query_pairs(distance, **kwargs)
@@ -245,6 +256,9 @@ class CoordinateTree(object):
         :kwargs: Keyword arguments to cKDTree.query_ball_tree.
         :returns: A generator for the neighbors.
         """
+
+        if not self.tree:
+            return []
 
         def fn():
             results = self.tree.query_ball_tree(other.tree, distance, **kwargs)

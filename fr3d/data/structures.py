@@ -138,19 +138,23 @@ class Structure(object):
             self._sequence = [r.sequence for r in self.residues()]
         return self._sequence
 
-    def distances(self, **kwargs):
+    def distances(self, atoms=None, **kwargs):
         """Create a coordinate tree for the selected residues. Residues are
         selected using the argumetns from kwargs as for the residues method.
         This will use the center for each residue. It will use in order,
-        'base', 'aa_fg', 'modified_nucleotides' or '*' (meaning mean of all
-        atoms) if none of the above are defined.
+        the given atoms, 'base', 'aa_fg', 'modified_nucleotides' or '*'
+        (meaning mean of all atoms) if none of the above are defined.
 
+        :param dict atoms: The center to use. If none is given the defaults are
+        used.
         :param dict kwargs: The filter to use.
         :returns: A coordinate tree.
         """
 
         def fn():
             for residue in self.residues(**kwargs):
+                if atoms:
+                    yield residue, residue.centers[atoms]
                 if 'base' in residue.centers:
                     yield residue, residue.centers['base']
                 elif 'aa_fg' in residue.centers:
@@ -161,17 +165,21 @@ class Structure(object):
                     yield residue, residue.centers['*']
         return CoordinateTree(fn())
 
-    def atom_distances(self, **kwargs):
+    def atom_distances(self, residues={}, atoms={}):
         """Create a tree for the atom distances. This will filter the residues
-        using the residues using the filter given as for .residues().
+        using the residues using the filter given as for .residues() and filter
+        the atoms as .atoms() does for components. The coordinate tree will map
+        from atom coordinate to residue so it does not provide info on which
+        atoms are near, but instead which residue are.
 
-        :param dict kwargs: The filter for the residues to select.
+        :param dict atoms: A filter for the atoms to select
+        :param dict residues: The filter for the residues to select.
         :returns: A coordinate tree.
         """
 
         def fn():
-            for residue in self.residues(**kwargs):
-                for atom in residue.atoms():
+            for residue in self.residues(**residues):
+                for atom in residue.atoms(**atoms):
                     yield residue, atom.coordinates()
         return CoordinateTree(fn())
 
