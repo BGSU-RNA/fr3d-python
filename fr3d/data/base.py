@@ -248,8 +248,9 @@ class CoordinateTree(object):
         def fn():
             results = self.tree.query_ball_tree(other.tree, distance, **kwargs)
             if results:
-                for first, second in results:
-                    yield self._residues[first], other._residues[second]
+                for first, r in enumerate(results):
+                    for second in r:
+                        yield self._residues[first], other._residues[second]
 
         if unique:
             return self.__as_unique__(fn())

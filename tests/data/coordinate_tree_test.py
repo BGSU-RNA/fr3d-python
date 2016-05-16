@@ -62,22 +62,9 @@ class CoordinateTreeTest(TestCase):
     def test_it_can_get_neighbors_between_trees(self):
         neighbors = ft.partial(self.neighbors, self.tree1, self.tree2)
         assert neighbors(0.0) == []
-        assert self.neighbors(1.0) == [('0FJG|1|A|3', '0FJG|1|B|4')]
+        assert neighbors(2.0) == [('0FJG|1|A||3', '0FJG|1|B||3'),
+                                  ('0FJG|1|A||4', '0FJG|1|B||4')]
 
     @pytest.mark.skip()
     def test_it_can_get_only_unique_pairs(self):
-        pass
-
-
-class RealDataCoordinateTreeTest(TestCase):
-
-    def setUp(self):
-        pass
-
-    @pytest.mark.skip()
-    def test_it_can_build_a_tree_for_residues(self):
-        pass
-
-    @pytest.mark.skip()
-    def test_it_can_build_a_tree_for_atoms(self):
         pass

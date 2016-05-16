@@ -5,6 +5,7 @@ represent an entire structure or selected parts of it.
 import itertools as it
 
 from fr3d.data.base import EntitySelector
+from fr3d.data.base import CoordinateTree
 from fr3d.data.pairs import Pairs
 from fr3d.unit_ids import encode
 
@@ -136,6 +137,43 @@ class Structure(object):
         if self._sequence is None:
             self._sequence = [r.sequence for r in self.residues()]
         return self._sequence
+
+    def distances(self, **kwargs):
+        """Create a coordinate tree for the selected residues. Residues are
+        selected using the argumetns from kwargs as for the residues method.
+        This will use the center for each residue. It will use in order,
+        'base', 'aa_fg', 'modified_nucleotides' or '*' (meaning mean of all
+        atoms) if none of the above are defined.
+
+        :param dict kwargs: The filter to use.
+        :returns: A coordinate tree.
+        """
+
+        def fn():
+            for residue in self.residues(**kwargs):
+                if 'base' in residue.centers:
+                    yield residue, residue.centers['base']
+                elif 'aa_fg' in residue.centers:
+                    yield residue, residue.centers['aa_fg']
+                elif 'modified_nucleotides' in residue.centers:
+                    yield residue, residue.centers['modified_nucleotides']
+                else:
+                    yield residue, residue.centers['*']
+        return CoordinateTree(fn())
+
+    def atom_distances(self, **kwargs):
+        """Create a tree for the atom distances. This will filter the residues
+        using the residues using the filter given as for .residues().
+
+        :param dict kwargs: The filter for the residues to select.
+        :returns: A coordinate tree.
+        """
+
+        def fn():
+            for residue in self.residues(**kwargs):
+                for atom in residue.atoms():
+                    yield residue, atom.coordinates()
+        return CoordinateTree(fn())
 
     def __len__(self):
         """Compute the length of this Structure. That is the number of residues

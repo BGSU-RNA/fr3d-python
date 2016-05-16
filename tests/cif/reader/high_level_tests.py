@@ -249,3 +249,27 @@ class AltIdTest(ReaderTest):
         residues = list(self.structure.residues(symmetry='P_25'))
         val = list(residues[0].atoms())[0]
         self.assertEquals(residues[0].unit_id(), val.component_unit_id())
+
+
+class DistanceTreeTest(ReaderTest):
+    name = '1GID'
+
+    def setUp(self):
+        super(DistanceTreeTest, self).setUp()
+        self.tree = self.structure.distances()
+
+    def test_it_can_create_a_residue_tree(self):
+        counts = self.tree.count_neighbors(self.tree, 3)
+        assert counts == 316
+
+
+class AtomDistanceTreeTest(ReaderTest):
+    name = '1GID'
+
+    def setUp(self):
+        super(AtomDistanceTreeTest, self).setUp()
+        self.tree = self.structure.atom_distances()
+
+    def test_it_can_create_an_atom_tree(self):
+        counts = self.tree.count_neighbors(self.tree, 3)
+        assert counts >= 316
