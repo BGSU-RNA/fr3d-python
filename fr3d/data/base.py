@@ -199,8 +199,9 @@ class CoordinateTree(object):
         self._residues = []
         coordinates = []
         for residue, coordinate in generator:
-            coordinates.append(coordinate)
-            self._residues.append(residue)
+            if len(coordinate) > 0:
+                coordinates.append(coordinate)
+                self._residues.append(residue)
         self.tree = sp.cKDTree(coordinates)
 
     def count_neighbors(self, other, r, *p):
