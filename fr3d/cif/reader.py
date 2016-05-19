@@ -291,6 +291,7 @@ class Cif(object):
                     'seq_unit': row['mon_id'],
                     'index': index,
                     'number': number,
+                    'chain': current_chain,
                 }
             index += 1
 
