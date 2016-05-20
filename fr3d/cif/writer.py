@@ -21,8 +21,9 @@ class CifAtom(object):
     5. We have a final field which the component unit id for each atom.
     """
 
-    def __init__(self, handle):
+    def __init__(self, handle, unit_ids=True):
         self.writer = Writer(handle)
+        self.unit_ids = unit_ids
 
     def atom_container(self, structure):
         atoms = DataCategory('atom_site')
@@ -33,8 +34,10 @@ class CifAtom(object):
                   'B_iso_or_equiv', 'Cartn_x_esd', 'Cartn_y_esd',
                   'Cartn_z_esd', 'occupancy_ies', 'B_iso_or_equiv_esd',
                   'pdbx_formal_charge', 'auth_seq_id', 'auth_comp_id',
-                  'auth_asym_id', 'auth_atom_id', 'pdbx_PDB_model_num',
-                  'unit_id']
+                  'auth_asym_id', 'auth_atom_id', 'pdbx_PDB_model_num']
+
+        if self.unit_ids:
+            fields.append('unit_id')
 
         for field in fields:
             atoms.appendAttribute(field)
@@ -55,8 +58,11 @@ class CifAtom(object):
                     '?', '?', '?',
                     '?', '?', '?',
                     '.', atom.component_number, atom.component_id,
-                    atom.chain, atom.name, atom.model,
-                    atom.component_unit_id()]
+                    atom.chain, atom.name, atom.model]
+
+            if self.unit_ids:
+                data.append(atom.component_unit_id())
+
             atoms.append(data)
 
         return atoms
