@@ -397,6 +397,11 @@ class Cif(object):
     def table(self, name):
         return Table(self, self.__block__(name))
 
+    def has_table(self, name):
+        block_name = re.sub('^_', '', name)
+        block = self.data.getObj(block_name)
+        return bool(block)
+
     def operators(self, asym_id):
         matching = []
         seen = set()

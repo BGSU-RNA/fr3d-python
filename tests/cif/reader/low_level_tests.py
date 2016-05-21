@@ -62,6 +62,13 @@ class SimpleCIFTest(ReaderTest):
     def test_loads_correct_symmetry_operatrs(self):
         pass
 
+    def test_knows_if_has_block(self):
+        assert self.has_table('atom_site')
+        assert self.has_table('_atom_site')
+
+    def test_knows_if_does_not_have_a_block(self):
+        assert self.has_table('bob')
+
 
 class SimpleTableTest(ReaderTest):
     name = '1FAT'
