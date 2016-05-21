@@ -63,11 +63,11 @@ class SimpleCIFTest(ReaderTest):
         pass
 
     def test_knows_if_has_block(self):
-        assert self.has_table('atom_site')
-        assert self.has_table('_atom_site')
+        assert self.cif.has_table('atom_site')
+        assert self.cif.has_table('_atom_site')
 
     def test_knows_if_does_not_have_a_block(self):
-        assert self.has_table('bob')
+        assert self.cif.has_table('bob') is False
 
 
 class SimpleTableTest(ReaderTest):
