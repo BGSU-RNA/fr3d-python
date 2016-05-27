@@ -99,6 +99,28 @@ class ResidueTest(ReaderTest):
         self.assertEqual(ans, val)
 
 
+class ChainIndexTest(ReaderTest):
+    name = '4A3J'
+
+    def setUp(self):
+        super(ChainIndexTest, self).setUp()
+        self.data = sorted(self.structure.residues(polymeric=None),
+                           key=lambda c: c.index)
+        self.data = [d for d in self.data if d.chain == 'A']
+
+    def test_it_assigns_numbers_to_all_indexes(self):
+        for d in self.data:
+            if d.index is not None:
+                assert isinstance(d.index, int)
+            else:
+                assert d.polymeric is False
+
+    def test_it_assigns_the_correct_index(self):
+        # Non polymeric entries have no index so should set to none.
+        for d in self.structure.residues(polymeric=False):
+            assert d.index is None
+
+
 class StructureWithSymmetry(ReaderTest):
     name = '1WMQ'
 

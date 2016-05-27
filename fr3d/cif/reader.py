@@ -354,6 +354,8 @@ class Cif(object):
         index = atom['label_seq_id']
         if index != '.':
             index = int(index)
+        else:
+            index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
 
