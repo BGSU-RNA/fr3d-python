@@ -200,9 +200,7 @@ class CoordinateTree(object):
         coordinates = []
         self.tree = None
         for residue, coordinate in generator:
-            print(residue, coordinate)
             if len(coordinate) > 0:
-                print(coordinate)
                 coordinates.append(coordinate)
                 self._residues.append(residue)
         if coordinates:
