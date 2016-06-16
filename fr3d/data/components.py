@@ -10,6 +10,7 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 
+
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
     and ligands.
@@ -126,6 +127,7 @@ class Component(EntitySelector):
         if self.sequence not in defs.RNAbaseheavyatoms and \
                 self.sequence not in defs.modified_nucleotides:
             return None
+
         R = []
         S = []
 
@@ -232,9 +234,9 @@ class Component(EntitySelector):
             for atom2 in other.atoms(**kw2):
                 if atom1.distance(atom2) <= abs(cutoff):
                     n = n+1
-        if n>= min_number:
-            return True
 
+        if n >= min_number:
+            return True
 
     def distance(self, other, using='*', to='*'):
         """Compute a center center distance between this and another component.
@@ -273,16 +275,15 @@ class Component(EntitySelector):
     def __repr__(self):
         return '<Component %s>' % self.unit_id()
 
-    def angle_between_normals (self, aa_residue):
+    def angle_between_normals(self, aa_residue):
         vec1 = self.normal_calculation()
-        vec2= aa_residue.normal_calculation()
+        vec2 = aa_residue.normal_calculation()
         return angrot.angle_between_planes(vec1, vec2)
-
 
     def normal_calculation(self):
         key = self.sequence
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
         P3 = self.centers[defs.planar_atoms[key][2]]
-        vector = np.cross((P2 - P1),(P3-P1))
+        vector = np.cross((P2 - P1), (P3-P1))
         return vector
