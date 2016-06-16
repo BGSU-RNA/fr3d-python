@@ -24,7 +24,12 @@ class EntitySelector(object):
         self.options = kwargs
 
     def __callable_filter__(self, key, func):
-        return lambda obj: func(getattr(obj, key, None))
+        def fn(obj):
+            attr = getattr(obj, key, None)
+            if callable(attr):
+                return func(attr())
+            return func(attr)
+        return fn
 
     def __basic_filter__(self, key, value, compare):
         def fn(obj):
