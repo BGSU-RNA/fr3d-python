@@ -295,3 +295,16 @@ class AtomDistanceTreeTest(ReaderTest):
     def test_it_can_create_an_atom_tree(self):
         counts = self.tree.count_neighbors(self.tree, 3)
         assert counts >= 316
+
+
+class NonpolymerChains(ReaderTest):
+    name = '2UUA'
+
+    def test_it_loads_paryomcin_residues(self):
+        chains = set(r.sequence for r in self.structure._residues)
+        assert 'PAR' in chains
+
+    def test_it_loads_chain_z(self):
+        residues = self.structure.residues(polymeric=None)
+        chains = set(r.chain for r in residues)
+        assert 'Z' in chains

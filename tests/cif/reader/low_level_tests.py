@@ -224,3 +224,10 @@ class ProblematicReadingTest(ReaderTest):
         atoms = it.chain.from_iterable(atoms)
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
         self.assertEquals('P_1', atom.symmetry)
+
+
+class MissingAssemblyReadingTest(ReaderTest):
+    name = '2UUA'
+
+    def test_will_give_all_operators_if_unknown_chain(self):
+        assert [op['name'] for op in self.cif.operators('X')] == ['1_555']

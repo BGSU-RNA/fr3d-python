@@ -89,27 +89,27 @@ class Cif(object):
 
     def __load_operators__(self):
         operators = {}
-        for op in self.pdbx_struct_oper_list:
-            op['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
-            op['vector'] = [None] * 3
+        for oper in self.pdbx_struct_oper_list:
+            oper['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
+            oper['vector'] = [None] * 3
 
             for row in range(3):
-                op['vector'][row] = float(op['vector[%s]' % str(row + 1)])
+                oper['vector'][row] = float(oper['vector[%s]' % str(row + 1)])
 
                 for column in range(3):
                     key = 'matrix[%s][%s]' % (str(row + 1), str(column + 1))
-                    op['matrix'][row][column] = float(op[key])
+                    oper['matrix'][row][column] = float(oper[key])
 
             transform = np.zeros((4, 4))
-            transform[0:3, 0:3] = op['matrix']
-            transform[0:3, 3] = op['vector']
+            transform[0:3, 0:3] = oper['matrix']
+            transform[0:3, 3] = oper['vector']
             transform[3, 3] = 1.0
 
-            op['matrix'] = np.array(op['matrix'])
-            op['vector'] = np.array(op['vector'])
-            op['transform'] = np.array(transform)
+            oper['matrix'] = np.array(oper['matrix'])
+            oper['vector'] = np.array(oper['vector'])
+            oper['transform'] = np.array(transform)
 
-            operators[op['id']] = op
+            operators[oper['id']] = oper
 
         identity = self.__identity_operator__()
         operators[identity['id']] = identity
@@ -333,6 +333,9 @@ class Cif(object):
         def operator(entry):
             pdb, atom, number = entry
             operators = self.operators(atom['label_asym_id'])
+            if not operators:
+                self.logger.warning("No operator found for %s", atom)
+                return None
             if number < len(operators):
                 return pdb, atom, operators[number]
             return None
@@ -405,9 +408,14 @@ class Cif(object):
         return bool(block)
 
     def operators(self, asym_id):
-        matching = []
-        seen = set()
         assemblies = self._assemblies[asym_id]
+        if not assemblies:
+            self.logger.warning("Asym id %s is not part of any assmeblies."
+                                "Defaulting to all operators", asym_id)
+            assemblies = it.chain.from_iterable(self._assemblies.values())
+
+        seen = set()
+        matching = []
         for assembly in assemblies:
             if assembly['id'] not in seen:
                 seen.add(assembly['id'])
