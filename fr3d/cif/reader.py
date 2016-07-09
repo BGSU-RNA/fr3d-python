@@ -410,8 +410,9 @@ class Cif(object):
     def operators(self, asym_id):
         assemblies = self._assemblies[asym_id]
         if not assemblies:
-            self.logger.warning("Asym id %s is not part of any assmeblies."
-                                "Defaulting to all operators", asym_id)
+            self.logger.warning("Asym id %s.%s is not part of any assmeblies."
+                                " Defaulting to all operators",
+                                self.pdb, asym_id)
             assemblies = it.chain.from_iterable(self._assemblies.values())
 
         seen = set()
