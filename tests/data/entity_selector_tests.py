@@ -1,4 +1,6 @@
 from unittest import TestCase
+import functools as ft
+import operator as op
 
 from fr3d.data import Atom
 from fr3d.data.base import EntitySelector
@@ -77,6 +79,16 @@ class BasicSelectionTest(TestCase):
         comp_id = '1S72|1|A|C|1'
         val = list(EntitySelector(self.atoms, component_unit_id=comp_id))
         self.assertEquals([self.atoms[2]], val)
+
+    def test_can_filter_using_op(self):
+        val = list(EntitySelector(self.atoms, type=ft.partial(op.eq, 'C')))
+        assert [self.atoms[0], self.atoms[1]] == val
+
+    def test_can_filter_using_method_and_lambda(self):
+        comp_id = '1S72|1|A|C|1'
+        val = list(EntitySelector(self.atoms,
+                                  component_unit_id=lambda t: t == comp_id))
+        assert [self.atoms[2]] == val
 
     def test_can_filter_by_method_to_find_several(self):
         ids = ['1S72|1|A|C|1', '1S72|1|A|C|3']

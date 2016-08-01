@@ -99,6 +99,28 @@ class ResidueTest(ReaderTest):
         self.assertEqual(ans, val)
 
 
+class ChainIndexTest(ReaderTest):
+    name = '4A3J'
+
+    def setUp(self):
+        super(ChainIndexTest, self).setUp()
+        self.data = sorted(self.structure.residues(polymeric=None),
+                           key=lambda c: c.index)
+        self.data = [d for d in self.data if d.chain == 'A']
+
+    def test_it_assigns_numbers_to_all_indexes(self):
+        for d in self.data:
+            if d.index is not None:
+                assert isinstance(d.index, int)
+            else:
+                assert d.polymeric is False
+
+    def test_it_assigns_the_correct_index(self):
+        # Non polymeric entries have no index so should set to none.
+        for d in self.structure.residues(polymeric=False):
+            assert d.index is None
+
+
 class StructureWithSymmetry(ReaderTest):
     name = '1WMQ'
 
@@ -249,3 +271,40 @@ class AltIdTest(ReaderTest):
         residues = list(self.structure.residues(symmetry='P_25'))
         val = list(residues[0].atoms())[0]
         self.assertEquals(residues[0].unit_id(), val.component_unit_id())
+
+
+class DistanceTreeTest(ReaderTest):
+    name = '1GID'
+
+    def setUp(self):
+        super(DistanceTreeTest, self).setUp()
+        self.tree = self.structure.distances()
+
+    def test_it_can_create_a_residue_tree(self):
+        counts = self.tree.count_neighbors(self.tree, 3)
+        assert counts == 316
+
+
+class AtomDistanceTreeTest(ReaderTest):
+    name = '1GID'
+
+    def setUp(self):
+        super(AtomDistanceTreeTest, self).setUp()
+        self.tree = self.structure.atom_distances()
+
+    def test_it_can_create_an_atom_tree(self):
+        counts = self.tree.count_neighbors(self.tree, 3)
+        assert counts >= 316
+
+
+class NonpolymerChains(ReaderTest):
+    name = '2UUA'
+
+    def test_it_loads_paryomcin_residues(self):
+        chains = set(r.sequence for r in self.structure._residues)
+        assert 'PAR' in chains
+
+    def test_it_loads_chain_z(self):
+        residues = self.structure.residues(polymeric=None)
+        chains = set(r.chain for r in residues)
+        assert 'Z' in chains

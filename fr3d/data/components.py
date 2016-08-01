@@ -8,6 +8,7 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 
+
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
     and ligands.
@@ -121,15 +122,22 @@ class Component(EntitySelector):
         """Infer the coordinates of the hydrogen atoms of this component.
         Currently, it only works for RNA with .sequence
         """
-        if self.sequence not in defs.RNAbaseheavyatoms and self.sequence not in defs.modified_nucleotides:
+        if self.sequence not in defs.RNAbaseheavyatoms and \
+                self.sequence not in defs.modified_nucleotides:
             return None
+
         R = []
         S = []
 
-        if self.sequence in defs.modified_nucleotides:
-            for standard, modified in modified_nucleotides[self.sequence]["atoms"].items():
-                R.append(self.atoms(name = modified).coordinates())
-                S.append(RNAbasecoordinates[current_modified["standard"]][standard])
+        mod_nts = defs.modified_nucleotides
+        if self.sequence in mod_nts:
+            current = defs.modified_nucleotides[self.sequence]
+            standard_coords = defs.RNAbasecoordinates[current["standard"]]
+            for standard, modified in current["atoms"].items():
+                coords = list(self.centers[modified])
+                if coords:
+                    R.append(coords)
+                    S.append(standard_coords[standard])
 
         if self.sequence in defs.RNAbaseheavyatoms:
             baseheavy = defs.RNAbaseheavyatoms[self.sequence]
@@ -149,17 +157,18 @@ class Component(EntitySelector):
 
         self.rotation_matrix = rotation_matrix
 
-        hydrogens = defs.RNAbasehydrogens[self.sequence]
-        coordinates = defs.RNAbasecoordinates[self.sequence]
+        if self.sequence in defs.RNAbasehydrogens:
+            hydrogens = defs.RNAbasehydrogens[self.sequence]
+            coordinates = defs.RNAbasecoordinates[self.sequence]
 
-        for hydrogenatom in hydrogens:
-            hydrogencoordinates = coordinates[hydrogenatom]
-            newcoordinates = base_center + \
-                np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
-            self._atoms.append(Atom(name=hydrogenatom,
-                                    x=newcoordinates[0, 0],
-                                    y=newcoordinates[0, 1],
-                                    z=newcoordinates[0, 2]))
+            for hydrogenatom in hydrogens:
+                hydrogencoordinates = coordinates[hydrogenatom]
+                newcoordinates = base_center + \
+                    np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
+                self._atoms.append(Atom(name=hydrogenatom,
+                                        x=newcoordinates[0, 0],
+                                        y=newcoordinates[0, 1],
+                                        z=newcoordinates[0, 2]))
 
     def transform(self, transform):
         """Create a new component from this one by applying a transformation
@@ -245,9 +254,9 @@ class Component(EntitySelector):
             for atom2 in other.atoms(**kw2):
                 if atom1.distance(atom2) <= abs(cutoff):
                     n = n+1
-        if n>= min_number:
+
+        if n >= min_number:
             return True
-        
 
     def distance(self, other, using='*', to='*'):
         """Compute a center center distance between this and another component.
@@ -286,16 +295,20 @@ class Component(EntitySelector):
     def __repr__(self):
         return '<Component %s>' % self.unit_id()
 
-    def angle_between_normals (self, aa_residue):
+    def angle_between_normals(self, aa_residue):
         vec1 = self.normal_calculation()
-        vec2= aa_residue.normal_calculation()
+        vec2 = aa_residue.normal_calculation()
         return angrot.angle_between_planes(vec1, vec2)
-        
 
     def normal_calculation(self):
         key = self.sequence
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
         P3 = self.centers[defs.planar_atoms[key][2]]
+<<<<<<< HEAD
         vector = np.cross((P2 - P1),(P3-P1))
         return vector
+=======
+        vector = np.cross((P2 - P1), (P3-P1))
+        return vector
+>>>>>>> origin/develop

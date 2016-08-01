@@ -62,6 +62,13 @@ class SimpleCIFTest(ReaderTest):
     def test_loads_correct_symmetry_operatrs(self):
         pass
 
+    def test_knows_if_has_block(self):
+        assert self.cif.has_table('atom_site')
+        assert self.cif.has_table('_atom_site')
+
+    def test_knows_if_does_not_have_a_block(self):
+        assert self.cif.has_table('bob') is False
+
 
 class SimpleTableTest(ReaderTest):
     name = '1FAT'
@@ -217,3 +224,10 @@ class ProblematicReadingTest(ReaderTest):
         atoms = it.chain.from_iterable(atoms)
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
         self.assertEquals('P_1', atom.symmetry)
+
+
+class MissingAssemblyReadingTest(ReaderTest):
+    name = '2UUA'
+
+    def test_will_give_all_operators_if_unknown_chain(self):
+        assert [op['name'] for op in self.cif.operators('X')] == ['1_555']

@@ -243,5 +243,6 @@ class SequenceTest(PersistedBase):
             'seq_unit': 'C',
             'number': 260,
             'unit_id': '1GID|1|A|C|260',
-            'index': 157
+            'index': 157,
+            'chain': 'A',
         }
