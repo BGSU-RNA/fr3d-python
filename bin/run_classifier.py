@@ -4,9 +4,16 @@ Created on Mon Apr 18 16:58:14 2016
 
 @author: Poorna
 """
+import os
+import sys
+
+here = os.path.abspath(os.path.dirname(__file__))
+fr3d = os.path.abspath(os.path.join(here, ".."))
+sys.path.insert(0, fr3d)
+
 from fr3d.cif.reader import Cif
-from fr3d.classifiers.base_aafg import classification
-from fr3d.classifiers.base_aafg import detect_edge
+from fr3d.classifiers.base_aafg import Classifier
+
 def get_structure(filename):
     with open(filename, 'rb') as raw:
         structure = Cif(raw).structure()
@@ -16,27 +23,14 @@ def get_structure(filename):
         return structure
 
 
-PDB_List = ['4YBB']
-base_seq_list = ['A', 'U', 'C', 'G']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
+PDB_List = ['2C0B']
+
 if __name__=="__main__":
     
     for PDB in PDB_List:
         structure = get_structure('E:\\Leontis\\Python scripts\\CIF\\%s.cif' % PDB)
+        classifier = Classifier()
                 
-        aa_part = 'aa_fg'
-        base_part = 'base'
-                                               
-                 
-        bases = structure.residues(chain = "AA", sequence= base_seq_list)
-        amino_acids = structure.residues(sequence=aa_list)
+                       
+        print classifier.classify(structure)
         
-        for base in bases:
-            for aa in amino_acids:
-                interaction = classification(base, aa)
-                if interaction == "pseudopair":
-                    edge = detect_edge(base, aa)
-                else:
-                    edge == "N/A"
-                    
-                print base, aa, interaction, edge

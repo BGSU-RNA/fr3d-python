@@ -11,7 +11,7 @@ class Classifier(BaseClassifier):
 
     def __init__(self):
         first = {'sequence': defs.RNAbaseheavyatoms.keys()}
-        second = {'sequence': defs.aa_backconnect.keys()}
+        second = {'sequence': defs.aa_fg.keys()}
         distance = {'use': 'center', 'cutoff': 10.0}
         super(Classifier, self).__init__(first=first, second=second,
                                          distance=distance)
@@ -22,16 +22,24 @@ class Classifier(BaseClassifier):
         """Defines different sets of amino acids"""
         stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE", "PRO", "THR"])
         pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "LYS", "ARG", "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE", "MET"])
+        
+        print "classification method started with", first.sequence, second.sequence
 
-        for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
-            key = aa_atom.name
-            aa_x= second[key][0]
-            aa_y= second[key][1]
+        
+        rotation_matrix = first.rotation_matrix
+            
+        aa_coordinates = second.transform(first.standard_transformation(rotation_matrix))
+        print "aa_coordinates:", aa_coordinates
+        
+        for aa_atom in aa_coordinates.atoms(name=defs.aa_fg[second.sequence]):
+                       
+            aa_x = aa_atom.x
+            aa_y= aa_atom.y
         
         squared_xy_dist = (aa_x**2) + (aa_y**2)
         squared_xy_dist_list.append(squared_xy_dist)
         
-        aa_z.append(second[key][2])
+        aa_z.append(aa_atom.z)
         
         mean_z = np.mean(aa_z)
     
@@ -47,7 +55,7 @@ class Classifier(BaseClassifier):
     
             if -1.3 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
                 if second.enough_HBs(first, second):
-                    return "pseudopair"
+                    return ("pseudopair", second.detect_edge(first,second))
             else:
                 return None
 
@@ -57,10 +65,13 @@ class Classifier(BaseClassifier):
         n = 0
         base_x = 0
         base_y = 0
-        aa_coordinates = aa_residue.compnt.transform()
-        base_coordinates = base_residue.compnt.transform()
+        
+        rotation_matrix = base_residue.rotation_matrix
+        #base_center = base_residue.centers(defs.RNAbaseheavyatoms[base_residue.sequence])
         
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            
+            aa_coordinates = aa_residue.transform(base_residue.standard_transformation(base_residue, rotation_matrix))
             key = aa_atom.name
             aa_x+= aa_coordinates[key][0]
             aa_y+= aa_coordinates[key][1]
@@ -69,6 +80,7 @@ class Classifier(BaseClassifier):
         aa_center_y = aa_y/n        
           
         for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_residue.sequence]):
+            base_coordinates = base_residue.transform(base_residue.standard_transformation(base_residue, rotation_matrix))            
             key = base_atom.name
             base_x+= base_coordinates[key][0]
             base_y+= base_coordinates[key][1]
@@ -81,11 +93,11 @@ class Classifier(BaseClassifier):
         angle_aa = np.arctan2(y,x)
     
         if -1 <= angle_aa <= 0:
-            return "Sugar"
+            return "fgbS"
         elif angle_aa <=1:
-            return "WC"
+            return "fgbWC"
         elif 1.4 <= angle_aa <= 3.2:
-            return "Hoogsteen"
+            return "fgbH"
     
         
     def enough_HBs(self, base_residue, aa_residue):
@@ -117,7 +129,7 @@ def stacking_angle (base_residue, aa_residue):
     
     if aa_residue.sequence in stacked_aa:
         if angle <=0.67 or 2.43 <= angle <= 3.15:
-            return "stacked"
+            return ("stacked", "N/A")
         elif aa_residue.sequence in perpendicular_aa:
             if 1.2<= angle <=1.64:
                 return "perpendicular"
@@ -133,5 +145,6 @@ def stacking_tilt(second):
     min_baa = min(baa_dist_list)
     
     diff = max_baa - min_baa
-    return diff <= defs.tilt_cutoff[second.sequence]
+    if diff <= defs.tilt_cutoff[second.sequence]:
+        return ("stacked", "N/A")
     

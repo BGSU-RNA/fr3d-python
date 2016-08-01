@@ -4,8 +4,6 @@ from fr3d.data.atoms import Atom
 from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
 from fr3d.geometry import angleofrotation as angrot
-
-
 import numpy as np
 
 from fr3d.unit_ids import encode
@@ -185,6 +183,28 @@ class Component(EntitySelector):
                          alt_id=self.alt_id,
                          polymeric=self.polymeric)
 
+
+    def standard_transformation (self, rotation_matrix):
+        """Set of operations on the atoms of a residue to translate and rotate it
+        in the same orientation as a reference)"""
+        
+        seq= self.sequence
+        standard_base = defs.RNAbasecoordinates[seq].values()
+        standard_center = np.mean(standard_base, axis = 0)
+        dist_translate = np.subtract(self.centers["base"], standard_center)
+        dist_aa_matrix = np.matrix(dist_translate)
+        dist_column = dist_aa_matrix.transpose()
+        #print "distance column: ", dist_column
+        #rotated_atom = dist_aa_matrix * rotation_matrix
+        transformation_matrix_part = np.hstack((rotation_matrix, dist_column))
+        last_row = [0, 0, 0, 1]
+        transformation_matrix = np.vstack([transformation_matrix_part, last_row])
+        transformation_matrix = transformation_matrix.tolist()
+        #print "Components: transformation matrix", transformation_matrix
+        return transformation_matrix
+    
+     
+     
     def unit_id(self):
         """Compute the unit id of this Component.
 
