@@ -57,6 +57,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     """
 
     assert len(ntlist1) == len(ntlist2)
+    assert len(ntlist1) >= 3
 
     # TODO: Should we allow users to pass a tuple too?
     if not isinstance(centers, list):
