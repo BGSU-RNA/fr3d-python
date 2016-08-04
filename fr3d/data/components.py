@@ -305,10 +305,6 @@ class Component(EntitySelector):
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
         P3 = self.centers[defs.planar_atoms[key][2]]
-<<<<<<< HEAD
-        vector = np.cross((P2 - P1),(P3-P1))
-        return vector
-=======
         vector = np.cross((P2 - P1), (P3-P1))
         return vector
->>>>>>> origin/develop
+
