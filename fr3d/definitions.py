@@ -162,7 +162,9 @@ nt_backbone['G'] = sugar_back
 with nts by Hydrogenbonding. aa_fg refers to the functional group of the
 sidechain. aa_backbone refers to the peptide backbone. aa_linker is the carbon chain
 that links the fg with the peptide backbone"""
-backbone = ['N','CA','C','O']
+
+#backbone = ['N','CA','C', 'O']
+backbone = ['N','CA','CB']
 
 aa_backbone = {}
 aa_linker = {}
