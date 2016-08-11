@@ -180,7 +180,7 @@ class Component(EntitySelector):
         """
 
         atoms = [atom.transform(transform) for atom in self.atoms()]
-        return Component(atoms, pdb=self.pdb,
+        comp = Component(atoms, pdb=self.pdb,
                          model=self.model,
                          type=self.type,
                          chain=self.chain,
@@ -191,29 +191,36 @@ class Component(EntitySelector):
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
                          polymeric=self.polymeric)
+        if hasattr(self, 'rotation_matrix'):
+            comp.infer_hydrogens()
+        return comp
 
+    def standard_transformation(self):
+        """Return a transformation matrix which will transform another
+        component to the same relative location as this component in it's
+        standard location. If this is not an RNA component then this returns
+        None.
 
-    def standard_transformation (self, rotation_matrix):
-        """Set of operations on the atoms of a residue to translate and rotate it
-        in the same orientation as a reference)"""
-        
-        seq= self.sequence
-        standard_base = defs.RNAbasecoordinates[seq].values()
-        standard_center = np.mean(standard_base, axis = 0)
+        :returns: A numpy array suitable for input to self.transform to produce
+        a transformed component.
+        """
+
+        if 'base' not in self.centers:
+            return None
+
+        standard_base = []
+        coords = defs.RNAbasecoordinates[self.sequence]
+        for atom in defs.RNAbaseheavyatoms[self.sequence]:
+            standard_base.append(coords[atom])
+        standard_center = np.mean(standard_base, axis=0)
+
         dist_translate = np.subtract(self.centers["base"], standard_center)
-        dist_aa_matrix = np.matrix(dist_translate)
-        dist_column = dist_aa_matrix.transpose()
-        #print "distance column: ", dist_column
-        #rotated_atom = dist_aa_matrix * rotation_matrix
-        transformation_matrix_part = np.hstack((rotation_matrix, dist_column))
-        last_row = [0, 0, 0, 1]
-        transformation_matrix = np.vstack([transformation_matrix_part, last_row])
-        transformation_matrix = transformation_matrix.tolist()
-        #print "Components: transformation matrix", transformation_matrix
-        return transformation_matrix
-    
-     
-     
+        matrix = np.zeros((4, 4))
+        matrix[0:3, 0:3] = self.rotation_matrix
+        matrix[0:3, 3] = dist_translate
+        matrix[3, 3] = 1.0
+        return matrix
+
     def unit_id(self):
         """Compute the unit id of this Component.
 
