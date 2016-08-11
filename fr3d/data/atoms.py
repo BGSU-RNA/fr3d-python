@@ -86,9 +86,7 @@ class Atom(object):
         """
 
         result = np.dot(transform, np.array([self.x, self.y, self.z, 1.0]))
-        #print(result)
-        #print(result[0:3])
-        #print(result[0:3].T)
+       
         x, y, z = result[0:3].T
         return Atom(x=x, y=y, z=z,
                     pdb=self.pdb,

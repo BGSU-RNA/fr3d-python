@@ -10,55 +10,79 @@ class Classifier(BaseClassifier):
     """
 
     def __init__(self):
-        first = {'sequence': defs.RNAbaseheavyatoms.keys()}
+        first = {'sequence': defs.RNAbaseheavyatoms.keys(),'symmetry': '1_555'}
         second = {'sequence': defs.aa_fg.keys()}
         distance = {'use': 'center', 'cutoff': 10.0}
         super(Classifier, self).__init__(first=first, second=second,
                                          distance=distance)
 
     def classification(self, first, second):
+        
         squared_xy_dist_list = []
         aa_z =[]
-        """Defines different sets of amino acids"""
-        stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE", "PRO", "THR"])
-        pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "LYS", "ARG", "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE", "MET"])
-        
-        print "classification method started with", first.sequence, second.sequence
+        """Defines different sets of amino acids to be tested for different 
+        types of interactions"""
 
+        stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN", 
+        "GLN", "LEU", "ILE", "PRO", "THR"])
+
+        pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "LYS", "ARG", 
+        "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE", "MET"])
         
+        #print "classification method started with", first.sequence, second.sequence
+
+        if not hasattr(first, 'rotation_matrix'):
+            return None
+            
         rotation_matrix = first.rotation_matrix
-            
-        aa_coordinates = second.transform(first.standard_transformation(rotation_matrix))
-        print "aa_coordinates:", aa_coordinates
         
+        transformation_matrix = second.standard_transformation(rotation_matrix, first)    
+        
+                    
+        if transformation_matrix == None:
+            return None
+        
+        aa_coordinates = second.transform(transformation_matrix)
+                
+                
         for aa_atom in aa_coordinates.atoms(name=defs.aa_fg[second.sequence]):
-                       
-            aa_x = aa_atom.x
-            aa_y= aa_atom.y
+            try:           
+                aa_x = aa_atom.x
+                aa_y= aa_atom.y
         
-        squared_xy_dist = (aa_x**2) + (aa_y**2)
-        squared_xy_dist_list.append(squared_xy_dist)
+                squared_xy_dist = (aa_x**2) + (aa_y**2)
+                
+                """testing if transformation works"""
+                
+                for atom in second.atoms(name=defs.aa_fg[second.sequence]):
+                    print "aa_coordinates before transformation:", (atom.name, atom.x, atom.y, atom.z)
+                
+                print "aa_coordinates:", (aa_atom.name, aa_x, aa_y, aa_atom.z)
+                print "XY dist squared:", squared_xy_dist
+                squared_xy_dist_list.append(squared_xy_dist)
         
-        aa_z.append(aa_atom.z)
+                aa_z.append(aa_atom.z)
         
-        mean_z = np.mean(aa_z)
+                mean_z = np.mean(aa_z)
     
-        if min(squared_xy_dist_list) <= 3:
-            if second.sequence in stacked_aa:
-                return stacking_angle(first, second)
-            else:
-                return stacking_tilt(second)
+                if min(squared_xy_dist_list) <= 3:
+                    if second.sequence in stacked_aa:
+                        return stacking_angle(first, second)
+                    else:
+                        return stacking_tilt(second)
             
-        elif 3.1 < min(squared_xy_dist_list)< 35.2 and -2.0 <= mean_z < 2.0:
-            if second.sequence in pseudopair_aa:
-                angle= compnt.angle_between_normals(first, second)
+                elif 3.1 < min(squared_xy_dist_list)< 35.2 and -2.0 <= mean_z < 2.0:
+                    if second.sequence in pseudopair_aa:
+                        angle= compnt.angle_between_normals(first, second)
     
-            if -1.3 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
-                if second.enough_HBs(first, second):
-                    return ("pseudopair", second.detect_edge(first,second))
-            else:
-                return None
-
+                        if -1.3 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
+                            if second.enough_HBs(first, second):
+                                return ("pseudopair", second.detect_edge(first,second))
+                            else:
+                                return None
+            except:
+                print "No suitable atoms"
+                
     def detect_edge(self, base_residue, aa_residue):
         aa_x = 0
         aa_y = 0

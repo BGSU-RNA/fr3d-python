@@ -153,6 +153,7 @@ class Component(EntitySelector):
             rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
         except:
+            print "Rotation matrix calculation failed"
             return None
 
         self.rotation_matrix = rotation_matrix
@@ -193,26 +194,29 @@ class Component(EntitySelector):
                          polymeric=self.polymeric)
 
 
-    def standard_transformation (self, rotation_matrix):
+    def standard_transformation (self, rotation_matrix, ref):
         """Set of operations on the atoms of a residue to translate and rotate it
         in the same orientation as a reference)"""
         
-        seq= self.sequence
-        standard_base = defs.RNAbasecoordinates[seq].values()
-        standard_center = np.mean(standard_base, axis = 0)
-        dist_translate = np.subtract(self.centers["base"], standard_center)
+        standard_center = ref.centers["base"]
+        aa_center = self.centers["aa_fg"]
+        #print "standard center", standard_center
+        #print "aa center", aa_center
+        if not aa_center.any():
+            return None
+                   
+        dist_translate = np.subtract(aa_center, standard_center)
         dist_aa_matrix = np.matrix(dist_translate)
+        print "dist matrix", dist_aa_matrix
         dist_column = dist_aa_matrix.transpose()
-        #print "distance column: ", dist_column
-        #rotated_atom = dist_aa_matrix * rotation_matrix
+        
         transformation_matrix_part = np.hstack((rotation_matrix, dist_column))
         last_row = [0, 0, 0, 1]
         transformation_matrix = np.vstack([transformation_matrix_part, last_row])
         transformation_matrix = transformation_matrix.tolist()
         #print "Components: transformation matrix", transformation_matrix
         return transformation_matrix
-    
-     
+         
      
     def unit_id(self):
         """Compute the unit id of this Component.
@@ -305,10 +309,6 @@ class Component(EntitySelector):
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
         P3 = self.centers[defs.planar_atoms[key][2]]
-<<<<<<< HEAD
+
         vector = np.cross((P2 - P1),(P3-P1))
         return vector
-=======
-        vector = np.cross((P2 - P1), (P3-P1))
-        return vector
->>>>>>> origin/develop
