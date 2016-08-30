@@ -55,6 +55,13 @@ class Structure(object):
 
         return EntitySelector(self._residues, **kwargs)
 
+    def calculate_rotation_matrix(self):
+        """ Calculate rotation matrix for bases, modified bases, ...
+        """
+
+        for residue in self._residues:
+            residue.calculate_rotation_matrix()
+
     def infer_hydrogens(self):
         """ Infers hydrogen atoms for all residues.
         """
