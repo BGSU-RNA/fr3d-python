@@ -15,6 +15,10 @@ from metric import GivenDistances
 	verbose - Print the results
 
 	greedyInsertion returns the path that it finds as a list of points from the Metric
+
+    Originally developed by Dan Schellhas
+    Modified on 8-30-2016 by Craig Zirbel, adding pathLength
+    Modified on 8-30-2016 by Craig Zirbel, adding orderWithPathLengthFromDistanceMatrix
 '''
 
 def pathLength(m, path):
