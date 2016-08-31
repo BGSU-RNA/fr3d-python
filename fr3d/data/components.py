@@ -56,7 +56,7 @@ class Component(EntitySelector):
 
         if self.sequence in defs.modified_nucleotides:
             atoms = defs.modified_nucleotides[self.sequence]["atoms"].values()
-            self.centers.define('modified_nucleotides', atoms)
+            self.centers.define('base', atoms)
 
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
@@ -121,6 +121,12 @@ class Component(EntitySelector):
     def infer_hydrogens(self):
         """Infer the coordinates of the hydrogen atoms of this component.
         Currently, it only works for RNA with .sequence
+
+        To do:
+        Make a separate method that calculates the rotation matrix
+        This method should calculate the rotation matrix if that has not already been done
+
+
         """
         if self.sequence not in defs.RNAbaseheavyatoms and \
                 self.sequence not in defs.modified_nucleotides:
