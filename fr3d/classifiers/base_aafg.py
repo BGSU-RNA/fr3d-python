@@ -34,9 +34,9 @@ class Classifier(BaseClassifier):
         if not hasattr(first, 'rotation_matrix'):
             return None
             
-        rotation_matrix = first.rotation_matrix
+        #rotation_matrix = first.rotation_matrix
         
-        transformation_matrix = second.standard_transformation(rotation_matrix, first)    
+        transformation_matrix = first.base_transformation_matrix(second)    
         
                     
         if transformation_matrix == None:
@@ -52,12 +52,12 @@ class Classifier(BaseClassifier):
         
                 squared_xy_dist = (aa_x**2) + (aa_y**2)
                 
-                """testing if transformation works"""
+                """testing if transformation works
                 
                 for atom in second.atoms(name=defs.aa_fg[second.sequence]):
-                    print "aa_coordinates before transformation:", (atom.name, atom.x, atom.y, atom.z)
+                    print "aa_coordinates before transformation:", (atom.name, atom.x, atom.y, atom.z)"""
                 
-                print "aa_coordinates:", (aa_atom.name, aa_x, aa_y, aa_atom.z)
+                #print "aa_coordinates:", (aa_atom.name, aa_x, aa_y, aa_atom.z)
                 print "XY dist squared:", squared_xy_dist
                 squared_xy_dist_list.append(squared_xy_dist)
         
@@ -90,12 +90,12 @@ class Classifier(BaseClassifier):
         base_x = 0
         base_y = 0
         
-        rotation_matrix = base_residue.rotation_matrix
+        #rotation_matrix = base_residue.rotation_matrix
         #base_center = base_residue.centers(defs.RNAbaseheavyatoms[base_residue.sequence])
         
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
             
-            aa_coordinates = aa_residue.transform(base_residue.standard_transformation(base_residue, rotation_matrix))
+            aa_coordinates = aa_residue.transform(base_residue.base_transformation_matrix())
             key = aa_atom.name
             aa_x+= aa_coordinates[key][0]
             aa_y+= aa_coordinates[key][1]
@@ -104,7 +104,7 @@ class Classifier(BaseClassifier):
         aa_center_y = aa_y/n        
           
         for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_residue.sequence]):
-            base_coordinates = base_residue.transform(base_residue.standard_transformation(base_residue, rotation_matrix))            
+            base_coordinates = base_residue.transform(base_residue.base_transformation_matrix())            
             key = base_atom.name
             base_x+= base_coordinates[key][0]
             base_y+= base_coordinates[key][1]

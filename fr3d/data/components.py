@@ -171,17 +171,18 @@ class Component(EntitySelector):
                                         y=newcoordinates[0, 1],
                                         z=newcoordinates[0, 2]))
 
-    def transform(self, transform):
-        """Create a new component from this one by applying a transformation
-        matrix. This does not keep the rotation matrix if any, but will keep
-        any added hydrogens.
+    def transform(self, transform_matrix):
+        """Create a new component from "self" by applying the transformation
+        matrix. This does not keep the rotation matrix if any, 
+        but will keep any added hydrogens.
 
-        :transform: The transformation matrix to apply.
-        :returns: A new Component with the same properties by rotated atoms.
+        :transform_matrix: The transformation matrix to apply.
+        :returns: A new Component with the same properties except with 
+        transformed coordinates.
         """
 
-        atoms = [atom.transform(transform) for atom in self.atoms()]
-        return Component(atoms, pdb=self.pdb,
+        atoms = [atom.transform(transform_matrix) for atom in self.atoms()]
+        comp = Component(atoms, pdb=self.pdb,
                          model=self.model,
                          type=self.type,
                          chain=self.chain,
@@ -192,32 +193,40 @@ class Component(EntitySelector):
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
                          polymeric=self.polymeric)
+        if hasattr(self, 'rotation_matrix'):
+            comp.infer_hydrogens()
+        return comp
 
+   
+    def base_transformation_matrix(self, aa_residue):
+        """Returns a 4X4 transformation matrix which can be used to transform 
+        any component to the same relative location as the "self" argument in 
+        its standard location. If this is not an RNA component then this returns
+        None.
+        :returns: A numpy array suitable for input to self.transform to produce
+        a transformed component.
+        """
 
-    def standard_transformation (self, rotation_matrix, ref):
-        """Set of operations on the atoms of a residue to translate and rotate it
-        in the same orientation as a reference)"""
-        
-        standard_center = ref.centers["base"]
-        aa_center = self.centers["aa_fg"]
-        #print "standard center", standard_center
-        #print "aa center", aa_center
-        if not aa_center.any():
+        if 'base' not in self.centers:
             return None
-                   
-        dist_translate = np.subtract(aa_center, standard_center)
-        dist_aa_matrix = np.matrix(dist_translate)
-        print "dist matrix", dist_aa_matrix
-        dist_column = dist_aa_matrix.transpose()
-        
-        transformation_matrix_part = np.hstack((rotation_matrix, dist_column))
-        last_row = [0, 0, 0, 1]
-        transformation_matrix = np.vstack([transformation_matrix_part, last_row])
-        transformation_matrix = transformation_matrix.tolist()
-        #print "Components: transformation matrix", transformation_matrix
-        return transformation_matrix
-         
-     
+        aa_center = aa_residue.centers["aa_fg"]
+        print "aa_center", aa_center
+        if aa_center is None:
+            return None
+        standard_base = []
+        coords = defs.RNAbasecoordinates[self.sequence]
+        for atom in defs.RNAbaseheavyatoms[self.sequence]:
+            standard_base.append(coords[atom])
+        #standard_center = np.mean(standard_base, axis=0)
+        dist_translate = np.subtract(aa_center, self.centers["base"])
+        matrix = np.zeros((4, 4))
+        rotation = self.rotation_matrix
+        #print "rotation_matrix", rotation
+        matrix[0:3, 0:3] = rotation
+        matrix[0:3, 3] = dist_translate
+        matrix[3, 3] = 1.0
+        return matrix
+
     def unit_id(self):
         """Compute the unit id of this Component.
 
@@ -309,6 +318,6 @@ class Component(EntitySelector):
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
         P3 = self.centers[defs.planar_atoms[key][2]]
-
-        vector = np.cross((P2 - P1),(P3-P1))
+        vector = np.cross((P2 - P1), (P3-P1))
         return vector
+

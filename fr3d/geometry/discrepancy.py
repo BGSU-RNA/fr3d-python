@@ -57,6 +57,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     """
 
     assert len(ntlist1) == len(ntlist2)
+    assert len(ntlist1) >= 3
 
     # TODO: Should we allow users to pass a tuple too?
     if not isinstance(centers, list):
@@ -153,7 +154,7 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
     assert len(centers1) == len(centers2)
     assert len(rotations1) == len(rotations2)
     assert len(centers1) == len(rotations1)
-    assert len(centers1) > 0
+    assert len(centers1) >= 3
 
     rotation_matrix, new1, mean1, RMSD, sse = \
         besttransformation_weighted(centers1, centers2, center_weight)
