@@ -179,11 +179,11 @@ class Component(EntitySelector):
 
     def transform(self, transform_matrix):
         """Create a new component from "self" by applying the transformation
-        matrix. This does not keep the rotation matrix if any, 
+        matrix. This does not keep the rotation matrix if any,
         but will keep any added hydrogens.
 
         :transform_matrix: The transformation matrix to apply.
-        :returns: A new Component with the same properties except with 
+        :returns: A new Component with the same properties except with
         transformed coordinates.
         """
 
@@ -203,10 +203,10 @@ class Component(EntitySelector):
             comp.infer_hydrogens()
         return comp
 
-   
+
     def base_transformation_matrix(self, aa_residue):
-        """Returns a 4X4 transformation matrix which can be used to transform 
-        any component to the same relative location as the "self" argument in 
+        """Returns a 4X4 transformation matrix which can be used to transform
+        any component to the same relative location as the "self" argument in
         its standard location. If this is not an RNA component then this returns
         None.
         :returns: A numpy array suitable for input to self.transform to produce
@@ -319,7 +319,7 @@ class Component(EntitySelector):
         vec2 = aa_residue.normal_calculation()
         return angrot.angle_between_planes(vec1, vec2)
 
-    def normal_calculation(self):
+    def normal_vector(self):
         key = self.sequence
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
@@ -327,3 +327,21 @@ class Component(EntitySelector):
         vector = np.cross((P2 - P1), (P3-P1))
         return vector
 
+    def enough_hydrogen_bonds(self, second, min_distance=4, min_bonds=2):
+        """Calculates atom to atom distance of part "aa_part" of neighboring
+        amino acids of type "aa" from each atom of base. Only returns a pair
+        of aa/nt if two or more atoms are within the cutoff distance.
+        """
+
+        HB_atoms = set(['N', 'NH1','NH2','NE','NZ','ND1','NE2','O','OD1','OE1','OE2', 'OG', 'OH'])
+        n = 0
+        base_seq = base_residue.sequence()
+        for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_seq]):
+            for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+                distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+                distance = np.linalg.norm(distance)
+                if distance <= min_distance and aa_atom.name in HB_atoms:
+                    n = n + 1
+                    if n > min_bonds:
+                        return True
+        return False
