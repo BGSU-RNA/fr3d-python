@@ -1,8 +1,6 @@
 #!/usr/local/bin/python -O
 
 from random import shuffle
-from metric import Metric
-from simHeat import simHeat
 from metric import GivenDistances
 
 '''
