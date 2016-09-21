@@ -216,14 +216,12 @@ class Component(EntitySelector):
         if 'base' not in self.centers:
             return None
         aa_center = aa_residue.centers["aa_fg"]
-        print "aa_center", aa_center
-        if aa_center is None:
+        if len(aa_center) == 0:
             return None
         standard_base = []
         coords = defs.RNAbasecoordinates[self.sequence]
         for atom in defs.RNAbaseheavyatoms[self.sequence]:
             standard_base.append(coords[atom])
-        #standard_center = np.mean(standard_base, axis=0)
         dist_translate = np.subtract(aa_center, self.centers["base"])
         matrix = np.zeros((4, 4))
         rotation = self.rotation_matrix
@@ -315,11 +313,11 @@ class Component(EntitySelector):
         return '<Component %s>' % self.unit_id()
 
     def angle_between_normals(self, aa_residue):
-        vec1 = self.normal_calculation()
-        vec2 = aa_residue.normal_calculation()
+        vec1 = self.normal_calculation
+        vec2 = aa_residue.normal_calculation
         return angrot.angle_between_planes(vec1, vec2)
 
-    def normal_vector(self):
+    def normal_calculation(self):
         key = self.sequence
         P1 = self.centers[defs.planar_atoms[key][0]]
         P2 = self.centers[defs.planar_atoms[key][1]]
@@ -335,9 +333,9 @@ class Component(EntitySelector):
 
         HB_atoms = set(['N', 'NH1','NH2','NE','NZ','ND1','NE2','O','OD1','OE1','OE2', 'OG', 'OH'])
         n = 0
-        base_seq = base_residue.sequence()
-        for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_seq]):
-            for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+        base_seq = self.sequence()
+        for base_atom in self.atoms(name=defs.RNAbaseheavyatoms[base_seq]):
+            for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
                 distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
                 distance = np.linalg.norm(distance)
                 if distance <= min_distance and aa_atom.name in HB_atoms:

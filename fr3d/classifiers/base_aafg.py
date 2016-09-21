@@ -2,7 +2,7 @@ import numpy as np
 
 from fr3d import definitions as defs
 from fr3d.classifiers.generic import Classifier as BaseClassifier
-from fr3d.geometry import angleofrotation as angrot
+#from fr3d.data import angle_between_normals
 
 stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN",
                    "GLN", "LEU", "ILE", "PRO", "THR"])
@@ -22,39 +22,6 @@ class Classifier(BaseClassifier):
         distance = {'use': 'center', 'cutoff': 10.0}
         super(Classifier, self).__init__(first=first, second=second,
                                          distance=distance)
-
-    def stacking_tilt(self, second):
-        baa_dist_list = []
-        for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
-            key = aa_atom.name
-            aa_z = second[key][2]
-            baa_dist_list.append(aa_z)
-        max_baa = max(baa_dist_list)
-        min_baa = min(baa_dist_list)
-
-        diff = max_baa - min_baa
-        if diff <= defs.tilt_cutoff[second.sequence]:
-            return ("stacked", "N/A")
-
-    def stacking_angle(self, base_residue, aa_residue):
-        vec1 = base_residue.normal_calculation()
-        vec2 = aa_residue.normal_calculation()
-
-        stacked_aa = set(["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE", "PRO", "ASN", "GLN"])
-        perpendicular_aa = set(["TYR", "HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE"])
-
-        angle = angrot.angle_between_planes(vec1, vec2)
-
-        if aa_residue.sequence in stacked_aa:
-            if angle <= 0.67 or 2.43 <= angle <= 3.15:
-                return ("stacked", "N/A")
-            elif aa_residue.sequence in perpendicular_aa:
-                if 1.2<= angle <=1.64:
-                    return ("perpendicular", "N/A")
-
-    def classify_stacking(first, second):
-        pass
-
     def classification(self, first, second):
         if not hasattr(first, 'rotation_matrix'):
             return None
@@ -68,11 +35,62 @@ class Classifier(BaseClassifier):
 
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
         if min_xy <= 3:
-            return self.classify_stacking(first, seecond)
-        elif 3 < min_xy < 35.2 and -2.0 <= mean_z < 2.0:
-            return self.classify_pairing(first, second)
+            return self.classify_stacking(trans_first, trans_second)
+        elif 3 < min_xy < 36 and -2.0 <= mean_z < 2.0:
+            return self.classify_pairing(trans_first, trans_second)
         return None
+    
+    def distance_metrics(self, base_residue, aa_residue):
+        squared_xy_dist_list = []
+        aa_z_list = []
+        base_coord = base_residue.centers["base"]
+        #print "translated base coordintes", base_coord
+        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            try:           
+                aa_x = np.subtract(aa_atom.x, base_coord[0])
+                aa_y= np.subtract(aa_atom.y, base_coord[1])
+                aa_z = aa_atom.z
+                squared_xy_dist = (aa_x**2) + (aa_y**2)
+                squared_xy_dist_list.append(squared_xy_dist)
+                aa_z_list.append(aa_z)
+            except:
+                print "Incomplete residue"
+        min_xy = min(squared_xy_dist_list)
+        mean_z = np.mean(aa_z_list)
+        print min_xy
+        return min_xy, mean_z        
 
+    def stacking_tilt(self, second):
+        baa_dist_list = []
+        for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
+            key = aa_atom.name
+            aa_z = second[key][2]
+            baa_dist_list.append(aa_z)
+        max_baa = max(baa_dist_list)
+        min_baa = min(baa_dist_list)
+
+        diff = max_baa - min_baa
+        if diff <= defs.tilt_cutoff[second.sequence]:
+            return ("stacked", "N/A")
+          
+    def classify_stacking(self, base_residue, aa_residue):
+        stacked_aa = set(["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE",
+                          "PRO", "ASN", "GLN"])
+        perpendicular_aa = set(["HIS", "ARG", "LYS"])
+        angle = base_residue.angle_between_normals(aa_residue)
+        if aa_residue.sequence in stacked_aa:
+            if angle <= 0.67 or 2.43 <= angle <= 3.15:
+                return ("stacked", "N/A")
+            elif aa_residue.sequence in perpendicular_aa and 1.2<= angle <=1.64:
+                return ("perpendicular", "N/A")
+    
+    def classify_pairing(self, first, second):
+        if second in pseudopair_aa:
+            angle = first.angle_between_normals(second)
+            if 0 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
+                    return "pseudopair"
+    
+     
     def detect_edge(self, base_residue, aa_residue):
         aa_x = 0
         aa_y = 0
@@ -80,11 +98,7 @@ class Classifier(BaseClassifier):
         base_x = 0
         base_y = 0
 
-        #rotation_matrix = base_residue.rotation_matrix
-        #base_center = base_residue.centers(defs.RNAbaseheavyatoms[base_residue.sequence])
-
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
-
             aa_coordinates = aa_residue.transform(base_residue.base_transformation_matrix())
             key = aa_atom.name
             aa_x+= aa_coordinates[key][0]
