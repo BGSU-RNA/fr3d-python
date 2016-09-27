@@ -12,7 +12,7 @@ from greedyInsertion import greedyInsertion
 from greedyInsertion import pathLength
 from greedyInsertion import orderWithPathLengthFromDistanceMatrix
 
-n = 100                        # number of data points
+n = 20                        # number of data points
 print("Generating "+str(n)+" data points")
 
 # two-dimensional data points
@@ -34,9 +34,42 @@ for i in range(0,numReps):
 #    print(order[0])
 
 distances = np.zeros((len(bestOrder),len(bestOrder)))
-for i in range(0,len(bestOrder)):
-  for j in range(0,len(bestOrder)):
-    distances[i,j] = m.d(bestOrder[i],bestOrder[j])
+displaydistances = np.zeros((len(bestOrder),len(bestOrder)))
+
+for i in range(0,n):
+  for j in range(0,n):
+    distances[i,j] = m.d(i,j)
+    displaydistances[i,j] = m.d(i,j)
+
+# replace some real distances with None to simulate a missing data problem
+
+if 10 < 1:
+  for i in range(0,n):
+    for j in range(0,n):
+      if random.random() < 0.05:
+        distances[i,j] = None
+        distances[j,i] = None
+        displaydistances[i,j] = -1
+        displaydistances[j,i] = -1
+
+# replace some rows and columns with None to simulate a different missing data problem
+if 0 < 1:
+  for i in range(0,n):
+    if random.random() < 0.1:
+      for j in range(0,n):
+        distances[i,j] = None
+        distances[j,i] = None
+        displaydistances[i,j] = -1
+        displaydistances[j,i] = -1
+
+# replace first row and column with None to simulate a different missing data problem
+if 10 < 1:
+  i = 1
+  for j in range(0,n):
+    distances[i,j] = None
+    distances[j,i] = None
+    displaydistances[i,j] = -1
+    displaydistances[j,i] = -1
 
 print("Repackaging data into a new data structure, ordering with 1 replication")
 newData = GivenDistances(distances)
@@ -44,11 +77,18 @@ neworder = greedyInsertion(newData,depth=1)
 print("Path length " + str(pathLength(newData,neworder[0])))
 
 print("Using orderWithPathLengthFromDistanceMatrix, 1 replication")
-order,score = orderWithPathLengthFromDistanceMatrix(distances)
+order,score,d = orderWithPathLengthFromDistanceMatrix(distances,True)
 print("Path length " + str(score))
 print("Using orderWithPathLengthFromDistanceMatrix, 10 replications")
-order,score = orderWithPathLengthFromDistanceMatrix(distances,10)
+order,score,d = orderWithPathLengthFromDistanceMatrix(distances,100,True)
 print("Path length " + str(score))
+
+ordereddistances = np.zeros((len(bestOrder),len(bestOrder)))
+
+for i in range(0,n):
+  for j in range(0,n):
+#    ordereddistances[i,j] = displaydistances[order[i],order[j]]
+    ordereddistances[i,j] = d[order[i],order[j]]
 
 print("Displaying heat map of distance matrix from first ordering made")
 column_labels = list('ABCD')
@@ -56,7 +96,7 @@ row_labels = list('WXYZ')
 data = np.random.rand(4,4)
 
 fig, ax = plt.subplots()
-heatmap = ax.pcolor(distances, cmap=plt.cm.bwr)
+heatmap = ax.pcolor(ordereddistances, cmap=plt.cm.bwr)
 
 # put the major ticks at the middle of each cell
 #ax.set_xticks(np.arange(data.shape[0])+0.5, minor=False)

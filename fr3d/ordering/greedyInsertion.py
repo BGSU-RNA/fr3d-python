@@ -2,6 +2,8 @@
 
 from random import shuffle
 from metric import GivenDistances
+from numpy import median
+from numpy import isnan
 
 '''
 	This method inserts each point at its optimal location in a given order.
@@ -34,11 +36,29 @@ def testScore(m, path, depth = False):
 			testScore += m.d(path[i], path[j])/abs(j-i)
 	return testScore
 
-def orderWithPathLengthFromDistanceMatrix(distances,numReps = 1):
+def orderWithPathLengthFromDistanceMatrix(distances,numReps = 1,scanForNan = False):
+
+  if scanForNan:
+    values = []
+    for i in range(0,len(distances)):
+      for j in range(0,len(distances[0])):
+        if not isnan(distances[i,j]):
+          values.append(distances[i,j])
+
+    m = 0
+    if len(values) > 0:
+      m = median(values)
+      for i in range(0,len(distances)):
+        if isnan(distances[i,i]):
+          distances[i,i] = 0
+        for j in range(0,len(distances[0])):
+          if isnan(distances[i,j]):
+            distances[i,j] = m
 
   dataset = GivenDistances(distances)
 
   bestPathLength = float("inf")
+  bestOrder = range(0,len(distances))
 
   for i in range(0,numReps):
     order = greedyInsertion(dataset,depth=1)
@@ -47,7 +67,7 @@ def orderWithPathLengthFromDistanceMatrix(distances,numReps = 1):
       bestPathLength = newPathLength
       bestOrder = order[0]
 
-  return bestOrder, bestPathLength
+  return bestOrder, bestPathLength, distances
 
 def greedyInsertion(m, w=False, o=[], depth=False, verbose=False):
   if w == False:
