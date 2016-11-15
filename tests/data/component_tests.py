@@ -313,25 +313,28 @@ class AtomsWithin(ut.TestCase):
         self.assertTrue(val)
 
     def test_knows_if_with_given_list_nothing_is_within(self):
-        val = self.component1.atoms_within(self.component2, 1.0, using=['C4', 'N3'])
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           using=['C4', 'N3'])
         self.assertFalse(val)
 
     def test_can_use_to_list_to_detect_near(self):
-        val = self.component1.atoms_within(self.component2, 1.0, to=['N1', 'N3'])
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['N1', 'N3'])
         self.assertTrue(val)
 
     def test_can_use_to_list_to_detect_not_near(self):
-        val = self.component1.atoms_within(self.component2, 1.0, to=['C2', 'N3'])
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['C2', 'N3'])
         self.assertFalse(val)
 
     def test_can_use_both_to_detect_near(self):
-        val = self.component1.atoms_within(self.component2, 1.0, to=['N1', 'N3'],
-                                           using=['C3', 'N3'])
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['N1', 'N3'], using=['C3', 'N3'])
         self.assertTrue(val)
 
     def test_can_use_both_to_detect_not_near(self):
-        val = self.component1.atoms_within(self.component2, 1.0, to=['N1', 'N3'],
-                                           using=['C4', 'N3'])
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['N1', 'N3'], using=['C4', 'N3'])
         self.assertFalse(val)
 
 
@@ -355,7 +358,6 @@ class AtomTest(ut.TestCase):
         val = list(self.component.atoms(name='example'))
         ans = [self.atoms[0], self.atoms[-1]]
         self.assertEquals(ans, val)
-
 
 
 class StandardTransformationTest(ut.TestCase):
