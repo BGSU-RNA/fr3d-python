@@ -17,7 +17,7 @@ planar_atoms['A'] = ['C4','C5','N3']
 planar_atoms['U'] = ['C2','N1','N3']
 planar_atoms['C'] = ['C6','N1','C5']
 planar_atoms['G'] = ['C4','C5','N3']
-
+planar_atoms['GLY'] =[]
 planar_atoms['ARG'] =['CZ','NH1', 'NH2']
 planar_atoms['LYS'] =['CE','CD','NZ']
 planar_atoms['HIS'] = ['NE2','CD2','CE1']
@@ -232,11 +232,11 @@ aa_fg['VAL'] = ['CB','CG1','CG2']
 
 aa_backbone['ALA'] = backbone
 aa_linker['ALA'] = []
-aa_fg['ALA'] = ['CB']
+#aa_fg['ALA'] = ['CB']
 
 aa_backbone['GLY'] = backbone
 aa_linker['GLY'] = []
-aa_fg['GLY'] = []
+#aa_fg['GLY'] = []
 
 aa_backbone['SER'] = backbone
 aa_linker['SER'] = []

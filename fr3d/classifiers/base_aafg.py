@@ -67,7 +67,8 @@ class Classifier(BaseClassifier):
             
         min_xy = min(squared_xy_dist_list)
         mean_z = np.mean(aa_z_list)
-        print "minimum XY dist squared", base_residue.unit_id(), aa_residue.unit_id(), min_xy
+        if min_xy < 36:
+            print "minimum XY dist squared", base_residue.unit_id(), aa_residue.unit_id(), min_xy
         return min_xy, mean_z        
 
     def stacking_tilt(self, second):

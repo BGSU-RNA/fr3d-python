@@ -330,8 +330,8 @@ class Component(EntitySelector):
         return '<Component %s>' % self.unit_id()
 
     def angle_between_normals(self, aa_residue):
-        vec1 = self.normal_calculation
-        vec2 = aa_residue.normal_calculation
+        vec1 = self.normal_calculation()
+        vec2 = aa_residue.normal_calculation()
         return angrot.angle_between_planes(vec1, vec2)
 
     def normal_calculation(self):

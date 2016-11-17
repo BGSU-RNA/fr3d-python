@@ -23,7 +23,7 @@ def get_structure(filename):
         return structure
 
 
-PDB_List = ['2C0B']
+PDB_List = ['2AW7']
 
 if __name__=="__main__":
     
