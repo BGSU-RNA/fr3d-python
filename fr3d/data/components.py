@@ -158,8 +158,10 @@ class Component(EntitySelector):
         try:
             rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
+            #print self.unit_id(), "Successful rotation matrix"
         except:
-            print "Rotation matrix calculation failed"
+            
+            print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
         self.rotation_matrix = rotation_matrix
@@ -204,7 +206,7 @@ class Component(EntitySelector):
         return comp
 
 
-    def base_transformation_matrix(self, aa_residue):
+    def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
         any component to the same relative location as the "self" argument in
         its standard location. If this is not an RNA component then this returns
@@ -212,24 +214,39 @@ class Component(EntitySelector):
         :returns: A numpy array suitable for input to self.transform to produce
         a transformed component.
         """
-
+                     
         if 'base' not in self.centers:
             return None
-        aa_center = aa_residue.centers["aa_fg"]
-        if len(aa_center) == 0:
+        base_center = self.centers["base"]
+        if len(base_center) == 0:
             return None
-        standard_base = []
-        coords = defs.RNAbasecoordinates[self.sequence]
-        for atom in defs.RNAbaseheavyatoms[self.sequence]:
-            standard_base.append(coords[atom])
-        dist_translate = np.subtract(aa_center, self.centers["base"])
-        matrix = np.zeros((4, 4))
+        seq= self.sequence
+        standard_base = defs.RNAbasecoordinates[seq].values()
+        standard_center = np.mean(standard_base, axis = 0)
+        
         rotation = self.rotation_matrix
+        dist_translate = np.subtract(self.centers["base"], standard_center)
+        #dist_vector= -(dist_translate)*rotation
+        matrix = np.zeros((4, 4))
         #print "rotation_matrix", rotation
         matrix[0:3, 0:3] = rotation
         matrix[0:3, 3] = dist_translate
         matrix[3, 3] = 1.0
         return matrix
+            
+    def translate(self, aa_residue):
+        if 'base' not in self.centers:
+            return None
+        rotation = self.rotation_matrix
+        for atom in aa_residue:
+            dist_translate = np.subtract(atom, self.centers["base"])
+            rotated_atom = dist_translate*rotation
+            coord_array = np.array(rotated_atom)
+            a = coord_array.flatten()
+            coord = a.tolist()    
+        return coord
+                
+      
 
     def unit_id(self):
         """Compute the unit id of this Component.

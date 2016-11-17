@@ -26,19 +26,23 @@ class Classifier(BaseClassifier):
         if not hasattr(first, 'rotation_matrix'):
             return None
 
-        transformation_matrix = first.base_transformation_matrix(second)
+        transformation_matrix = first.standard_transformation()
+        #print first.unit_id(), second.unit_id(),transformation_matrix
         if transformation_matrix == None:
             return None
 
         trans_first = first.transform(transformation_matrix)
         trans_second = second.transform(transformation_matrix)
-
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
+        
+                
         if min_xy <= 3:
             return self.classify_stacking(trans_first, trans_second)
         elif 3 < min_xy < 36 and -2.0 <= mean_z < 2.0:
             return self.classify_pairing(trans_first, trans_second)
-        return None
+        elif min_xy > 36:
+            Statement = "Residues too far for interaction"
+            return Statement
     
     def distance_metrics(self, base_residue, aa_residue):
         squared_xy_dist_list = []
@@ -55,9 +59,15 @@ class Classifier(BaseClassifier):
                 aa_z_list.append(aa_z)
             except:
                 print "Incomplete residue"
+        if not squared_xy_dist_list or not aa_z_list:
+            print "empty XY squared list"
+            min_xy = 0.0
+            mean_z = 0
+            return min_xy, mean_z
+            
         min_xy = min(squared_xy_dist_list)
         mean_z = np.mean(aa_z_list)
-        print min_xy
+        print "minimum XY dist squared", base_residue.unit_id(), aa_residue.unit_id(), min_xy
         return min_xy, mean_z        
 
     def stacking_tilt(self, second):
