@@ -2,6 +2,8 @@ import numpy as np
 
 from fr3d import definitions as defs
 from fr3d.classifiers.generic import Classifier as BaseClassifier
+from fr3d.data import Atom
+from fr3d.data import Component
 #from fr3d.data import angle_between_normals
 
 stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN",
@@ -28,21 +30,38 @@ class Classifier(BaseClassifier):
 
         transformation_matrix = first.standard_transformation()
         #print first.unit_id(), second.unit_id(),transformation_matrix
+        
+        """atoms = [
+            Atom(name='N9', x=3.0, y=3.0, z=3.0),
+            Atom(name='C4', x=2.0, y=2.0, z=2.0),
+            Atom(name='N3', x=1.0, y=1.0, z=1.0),
+        ]
+        self.residue = Component(atoms, type='rna', pdb='1GID', model=1,
+                                 chain='A', sequence='C', number=50,
+                                 symmetry='6_555')
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        
+        residue = self.residue.transform(trans)
+        val = list(list(residue.atoms())[-1].coordinates())
+        
+        ans = [1.0, 96.240, -1.0]"""
+        
         if transformation_matrix == None:
             return None
-
         trans_first = first.transform(transformation_matrix)
         trans_second = second.transform(transformation_matrix)
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
         
-                
-        if min_xy <= 3:
+        if min_xy <= 14:
             return self.classify_stacking(trans_first, trans_second)
-        elif 3 < min_xy < 36 and -2.0 <= mean_z < 2.0:
+        elif 14 < min_xy < 46 and -2.0 <= mean_z < 2.0:
             return self.classify_pairing(trans_first, trans_second)
-        elif min_xy > 36:
+        elif min_xy > 46:
             Statement = "Residues too far for interaction"
-            return Statement
+            return None
     
     def distance_metrics(self, base_residue, aa_residue):
         squared_xy_dist_list = []
@@ -59,11 +78,11 @@ class Classifier(BaseClassifier):
                 aa_z_list.append(aa_z)
             except:
                 print "Incomplete residue"
-        if not squared_xy_dist_list or not aa_z_list:
+        """if not squared_xy_dist_list or not aa_z_list:
             print "empty XY squared list"
             min_xy = 0.0
             mean_z = 0
-            return min_xy, mean_z
+            return min_xy, mean_z"""
             
         min_xy = min(squared_xy_dist_list)
         mean_z = np.mean(aa_z_list)
@@ -137,3 +156,5 @@ class Classifier(BaseClassifier):
             return "fgbWC"
         elif 1.4 <= angle_aa <= 3.2:
             return "fgbH"
+
+          

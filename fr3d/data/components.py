@@ -228,7 +228,6 @@ class Component(EntitySelector):
         dist_translate = np.subtract(self.centers["base"], standard_center)
         #dist_vector= -(dist_translate)*rotation
         matrix = np.zeros((4, 4))
-        #print "rotation_matrix", rotation
         matrix[0:3, 0:3] = rotation
         matrix[0:3, 3] = dist_translate
         matrix[3, 3] = 1.0

@@ -23,14 +23,12 @@ def get_structure(filename):
         return structure
 
 
-PDB_List = ['2AW7']
+PDB_List = ['1FJG']
 
 if __name__=="__main__":
     
     for PDB in PDB_List:
         structure = get_structure('E:\\Leontis\\Python scripts\\CIF\\%s.cif' % PDB)
         classifier = Classifier()
-                
-                       
         print classifier.classify(structure)
         
