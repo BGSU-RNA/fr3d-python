@@ -6,14 +6,6 @@ from fr3d.data import Atom
 from fr3d.data import Component
 #from fr3d.data import angle_between_normals
 
-stacked_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "ASN",
-                   "GLN", "LEU", "ILE", "PRO", "THR"])
-
-pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "LYS", "ARG",
-                      "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE",
-                      "MET"])
-
-
 class Classifier(BaseClassifier):
     """A classifier for RNA protein interactions.
     """
@@ -21,7 +13,7 @@ class Classifier(BaseClassifier):
     def __init__(self):
         first = {'sequence': defs.RNAbaseheavyatoms.keys(), 'symmetry': '1_555'}
         second = {'sequence': defs.aa_fg.keys()}
-        distance = {'use': 'center', 'cutoff': 10.0}
+        distance = {'use': 'center', 'cutoff': 6.0}
         super(Classifier, self).__init__(first=first, second=second,
                                          distance=distance)
     def classification(self, first, second):
@@ -31,7 +23,8 @@ class Classifier(BaseClassifier):
         transformation_matrix = first.standard_transformation()
         #print first.unit_id(), second.unit_id(),transformation_matrix
         
-        """atoms = [
+        """#Test for transformation
+        atoms = [
             Atom(name='N9', x=3.0, y=3.0, z=3.0),
             Atom(name='C4', x=2.0, y=2.0, z=2.0),
             Atom(name='N3', x=1.0, y=1.0, z=1.0),
@@ -54,25 +47,23 @@ class Classifier(BaseClassifier):
         trans_first = first.transform(transformation_matrix)
         trans_second = second.transform(transformation_matrix)
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
-        
-        if min_xy <= 14:
+                
+        if min_xy <= 10 and mean_z < 4:
             return self.classify_stacking(trans_first, trans_second)
-        elif 14 < min_xy < 46 and -2.0 <= mean_z < 2.0:
+        elif 10 < min_xy < 23 and mean_z < 2.5:
             return self.classify_pairing(trans_first, trans_second)
-        elif min_xy > 46:
-            Statement = "Residues too far for interaction"
-            return None
+        
     
     def distance_metrics(self, base_residue, aa_residue):
         squared_xy_dist_list = []
         aa_z_list = []
         base_coord = base_residue.centers["base"]
-        #print "translated base coordintes", base_coord
+        
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
             try:           
                 aa_x = np.subtract(aa_atom.x, base_coord[0])
                 aa_y= np.subtract(aa_atom.y, base_coord[1])
-                aa_z = aa_atom.z
+                aa_z = np.subtract(aa_atom.z, base_coord[2])
                 squared_xy_dist = (aa_x**2) + (aa_y**2)
                 squared_xy_dist_list.append(squared_xy_dist)
                 aa_z_list.append(aa_z)
@@ -85,42 +76,40 @@ class Classifier(BaseClassifier):
             return min_xy, mean_z"""
             
         min_xy = min(squared_xy_dist_list)
-        mean_z = np.mean(aa_z_list)
+        mean_z = abs(np.mean(aa_z_list))
         if min_xy < 36:
             print "minimum XY dist squared", base_residue.unit_id(), aa_residue.unit_id(), min_xy
+            print "mean_z:", mean_z
         return min_xy, mean_z        
 
-    def stacking_tilt(self, second):
-        baa_dist_list = []
-        for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
-            key = aa_atom.name
-            aa_z = second[key][2]
-            baa_dist_list.append(aa_z)
-        max_baa = max(baa_dist_list)
-        min_baa = min(baa_dist_list)
-
-        diff = max_baa - min_baa
-        if diff <= defs.tilt_cutoff[second.sequence]:
-            return ("stacked", "N/A")
-          
     def classify_stacking(self, base_residue, aa_residue):
         stacked_aa = set(["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE",
                           "PRO", "ASN", "GLN"])
-        perpendicular_aa = set(["HIS", "ARG", "LYS"])
+        perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE"])
+        perpendicular_stack_aa = set(["PHE", "TYR"])
         angle = base_residue.angle_between_normals(aa_residue)
         if aa_residue.sequence in stacked_aa:
-            if angle <= 0.67 or 2.43 <= angle <= 3.15:
+            if angle <= 0.67 or 2.45 <= angle <= 3.15:
+                #edge = detect_edge(base_residue, aa_residue)
                 return ("stacked", "N/A")
-            elif aa_residue.sequence in perpendicular_aa and 1.2<= angle <=1.64:
-                return ("perpendicular", "N/A")
+            elif 1.2<= angle <=1.64:
+                if aa_residue.sequence in perpendicular_stack_aa:
+                    return "perpendicular stacking"
+                elif aa_residue.sequence in perpendicular_aa:
+                    return "cation-pi"
+                
     
     def classify_pairing(self, first, second):
-        if second in pseudopair_aa:
+        pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "LYS", "ARG",
+                      "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE",
+                      "MET"])
+        if second.sequence in pseudopair_aa:
+            
             angle = first.angle_between_normals(second)
+            print "pairing first second", first, second, angle
             if 0 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
                     return "pseudopair"
-    
-     
+         
     def detect_edge(self, base_residue, aa_residue):
         aa_x = 0
         aa_y = 0

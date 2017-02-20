@@ -54,7 +54,7 @@ class Classifier(object):
             classification = self.classification(first, second)
             if classification:
                 print classification
-                classified.append((first, second, classification))
+                classified.append((first.unit_id(), second.unit_id(), classification))
             else:
                 print "classification failed"
 
