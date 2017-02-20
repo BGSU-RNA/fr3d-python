@@ -90,8 +90,8 @@ class Classifier(BaseClassifier):
         angle = base_residue.angle_between_normals(aa_residue)
         if aa_residue.sequence in stacked_aa:
             if angle <= 0.67 or 2.45 <= angle <= 3.15:
-                #edge = detect_edge(base_residue, aa_residue)
-                return ("stacked", "N/A")
+                edge = self.detect_edge(base_residue, aa_residue)
+                return ("stacked", edge)
             elif 1.2<= angle <=1.64:
                 if aa_residue.sequence in perpendicular_stack_aa:
                     return "perpendicular stacking"
@@ -108,33 +108,19 @@ class Classifier(BaseClassifier):
             angle = first.angle_between_normals(second)
             print "pairing first second", first, second, angle
             if 0 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
-                    return "pseudopair"
+                edge = self.detect_edge(first, second)
+                return ("pseudopair", edge)
          
     def detect_edge(self, base_residue, aa_residue):
-        aa_x = 0
-        aa_y = 0
-        n = 0
-        base_x = 0
-        base_y = 0
-
-        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
-            aa_coordinates = aa_residue.transform(base_residue.base_transformation_matrix())
-            key = aa_atom.name
-            aa_x+= aa_coordinates[key][0]
-            aa_y+= aa_coordinates[key][1]
-            n +=1
-        aa_center_x = aa_x/n
-        aa_center_y = aa_y/n
-
-        for base_atom in base_residue.atoms(name=defs.RNAbaseheavyatoms[base_residue.sequence]):
-            base_coordinates = base_residue.transform(base_residue.base_transformation_matrix())
-            key = base_atom.name
-            base_x+= base_coordinates[key][0]
-            base_y+= base_coordinates[key][1]
-            n += 1
-        base_center_x = aa_x/n
-        base_center_y = aa_y/n
-
+        base_coord = base_residue.centers["base"]
+        aa_coord = aa_residue.centers["aa_fg"]
+        
+        base_center_x = base_coord[0]
+        base_center_y = base_coord[1]
+        
+        aa_center_x = aa_coord[0]
+        aa_center_y = aa_coord[1]
+        
         y = aa_center_y - base_center_y
         x = aa_center_x - base_center_x
         angle_aa = np.arctan2(y,x)
