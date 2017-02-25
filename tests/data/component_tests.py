@@ -1,7 +1,5 @@
 import unittest as ut
 
-from pprint import pprint
-
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
@@ -368,12 +366,12 @@ class StandardTransformationTest(ut.TestCase):
             atoms.append(Atom(x=x, y=y, z=z, name=name))
         component = Component(atoms, sequence=seq)
         component.infer_hydrogens()
+        assert_array_almost_equal(component.centers['base'], [0, 0, 0])
         return component
 
     def test_transforms_self_to_center(self):
         comp = self.standard_component('A')
         trans = comp.standard_transformation()
-        pprint(trans)
         transformed = comp.transform(trans)
         ans = comp.centers['base']
         val = transformed.centers['base']
@@ -381,6 +379,7 @@ class StandardTransformationTest(ut.TestCase):
 
     def test_transforms_moved_to_center(self):
         comp = self.standard_component('A')
+        assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
         standard = np.array([[1.0, 0.0, 0.0, 0.0],
                              [0.0, -1.0, 0.0, 97.240],
                              [0.0, 0.0, -1.0, 0.0],
