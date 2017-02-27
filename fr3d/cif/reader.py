@@ -75,27 +75,28 @@ class Cif(object):
 
     def __load_operators__(self):
         operators = {}
-        for op in self.pdbx_struct_oper_list:
-            op['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
-            op['vector'] = [None] * 3
+        if hasattr(self, 'pdbx_struct_oper_list'):
+            for op in self.pdbx_struct_oper_list:
+                op['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
+                op['vector'] = [None] * 3
 
-            for row in range(3):
-                op['vector'][row] = float(op['vector[%s]' % str(row + 1)])
+                for row in range(3):
+                    op['vector'][row] = float(op['vector[%s]' % str(row + 1)])
 
-                for column in range(3):
-                    key = 'matrix[%s][%s]' % (str(row + 1), str(column + 1))
-                    op['matrix'][row][column] = float(op[key])
+                    for column in range(3):
+                        key = 'matrix[%s][%s]' % (str(row + 1), str(column + 1))
+                        op['matrix'][row][column] = float(op[key])
 
-            transform = np.zeros((4, 4))
-            transform[0:3, 0:3] = op['matrix']
-            transform[0:3, 3] = op['vector']
-            transform[3, 3] = 1.0
+                transform = np.zeros((4, 4))
+                transform[0:3, 0:3] = op['matrix']
+                transform[0:3, 3] = op['vector']
+                transform[3, 3] = 1.0
 
-            op['matrix'] = np.array(op['matrix'])
-            op['vector'] = np.array(op['vector'])
-            op['transform'] = np.array(transform)
+                op['matrix'] = np.array(op['matrix'])
+                op['vector'] = np.array(op['vector'])
+                op['transform'] = np.array(transform)
 
-            operators[op['id']] = op
+                operators[op['id']] = op
 
         identity = self.__identity_operator__()
         operators[identity['id']] = identity
@@ -119,22 +120,23 @@ class Cif(object):
 
     def __load_assemblies__(self):
         assemblies = coll.defaultdict(list)
-        for assembly in self.pdbx_struct_assembly_gen:
-            oper_expression = assembly['oper_expression']
+        if hasattr(self, 'pdbx_struct_assembly_gen'):
+            for assembly in self.pdbx_struct_assembly_gen:
+                oper_expression = assembly['oper_expression']
 
-            # TODO: Implement computation of complex operators
-            if COMPLEX_SYMBOLS & set(oper_expression):
-                warnings.warn('Cannot compute symmetries from complex '
-                              'expressions. Will use a simple identity '
-                              'transformation if no others possible')
-                operators = []
-            else:
-                operators = oper_expression.split(',')
+                # TODO: Implement computation of complex operators
+                if COMPLEX_SYMBOLS & set(oper_expression):
+                    warnings.warn('Cannot compute symmetries from complex '
+                                  'expressions. Will use a simple identity '
+                                  'transformation if no others possible')
+                    operators = []
+                else:
+                    operators = oper_expression.split(',')
 
-            for asym_id in assembly['asym_id_list'].split(','):
-                for operator in operators:
-                    op = self._operators[operator]
-                    assemblies[asym_id].append(op)
+                for asym_id in assembly['asym_id_list'].split(','):
+                    for operator in operators:
+                        op = self._operators[operator]
+                        assemblies[asym_id].append(op)
 
         for asym_id, ops in assemblies.items():
             if not ops:
@@ -146,14 +148,16 @@ class Cif(object):
 
     def __load_entities__(self):
         entities = {}
-        for entity in self.entity:
-            entities[entity['id']] = entity
+        if hasattr(self, 'entity'):
+            for entity in self.entity:
+                entities[entity['id']] = entity
         return entities
 
     def __load_chem_comp__(self):
         chem = {}
-        for obj in self.chem_comp:
-            chem[obj['id']] = obj
+        if hasattr(self, 'chem_comp'):
+            for obj in self.chem_comp:
+                chem[obj['id']] = obj
         return chem
 
     def structure(self):
@@ -273,6 +277,12 @@ class Cif(object):
                             polymeric=first.polymeric)
 
     def __atoms__(self, pdb):
+        if not self._assemblies:
+            operators = it.repeat(self.__identity_operator__(), len(self.atom_site))
+            pdbs = it.repeat(pdb, len(self.atom_site))
+            zipped = it.izip(pdbs, self.atom_site, operators)
+            return it.imap(lambda a: self.__atom__(*a), zipped)
+
         max_operators = max(len(op) for op in self._assemblies.values())
 
         if not max_operators:
@@ -299,24 +309,28 @@ class Cif(object):
     def __atom__(self, pdb, atom, symmetry):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
 
-        index = atom['label_seq_id']
+        index = atom['label_seq_id'] if 'label_seq_id' in atom else '.'
         if index != '.':
             index = int(index)
 
         symmetry_name = self.__symmetry_name__(symmetry)
 
-        ins_code = atom['pdbx_PDB_ins_code']
+        ins_code = atom['pdbx_PDB_ins_code'] if 'pdbx_PDB_ins_code' in atom else '?'
         if ins_code == '?':
             ins_code = None
 
-        alt_id = atom['label_alt_id']
+        alt_id = atom['label_alt_id'] if 'label_alt_id' in atom else '.'
         if alt_id == '.':
             alt_id = None
 
+        model = atom['pdbx_PDB_model_num'] if 'pdbx_PDB_model_num' in atom else 1
+        component_id = atom['label_comp_id'] if 'label_comp_id' in atom else atom['auth_comp_id']
+        atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
+
         return Atom(pdb=pdb,
-                    model=int(atom['pdbx_PDB_model_num']),
+                    model=model,
                     chain=atom['auth_asym_id'],
-                    component_id=atom['label_comp_id'],
+                    component_id=component_id,
                     component_number=int(atom['auth_seq_id']),
                     component_index=index,
                     insertion_code=ins_code,
@@ -324,7 +338,7 @@ class Cif(object):
                     x=x, y=y, z=z,
                     group=atom['group_PDB'],
                     type=atom['type_symbol'],
-                    name=atom['label_atom_id'],
+                    name=atom_id,
                     symmetry=symmetry_name,
                     polymeric=self.is_polymeric_atom(atom))
 
@@ -362,7 +376,7 @@ class Cif(object):
         return self._entities[entity_id]['type'] == 'polymer'
 
     def is_polymeric_atom(self, atom):
-        return self.is_polymeric(atom['label_entity_id'])
+        return 'label_entity_id' in atom and self.is_polymeric(atom['label_entity_id'])
 
     def __block__(self, name):
         block_name = re.sub('^_', '', name)
