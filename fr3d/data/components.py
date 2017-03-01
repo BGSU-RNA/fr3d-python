@@ -214,25 +214,23 @@ class Component(EntitySelector):
         :returns: A numpy array suitable for input to self.transform to produce
         a transformed component.
         """
-                     
+
         if 'base' not in self.centers:
             return None
         base_center = self.centers["base"]
         if len(base_center) == 0:
             return None
-        seq= self.sequence
-        standard_base = defs.RNAbasecoordinates[seq].values()
-        standard_center = np.mean(standard_base, axis = 0)
-        
-        rotation = self.rotation_matrix
-        dist_translate = np.subtract(self.centers["base"], standard_center)
-        #dist_vector= -(dist_translate)*rotation
+        seq = self.sequence
+        coords = defs.RNAbasecoordinates[seq]
+        standard_base = [coords[a] for a in defs.RNAbaseheavyatoms[seq]]
+        standard_center = np.mean(standard_base, axis=0)
+        dist_translate = base_center - standard_center
         matrix = np.zeros((4, 4))
-        matrix[0:3, 0:3] = rotation
+        matrix[0:3, 0:3] = self.rotation_matrix
         matrix[0:3, 3] = dist_translate
         matrix[3, 3] = 1.0
         return matrix
-            
+
     def translate(self, aa_residue):
         if 'base' not in self.centers:
             return None
