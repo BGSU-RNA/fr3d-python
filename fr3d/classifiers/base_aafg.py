@@ -21,26 +21,7 @@ class Classifier(BaseClassifier):
             return None
 
         transformation_matrix = first.standard_transformation()
-        #print first.unit_id(), second.unit_id(),transformation_matrix
-        
-        """#Test for transformation
-        atoms = [
-            Atom(name='N9', x=3.0, y=3.0, z=3.0),
-            Atom(name='C4', x=2.0, y=2.0, z=2.0),
-            Atom(name='N3', x=1.0, y=1.0, z=1.0),
-        ]
-        self.residue = Component(atoms, type='rna', pdb='1GID', model=1,
-                                 chain='A', sequence='C', number=50,
-                                 symmetry='6_555')
-        trans = np.array([[1.0, 0.0, 0.0, 0.0],
-                          [0.0, -1.0, 0.0, 97.240],
-                          [0.0, 0.0, -1.0, 0.0],
-                          [0.0, 0.0, 0.0, 1.0]])
-        
-        residue = self.residue.transform(trans)
-        val = list(list(residue.atoms())[-1].coordinates())
-        
-        ans = [1.0, 96.240, -1.0]"""
+        print first.unit_id(), second.unit_id(),transformation_matrix
         
         if transformation_matrix == None:
             return None
