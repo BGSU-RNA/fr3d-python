@@ -244,7 +244,6 @@ class Component(EntitySelector):
         return coord
                 
       
-
     def unit_id(self):
         """Compute the unit id of this Component.
 
