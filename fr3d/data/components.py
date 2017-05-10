@@ -205,11 +205,13 @@ class Component(EntitySelector):
             comp.infer_hydrogens()
         return comp
 
-    def translate_rotate(atom, reference, rotation_matrix):
+    def translate_rotate(self, atom):
      atom_coord = atom.coordinates()
+     reference = self.centers["base"]
      dist_translate = np.subtract(atom_coord, reference)
      dist_aa_matrix = np.matrix(dist_translate)
-     rotated_atom = dist_aa_matrix * rotation_matrix
+     rotation = self.rotation_matrix
+     rotated_atom = dist_aa_matrix * rotation
      coord_array = np.array(rotated_atom)
      a = coord_array.flatten()
      coord = a.tolist()    
