@@ -4,7 +4,7 @@ from fr3d import definitions as defs
 from fr3d.classifiers.generic import Classifier as BaseClassifier
 from fr3d.data import Atom
 from fr3d.data import Component
-#from fr3d.data import angle_between_normals
+
 
 class Classifier(BaseClassifier):
     """A classifier for RNA protein interactions.
@@ -39,8 +39,11 @@ class Classifier(BaseClassifier):
         squared_xy_dist_list = []
         aa_z_list = []
         base_coord = base_residue.centers["base"]
+        #aa_coord = aa_residue.centers["aa_fg"]
+       
         
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            
             try:           
                 aa_x = np.subtract(aa_atom.x, base_coord[0])
                 aa_y= np.subtract(aa_atom.y, base_coord[1])
@@ -50,18 +53,13 @@ class Classifier(BaseClassifier):
                 aa_z_list.append(aa_z)
             except:
                 print "Incomplete residue"
-        """if not squared_xy_dist_list or not aa_z_list:
-            print "empty XY squared list"
-            min_xy = 0.0
-            mean_z = 0
-            return min_xy, mean_z"""
             
         min_xy = min(squared_xy_dist_list)
         mean_z = abs(np.mean(aa_z_list))
         if min_xy < 36:
             print "minimum XY dist squared", base_residue.unit_id(), aa_residue.unit_id(), min_xy
             print "mean_z:", mean_z
-        return min_xy, mean_z        
+        return min_xy, mean_z       
 
     def classify_stacking(self, base_residue, aa_residue):
         stacked_aa = set(["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE",

@@ -205,6 +205,15 @@ class Component(EntitySelector):
             comp.infer_hydrogens()
         return comp
 
+    def translate_rotate(atom, reference, rotation_matrix):
+     atom_coord = atom.coordinates()
+     dist_translate = np.subtract(atom_coord, reference)
+     dist_aa_matrix = np.matrix(dist_translate)
+     rotated_atom = dist_aa_matrix * rotation_matrix
+     coord_array = np.array(rotated_atom)
+     a = coord_array.flatten()
+     coord = a.tolist()    
+     return coord
 
     def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
