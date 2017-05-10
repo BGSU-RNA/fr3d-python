@@ -147,14 +147,21 @@ RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2'
 RNAbasehydrogens['G'] = ['H1','H8','H9','1H2','2H2']
 RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
 RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
-sugar_back = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'","P","OP1","OP2"]
+ribose = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'"]
+phosphate_bb = ["O5'","P","OP1","OP2"]
 
 nt_backbone = {}
+nt_sugar = {}
 
-nt_backbone['A'] = sugar_back
-nt_backbone['U'] = sugar_back
-nt_backbone['C'] = sugar_back
-nt_backbone['G'] = sugar_back
+nt_backbone['A'] = phosphate_bb
+nt_backbone['U'] = phosphate_bb
+nt_backbone['C'] = phosphate_bb
+nt_backbone['G'] = phosphate_bb
+
+nt_sugar['A'] = ribose
+nt_sugar['U'] = ribose
+nt_sugar['C'] = ribose
+nt_sugar['G'] = ribose
 
 #Amino acid computation definitions
 
