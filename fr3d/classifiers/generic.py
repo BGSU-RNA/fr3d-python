@@ -50,12 +50,8 @@ class Classifier(object):
                                 distance=self.distance)
         classified = []
         for (first, second) in pairs:
-            print "Gets pairs", (first, second)
             classification = self.classification(first, second)
             if classification:
-                print classification
                 classified.append((first.unit_id(), second.unit_id(), classification))
-            else:
-                print "classification failed"
 
         return classified
