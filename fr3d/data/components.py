@@ -160,7 +160,7 @@ class Component(EntitySelector):
                 besttransformation(R, S)
             #print self.unit_id(), "Successful rotation matrix"
         except:
-            
+
             print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
@@ -206,16 +206,35 @@ class Component(EntitySelector):
         return comp
 
     def translate_rotate(self, atom):
-     atom_coord = atom.coordinates()
-     reference = self.centers["base"]
-     dist_translate = np.subtract(atom_coord, reference)
-     dist_aa_matrix = np.matrix(dist_translate)
-     rotation = self.rotation_matrix
-     rotated_atom = dist_aa_matrix * rotation
-     coord_array = np.array(rotated_atom)
-     a = coord_array.flatten()
-     coord = a.tolist()    
-     return coord
+        """Rotate an Atom relative to the center of this component.
+
+        :param Atom atom: The Atom to move.
+        :returns Atom: The moved atom.
+        """
+
+        atom_coord = atom.coordinates()
+        reference = self.centers["base"]
+        dist_translate = np.subtract(atom_coord, reference)
+        dist_aa_matrix = np.matrix(dist_translate)
+        rotation = self.rotation_matrix
+        rotated_atom = dist_aa_matrix * rotation
+        coord_array = np.array(rotated_atom)
+        a = coord_array.flatten()
+        x, y, z = a.tolist()
+        return Atom(x=x, y=y, z=z,
+                    pdb=atom.pdb,
+                    model=atom.model,
+                    chain=atom.chain,
+                    component_id=atom.component_id,
+                    component_number=atom.component_number,
+                    component_index=atom.component_index,
+                    insertion_code=atom.insertion_code,
+                    alt_id=atom.alt_id,
+                    group=atom.group,
+                    type=atom.type,
+                    name=atom.name,
+                    symmetry=atom.symmetry,
+                    polymeric=atom.polymeric)
 
     def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
@@ -251,10 +270,10 @@ class Component(EntitySelector):
             rotated_atom = dist_translate*rotation
             coord_array = np.array(rotated_atom)
             a = coord_array.flatten()
-            coord = a.tolist()    
+            coord = a.tolist()
         return coord
-                
-      
+
+
     def unit_id(self):
         """Compute the unit id of this Component.
 
