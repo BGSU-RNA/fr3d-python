@@ -6,6 +6,10 @@ tilt_cutoff = {}
 aa_connections = {}
 aa_backconnect = {}
 modified_nucleotides = {}
+nt_phosphate = {}
+nt_sugar = {}
+nt_backbone = {}
+
                       
 #List of amino acids for perpendicular interactions
 
@@ -13,6 +17,14 @@ Perp_aa = set(['ARG','LYS','GLU','ASP','GLN','ASN','HIS','TYR','TRP','PHE'])
 
 #Dictionaries for normal to plane calculations
 planar_atoms = {}
+planar_sugar = {}
+sugar_plane = ["C2'","C1'","C3'"]
+
+planar_sugar['A'] = sugar_plane
+planar_sugar['U'] = sugar_plane
+planar_sugar['C'] = sugar_plane
+planar_sugar['G'] = sugar_plane
+
 planar_atoms['A'] = ['C4','C5','N3']
 planar_atoms['U'] = ['C2','N1','N3']
 planar_atoms['C'] = ['C6','N1','C5']
@@ -32,12 +44,12 @@ planar_atoms['PRO'] =['CG','CD','CB']
 planar_atoms['MET'] =['SD','CG','CE']
 planar_atoms['ILE'] =['CG1','CB','CD1']
 planar_atoms['LEU'] =['CG','CD1','CD2']
-#planar_atoms['ALA'] =[]
-#planar_atoms['GLY'] =[]
 planar_atoms['VAL'] =['CB','CG1','CG2']
 planar_atoms['SER'] =['CB','OG','CA']
 planar_atoms['THR'] =['CB','OG1','CG2']                       
 planar_atoms['CYS'] =['CB','SG','CB']
+#planar_atoms['ALA'] =[]
+#planar_atoms['GLY'] =[]
 
 #Creating dictionaries for detecting edges of nts
 
@@ -77,7 +89,6 @@ Sugar_1['C']= ["N1","C1'"]
 Sugar_2['C']= ["C2", "O2"]
 
 #Defining center-to-center and tilt cutoffs for stacking
-#dist_cent_cutoff = {'TRP':7,'TYR': 7,'PHE':7, 'ALA':6,'ARG':6}
 tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 3.1,'CYS': 1.0, 'MET': 1.5}
 
 #Definitions for drawing the amino acids
@@ -147,21 +158,24 @@ RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2'
 RNAbasehydrogens['G'] = ['H1','H8','H9','1H2','2H2']
 RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
 RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
+
 ribose = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'"]
-phosphate_bb = ["O5'","P","OP1","OP2"]
+phosphate = ["O5'","P","OP1","OP2"]
 
-nt_backbone = {}
-nt_sugar = {}
-
-nt_backbone['A'] = phosphate_bb
-nt_backbone['U'] = phosphate_bb
-nt_backbone['C'] = phosphate_bb
-nt_backbone['G'] = phosphate_bb
+nt_phosphate['A'] = phosphate
+nt_phosphate['U'] = phosphate
+nt_phosphate['C'] = phosphate
+nt_phosphate['G'] = phosphate
 
 nt_sugar['A'] = ribose
 nt_sugar['U'] = ribose
 nt_sugar['C'] = ribose
 nt_sugar['G'] = ribose
+
+nt_backbone['A'] = ribose + phosphate
+nt_backbone['U'] = ribose + phosphate
+nt_backbone['C'] = ribose + phosphate
+nt_backbone['G'] = ribose + phosphate
 
 #Amino acid computation definitions
 
@@ -170,8 +184,8 @@ with nts by Hydrogenbonding. aa_fg refers to the functional group of the
 sidechain. aa_backbone refers to the peptide backbone. aa_linker is the carbon chain
 that links the fg with the peptide backbone"""
 
-#backbone = ['N','CA','C', 'O']
-backbone = ['N','CA','CB']
+backbone = ['CA','C', 'O']
+#backbone = ['N','CA','CB']
 
 aa_backbone = {}
 aa_linker = {}
@@ -194,16 +208,16 @@ aa_linker['GLN'] = ['CB','CG']
 aa_fg['GLN'] = ['CD','OE1','NE2']
 
 aa_backbone['ASN'] = backbone
-aa_linker['ASN'] = []
-aa_fg['ASN'] = ['CB','CG','OD1','ND2']
+aa_linker['ASN'] = ['CB']
+aa_fg['ASN'] = ['CG','OD1','ND2']
 
 aa_backbone['GLU'] = backbone
-aa_linker['GLU'] = ['CB']
-aa_fg['GLU'] = ['CG','CD','OE1','OE2']
+aa_linker['GLU'] = ['CB','CG']
+aa_fg['GLU'] = ['CD','OE1','OE2']
 
 aa_backbone['ASP'] = backbone
-aa_linker['ASP'] = []
-aa_fg['ASP'] = ['CB','CG','OD1','OD2']
+aa_linker['ASP'] = ['CB']
+aa_fg['ASP'] = ['CG','OD1','OD2']
 
 aa_backbone['TRP'] = backbone
 aa_linker['TRP'] = ['CB']
@@ -211,7 +225,7 @@ aa_fg['TRP'] = ['CG','CD1','NE1','CE2','CD2','CE3','CZ3','CH2','CZ2']
 
 aa_backbone['TYR'] = backbone
 aa_linker['TYR'] = ['CB']
-aa_fg['TYR'] = ['CG','CD1','CE1','CZ','OH','CZ','CE2','CD2']
+aa_fg['TYR'] = ['CG','CD1','CE1','CZ','OH','CE2','CD2']
 
 aa_backbone['PHE'] = backbone
 aa_linker['PHE'] = ['CB']
@@ -219,11 +233,11 @@ aa_fg['PHE'] = ['CG','CD1','CD2','CE1','CZ','CE2']
 
 aa_backbone['PRO'] = backbone
 aa_linker['PRO'] = []
-aa_fg['PRO'] = ['CA','CB','C','O','CG','CD']
+aa_fg['PRO'] = ['CA','CB','CG','CD']
 
 aa_backbone['MET'] = backbone
-aa_linker['MET'] = []
-aa_fg['MET'] = ['CB','CG','SD','CE']
+aa_linker['MET'] = ['CB']
+aa_fg['MET'] = ['CG','SD','CE']
 
 aa_backbone['ILE'] = backbone
 aa_linker['ILE'] = []
@@ -239,19 +253,19 @@ aa_fg['VAL'] = ['CB','CG1','CG2']
 
 aa_backbone['ALA'] = backbone
 aa_linker['ALA'] = []
-#aa_fg['ALA'] = ['CB']
+aa_fg['ALA'] = ['CB']
 
 aa_backbone['GLY'] = backbone
 aa_linker['GLY'] = []
-#aa_fg['GLY'] = []
+aa_fg['GLY'] = []
 
 aa_backbone['SER'] = backbone
-aa_linker['SER'] = []
-aa_fg['SER'] = ['CB','OG']
+aa_linker['SER'] = ['CB']
+aa_fg['SER'] = ['OG']
 
 aa_backbone['THR'] = backbone
-aa_linker['THR'] = []
-aa_fg['THR'] = ['CB','OG1','CG2']
+aa_linker['THR'] = ['CB']
+aa_fg['THR'] = ['OG1','CG2']
 
 aa_backbone['CYS'] = backbone
 aa_linker['CYS'] = []
