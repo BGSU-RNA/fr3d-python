@@ -20,34 +20,28 @@ class Classifier(BaseClassifier):
         if not hasattr(first, 'rotation_matrix'):
             return None
 
-        transformation_matrix = first.standard_transformation()
-        print first.unit_id(), second.unit_id(),transformation_matrix
-        
-        if transformation_matrix == None:
-            return None
-        trans_first = first.transform(transformation_matrix)
-        trans_second = second.transform(transformation_matrix)
+        trans_first = first.translate_rotate(first)
+        trans_second = first.translate_rotate(second)
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
                 
-        if min_xy <= 10 and mean_z < 4:
+        if min_xy <= 5 and mean_z < 2:
             return self.classify_stacking(trans_first, trans_second)
-        elif 10 < min_xy < 23 and mean_z < 2.5:
+        elif 5 < min_xy < 20 and mean_z < 2.5:
             return self.classify_pairing(trans_first, trans_second)
         
     
     def distance_metrics(self, base_residue, aa_residue):
         squared_xy_dist_list = []
         aa_z_list = []
-        base_coord = base_residue.centers["base"]
+        #base_coord = base_residue.centers["base"]
         #aa_coord = aa_residue.centers["aa_fg"]
-       
         
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
             
             try:           
-                aa_x = np.subtract(aa_atom.x, base_coord[0])
-                aa_y= np.subtract(aa_atom.y, base_coord[1])
-                aa_z = np.subtract(aa_atom.z, base_coord[2])
+                #aa_x = np.subtract(aa_atom.x, base_coord[0])
+                #aa_y= np.subtract(aa_atom.y, base_coord[1])
+                #aa_z = np.subtract(aa_atom.z, base_coord[2])
                 squared_xy_dist = (aa_x**2) + (aa_y**2)
                 squared_xy_dist_list.append(squared_xy_dist)
                 aa_z_list.append(aa_z)

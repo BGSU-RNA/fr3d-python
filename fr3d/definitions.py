@@ -9,6 +9,8 @@ modified_nucleotides = {}
 nt_phosphate = {}
 nt_sugar = {}
 nt_backbone = {}
+HB_donors = {}
+HB_acceptors = {}
 
                       
 #List of amino acids for perpendicular interactions
@@ -29,7 +31,7 @@ planar_atoms['A'] = ['C4','C5','N3']
 planar_atoms['U'] = ['C2','N1','N3']
 planar_atoms['C'] = ['C6','N1','C5']
 planar_atoms['G'] = ['C4','C5','N3']
-planar_atoms['GLY'] =[]
+
 planar_atoms['ARG'] =['CZ','NH1', 'NH2']
 planar_atoms['LYS'] =['CE','CD','NZ']
 planar_atoms['HIS'] = ['NE2','CD2','CE1']
@@ -40,17 +42,60 @@ planar_atoms['ASP'] =['CG','OD1','OD2']
 planar_atoms['TRP'] =['CD2','CG','CE2']
 planar_atoms['TYR'] =['CE2','CZ','CE1']
 planar_atoms['PHE'] =['CG','CD1','CZ']
-planar_atoms['PRO'] =['CG','CD','CB']
+planar_atoms['THR'] =['CB','OG1','CG2']                       
+planar_atoms['CYS'] =['CB','SG','CB']
+"""planar_atoms['PRO'] =['CG','CD','CB']
 planar_atoms['MET'] =['SD','CG','CE']
 planar_atoms['ILE'] =['CG1','CB','CD1']
 planar_atoms['LEU'] =['CG','CD1','CD2']
-planar_atoms['VAL'] =['CB','CG1','CG2']
+planar_atoms['VAL'] =['CB','CG1','CG2']"""
 planar_atoms['SER'] =['CB','OG','CA']
-planar_atoms['THR'] =['CB','OG1','CG2']                       
-planar_atoms['CYS'] =['CB','SG','CB']
-#planar_atoms['ALA'] =[]
-#planar_atoms['GLY'] =[]
 
+
+#Hydrogen bond donor and acceptor atoms for each base and amino acid
+
+HB_donors ['A'] = ["N6", "O2'"]
+HB_donors ['U'] = ["N4", "O2'"]
+HB_donors ['G'] = ["N1", "N2", "O2'"]
+HB_donors ['C'] = ["N3", "O2'"]
+
+HB_acceptors ['A'] = ["N1", "N3", "N7"]
+HB_acceptors ['U'] = ["O2", "N3"]
+HB_acceptors ['G'] = ["N3", "O6", "N7"]
+HB_acceptors ['C'] = ["O2", "O4"]
+
+HB_donors ['ARG'] = ['NE', 'NH1', 'NH2']
+HB_acceptors ['ARG'] = []
+
+HB_donors ['ASN'] = ['ND2', 'OD1']
+HB_acceptors ['ASN'] = ['OD1', 'ND2']
+
+HB_donors ['ASP'] = ['OD1', 'OD2']
+HB_acceptors ['ASP'] = ['OD1', 'OD2']
+
+HB_donors ['GLN'] = ['NE2', 'OE1']
+HB_acceptors ['GLN'] = ['OE1', 'NE2']
+
+HB_donors ['GLU'] = ['OE1', 'OE2']
+HB_acceptors ['GLU'] = ['OE1', 'OE2']
+
+HB_donors ['HIS'] = ['CD2', 'ND1', 'NE2']
+HB_acceptors ['HIS'] = ['ND1', 'NE2']
+
+HB_donors ['LYS'] = ['NZ']
+HB_acceptors ['LYS'] = []
+
+HB_donors ['SER'] = ['OG']
+HB_acceptors ['SER'] = ['OG']
+
+HB_donors ['THR'] = ['OG1']
+HB_acceptors ['THR'] = ['OG1']
+
+HB_donors ['TRP'] = ['NE1']
+HB_acceptors ['TRP'] = []
+
+HB_donors ['TYR'] = ['OH']
+HB_acceptors ['TYR'] = ['OH']
 #Creating dictionaries for detecting edges of nts
 
 WC_1 = {}

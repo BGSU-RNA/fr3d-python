@@ -42,10 +42,14 @@ class Component(EntitySelector):
             atoms = defs.RNAbaseheavyatoms[self.sequence]
             self.centers.define('base', atoms)
 
-        if self.sequence in defs.nt_backbone:
-            atoms = defs.nt_backbone[self.sequence]
-            self.centers.define('nt_backbone', atoms)
+        if self.sequence in defs.nt_sugar:
+            atoms = defs.nt_sugar[self.sequence]
+            self.centers.define('nt_sugar', atoms)
 
+        if self.sequence in defs.nt_phosphate:
+            atoms = defs.nt_phosphate[self.sequence]
+            self.centers.define('nt_phosphate', atoms)
+            
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
@@ -205,17 +209,18 @@ class Component(EntitySelector):
             comp.infer_hydrogens()
         return comp
 
-    def translate_rotate(self, atom):
-     atom_coord = atom.coordinates()
-     reference = self.centers["base"]
-     dist_translate = np.subtract(atom_coord, reference)
-     dist_aa_matrix = np.matrix(dist_translate)
-     rotation = self.rotation_matrix
-     rotated_atom = dist_aa_matrix * rotation
-     coord_array = np.array(rotated_atom)
-     a = coord_array.flatten()
-     coord = a.tolist()    
-     return coord
+    def translate_rotate(self, residue):
+        reference = self.centers["base"]
+        rotation = self.rotation_matrix
+        for atom in residue.atoms():
+            atom_coord = atom.coordinates()
+            dist_translate = np.subtract(atom_coord, reference)
+            dist_aa_matrix = np.matrix(dist_translate)
+            rotated_atom = dist_aa_matrix * rotation
+            coord_array = np.array(rotated_atom)
+            a = coord_array.flatten()
+            transformed_coord = a.tolist()    
+        return transformed_coord
 
     def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
