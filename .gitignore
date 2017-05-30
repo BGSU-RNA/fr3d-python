@@ -93,3 +93,4 @@ ENV/
 
 # Spyder project settings
 .spyderproject
+.ignore
