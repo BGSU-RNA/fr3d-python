@@ -209,7 +209,6 @@ class Component(EntitySelector):
             comp.infer_hydrogens()
         return comp
 
-<<<<<<< HEAD
     def translate_rotate(self, residue):
         reference = self.centers["base"]
         rotation = self.rotation_matrix
@@ -222,7 +221,7 @@ class Component(EntitySelector):
             a = coord_array.flatten()
             transformed_coord = a.tolist()    
         return transformed_coord
-=======
+
     def translate_rotate(self, atom):
         """Rotate an Atom relative to the center of this component.
 
@@ -253,7 +252,7 @@ class Component(EntitySelector):
                     name=atom.name,
                     symmetry=atom.symmetry,
                     polymeric=atom.polymeric)
->>>>>>> origin/develop
+
 
     def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
