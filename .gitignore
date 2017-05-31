@@ -12,6 +12,7 @@ tags
 __pycache__/
 *.py[cod]
 *$py.class
+localpath.py
 
 # C extensions
 *.so

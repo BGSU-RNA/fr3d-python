@@ -508,7 +508,6 @@ def draw_aa_cent(aa, aa_part, ax):
 
 """Inputs a list of PDBs of interest to generate super-imposed plots"""
 PDB_List = ['2aw7']
-PDB_List = ['3C3Z']
 
 base_seq_list = ['A','U','C','G']
 #base_seq_list = ['A']
