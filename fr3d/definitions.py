@@ -86,6 +86,7 @@ HB_donors ['LYS'] = ['NZ']
 HB_acceptors ['LYS'] = []
 
 HB_donors ['PHE'] = ['CG','CD1','CD2','CE1','CZ','CE2']
+HB_acceptors ['PHE'] =[]
 
 HB_donors ['SER'] = ['OG']
 HB_acceptors ['SER'] = ['OG']
