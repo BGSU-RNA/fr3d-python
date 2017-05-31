@@ -54,10 +54,10 @@ planar_atoms['SER'] =['CB','OG','CA']
 
 #Hydrogen bond donor and acceptor atoms for each base and amino acid
 
-HB_donors ['A'] = ["N6", "O2'"]
-HB_donors ['U'] = ["N4", "O2'"]
-HB_donors ['G'] = ["N1", "N2", "O2'"]
-HB_donors ['C'] = ["N3", "O2'"]
+HB_donors ['A'] = ["N6", "O2'", "C2", "C8"]
+HB_donors ['U'] = ["N4", "O2'", "C5"]
+HB_donors ['G'] = ["N1", "N2", "O2'", "C8"]
+HB_donors ['C'] = ["N3", "O2'", "C5"]
 
 HB_acceptors ['A'] = ["N1", "N3", "N7"]
 HB_acceptors ['U'] = ["O2", "N3"]
@@ -79,11 +79,13 @@ HB_acceptors ['GLN'] = ['OE1', 'NE2']
 HB_donors ['GLU'] = ['OE1', 'OE2']
 HB_acceptors ['GLU'] = ['OE1', 'OE2']
 
-HB_donors ['HIS'] = ['CD2', 'ND1', 'NE2']
+HB_donors ['HIS'] = ['CD2', 'CE1', 'ND1', 'NE2']
 HB_acceptors ['HIS'] = ['ND1', 'NE2']
 
 HB_donors ['LYS'] = ['NZ']
 HB_acceptors ['LYS'] = []
+
+HB_donors ['PHE'] = ['CG','CD1','CD2','CE1','CZ','CE2']
 
 HB_donors ['SER'] = ['OG']
 HB_acceptors ['SER'] = ['OG']
@@ -91,7 +93,7 @@ HB_acceptors ['SER'] = ['OG']
 HB_donors ['THR'] = ['OG1']
 HB_acceptors ['THR'] = ['OG1']
 
-HB_donors ['TRP'] = ['NE1']
+HB_donors ['TRP'] = ['CG','CD1','NE1','CE2','CD2','CE3','CZ3','CH2','CZ2']
 HB_acceptors ['TRP'] = []
 
 HB_donors ['TYR'] = ['OH']
@@ -136,62 +138,6 @@ Sugar_2['C']= ["C2", "O2"]
 #Defining center-to-center and tilt cutoffs for stacking
 tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 3.1,'CYS': 1.0, 'MET': 1.5}
 
-#Definitions for drawing the amino acids
-
-aa_backconnect['ARG']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['LYS']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['HIS']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['GLN']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['ASN']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['ASP']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['GLU']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['TRP']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['TYR']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['PHE']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['PRO']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['MET']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['ILE']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['LEU']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['ALA']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['VAL']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['GLY']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['SER']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['THR']=['N','CA','CA','C','C','O','C','CA']
-aa_backconnect['CYS']=['N','CA','CA','C','C','O','C','CA']
-
-aa_connections['ARG'] =['CA','CB','CB','CG','CG','CD','CD','NE','NE','CZ','CZ','NH1','CZ','NH2']
-aa_connections['LYS'] =['CA','CB','CB','CG','CG','CD','CD','CE','CE','NZ']
-aa_connections['HIS'] =['CA','CB','CB','CG','CG','CD2','CD2','NE2','NE2','CE1','CE1','ND1','ND1','CG']
-aa_connections['GLN'] =['CA','CB','CB','CG','CG','CD','CD','OE1','CD','NE2']
-aa_connections['ASN'] =['CA','CB','CB','CG','CG','OD1','CG','ND2']
-aa_connections['GLU'] =['CA','CB','CB','CG','CG','CD','CD','OE1','CD','OE2']
-aa_connections['ASP'] =['CA','CB','CB','CG','CG','OD2']
-aa_connections['TRP'] =['CA','CB','CB','CG','CG','CD1','CD1','NE1','NE1','CE2','CE2','CD2','CD2','CG','CD2','CE3','CE3','CZ3','CZ3','CH2','CH2','CZ2','CZ2','CE2']
-aa_connections['TYR'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','OH','CZ','CE2','CE2','CD2','CG']
-aa_connections['PHE'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','CE2','CE2','CD2','CD2','CG']
-aa_connections['PRO'] =['CA','CB','CB','CG','CG','CD','CD','N']
-aa_connections['MET'] =['CA','CB','CB','CG','CG','SD','SD','CE']
-aa_connections['ILE'] =['CA','CB','CB','CG1','CG1','CG2','CG2','CD1']
-aa_connections['LEU'] =['CA','CB','CB','CG','CG','CD2','CD2','CD1']
-aa_connections['ALA'] =['CA','CB']
-aa_connections['VAL'] =['CA','CB','CB','CG1','CB','CG2']
-aa_connections['GLY'] =[]
-aa_connections['SER'] =['CA','CB','CB','OG']
-aa_connections['THR'] =['CA','CB','CB','OG1','CB','CG2']                       
-aa_connections['CYS'] =['CA','CB','CB','SG']
-
-#Definitions for drawing the RNA nucleotides
-
-RNAconnections['A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']   
-RNAconnections['U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']            
-RNAconnections['G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']   
-RNAconnections['C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
-
-Ribophos_connect['A'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-Ribophos_connect['U'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-Ribophos_connect['G'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-Ribophos_connect['C'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-
 #RNA computation definitions
 """Defining the parts of nt that we use to compute RNA-amino acid interactions"""
 
@@ -230,7 +176,6 @@ sidechain. aa_backbone refers to the peptide backbone. aa_linker is the carbon c
 that links the fg with the peptide backbone"""
 
 backbone = ['CA','C', 'O']
-#backbone = ['N','CA','CB']
 
 aa_backbone = {}
 aa_linker = {}
@@ -380,6 +325,62 @@ RNAbasecoordinates['U'][ 'H5'] = [ -2.450997,   1.102115,   0.000000]
 RNAbasecoordinates['U'][ 'H1'] = [ -0.326420,  -2.523369,   0.000000]
 RNAbasecoordinates['U'][ 'H3'] = [  1.765732,   0.930757,   0.000000]
 RNAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
+
+#Definitions for drawing the amino acids
+
+aa_backconnect['ARG']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['LYS']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['HIS']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['GLN']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['ASN']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['ASP']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['GLU']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['TRP']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['TYR']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['PHE']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['PRO']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['MET']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['ILE']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['LEU']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['ALA']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['VAL']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['GLY']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['SER']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['THR']=['N','CA','CA','C','C','O','C','CA']
+aa_backconnect['CYS']=['N','CA','CA','C','C','O','C','CA']
+
+aa_connections['ARG'] =['CA','CB','CB','CG','CG','CD','CD','NE','NE','CZ','CZ','NH1','CZ','NH2']
+aa_connections['LYS'] =['CA','CB','CB','CG','CG','CD','CD','CE','CE','NZ']
+aa_connections['HIS'] =['CA','CB','CB','CG','CG','CD2','CD2','NE2','NE2','CE1','CE1','ND1','ND1','CG']
+aa_connections['GLN'] =['CA','CB','CB','CG','CG','CD','CD','OE1','CD','NE2']
+aa_connections['ASN'] =['CA','CB','CB','CG','CG','OD1','CG','ND2']
+aa_connections['GLU'] =['CA','CB','CB','CG','CG','CD','CD','OE1','CD','OE2']
+aa_connections['ASP'] =['CA','CB','CB','CG','CG','OD2']
+aa_connections['TRP'] =['CA','CB','CB','CG','CG','CD1','CD1','NE1','NE1','CE2','CE2','CD2','CD2','CG','CD2','CE3','CE3','CZ3','CZ3','CH2','CH2','CZ2','CZ2','CE2']
+aa_connections['TYR'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','OH','CZ','CE2','CE2','CD2','CG']
+aa_connections['PHE'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','CE2','CE2','CD2','CD2','CG']
+aa_connections['PRO'] =['CA','CB','CB','CG','CG','CD','CD','N']
+aa_connections['MET'] =['CA','CB','CB','CG','CG','SD','SD','CE']
+aa_connections['ILE'] =['CA','CB','CB','CG1','CG1','CG2','CG2','CD1']
+aa_connections['LEU'] =['CA','CB','CB','CG','CG','CD2','CD2','CD1']
+aa_connections['ALA'] =['CA','CB']
+aa_connections['VAL'] =['CA','CB','CB','CG1','CB','CG2']
+aa_connections['GLY'] =[]
+aa_connections['SER'] =['CA','CB','CB','OG']
+aa_connections['THR'] =['CA','CB','CB','OG1','CB','CG2']                       
+aa_connections['CYS'] =['CA','CB','CB','SG']
+
+#Definitions for drawing the RNA nucleotides
+
+RNAconnections['A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']   
+RNAconnections['U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']            
+RNAconnections['G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']   
+RNAconnections['C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
+
+Ribophos_connect['A'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+Ribophos_connect['U'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+Ribophos_connect['G'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+Ribophos_connect['C'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
 
 #List of modified nucleotides, their corresponding standard base, and their atom correspondences
 
