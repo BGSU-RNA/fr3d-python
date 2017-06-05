@@ -215,20 +215,21 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
     if min(squared_xy_dist_list) <= 5:
         #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
         if aa_residue.sequence in stacked_planar_aa:
-            #print "stacking?", base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
+            print "stacking?", base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
             return stacking_angle(base_residue, aa_residue, min(squared_xy_dist_list))
-
+        
         elif aa_residue.sequence in stacked_aliphatic:
             return stacking_tilt(aa_residue, aa_coordinates)
-
-    elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in pseudopair_aa:
+    
+        elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in pseudopair_aa:
             angle= calculate_angle(base_residue, aa_residue)
-            #print "pseudopair?", base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
-            if 0 <= angle <= 0.75 or 2.6 <= angle <= 3.14:
+            angle = abs(angle)
+            #print "pseudopair?", base_residue.unit_id(), aa_residue.unit_id(), angle
+            if 0 <= angle <= 0.75 or 2.5 <= angle <= 3.14:
                 return "pseudopair"
-            elif 1.2<= angle <=1.64:
+            elif 0.95 <= angle <=1.64:
                 return "perpendicular edge"
-
+    
     elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in shb_aa:
         base_seq = base_residue.sequence
         base_atoms = RNAbaseheavyatoms[base_seq]
@@ -253,6 +254,7 @@ def stacking_angle (base_residue, aa_residue, min_dist):
     angle = angle_between_planes(vec1, vec2)
     #print "stacked?"
     #print base_residue.unit_id(), aa_residue.unit_id(), min_dist, angle
+    angle = abs(angle)
     if angle <=0.68 or 2.45 <= angle <= 3.15:
         return "stacked"
     elif 1.2<= angle <=1.64:
@@ -260,7 +262,6 @@ def stacking_angle (base_residue, aa_residue, min_dist):
             return "perpendicular stacking"
         elif aa_residue.sequence in perpendicular_aa:
             return "cation-pi"
-
 
 def stacking_tilt(aa_residue, aa_coordinates):
     baa_dist_list = []

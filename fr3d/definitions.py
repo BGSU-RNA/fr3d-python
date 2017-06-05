@@ -224,7 +224,7 @@ aa_fg['PHE'] = ['CG','CD1','CD2','CE1','CZ','CE2']
 
 aa_backbone['PRO'] = backbone
 aa_linker['PRO'] = []
-aa_fg['PRO'] = ['CA','CB','CG','CD']
+aa_fg['PRO'] = ['CB','CG','CD']
 
 aa_backbone['MET'] = backbone
 aa_linker['MET'] = ['CB']
