@@ -231,16 +231,16 @@ aa_linker['MET'] = ['CB']
 aa_fg['MET'] = ['CG','SD','CE']
 
 aa_backbone['ILE'] = backbone
-aa_linker['ILE'] = []
-aa_fg['ILE'] = ['CB','CG1','CG2','CD1']
+aa_linker['ILE'] = ['CB']
+aa_fg['ILE'] = ['CG1','CG2','CD1']
 
 aa_backbone['LEU'] = backbone
-aa_linker['LEU'] = []
-aa_fg['LEU'] = ['CB','CG','CD2','CD1']
+aa_linker['LEU'] = ['CB']
+aa_fg['LEU'] = ['CG','CD2','CD1']
 
 aa_backbone['VAL'] = backbone
-aa_linker['VAL'] = []
-aa_fg['VAL'] = ['CB','CG1','CG2']
+aa_linker['VAL'] = ['CB']
+aa_fg['VAL'] = ['CG1','CG2']
 
 aa_backbone['ALA'] = backbone
 aa_linker['ALA'] = []

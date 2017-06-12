@@ -404,3 +404,17 @@ class Component(EntitySelector):
                     if n > min_bonds:
                         return True
         return False
+    
+    def stacking_tilt(aa_residue, aa_coordinates):
+        baa_dist_list = []
+
+        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            key = aa_atom.name
+            aa_z = aa_coordinates[key][2]
+            baa_dist_list.append(aa_z)
+        max_baa = max(baa_dist_list)
+        min_baa = min(baa_dist_list)
+        diff = max_baa - min_baa
+        #print aa_residue.unit_id(), diff
+        if diff <= defs.tilt_cutoff[aa_residue.sequence]:
+            return "stacked"
