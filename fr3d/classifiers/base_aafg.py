@@ -20,14 +20,12 @@ class Classifier(BaseClassifier):
         if not hasattr(first, 'rotation_matrix'):
             return None
 
-<<<<<<< HEAD
         trans_first = first.translate_rotate(first)
         trans_second = first.translate_rotate(second)
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
                 
         if min_xy <= 5 and mean_z < 2:
-=======
-        transformation_matrix = first.standard_transformation()
+            transformation_matrix = first.standard_transformation()
 
         if transformation_matrix == None:
             return None
@@ -36,7 +34,7 @@ class Classifier(BaseClassifier):
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
 
         if min_xy <= 10 and mean_z < 4:
->>>>>>> origin/develop
+
             return self.classify_stacking(trans_first, trans_second)
         elif 5 < min_xy < 20 and mean_z < 2.5:
             return self.classify_pairing(trans_first, trans_second)
@@ -44,45 +42,37 @@ class Classifier(BaseClassifier):
     def distance_metrics(self, base_residue, aa_residue):
         squared_xy_dist_list = []
         aa_z_list = []
-<<<<<<< HEAD
-        #base_coord = base_residue.centers["base"]
-        #aa_coord = aa_residue.centers["aa_fg"]
-        
-        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
-            
-            try:           
-                #aa_x = np.subtract(aa_atom.x, base_coord[0])
-                #aa_y= np.subtract(aa_atom.y, base_coord[1])
-                #aa_z = np.subtract(aa_atom.z, base_coord[2])
-=======
         base_coord = base_residue.centers["base"]
-
         for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
             try:
                 aa_x = np.subtract(aa_atom.x, base_coord[0])
                 aa_y= np.subtract(aa_atom.y, base_coord[1])
                 aa_z = np.subtract(aa_atom.z, base_coord[2])
->>>>>>> origin/develop
                 squared_xy_dist = (aa_x**2) + (aa_y**2)
                 squared_xy_dist_list.append(squared_xy_dist)
                 aa_z_list.append(aa_z)
             except:
                 print "Incomplete residue"
-
+        
+        mean_z = np.mean(aa_z)
         min_xy = min(squared_xy_dist_list)
-        mean_z = abs(np.mean(aa_z_list))
         return min_xy, mean_z
 
     def classify_stacking(self, base_residue, aa_residue):
-        stacked_aa = set(["TRP", "TYR", "PHE", "HIS", "ARG", "LYS", "LEU", "ILE",
-                          "PRO", "ASN", "GLN"])
+        stacked_planar_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "ASN", 
+        "GLN", "GLU", "ASP"])
+        stacked_aliphatic = set(["LEU", "ILE", "PRO", "THR", "MET", "CYS", "VAL", "ALA", "SER"])
+    
         perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN", "LEU", "ILE"])
         perpendicular_stack_aa = set(["PHE", "TYR"])
         angle = base_residue.angle_between_normals(aa_residue)
-        if aa_residue.sequence in stacked_aa:
+        if aa_residue.sequence in stacked_planar_aa:
             if angle <= 0.67 or 2.45 <= angle <= 3.15:
-                edge = self.detect_edge(base_residue, aa_residue)
-                return ("stacked", edge)
+                face = self.detect_face(base_residue, aa_residue)
+                return ("stacked", face)
+            elif aa_residue.sequence in stacked_aliphatic:
+                return stacking_tilt(aa_residue)
+                
             elif 1.2<= angle <=1.64:
                 if aa_residue.sequence in perpendicular_stack_aa:
                     return ("perpendicular stacking", None)
