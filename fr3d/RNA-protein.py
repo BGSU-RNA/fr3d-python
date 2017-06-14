@@ -195,7 +195,7 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
     stacked_planar_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "ASN", "GLN", "GLU", "ASP"])
     stacked_aliphatic = set(["LEU", "ILE", "PRO", "THR", "MET", "CYS", "VAL", "ALA", "SER"])
     pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "TYR", "TRP", "PHE", "LYS"])
-    shb_aa = set (["SER", "THR"])
+    shb_aa = set (["SER", "THR", "LYS"])
         
     for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
         key = aa_atom.name
@@ -302,26 +302,25 @@ def translate_rotate(atom, reference, rotation_matrix):
 
 
 def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
-    aa_x = 0
-    aa_y = 0
-    n = 0
-    base_x = 0
-    base_y = 0
+    aa_x = []
+    aa_y = []
+    base_x = []
+    base_y = []
     for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
         key = aa_atom.name
-        aa_x+= aa_coordinates[key][0]
-        aa_y+= aa_coordinates[key][1]
-        n +=1
-    aa_center_x = aa_x/n        
-    aa_center_y = aa_y/n        
+        aa_x.append(aa_coordinates[key][0])
+        aa_y.append(aa_coordinates[key][1])
+        
+    aa_center_x = np.mean(aa_x)
+    aa_center_y = np.mean(aa_y)
     
     for base_atom in base_residue.atoms(name=RNAbaseheavyatoms[base_residue.sequence]):
         key = base_atom.name
-        base_x+= base_coordinates[key][0]
-        base_y+= base_coordinates[key][1]
-        n +=1
-    base_center_x = aa_x/n        
-    base_center_y = aa_y/n  
+        base_x.append(base_coordinates[key][0])
+        base_y.append(base_coordinates[key][1])
+        
+    base_center_x = np.mean(base_x)
+    base_center_y = np.mean(base_y)
 
     y = aa_center_y - base_center_y
     x = aa_center_x - base_center_x
@@ -494,7 +493,7 @@ def draw_aa_cent(aa, aa_part, ax):
             continue
 
 """Inputs a list of PDBs of interest to generate super-imposed plots"""
-PDB_List = ['5WSG']
+PDB_List = ['5AJ3']
 
 base_seq_list = ['A','U','C','G']
 #base_seq_list = ['A']
