@@ -49,7 +49,7 @@ class Component(EntitySelector):
         if self.sequence in defs.nt_phosphate:
             atoms = defs.nt_phosphate[self.sequence]
             self.centers.define('nt_phosphate', atoms)
-            
+
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
@@ -219,7 +219,7 @@ class Component(EntitySelector):
             rotated_atom = dist_aa_matrix * rotation
             coord_array = np.array(rotated_atom)
             a = coord_array.flatten()
-            transformed_coord = a.tolist()    
+            transformed_coord = a.tolist()
         return transformed_coord
 
     def translate_rotate(self, atom):
@@ -269,14 +269,15 @@ class Component(EntitySelector):
         if len(base_center) == 0:
             return None
         seq = self.sequence
-        coords = defs.RNAbasecoordinates[seq]
-        standard_base = [coords[a] for a in defs.RNAbaseheavyatoms[seq]]
-        standard_center = np.mean(standard_base, axis=0)
-        dist_translate = base_center - standard_center
+        dist_translate = base_center
+
+        rotation_matrix_transpose = self.rotation_matrix.transpose()
+
         matrix = np.zeros((4, 4))
-        matrix[0:3, 0:3] = self.rotation_matrix
-        matrix[0:3, 3] = dist_translate
+        matrix[0:3, 0:3] = rotation_matrix_transpose
+        matrix[0:3, 3] = -np.dot(rotation_matrix_transpose, dist_translate)
         matrix[3, 3] = 1.0
+
         return matrix
 
     def translate(self, aa_residue):
@@ -404,7 +405,7 @@ class Component(EntitySelector):
                     if n > min_bonds:
                         return True
         return False
-    
+
     def stacking_tilt(aa_residue, aa_coordinates):
         baa_dist_list = []
 
