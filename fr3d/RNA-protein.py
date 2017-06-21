@@ -54,7 +54,7 @@ def atom_dist_basepart(base_residue, aa_residue, base_atoms, c):
         return True
 
 def enough_HBs(base_residue, aa_residue, base_atoms):
-    """Calculates number of Hydrogen bonds between amino acid part and base_part 
+    """Calculates number of Hydrogen bonds between amino acid part and base_part
     and determines if they are enough to form a pseudopair"""
     min_distance = 4
     base_key = base_residue.sequence
@@ -65,7 +65,7 @@ def enough_HBs(base_residue, aa_residue, base_atoms):
     base_acceptors = HB_acceptors[base_key]
     aa_donors = HB_donors[aa_key]
     aa_acceptors = HB_acceptors[aa_key]
-    
+
     for base_atom in base_residue.atoms(name=base_HB_atoms):
         for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
             distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
@@ -79,7 +79,7 @@ def enough_HBs(base_residue, aa_residue, base_atoms):
     print base_residue.unit_id(), aa_residue.unit_id(), n
     if n>=2:
         return True
-                
+
 def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
     """Finds all amino acids of type "aa" for which center of "aa_part" is within
     specified distance of center of bases of type "base" and returns superposed bases"""
@@ -129,16 +129,14 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
                 #print "rotation matrix", base_residue, rotation_matrix
 
                 base_coordinates = {}
-                for base_atom in base_residue.atoms():
-                    base_key = base_atom.name
-                    base_coordinates[base_key]= translate_rotate(base_atom, base_center, rotation_matrix)
-                    # base_coordinates is a list of the Atoms
+                standard_base = base_residue.translate_rotate_component(base_residue)
+                for base_atom in standard_base.atoms():
+                    base_coordinates[base_atom.name]= base_atom.coordinates()
 
                 aa_coordinates = {}
-                for atom in aa_residue.atoms():
-                    key = atom.name
-                    aa_coordinates[key]= translate_rotate(atom, base_center, rotation_matrix)
-                    #print "translated atom", base_residue.unit_id, aa_residue.unit_id
+                standard_aa = base_residue.translate_rotate_component(aa_residue)
+                for aa_atom in standard_aa.atoms():
+                    aa_coordinates[aa_atom.name] = aa_atom.coordinates()
 
                 interaction = type_of_interaction(base_residue, aa_residue, aa_coordinates)
 
@@ -190,35 +188,35 @@ def annotate(base_residue, aa_residue, interaction, edge):
 def type_of_interaction(base_residue, aa_residue, aa_coordinates):
     squared_xy_dist_list = []
     aa_z =[]
-    
+
     """Defines different sets of amino acids"""
     stacked_planar_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "ASN", "GLN", "GLU", "ASP"])
     stacked_aliphatic = set(["LEU", "ILE", "PRO", "THR", "MET", "CYS", "VAL", "ALA", "SER"])
     pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "TYR", "TRP", "PHE", "LYS"])
     shb_aa = set (["SER", "THR", "LYS"])
-        
+
     for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
         key = aa_atom.name
         aa_x= aa_coordinates[key][0]
         aa_y= aa_coordinates[key][1]
-                
+
         squared_xy_dist = (aa_x**2) + (aa_y**2)
         squared_xy_dist_list.append(squared_xy_dist)
-        
+
         aa_z.append(aa_coordinates[key][2])
-        
+
     mean_z = np.mean(aa_z)
-    
+
     #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
     if min(squared_xy_dist_list) <= 5:
         #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
         if aa_residue.sequence in stacked_planar_aa:
             #print "stacking?", base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
             return stacking_angle(base_residue, aa_residue, min(squared_xy_dist_list))
-        
+
         elif aa_residue.sequence in stacked_aliphatic:
             return stacking_tilt(aa_residue, aa_coordinates)
-    
+
     elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in pseudopair_aa:
             angle= calculate_angle(base_residue, aa_residue)
             angle = abs(angle)
@@ -227,17 +225,17 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
                 return "pseudopair"
             elif 0.95 <= angle <=1.64:
                 return "perpendicular edge"
-    
+
     elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in shb_aa:
         base_seq = base_residue.sequence
         base_atoms = RNAbaseheavyatoms[base_seq]
         if atom_dist_basepart(base_residue, aa_residue, base_atoms, 1):
             return "SHB"
-        
+
 def calculate_angle (base_residue, aa_residue):
     vec1 = vector_calculation(base_residue)
     vec2 = vector_calculation(aa_residue)
-                
+
     angle = angle_between_planes(vec1, vec2)
     return angle
 
@@ -257,7 +255,7 @@ def stacking_angle (base_residue, aa_residue, min_dist):
             return "perpendicular stacking"
         elif aa_residue.sequence in perpendicular_aa:
             return "cation-pi"
-    
+
 def stacking_tilt(aa_residue, aa_coordinates):
     baa_dist_list = []
 
@@ -287,20 +285,6 @@ def angle_between_planes (vec1, vec2):
     angle = np.arctan2(sinang, cosang)
     return angle
 
-
-def translate_rotate(atom, reference, rotation_matrix):
-     atom_coord = atom.coordinates()
-     dist_translate = np.subtract(atom_coord, reference)
-     dist_aa_matrix = np.matrix(dist_translate)
-     #transposed_rotation = rotation_matrix.transpose()
-     rotated_atom = dist_aa_matrix * rotation_matrix
-     #print rotated_atom
-     coord_array = np.array(rotated_atom)
-     a = coord_array.flatten()
-     coord = a.tolist()
-     return coord
-
-
 def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
     aa_x = []
     aa_y = []
@@ -310,15 +294,15 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
         key = aa_atom.name
         aa_x.append(aa_coordinates[key][0])
         aa_y.append(aa_coordinates[key][1])
-        
+
     aa_center_x = np.mean(aa_x)
     aa_center_y = np.mean(aa_y)
-    
+
     for base_atom in base_residue.atoms(name=RNAbaseheavyatoms[base_residue.sequence]):
         key = base_atom.name
         base_x.append(base_coordinates[key][0])
         base_y.append(base_coordinates[key][1])
-        
+
     base_center_x = np.mean(base_x)
     base_center_y = np.mean(base_y)
 
@@ -330,7 +314,7 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
     pyrimidine = set(["C", "U"])
     angle_deg = (180*angle_aa)/3.14159 #values -180 to 180
     print "Edge angle in rad and deg", angle_aa, angle_deg
-    
+
     if base_residue.sequence in purine:
         if -15 <= angle_deg <= 90:
             return "fgWC"
@@ -338,7 +322,7 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
             return "fgH"
         else:
             return "fgS"
-    
+
     elif base_residue.sequence in pyrimidine:
         if -45 <= angle_deg <= 90:
             return "fgWC"
@@ -346,7 +330,7 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
             return "fgH"
         else:
             return "fgS"
-            
+
 def detect_face(aa_residue, aa_coordinates):
     aa_z =[]
 
