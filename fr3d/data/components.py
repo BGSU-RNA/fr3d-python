@@ -8,7 +8,6 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 
-
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
     and ligands.
@@ -61,6 +60,9 @@ class Component(EntitySelector):
         if self.sequence in defs.modified_nucleotides:
             atoms = defs.modified_nucleotides[self.sequence]["atoms"].values()
             self.centers.define('base', atoms)
+
+        self.calculate_rotation_matrix()
+
 
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
@@ -122,16 +124,12 @@ class Component(EntitySelector):
         found = list(self.atoms(**kwargs))
         return len(found) == len(names)
 
-    def infer_hydrogens(self):
-        """Infer the coordinates of the hydrogen atoms of this component.
-        Currently, it only works for RNA with .sequence
-
-        To do:
-        Make a separate method that calculates the rotation matrix
-        This method should calculate the rotation matrix if that has not already been done
-
-
+    def calculate_rotation_matrix(self):
+        """Calculate a rotation matrix that will rotate the atoms in an RNA
+        base into a standard orientation in the xy plane with the Watson-
+        Crick edge in the positive x and y quadrant.
         """
+
         if self.sequence not in defs.RNAbaseheavyatoms and \
                 self.sequence not in defs.modified_nucleotides:
             return None
@@ -139,8 +137,7 @@ class Component(EntitySelector):
         R = []
         S = []
 
-        mod_nts = defs.modified_nucleotides
-        if self.sequence in mod_nts:
+        if self.sequence in defs.modified_nucleotides:
             current = defs.modified_nucleotides[self.sequence]
             standard_coords = defs.RNAbasecoordinates[current["standard"]]
             for standard, modified in current["atoms"].items():
@@ -163,12 +160,20 @@ class Component(EntitySelector):
             rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
             #print self.unit_id(), "Successful rotation matrix"
-        except:
 
+            #print "Check that two methods of computing the base center are the same"
+            #print base_center
+            #print self.centers["base"]
+        except:
             print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
         self.rotation_matrix = rotation_matrix
+
+    def infer_hydrogens(self):
+        """Infer the coordinates of the hydrogen atoms of this component.
+        Currently, it only works for RNA with .sequence
+        """
 
         if self.sequence in defs.RNAbasehydrogens:
             hydrogens = defs.RNAbasehydrogens[self.sequence]
@@ -176,19 +181,19 @@ class Component(EntitySelector):
 
             for hydrogenatom in hydrogens:
                 hydrogencoordinates = coordinates[hydrogenatom]
-                newcoordinates = base_center + \
-                    np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
+                newcoordinates = self.centers["base"] + \
+                    np.dot(hydrogencoordinates, np.transpose(self.rotation_matrix))
                 self._atoms.append(Atom(name=hydrogenatom,
                                         x=newcoordinates[0, 0],
                                         y=newcoordinates[0, 1],
                                         z=newcoordinates[0, 2]))
 
     def transform(self, transform_matrix):
-        """Create a new component from "self" by applying the transformation
+        """Create a new component from "self" by applying the 4x4 transformation
         matrix. This does not keep the rotation matrix if any,
         but will keep any added hydrogens.
 
-        :transform_matrix: The transformation matrix to apply.
+        :transform_matrix: The 4x4 transformation matrix to apply.
         :returns: A new Component with the same properties except with
         transformed coordinates.
         """
@@ -205,37 +210,46 @@ class Component(EntitySelector):
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
                          polymeric=self.polymeric)
-        if hasattr(self, 'rotation_matrix'):
-            comp.infer_hydrogens()
+        comp.infer_hydrogens()
         return comp
 
-    def translate_rotate(self, residue):
-        reference = self.centers["base"]
-        rotation = self.rotation_matrix
-        for atom in residue.atoms():
-            atom_coord = atom.coordinates()
-            dist_translate = np.subtract(atom_coord, reference)
-            dist_aa_matrix = np.matrix(dist_translate)
-            rotated_atom = dist_aa_matrix * rotation
-            coord_array = np.array(rotated_atom)
-            a = coord_array.flatten()
-            transformed_coord = a.tolist()
-        return transformed_coord
+    def translate_rotate_component(self, component):
+        """Translate and rotate the atoms in component according to
+        the translation and rotation that will bring self to standard
+        position at the origin.
+        :param Component residue:  the residue to move
+        :returns Component newcomp
+        """
 
-    def translate_rotate(self, atom):
-        """Rotate an Atom relative to the center of this component.
+        atoms = [self.translate_rotate_atom(atom) for atom in component.atoms()]
+        newcomp = Component(atoms, pdb=component.pdb,
+                         model=component.model,
+                         type=component.type,
+                         chain=component.chain,
+                         symmetry=component.symmetry,
+                         sequence=component.sequence,
+                         number=component.number,
+                         index=component.index,
+                         insertion_code=component.insertion_code,
+                         alt_id=component.alt_id,
+                         polymeric=component.polymeric)
+        newcomp.infer_hydrogens()
+        return newcomp
+
+    def translate_rotate_atom(self, atom):
+        """Translate and rotate atom according to
+        the translation and rotation that will bring self to standard
+        position at the origin.
 
         :param Atom atom: The Atom to move.
         :returns Atom: The moved atom.
         """
 
         atom_coord = atom.coordinates()
-        reference = self.centers["base"]
-        dist_translate = np.subtract(atom_coord, reference)
-        dist_aa_matrix = np.matrix(dist_translate)
-        rotation = self.rotation_matrix
-        rotated_atom = dist_aa_matrix * rotation
-        coord_array = np.array(rotated_atom)
+        translated_coord = np.subtract(atom_coord, self.centers["base"])
+        translated_coord_matrix = np.matrix(translated_coord)
+        rotated_coord = translated_coord_matrix * self.rotation_matrix
+        coord_array = np.array(rotated_coord)
         a = coord_array.flatten()
         x, y, z = a.tolist()
         return Atom(x=x, y=y, z=z,
@@ -252,7 +266,6 @@ class Component(EntitySelector):
                     name=atom.name,
                     symmetry=atom.symmetry,
                     polymeric=atom.polymeric)
-
 
     def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
