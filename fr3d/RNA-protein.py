@@ -24,6 +24,7 @@ from fr3d.localpath import outputText
 from fr3d.localpath import outputBaseAAFG
 from fr3d.localpath import inputPath
 #from fr3d.classifiers.base_aafg import distance_metrics
+from datetime import datetime
 
 def get_structure(filename):
     with open(filename, 'rb') as raw:
@@ -113,16 +114,16 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
             aa_center = aa_residue.centers[aa_part]
             if not aa_center.any():
                 continue
-            #print base_center, aa_center, aa_residue.unit_id()
-            dist_vector = np.subtract(base_center, aa_center)
-            dist_scalar = np.linalg.norm(dist_vector)
             if aa_residue.sequence in set (['LYS','SER', 'THR', 'TYR']):
                 c= 1
             else:
                 c = 2
             #base_seq = base_residue.sequence
-            if dist_scalar <= dist_cent_cutoff and \
+            if abs(base_center[0]-aa_center[0]) < dist_cent_cutoff and \
+            abs(base_center[1]-aa_center[1]) < dist_cent_cutoff and \
+            np.linalg.norm(np.subtract(base_center,aa_center)) < dist_cent_cutoff and \
             atom_dist_basepart(base_residue, aa_residue, base_atoms, c):
+
                 count_pair = count_pair + 1
 
                 rotation_matrix = base_residue.rotation_matrix
@@ -142,8 +143,8 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
 
                 base_aa = None
                 if interaction == "pseudopair" and enough_HBs(base_residue, aa_residue, base_atoms):
-                        edge = detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
-                        base_aa = annotate(base_residue, aa_residue, interaction, edge)
+                    edge = detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
+                    base_aa = annotate(base_residue, aa_residue, interaction, edge)
 
                 elif interaction == "SHB":
                     edge = detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
@@ -490,6 +491,7 @@ aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','TH
 """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
 if __name__=="__main__":
     for PDB in PDB_List:
+        start = datetime.now()
         structure = get_structure(inputPath % PDB)
         result_nt_aa = []
 
@@ -498,8 +500,11 @@ if __name__=="__main__":
 
         bases = structure.residues(sequence= base_seq_list)
         amino_acids = structure.residues(sequence=aa_list)
+        print "Time to load structure", datetime.now() - start
 
+        start = datetime.now()
         list_base_aa, list_aa_coord, list_base_coord = find_neighbors(bases, amino_acids, aa_part, 10)
+        print "Time to annotate interactions", datetime.now() - start
 
         """ 3D plots of base-aa interactions
         for base, aa, interaction in list_base_aa:
