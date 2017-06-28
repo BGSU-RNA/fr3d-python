@@ -19,9 +19,10 @@ class Classifier(BaseClassifier):
     def classification(self, first, second):
         if not hasattr(first, 'rotation_matrix'):
             return None
+        
+        trans_first = first.translate_rotate_component(first)
+        trans_second = first.translate_rotate_component(second)
 
-        trans_first = first.translate_rotate(first)
-        trans_second = first.translate_rotate(second)
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
                 
         if min_xy <= 5 and mean_z < 2:
@@ -29,8 +30,7 @@ class Classifier(BaseClassifier):
 
         if transformation_matrix == None:
             return None
-        trans_first = first.transform(transformation_matrix)
-        trans_second = second.transform(transformation_matrix)
+        
         min_xy, mean_z =  self.distance_metrics(trans_first, trans_second)
 
         if min_xy <= 10 and mean_z < 4:
