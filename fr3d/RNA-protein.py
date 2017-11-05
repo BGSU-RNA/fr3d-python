@@ -492,33 +492,10 @@ def draw_aa_cent(aa, aa_part, ax):
             print "Missing residues"
             continue
 
-"""Inputs a list of PDBs of interest to generate super-imposed plots"""
-PDB_List = ['5AJ3']
-
-base_seq_list = ['A','U','C','G']
-#base_seq_list = ['A']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
-#aa_list = ['HIS']
-
-#fig = plt.figure()
-#ax = fig.add_subplot(111, projection='3d')
-
-"""Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
-if __name__=="__main__":
-    for PDB in PDB_List:
-        structure = get_structure(inputPath % PDB)
-        result_nt_aa = []
-
-        aa_part = 'aa_fg'
-        base_part = 'base'
-
-        bases = structure.residues(sequence= base_seq_list)
-        amino_acids = structure.residues(sequence=aa_list)
-
-        list_base_aa, list_aa_coord, list_base_coord = find_neighbors(bases, amino_acids, aa_part, 10)
-
-        """ 3D plots of base-aa interactions
-        for base, aa, interaction in list_base_aa:
+def draw_base_aa_plots(list_base_aa):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for base, aa, interaction, edge in list_base_aa:
             base_seq = base.sequence
             aa= aa.sequence
 
@@ -534,7 +511,31 @@ if __name__=="__main__":
             ax.set_zlim3d(10, -15)
             plt.title('%s with ' % base_seq +'%s' % aa + ' %s' % aa_part)
             plt.show()
-                      """
+    
+"""Inputs a list of PDBs of interest to generate super-imposed plots"""
+PDB_List = ['5AJ3']
+
+base_seq_list = ['A','U','C','G']
+#base_seq_list = ['A']
+#aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['HIS']
+
+"""Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
+if __name__=="__main__":
+    for PDB in PDB_List:
+        structure = get_structure(inputPath % PDB)
+        result_nt_aa = []
+
+        aa_part = 'aa_fg'
+        base_part = 'base'
+
+        bases = structure.residues(sequence= base_seq_list)
+        amino_acids = structure.residues(sequence=aa_list)
+
+        list_base_aa, list_aa_coord, list_base_coord = find_neighbors(bases, amino_acids, aa_part, 10)
+        
+        draw_base_aa_plots(list_base_aa)
+
         #making the list of resultant RNA-aa pairs
         result_nt_aa.extend(list_base_aa)
 
