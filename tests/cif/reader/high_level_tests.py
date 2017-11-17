@@ -234,10 +234,30 @@ class DuplicateOperatorsTest(ReaderTest):
 class DuplicateWithPointSymmetryTest(ReaderTest):
     name = '4OQ8'
 
+    def test_loads_all_chain_A(self):
+        residues = self.structure.residues(chain='A', symmetry='P_P')
+        val = [res.unit_id() for res in residues]
+        assert len(val) == 160
+
+    def test_loads_all_chain_B(self):
+        residues = self.structure.residues(chain='B', symmetry='P_P')
+        val = [res.unit_id() for res in residues]
+        assert len(val) == 10
+
+    def test_loads_all_chain_C(self):
+        residues = self.structure.residues(chain='C', symmetry='P_P')
+        val = [res.unit_id() for res in residues]
+        assert len(val) == 10
+
+    def test_loads_all_chain_D(self):
+        residues = self.structure.residues(chain='D', symmetry='P_P')
+        val = [res.unit_id() for res in residues]
+        assert len(val) == 2
+
     def test_loads_all_residues(self):
         residues = self.structure.residues(polymeric=None)
         val = [res.unit_id() for res in residues]
-        self.assertEquals(954, len(val))
+        self.assertEquals(926, len(val))
         # self.assertEquals(894, len(val))
 
 

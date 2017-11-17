@@ -12,6 +12,8 @@ tags
 __pycache__/
 *.py[cod]
 *$py.class
+localpath.py
+fr3d/localpath.py
 
 # C extensions
 *.so
@@ -93,3 +95,4 @@ ENV/
 
 # Spyder project settings
 .spyderproject
+.ignore

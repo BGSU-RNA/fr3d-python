@@ -42,10 +42,14 @@ class Component(EntitySelector):
             atoms = defs.RNAbaseheavyatoms[self.sequence]
             self.centers.define('base', atoms)
 
-        if self.sequence in defs.nt_backbone:
-            atoms = defs.nt_backbone[self.sequence]
-            self.centers.define('nt_backbone', atoms)
+        if self.sequence in defs.nt_sugar:
+            atoms = defs.nt_sugar[self.sequence]
+            self.centers.define('nt_sugar', atoms)
 
+        if self.sequence in defs.nt_phosphate:
+            atoms = defs.nt_phosphate[self.sequence]
+            self.centers.define('nt_phosphate', atoms)
+            
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
@@ -160,7 +164,7 @@ class Component(EntitySelector):
                 besttransformation(R, S)
             #print self.unit_id(), "Successful rotation matrix"
         except:
-            
+
             print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
@@ -205,6 +209,50 @@ class Component(EntitySelector):
             comp.infer_hydrogens()
         return comp
 
+    def translate_rotate(self, residue):
+        reference = self.centers["base"]
+        rotation = self.rotation_matrix
+        for atom in residue.atoms():
+            atom_coord = atom.coordinates()
+            dist_translate = np.subtract(atom_coord, reference)
+            dist_aa_matrix = np.matrix(dist_translate)
+            rotated_atom = dist_aa_matrix * rotation
+            coord_array = np.array(rotated_atom)
+            a = coord_array.flatten()
+            transformed_coord = a.tolist()    
+        return transformed_coord
+
+    def translate_rotate(self, atom):
+        """Rotate an Atom relative to the center of this component.
+
+        :param Atom atom: The Atom to move.
+        :returns Atom: The moved atom.
+        """
+
+        atom_coord = atom.coordinates()
+        reference = self.centers["base"]
+        dist_translate = np.subtract(atom_coord, reference)
+        dist_aa_matrix = np.matrix(dist_translate)
+        rotation = self.rotation_matrix
+        rotated_atom = dist_aa_matrix * rotation
+        coord_array = np.array(rotated_atom)
+        a = coord_array.flatten()
+        x, y, z = a.tolist()
+        return Atom(x=x, y=y, z=z,
+                    pdb=atom.pdb,
+                    model=atom.model,
+                    chain=atom.chain,
+                    component_id=atom.component_id,
+                    component_number=atom.component_number,
+                    component_index=atom.component_index,
+                    insertion_code=atom.insertion_code,
+                    alt_id=atom.alt_id,
+                    group=atom.group,
+                    type=atom.type,
+                    name=atom.name,
+                    symmetry=atom.symmetry,
+                    polymeric=atom.polymeric)
+
 
     def standard_transformation(self):
         """Returns a 4X4 transformation matrix which can be used to transform
@@ -214,25 +262,23 @@ class Component(EntitySelector):
         :returns: A numpy array suitable for input to self.transform to produce
         a transformed component.
         """
-                     
+
         if 'base' not in self.centers:
             return None
         base_center = self.centers["base"]
         if len(base_center) == 0:
             return None
-        seq= self.sequence
-        standard_base = defs.RNAbasecoordinates[seq].values()
-        standard_center = np.mean(standard_base, axis = 0)
-        
-        rotation = self.rotation_matrix
-        dist_translate = np.subtract(self.centers["base"], standard_center)
-        #dist_vector= -(dist_translate)*rotation
+        seq = self.sequence
+        coords = defs.RNAbasecoordinates[seq]
+        standard_base = [coords[a] for a in defs.RNAbaseheavyatoms[seq]]
+        standard_center = np.mean(standard_base, axis=0)
+        dist_translate = base_center - standard_center
         matrix = np.zeros((4, 4))
-        matrix[0:3, 0:3] = rotation
+        matrix[0:3, 0:3] = self.rotation_matrix
         matrix[0:3, 3] = dist_translate
         matrix[3, 3] = 1.0
         return matrix
-            
+
     def translate(self, aa_residue):
         if 'base' not in self.centers:
             return None
@@ -242,10 +288,9 @@ class Component(EntitySelector):
             rotated_atom = dist_translate*rotation
             coord_array = np.array(rotated_atom)
             a = coord_array.flatten()
-            coord = a.tolist()    
+            coord = a.tolist()
         return coord
-                
-      
+
 
     def unit_id(self):
         """Compute the unit id of this Component.
@@ -359,3 +404,17 @@ class Component(EntitySelector):
                     if n > min_bonds:
                         return True
         return False
+    
+    def stacking_tilt(aa_residue, aa_coordinates):
+        baa_dist_list = []
+
+        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            key = aa_atom.name
+            aa_z = aa_coordinates[key][2]
+            baa_dist_list.append(aa_z)
+        max_baa = max(baa_dist_list)
+        min_baa = min(baa_dist_list)
+        diff = max_baa - min_baa
+        #print aa_residue.unit_id(), diff
+        if diff <= defs.tilt_cutoff[aa_residue.sequence]:
+            return "stacked"

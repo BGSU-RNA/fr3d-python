@@ -1,7 +1,5 @@
 import unittest as ut
 
-from pprint import pprint
-
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
@@ -10,6 +8,7 @@ from numpy.testing import assert_array_equal
 
 from fr3d.data import Atom
 from fr3d.data import Component
+from fr3d.cif.reader import Cif
 from fr3d import definitions as defs
 
 
@@ -368,12 +367,12 @@ class StandardTransformationTest(ut.TestCase):
             atoms.append(Atom(x=x, y=y, z=z, name=name))
         component = Component(atoms, sequence=seq)
         component.infer_hydrogens()
+        assert_array_almost_equal(component.centers['base'], [0, 0, 0])
         return component
 
     def test_transforms_self_to_center(self):
         comp = self.standard_component('A')
         trans = comp.standard_transformation()
-        pprint(trans)
         transformed = comp.transform(trans)
         ans = comp.centers['base']
         val = transformed.centers['base']
@@ -381,16 +380,16 @@ class StandardTransformationTest(ut.TestCase):
 
     def test_transforms_moved_to_center(self):
         comp = self.standard_component('A')
+        assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
         standard = np.array([[1.0, 0.0, 0.0, 0.0],
                              [0.0, -1.0, 0.0, 97.240],
                              [0.0, 0.0, -1.0, 0.0],
-                             [0.0, 0.0, 0.0, 1.0]])
+                             [0.0, 0.0, 0.0, 1.0]], dtype=np.float64)
         moved = comp.transform(standard)
 
         # Assert centers are as expected
         assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
-        assert_array_almost_equal(moved.centers['base'], [0, 97.240, 0],
-                                  decimal=1)
+        assert_array_almost_equal(moved.centers['base'], [0, 97.240, 0])
 
         # Assert using the standard matrix puts it back at 0, 0, 0
         matrix = moved.standard_transformation()
@@ -399,20 +398,27 @@ class StandardTransformationTest(ut.TestCase):
 
     def test_moving_other_preserves_distance(self):
         comp = self.standard_component('A')
-        standard = np.array([[1.0, 0.0, 0.0, 0.0],
-                             [0.0, -2.0, 0.0, 9.0],
-                             [0.0, 0.0, 10.0, 0.0],
-                             [0.0, 0.0, 0.0, 1.0]])
+        print('standard')
+        print(comp.rotation_matrix)
+        standard = np.array([
+            [1.000000000, 0.000000000, 0.000000000, 0.000000000],
+            [0.000000000, -2.000000000, 0.000000000, 9.000000000],
+            [0.000000000, 0.000000000, 10.000000000, 0.000000000],
+            [0.000000000, 0.000000000, 0.000000000, 1.000000000]
+        ])
 
         # Move the standard 9 in y axis
         moved1 = comp.transform(standard)
+        print('moved1')
+        print(moved1.rotation_matrix)
 
         # Move the previous component by the same matrix, it is now 18 in y
         # away from the center
         moved2 = moved1.transform(standard)
+        distance = 17.2
 
         # Assert the distance between the moved is as expected
-        assert_almost_equal(moved1.distance(moved2), 17.0, decimal=0)
+        assert_almost_equal(moved1.distance(moved2), distance)
 
         # Assert the moved centers are as expected
         assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
@@ -425,11 +431,24 @@ class StandardTransformationTest(ut.TestCase):
         trans2 = moved2.transform(matrix)
 
         # Assert the distance remains the same
-        assert_almost_equal(trans1.distance(trans2), 17.0, decimal=0)
+        assert_almost_equal(trans1.distance(trans2), distance, decimal=1)
 
         # Assert the first is in the standard location
-        assert_array_almost_equal(trans1.centers['base'], [0, 0, 0], decimal=0)
+        assert_array_almost_equal(trans1.centers['base'], [0, 0, 0])
 
         # Assert the second is where we expect
-        assert_array_almost_equal(trans2.centers['base'], [1, 18.0, 0],
-                                  decimal=0)
+        assert_array_almost_equal(trans2.centers['base'], [1, 18.0, 0])
+
+
+class RealDataTransformationTest(ut.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with open('files/1FJG.cif', 'rb') as raw:
+            cls.structure = Cif(raw).structure()
+        cls.structure.infer_hydrogens()
+
+    def test_transforms_to_origin(self):
+        residue = self.structure.residue('1FJG|1|A|G|107')
+        matrix = residue.standard_transformation()
+        trans = residue.transform(matrix)
+        assert_array_almost_equal(trans.centers['base'], [0, 0, 0])
