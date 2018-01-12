@@ -187,16 +187,9 @@ def annotate(base_residue, aa_residue, interaction, edge):
     base_aa = (base_residue, aa_residue, interaction, edge)
     return base_aa
 
-def type_of_interaction(base_residue, aa_residue, aa_coordinates):
+def distance_metrics(aa_residue, aa_coordinates):
     squared_xy_dist_list = []
     aa_z =[]
-    
-    """Defines different sets of amino acids"""
-    stacked_planar_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "ASN", "GLN", "GLU", "ASP"])
-    stacked_aliphatic = set(["LEU", "ILE", "PRO", "THR", "MET", "CYS", "VAL", "ALA", "SER"])
-    pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "TYR", "TRP", "PHE", "LYS"])
-    shb_aa = set (["SER", "THR", "LYS"])
-        
     for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
         key = aa_atom.name
         aa_x= aa_coordinates[key][0]
@@ -207,14 +200,25 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
         
         aa_z.append(aa_coordinates[key][2])
         
+    min_xy = min(squared_xy_dist_list)
     mean_z = np.mean(aa_z)
-    
+    return min_xy, mean_z
+                
+def type_of_interaction(base_residue, aa_residue, aa_coordinates):
+    min_xy, mean_z = distance_metrics(aa_residue, aa_coordinates)
+     
+    """Defines different sets of amino acids"""
+    stacked_planar_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "ASN", "GLN", "GLU", "ASP"])
+    stacked_aliphatic = set(["LEU", "ILE", "PRO", "THR", "MET", "CYS", "VAL", "ALA", "SER"])
+    pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "TYR", "TRP", "PHE", "LYS"])
+    shb_aa = set (["SER", "THR", "LYS"])
+          
     #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
-    if min(squared_xy_dist_list) <= 5:
+    if min_xy <= 5 and mean_z < 4:
         #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
         if aa_residue.sequence in stacked_planar_aa:
             #print "stacking?", base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
-            return stacking_angle(base_residue, aa_residue, min(squared_xy_dist_list))
+            return stacking_angle(base_residue, aa_residue, min_xy)
         
         elif aa_residue.sequence in stacked_aliphatic:
             return stacking_tilt(aa_residue, aa_coordinates)
@@ -515,8 +519,8 @@ def draw_base_aa_plots(list_base_aa):
 """Inputs a list of PDBs of interest to generate super-imposed plots"""
 PDB_List = ['5AJ3']
 
-base_seq_list = ['A','U','C','G']
-#base_seq_list = ['A']
+#base_seq_list = ['A','U','C','G']
+base_seq_list = ['A']
 #aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
 aa_list = ['HIS']
 
