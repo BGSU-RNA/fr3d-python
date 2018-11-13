@@ -20,6 +20,7 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
 from fr3d.localpath import outputText
 from fr3d.localpath import outputBaseAAFG
 from fr3d.localpath import inputPath
@@ -380,7 +381,7 @@ def text_output(result_list):
 
 def csv_output(result_list):
     with open(outputBaseAAFG % PDB, 'wb') as csvfile:
-        fieldnames = ['RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge']
+        fieldnames = ['RNA ID', 'AA ID', 'RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -390,7 +391,7 @@ def csv_output(result_list):
             #print base, aa, interaction
             base_component = str(base).split("|")
             aa_component = str(aa).split("|")
-            writer.writerow({'RNA Chain ID': base_component[2], 'RNA residue':base_component[3],'RNA residue number': base_component[4],'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge})
+            writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], 'RNA residue':base_component[3],'RNA residue number': base_component[4],'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge})
 
         """for base_residue, aa_residue,interaction in result_list:
                     base_component = str(base_residue).split("|")
@@ -506,6 +507,11 @@ def draw_aa_cent(aa, aa_part, ax):
 """Inputs a list of PDBs of interest to generate super-imposed plots"""
 PDB_List = ['3QRQ']
 PDB_List = ['5AJ3']
+PDB_List = ['4V9F','5J7L']
+PDB_List = ['4V9F']
+PDB_List = ['5J7L']
+PDB_List = ['6hiv']
+
 
 base_seq_list = ['A','U','C','G']
 #base_seq_list = ['A']
