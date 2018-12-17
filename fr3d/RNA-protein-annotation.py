@@ -79,22 +79,13 @@ def enough_HBs(base_residue, aa_residue, base_atoms):
                     n = n+1
                 elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
                     n = n+1
-    print base_residue.unit_id(), aa_residue.unit_id(), n
+#    print base_residue.unit_id(), aa_residue.unit_id(), n
     if n>=2:
         return True
 
 def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
     """Finds all amino acids of type "aa" for which center of "aa_part" is within
-    specified distance of center of bases of type "base" and returns superposed bases"""
-    #count_total = 0
-    count_pair = 0
-    list_aa_coord = []
-    list_base_coord = []
-    aaList_len = None
-    new_aaList_len = None
-    list_base_aa = []
-
-    start = datetime.now()
+    specified distance of center of bases of type "base" """
 
     # build a set of cubes and record which bases are in which cube
     # also record which other cubes are neighbors of each cube
@@ -133,12 +124,24 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
         else:
             print("  Missing center coordinates for " + str(aa))
 
-    print("  Time to set up Cubes " + str(datetime.now() - start))
+    return baseCubeList, baseCubeNeighbors, aaCubeList
+
+def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCubeList, baseCubeNeighbors, aaCubeList):
 
     # loop through base cubes, loop through neighboring cubes,
     # then loop through bases and amino acids in the two cubes,
     # screening distances between them, then annotating interactions
-    start = datetime.now()
+    """Finds all amino acids of type "aa" for which center of "aa_part" is within
+    specified distance of center of bases of type "base" and returns superposed bases"""
+
+    #count_total = 0
+    count_pair = 0
+    list_aa_coord = []
+    list_base_coord = []
+    aaList_len = None
+    new_aaList_len = None
+    list_base_aa = []
+
     for key in baseCubeList:
         for aakey in baseCubeNeighbors[key]:
             if aakey in aaCubeList:
@@ -199,7 +202,6 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
                                 edge = detect_face(aa_residue, aa_coordinates)
                                 base_aa = annotate(base_residue, aa_residue, interaction, edge)
 
-
                             if base_aa is not None:
                                 list_base_aa.append(base_aa)
 
@@ -208,10 +210,7 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
                                 for aa_atom in aa_residue.atoms():
                                     list_aa_coord.append(aa_coordinates)
 
-    print("  Time to iterate through pairs" + str(datetime.now() - start))
-
     return list_base_aa, list_aa_coord, list_base_coord
-    #return list_aa_coord, list_base_coord, count, list_base_aa
 
 def annotate(base_residue, aa_residue, interaction, edge):
     base_aa = (base_residue, aa_residue, interaction, edge)
@@ -345,7 +344,8 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
     purine = set(["A", "G"])
     pyrimidine = set(["C", "U"])
     angle_deg = (180*angle_aa)/3.14159 #values -180 to 180
-    print "Edge angle in rad and deg", angle_aa, angle_deg
+
+#    print("  Edge angle in rad and deg" +str(angle_aa) + " " + str(angle_deg))
 
     if base_residue.sequence in purine:
         if -15 <= angle_deg <= 90:
@@ -509,13 +509,12 @@ def draw_aa_cent(aa, aa_part, ax):
             continue
 
 """Inputs a list of PDBs of interest to generate super-imposed plots"""
-PDB_List = ['3QRQ']
 PDB_List = ['5AJ3']
 PDB_List = ['4V9F','5J7L']
 PDB_List = ['5J7L']
 PDB_List = ['6hiv']
 PDB_List = ['4V9F']
-
+PDB_List = ['3QRQ','5J7L']
 
 base_seq_list = ['A','U','C','G']
 #base_seq_list = ['A']
@@ -532,7 +531,7 @@ if __name__=="__main__":
         aa_part = 'aa_fg'
         base_part = 'base'
 
-        print("Reading PDB file " + PDB)
+        print("Reading file " + PDB)
 
         start = datetime.now()
         structure = get_structure(inputPath % PDB)
@@ -541,7 +540,11 @@ if __name__=="__main__":
         print("  Time required to load " + PDB + " " + str(datetime.now() - start))
 
         start = datetime.now()
-        list_base_aa, list_aa_coord, list_base_coord = find_neighbors(bases, amino_acids, aa_part, 10)
+        baseCubeList, baseCubeNeighbors, aaCubeList = find_neighbors(bases, amino_acids, aa_part, 10)
+        print("  Time to find neighboring bases and amino acids" + str(datetime.now() - start))
+
+        start = datetime.now()
+        list_base_aa, list_aa_coord, list_base_coord = annotate_interactions(bases, amino_acids, aa_part, 10, baseCubeList, baseCubeNeighbors, aaCubeList)
         print("  Time to annotate interactions" + str(datetime.now() - start))
 
         """ 3D plots of base-aa interactions
