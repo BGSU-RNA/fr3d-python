@@ -121,15 +121,19 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
     aaCubeList = {}
     for aa in amino_acids:
         center = aa.centers[aa_part]
-        x = floor(center[0]/dist_cent_cutoff)
-        y = floor(center[1]/dist_cent_cutoff)
-        z = floor(center[2]/dist_cent_cutoff)
-        key = "%d,%d,%d" % (x,y,z)
-        if key in aaCubeList:
-            aaCubeList[key].append(aa)
+        if len(center) == 3:
+            x = floor(center[0]/dist_cent_cutoff)
+            y = floor(center[1]/dist_cent_cutoff)
+            z = floor(center[2]/dist_cent_cutoff)
+            key = "%d,%d,%d" % (x,y,z)
+            if key in aaCubeList:
+                aaCubeList[key].append(aa)
+            else:
+                aaCubeList[key] = [aa]
         else:
-            aaCubeList[key] = [aa]
-    print "Time to set up Cubes", datetime.now() - start
+            print("  Missing center coordinates for " + str(aa))
+
+    print("  Time to set up Cubes " + str(datetime.now() - start))
 
     # loop through base cubes, loop through neighboring cubes,
     # then loop through bases and amino acids in the two cubes,
@@ -204,7 +208,7 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
                                 for aa_atom in aa_residue.atoms():
                                     list_aa_coord.append(aa_coordinates)
 
-    print "Time to iterate through pairs", datetime.now() - start
+    print("  Time to iterate through pairs" + str(datetime.now() - start))
 
     return list_base_aa, list_aa_coord, list_base_coord
     #return list_aa_coord, list_base_coord, count, list_base_aa
@@ -508,9 +512,9 @@ def draw_aa_cent(aa, aa_part, ax):
 PDB_List = ['3QRQ']
 PDB_List = ['5AJ3']
 PDB_List = ['4V9F','5J7L']
-PDB_List = ['4V9F']
 PDB_List = ['5J7L']
 PDB_List = ['6hiv']
+PDB_List = ['4V9F']
 
 
 base_seq_list = ['A','U','C','G']
@@ -524,20 +528,21 @@ aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','TH
 """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
 if __name__=="__main__":
     for PDB in PDB_List:
-        start = datetime.now()
-        structure = get_structure(inputPath % PDB)
         result_nt_aa = []
-
         aa_part = 'aa_fg'
         base_part = 'base'
 
+        print("Reading PDB file " + PDB)
+
+        start = datetime.now()
+        structure = get_structure(inputPath % PDB)
         bases = structure.residues(sequence= base_seq_list)
         amino_acids = structure.residues(sequence=aa_list)
-        print "Time to load structure", datetime.now() - start
+        print("  Time required to load " + PDB + " " + str(datetime.now() - start))
 
         start = datetime.now()
         list_base_aa, list_aa_coord, list_base_coord = find_neighbors(bases, amino_acids, aa_part, 10)
-        print "Time to annotate interactions", datetime.now() - start
+        print("  Time to annotate interactions" + str(datetime.now() - start))
 
         """ 3D plots of base-aa interactions
         for base, aa, interaction in list_base_aa:
@@ -564,3 +569,4 @@ if __name__=="__main__":
         #text_output(result_nt_aa)
 
         csv_output(result_nt_aa)
+        print("  Wrote output to " + outputBaseAAFG % PDB)
