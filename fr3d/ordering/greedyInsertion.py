@@ -57,19 +57,57 @@ def orderWithPathLengthFromDistanceMatrix(distances,numReps = 1,scanForNan = Fal
 
   dataset = GivenDistances(distances)
 
-  bestPathLength = float("inf")
   bestOrder = range(0,len(distances))
 
+  if len(distances) < 3:
+    bestScore = pathLength(dataset,bestOrder)
+    return bestOrder, bestScore, distances
+
+  bestPathLength = float("inf")
+
   for i in range(0,numReps):
-    order = greedyInsertion(dataset,depth=1)
-    newPathLength = pathLength(dataset,order[0])
+    results = greedyInsertionPathLength(dataset)
+    newPathLength = pathLength(dataset,results[0])
     if newPathLength < bestPathLength:
       bestPathLength = newPathLength
-      bestOrder = order[0]
+      bestOrder = results[0]
 
   return bestOrder, bestPathLength, distances
 
-def greedyInsertion(m, w=False, o=[], depth=False, verbose=False):
+def greedyInsertionPathLength(m, o=[], verbose=False):
+
+  # if no starting ordering
+  if len(o) == 0:
+  	o = m.points
+  	shuffle(o)          # random starting ordering
+  path = o[:2]          # first two points of the current ordering
+  score = m.d(path[0], path[1])
+
+  for p in range(2, len(o)):
+    # score inserting point o[p] at beginning of path
+    bestScore = m.d(o[p],path[0])
+    bestPosition = 0
+
+    # score inserting point o[p] at end of path
+    currentScore = m.d(path[-1],o[p])
+    if currentScore < bestScore:
+      bestScore = m.d(path[-1],o[p])
+      bestPosition = len(path)
+
+    # score inserting point o[p] at various points within the path
+    for position in range(1, len(path)):
+      currentScore = m.d(path[position-1],o[p]) + m.d(o[p],path[position]) - m.d(path[position-1],path[position])
+
+      if currentScore < bestScore:
+        bestScore = currentScore
+        bestPosition = position
+
+    path.insert(bestPosition, o[p])
+    score += bestScore
+
+  return path, score
+
+def greedyInsertionHarmonic(m, w=False, o=[], depth=False, verbose=False):
   if w == False:
     w = []
     for i in range(1,len(m.points)+1):
@@ -78,8 +116,8 @@ def greedyInsertion(m, w=False, o=[], depth=False, verbose=False):
       else:
         w.append(0)
   if len(o) == 0:
-  	o = m.points
-  	shuffle(o)
+    o = m.points
+    shuffle(o)
   if depth == False:
     depth = len(o)
   path = o[:2]

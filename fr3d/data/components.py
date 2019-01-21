@@ -179,14 +179,17 @@ class Component(EntitySelector):
             hydrogens = defs.RNAbasehydrogens[self.sequence]
             coordinates = defs.RNAbasecoordinates[self.sequence]
 
-            for hydrogenatom in hydrogens:
-                hydrogencoordinates = coordinates[hydrogenatom]
-                newcoordinates = self.centers["base"] + \
-                    np.dot(hydrogencoordinates, np.transpose(self.rotation_matrix))
-                self._atoms.append(Atom(name=hydrogenatom,
-                                        x=newcoordinates[0, 0],
-                                        y=newcoordinates[0, 1],
-                                        z=newcoordinates[0, 2]))
+            try:
+                for hydrogenatom in hydrogens:
+                    hydrogencoordinates = coordinates[hydrogenatom]
+                    newcoordinates = self.centers["base"] + \
+                        np.dot(hydrogencoordinates, np.transpose(self.rotation_matrix))
+                    self._atoms.append(Atom(name=hydrogenatom,
+                                            x=newcoordinates[0, 0],
+                                            y=newcoordinates[0, 1],
+                                            z=newcoordinates[0, 2]))
+            except:
+                print self.unit_id(), "Adding hydrogens failed"
 
     def transform(self, transform_matrix):
         """Create a new component from "self" by applying the 4x4 transformation
