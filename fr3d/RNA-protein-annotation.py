@@ -7,7 +7,7 @@ Name: RNA-protein detection
 """Detect and plot RNA base- amino acid interactions."""
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
-from fr3d.definitions import RNAbaseheavyatoms
+from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import Ribophos_connect
 from fr3d.definitions import aa_connections
 from fr3d.definitions import aa_backconnect
@@ -166,7 +166,7 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
             if aakey in aaCubeList:
                 for base_residue in baseCubeList[key]:
                     base_seq = base_residue.sequence
-                    base_atoms = RNAbaseheavyatoms[base_seq]
+                    base_atoms = NAbaseheavyatoms[base_seq]
 
                     base_center = base_residue.centers["base"]
 
@@ -291,7 +291,7 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
 
     elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in shb_aa:
         base_seq = base_residue.sequence
-        base_atoms = RNAbaseheavyatoms[base_seq]
+        base_atoms = NAbaseheavyatoms[base_seq]
         if atom_dist_basepart(base_residue, aa_residue, base_atoms, 1):
             return "SHB"
 
@@ -362,7 +362,7 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
     aa_center_x = np.mean(aa_x)
     aa_center_y = np.mean(aa_y)
 
-    for base_atom in base_residue.atoms(name=RNAbaseheavyatoms[base_residue.sequence]):
+    for base_atom in base_residue.atoms(name=NAbaseheavyatoms[base_residue.sequence]):
         key = base_atom.name
         base_x.append(base_coordinates[key][0])
         base_y.append(base_coordinates[key][1])
@@ -374,8 +374,9 @@ def detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates):
     x = aa_center_x - base_center_x
     angle_aa = np.arctan2(y,x) #values -pi to pi
     #print base_residue.unit_id(), aa_residue.unit_id(),angle_aa
-    purine = set(["A", "G"])
-    pyrimidine = set(["C", "U"])
+
+    purine = set(["A", "G","DA","DG"])
+    pyrimidine = set(["C", "U","DC"])
     angle_deg = (180*angle_aa)/3.14159 #values -180 to 180
 
 #    print("  Edge angle in rad and deg" +str(angle_aa) + " " + str(angle_deg))
@@ -635,6 +636,8 @@ PDB_List = ['5I4A']
 PDB_List = ['4V9F']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
 PDB_List = ['6A2H']
+PDB_List = ['6A2H','6A2I','6IDE','6N60','6N61','6N62','5YUU','6DKS','6E8C','6GVQ','6GVT','6GVT','6GVU','5YUX','6BHX','6FWR','6FWS','6MG2','6MG3','6BQU','6BSE','6BSF','6FBQ','6FBR','6IG1','5YTC','5YTD','5YTE','5YTF','5YTG','5YTH','5Z3N','5ZVA','5ZVB','5YBD','5YUZ','5YV0','5YUS','5YUW','5YV3','5ZLV','6A47','6A4B','6E93','6E94','5WCU','5Z6Z','5ZFW','5ZFY','5ZFZ']
+PDB_List = ['6BHJ','6AI6','6CVO','6DOI','6DPB','6DOF','6DP4','6DO8','6DOX','6DOQ','6DPM','6DPF','6DOJ','6DP8','6DOC','6DP1','6DOU','6DON','6DPJ','6DPC','6DOG','6DP5','6DO9','6DOY','6DOR','6DPN','6DPG','6DOK','6DP9','6DOD','6DP2','6DMN','6DOV','6DOO','6DPK','6DPD','6DOH','6DP6','6DOA','6DOZ','6DOS','6DPO','6DOL','6DPH','6DPA','6DOE','6DP3','6DMV','6DOW','6DOP','6DPL','6DPE','6DP7','6DOB','6DP0','6DPP','6DOT','6DOM','6DPI','5ZRF','6D95','5ZQF','6D8P','6D9L','6D92','6D8A','6D8F','6D9K','6DT8','6DTA','6CVT','6CVP','6CVQ','6CVR','5W4U','5W51','5XPA','5USB','5XPG','5USN','5USO','6BM2','6BM4','6BLO','6BQF','6BLP','5XN0','5XN2','5XMA','6BSH','6BSI','6BSJ','6BSG','6AR3','6AR1','5OT2','5WTI','5OLA','5XOW','5VAJ','5KW1','5XOG','5O6U','5XUT','5XUU','5WJR','5XUZ','5XUS','5VI5','5X21','5VZH','5VZ8','5X22','5VZB','5TWS','5VZE','5W7O','5W7N','5MGA','5N9G','5XH6','5NFV','5XH7','5VO8','5UX0','5UHC','5UH6','5UH8','5UH9','5UH5','5X2G','5X2H','5U30','5U31','5U33','5SWM','5KK5','5AWH','5I2D','5FW2','5FW3','5B43','5FW1','4Z7K','5CR2','5IPL','5IPM','5IPN','5B2S','5B2T','5FQ5','5F0Q','5B2R','5F0S','5E18','5E17','5B2P','5B2Q','5B2O','5EV3','5EV4','5EV1','5EV2','5H9E','5H9F','5F9R','4XLN','4XLR','5CZZ','5AXW','5C4X','5C44','5C4A','5C4J','5C3E','4Y7N','4Y52','3X1L','4WB3','4PGY','4YLN','4YLO','4YLP','4WQS','4X67','4X6A','4S20','4Q5V','4QCL','4QYZ','4PY5','4UN3','4UN4','4UN5','4Q5S','4PQU','4PUO','4Q0B','4PWD','4PUQ','4O9M','4OL8','4OO8','4NDF','4NDG','4NDI','4KHW','4KHY','4KHS','4KI4','4KHU','4KI6','4H8K','4BOC','4BWM','4BXX','4BY1','4BY7','4K4Y','4K4V','4FXD','4FYD','4HKQ','4GZY','4GZZ','4HHT','4B3Q','4B3O','4B3P','3ULD','4BBS','4G7O','4GG4','3TWH','4DB4','4FO6','4DQS','3UQ2','3UQ0','4E7A','4A93','4A3G','4A3M','4A3D','4A3J','4A3E','4A3K','4A3B','4A3F','4A3L','4A3C','3S2H','3S1Q','3RZO','3S17','3S1R','3S14','3S1M','3S2D','3S15','3S1N','3RZD','3S16','3QRQ','3PO3','3PO2','3PGW','3OLA','3O3H','3AOH','3AOI','3O3F','3O3G','3M3Y','3M4O','3KYL','3IIN','3I55','3KJO','3HXM','3HK2','3HM9','3HVR','3HO1','3HJF','3I4M','3I4N','3HOU','3HOY','3HOV','3HOZ','3HOW','3HOX','3H3V','3ER8','3GTP','3GTL','3GTQ','3GTG','3GTM','3GTJ','3GTO','3GTK','3F73','3E2E','3E3J','2VUM','2R7Y','3BO4','3BSU','2R7Z','2QK9','2QKB','2QKK','2PPB','2Q2T','2Q2U','2O5J','2O5I','2YU9','2JA7','2JA8','2JA5','2JA6','2NVX','2E2I','2NVZ','2E2H','2NVQ','2E2J','2NVT','2HVS','2HVR','2G8F','2G8U','2G8H','2G8V','2G8I','2G8W','2G8K','1ZBI','1ZBL','1Y77','1Y1W','1Y1Y','1R9T','1R9S','1SI2','1S76','1S77','1SFO','1S0V','1Q7Y','1NH3','1H38','1MSW','1I6H','1HYS','1QLN','1D9D','1D9F']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -682,8 +685,17 @@ if __name__=="__main__":
         structure = get_structure(inputPath % PDB)
         bases = structure.residues(sequence= base_seq_list)
 #        bases = structure.residues(chain= ["0","9"], sequence= "C")   # will make it possible to load IFEs easily
+
         amino_acids = structure.residues(sequence=aa_list)
         print("  Time required to load " + PDB + " " + str(datetime.now() - start))
+
+        numBases = 0
+        for base in bases:
+            numBases += 1
+        numAA = 0
+        for aa in amino_acids:
+            numAA += 1
+        print("  Found " + str(numBases) + " bases and " + str(numAA) + " amino acids in " + PDB)
 
         start = datetime.now()
         baseCubeList, baseCubeNeighbors, aaCubeList = find_neighbors(bases, amino_acids, aa_part, 10)
@@ -699,7 +711,6 @@ if __name__=="__main__":
             aa = aa_residue.unit_id()
             base_component = str(base).split("|")
             aa_component = str(aa).split("|")
-
             key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
             allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa_center))  # store tuples
 
@@ -724,7 +735,7 @@ if __name__=="__main__":
         #accumulate a full list of resultant RNA-aa pairs
 #        result_nt_aa.extend(list_base_aa)
 
-        print("Total number of interactions: " + str(len(list_base_aa)))
+        print("  Total number of interactions: " + str(len(list_base_aa)))
 
         #writing out output files
         #text_output(result_nt_aa)

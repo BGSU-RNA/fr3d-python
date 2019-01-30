@@ -37,8 +37,8 @@ class Component(EntitySelector):
         self.alt_id = alt_id
         self.centers = AtomProxy(self._atoms)
 
-        if self.sequence in defs.RNAbaseheavyatoms:
-            atoms = defs.RNAbaseheavyatoms[self.sequence]
+        if self.sequence in defs.NAbaseheavyatoms:
+            atoms = defs.NAbaseheavyatoms[self.sequence]
             self.centers.define('base', atoms)
 
         if self.sequence in defs.nt_sugar:
@@ -130,7 +130,7 @@ class Component(EntitySelector):
         Crick edge in the positive x and y quadrant.
         """
 
-        if self.sequence not in defs.RNAbaseheavyatoms and \
+        if self.sequence not in defs.NAbaseheavyatoms and \
                 self.sequence not in defs.modified_nucleotides:
             return None
 
@@ -139,19 +139,19 @@ class Component(EntitySelector):
 
         if self.sequence in defs.modified_nucleotides:
             current = defs.modified_nucleotides[self.sequence]
-            standard_coords = defs.RNAbasecoordinates[current["standard"]]
+            standard_coords = defs.NAbasecoordinates[current["standard"]]
             for standard, modified in current["atoms"].items():
                 coords = list(self.centers[modified])
                 if coords:
                     R.append(coords)
                     S.append(standard_coords[standard])
 
-        if self.sequence in defs.RNAbaseheavyatoms:
-            baseheavy = defs.RNAbaseheavyatoms[self.sequence]
+        if self.sequence in defs.NAbaseheavyatoms:
+            baseheavy = defs.NAbaseheavyatoms[self.sequence]
             for atom in self.atoms(name=baseheavy):
                 coordinates = atom.coordinates()
                 R.append(coordinates)
-                S.append(defs.RNAbasecoordinates[self.sequence][atom.name])
+                S.append(defs.NAbasecoordinates[self.sequence][atom.name])
 
         R = np.array(R)
         R = R.astype(np.float)
@@ -175,9 +175,9 @@ class Component(EntitySelector):
         Currently, it only works for RNA with .sequence
         """
 
-        if self.sequence in defs.RNAbasehydrogens:
-            hydrogens = defs.RNAbasehydrogens[self.sequence]
-            coordinates = defs.RNAbasecoordinates[self.sequence]
+        if self.sequence in defs.NAbasehydrogens:
+            hydrogens = defs.NAbasehydrogens[self.sequence]
+            coordinates = defs.NAbasecoordinates[self.sequence]
 
             try:
                 for hydrogenatom in hydrogens:
@@ -412,7 +412,7 @@ class Component(EntitySelector):
         HB_atoms = set(['N', 'NH1','NH2','NE','NZ','ND1','NE2','O','OD1','OE1','OE2', 'OG', 'OH'])
         n = 0
         base_seq = self.sequence()
-        for base_atom in self.atoms(name=defs.RNAbaseheavyatoms[base_seq]):
+        for base_atom in self.atoms(name=defs.NAbaseheavyatoms[base_seq]):
             for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
                 distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
                 distance = np.linalg.norm(distance)
