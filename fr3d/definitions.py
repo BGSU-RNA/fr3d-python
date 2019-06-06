@@ -1,3 +1,5 @@
+from modified_parent_mapping import modified_nucleotides
+
 RNAbaseheavyatoms = {}
 RNAbasehydrogens = {}
 RNAconnections = {}
@@ -10,7 +12,6 @@ Ribophos_connect = {}
 tilt_cutoff = {}
 aa_connections = {}
 aa_backconnect = {}
-modified_nucleotides = {}
 nt_phosphate = {}
 nt_sugar = {}
 nt_backbone = {}
@@ -69,53 +70,57 @@ planar_atoms['SER'] =['CB','OG','CA']
 
 #Hydrogen bond donor and acceptor atoms for each RNA base
 
-HB_donors ['A'] = ["N6", "O2'", "C2", "C8"]
-HB_donors ['U'] = ["N4", "O2'", "C5"]
-HB_donors ['G'] = ["N1", "N2", "O2'", "C8"]
-HB_donors ['C'] = ["N3", "O2'", "C5"]
+HB_donors['A'] = ["N6", "C2", "C8", "O2'"]
+HB_donors['G'] = ["N1", "N2", "C8", "O2'"]
+HB_donors['C'] = ["N4", "C5", "C6", "O2'"]
+HB_donors['U'] = ["N3", "C5", "C6", "O2'"]
 
-HB_acceptors ['A'] = ["N1", "N3", "N7"]
-HB_acceptors ['U'] = ["O2", "N3"]
-HB_acceptors ['G'] = ["N3", "O6", "N7"]
-HB_acceptors ['C'] = ["O2", "O4"]
+HB_acceptors['A'] = ["N1", "N3", "N7", "O2'"]
+HB_acceptors['G'] = ["N3", "O6", "N7", "O2'"]
+HB_acceptors['C'] = ["O2", "N3", "O2'"]
+HB_acceptors['U'] = ["O2", "O4", "O2'"]
+
+#Hydrogen bond donor and acceptor atoms for each NA backbone
+
+HB_backbone_acceptors = ["O4'", "O3'", "O5'", "OP1", "OP2"]
 
 #Hydrogen bond donor and acceptor atoms for each DNA base
 
-HB_donors ['DA'] = ["N6", "O2'", "C2", "C8"]
-HB_donors ['U'] = ["N4", "O2'", "C5"]         # need DT
-HB_donors ['DG'] = ["N1", "N2", "O2'", "C8"]
-HB_donors ['DC'] = ["N3", "O2'", "C5"]
+HB_donors['DA'] = ["N6", "C2", "C8", "O2'"]
+HB_donors['DG'] = ["N1", "N2", "C8", "O2'"]
+HB_donors['DC'] = ["N4", "C5", "C6", "O2'"]
+HB_donors['DT'] = ["N3", "C6", "O2'"]
 
-HB_acceptors ['DA'] = ["N1", "N3", "N7"]
-HB_acceptors ['U'] = ["O2", "N3"]         # need DT
-HB_acceptors ['DG'] = ["N3", "O6", "N7"]
-HB_acceptors ['DC'] = ["O2", "O4"]
+HB_acceptors ['DA'] = ["N1", "N3", "N7", "O2'"]
+HB_acceptors ['DG'] = ["N3", "O6", "N7", "O2'"]
+HB_acceptors ['DC'] = ["O2", "N3", "O2'"]
+HB_acceptors ['DT'] = ["O2", "O4", "O2'"]
 
 #Hydrogen bond donor and acceptor atoms for each amino acid
 
-HB_donors ['ARG'] = ['NE', 'NH1', 'NH2']
-HB_acceptors ['ARG'] = []
+HB_donors['ARG'] = ['NE', 'NH1', 'NH2']
+HB_acceptors['ARG'] = []
 
-HB_donors ['ASN'] = ['ND2', 'OD1']
-HB_acceptors ['ASN'] = ['OD1', 'ND2']
+HB_donors['ASN'] = ['ND2', 'OD1']        # list both because sometimes they are flipped
+HB_acceptors['ASN'] = ['OD1', 'ND2']     # this allows a mis-modeled structure to have
+                                         # an identified hydrogen bond
+HB_donors['ASP'] = ['OD1', 'OD2']        # could have OH, could be donor
+HB_acceptors['ASP'] = ['OD1', 'OD2']
 
-HB_donors ['ASP'] = ['OD1', 'OD2']
-HB_acceptors ['ASP'] = ['OD1', 'OD2']
+HB_donors['GLN'] = ['NE2', 'OE1']        # list both in case of mis-modeled structure
+HB_acceptors['GLN'] = ['OE1', 'NE2']
 
-HB_donors ['GLN'] = ['NE2', 'OE1']
-HB_acceptors ['GLN'] = ['OE1', 'NE2']
+HB_donors['GLU'] = ['OE1', 'OE2']        # could have OH, could be donor
+HB_acceptors['GLU'] = ['OE1', 'OE2']
 
-HB_donors ['GLU'] = ['OE1', 'OE2']
-HB_acceptors ['GLU'] = ['OE1', 'OE2']
+HB_donors['HIS'] = ['CD2', 'CE1', 'ND1', 'NE2']
+HB_acceptors['HIS'] = ['CD2', 'CE1', 'ND1', 'NE2']   # list both in case of 180 degree rotation
 
-HB_donors ['HIS'] = ['CD2', 'CE1', 'ND1', 'NE2']
-HB_acceptors ['HIS'] = ['ND1', 'NE2']
+HB_donors['LYS'] = ['NZ']
+HB_acceptors['LYS'] = []
 
-HB_donors ['LYS'] = ['NZ']
-HB_acceptors ['LYS'] = []
-
-HB_donors ['PHE'] = ['CG','CD1','CD2','CE1','CZ','CE2']
-HB_acceptors ['PHE'] =[]
+HB_donors['PHE'] = ['CD1','CD2','CE1','CZ','CE2']
+HB_acceptors['PHE'] =[]         # can we list the functional group center as a "base"?
 
 HB_donors ['SER'] = ['OG']
 HB_acceptors ['SER'] = ['OG']
@@ -123,11 +128,11 @@ HB_acceptors ['SER'] = ['OG']
 HB_donors ['THR'] = ['OG1']
 HB_acceptors ['THR'] = ['OG1']
 
-HB_donors ['TRP'] = ['CG','CD1','NE1','CE2','CD2','CE3','CZ3','CH2','CZ2']
-HB_acceptors ['TRP'] = []
+HB_donors ['TRP'] = ['CD1','NE1','CE2','CD2','CE3','CZ3','CH2','CZ2']
+HB_acceptors ['TRP'] = []       # can we list the functional group center as a "base"?
 
-HB_donors ['TYR'] = ['OH']
-HB_acceptors ['TYR'] = ['OH']
+HB_donors ['TYR'] = ['OH', 'CD1','CD2', 'CE1', 'CE2']
+HB_acceptors ['TYR'] = ['OH']   # can we list the functional group center as a "base"?
 #Creating dictionaries for detecting edges of nts
 
 # define base edges
@@ -242,24 +247,19 @@ nt_sugar['G'] = ribose
 
 # for DNA
 nt_backbone['DA'] = ribose + phosphate
-nt_backbone['U'] = ribose + phosphate
+nt_backbone['DT'] = ribose + phosphate
 nt_backbone['DC'] = ribose + phosphate
 nt_backbone['DG'] = ribose + phosphate
 
 nt_phosphate['DA'] = phosphate
-nt_phosphate['U'] = phosphate
+nt_phosphate['DT'] = phosphate
 nt_phosphate['DC'] = phosphate
 nt_phosphate['DG'] = phosphate
 
 nt_sugar['DA'] = ribose
-nt_sugar['U'] = ribose
+nt_sugar['DT'] = ribose
 nt_sugar['DC'] = ribose
 nt_sugar['DG'] = ribose
-
-nt_backbone['DA'] = ribose + phosphate
-nt_backbone['U'] = ribose + phosphate
-nt_backbone['DC'] = ribose + phosphate
-nt_backbone['DG'] = ribose + phosphate
 
 """Defining the parts of DNA nucleotides that we use to compute RNA-amino acid interactions"""
 
@@ -269,12 +269,8 @@ NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
 NAbasehydrogens['DC'] = ['H1','H6','H5','1H4','2H4']
 NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
 NAbasehydrogens['DG'] = ['H1','H8','H9','1H2','2H2']
-NAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
-NAbasehydrogens['U'] = ['H5','H1','H3','H6']
-
-RNAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-RNAbasehydrogens['DG'] = ['H1','H8','H9','1H2','2H2']
-
+#NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
+#NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 #Amino acid computation definitions
 
@@ -496,6 +492,32 @@ NAbasecoordinates['U'][ 'H1'] = [ -0.326420,  -2.523369,   0.000000]
 NAbasecoordinates['U'][ 'H3'] = [  1.765732,   0.930757,   0.000000]
 NAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 
+# T coordinates from http://ndbserver.rutgers.edu/ndbmodule/archives/reports/tsukuba/tsukuba.pdf
+# originally from Clowney, L., Jain, S. C., Srinivasan, A. R., Westbrook, J., Olson, W. K. & Berman, H. M. (1996)
+# "Geometric parameters in nucleic acids: nitrogenous bases," J. Am. Chem. Soc. 118, 509-518.
+NAbasecoordinates['T'] = {}
+NAbasecoordinates['T']['C1']  = [-2.481, 5.354, 0.000]
+NAbasecoordinates['T']['N1']  = [-1.284, 4.500, 0.000]
+NAbasecoordinates['T']['C2']  = [-1.462, 3.135, 0.000]
+NAbasecoordinates['T']['O2']  = [-2.562, 2.608, 0.000]
+NAbasecoordinates['T']['N3']  = [-0.298, 2.407, 0.000]
+NAbasecoordinates['T']['C4']  = [0.994, 2.897, 0.000]
+NAbasecoordinates['T']['O4']  = [1.944, 2.119, 0.000]
+NAbasecoordinates['T']['C5']  = [1.106, 4.338, 0.000]
+NAbasecoordinates['T']['C5M'] = [2.466, 4.961, 0.001]
+NAbasecoordinates['T']['C6']  = [-0.024, 5.057, 0.000]
+
+NAbasecoordinates['DT'] = {}
+NAbasecoordinates['DT']['N1'] = [-0.318541,-1.521663, 0.000366]
+NAbasecoordinates['DT']['C2'] = [ 0.908645,-0.913073, 0.003540]
+NAbasecoordinates['DT']['O2'] = [ 1.946299,-1.539238,-0.003633]
+NAbasecoordinates['DT']['N3'] = [ 0.877011, 0.454895, 0.002691]
+NAbasecoordinates['DT']['C4'] = [-0.244292, 1.261390, 0.002872]
+NAbasecoordinates['DT']['O4'] = [-0.166372, 2.487465,-0.004679]
+NAbasecoordinates['DT']['C5'] = [-1.511949, 0.558437, 0.002951]
+NAbasecoordinates['DT']['C7'] = [-2.795359, 1.333809, 0.000808]
+NAbasecoordinates['DT']['C6'] = [-1.490802,-0.788212,-0.004107]
+
 NAbasecoordinates['DA'] = {}
 NAbasecoordinates['DA'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
 NAbasecoordinates['DA'][ 'C4'] = [  0.007975,  -1.020192,   0.000000]
@@ -608,7 +630,9 @@ NAconnections['DC'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5
 
 #List of modified nucleotides, their corresponding standard base, and their atom correspondences
 
-modified_nucleotides['4SU'] = {
+
+# added 3/26/2019 on a temporary basis to get standard coordinates
+modified_nucleotides['DT'] = {
     "standard": 'U',
     "atoms": {
         'N1':'N1',
