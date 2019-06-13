@@ -48,25 +48,27 @@ planar_atoms['U'] = ['C2','N1','N3']    # need DNA atoms for DT
 planar_atoms['DC'] = ['C6','N1','C5']
 planar_atoms['DG'] = ['C4','C5','N3']
 
-planar_atoms['ARG'] =['CZ','NH1', 'NH2']
-planar_atoms['LYS'] =['CE','CD','NZ']
+planar_atoms['ARG'] = ['CZ','NH1','NH2']
+planar_atoms['ASN'] = ['CG','OD1','ND2']
+planar_atoms['ASP'] = ['CG','OD1','OD2']
+planar_atoms['CYS'] = ['CB','SG','CB']
+planar_atoms['GLN'] = ['CD','OE1','NE2']
+planar_atoms['GLU'] = ['CD','OE1','OE2']
 planar_atoms['HIS'] = ['NE2','CD2','CE1']
-planar_atoms['GLN'] =['CD','OE1','NE2']
-planar_atoms['ASN'] =['CG','OD1','ND2']
-planar_atoms['GLU'] =['CD','OE1','OE2']
-planar_atoms['ASP'] =['CG','OD1','OD2']
-planar_atoms['TRP'] =['CD2','CG','CE2']
-planar_atoms['TYR'] =['CE2','CZ','CE1']
-planar_atoms['PHE'] =['CG','CD1','CZ']
-planar_atoms['THR'] =['CB','OG1','CG2']
-planar_atoms['CYS'] =['CB','SG','CB']
-"""planar_atoms['PRO'] =['CG','CD','CB']
-planar_atoms['MET'] =['SD','CG','CE']
+planar_atoms['PHE'] = ['CG','CD1','CZ']
+planar_atoms['PRO'] = ['CA','N','CG']
+planar_atoms['TRP'] = ['CD2','CG','CE2']
+planar_atoms['TYR'] = ['CE2','CZ','CE1']
+planar_atoms['LYS'] = ['CE','CD','NZ']         # need to verify
+planar_atoms['SER'] = ['CB','OG','CA']         # need to verify
+planar_atoms['THR'] = ['CB','OG1','CG2']       # need to verify
+
+"""
 planar_atoms['ILE'] =['CG1','CB','CD1']
 planar_atoms['LEU'] =['CG','CD1','CD2']
+planar_atoms['LYS'] = ['CE','CD','NZ']
+planar_atoms['MET'] =['SD','CG','CE']
 planar_atoms['VAL'] =['CB','CG1','CG2']"""
-planar_atoms['SER'] =['CB','OG','CA']
-
 
 #Hydrogen bond donor and acceptor atoms for each RNA base
 
@@ -96,7 +98,7 @@ HB_acceptors ['DG'] = ["N3", "O6", "N7", "O2'"]
 HB_acceptors ['DC'] = ["O2", "N3", "O2'"]
 HB_acceptors ['DT'] = ["O2", "O4", "O2'"]
 
-#Hydrogen bond donor and acceptor atoms for each amino acid
+# Hydrogen bond donor and acceptor atoms for each amino acid
 
 HB_donors['ARG'] = ['NE', 'NH1', 'NH2']
 HB_acceptors['ARG'] = []
@@ -279,7 +281,7 @@ with nts by Hydrogenbonding. aa_fg refers to the functional group of the
 sidechain. aa_backbone refers to the peptide backbone. aa_linker is the carbon chain
 that links the fg with the peptide backbone"""
 
-backbone = ['CA','C', 'O']
+backbone = ['N','CA','C','O']
 
 aa_backbone = {}
 aa_linker = {}
