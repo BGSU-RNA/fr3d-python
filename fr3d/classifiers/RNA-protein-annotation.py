@@ -38,7 +38,41 @@ from math import floor
 import os
 from os import path
 
+from time import time
+
+def myTimer(state,data={}):
+
+    # add elapsed time to the current state of the timer
+    if "currentState" in data:
+        currentState = data["currentState"]
+        data[currentState] += time() - data["lastTime"]
+
+    if state == "summary":
+        print("Summary of time taken:")
+        for state in data["allStates"]:
+            if not state == "lastTime" and not state == "currentState":
+                print("%-31s: %10.3f seconds" % (state,data[state]))
+    elif not state in data:
+        data[state] = 0
+        # keep track of states and the order in which they were seen
+        if "allStates" in data:
+            data["allStates"].append(state)
+        else:
+            data["allStates"] = [state]
+
+    # change to the state just starting now
+    data["currentState"] = state
+    data["lastTime"] = time()
+
+    return data
+
 def get_structure(filename):
+
+    if os.path.exists(filename+".pickle"):
+        print("Loading " + filename + ".pickle")
+        structure = pickle.load(open(filename+".pickle","rb"))
+        return structure
+
     if not os.path.exists(filename):
         mmCIFname = filename[-8:]
         print("Downloading "+mmCIFname)
@@ -48,57 +82,14 @@ def get_structure(filename):
             outfile.write(myfile)
 
     with open(filename, 'rb') as raw:
+        print("Loading " + filename)
         structure = Cif(raw).structure()
         """All RNA bases are placed in the standard orientation. All Hydrogen
  atoms are inferred. Rotation matrix is calculated for each base."""
         structure.infer_hydrogens()
+#        pickle.dump(structure,open(filename+".pickle","wb"))  # larger file sizes than .cif ... not sure why
+
         return structure
-
-
-def atom_dist_basepart(base_residue, aa_residue, base_atoms, c):
-    """Calculates atom to atom distance of part "aa_part" of neighboring amino acids
-    of type "aa" from each atom of base. Only returns a pair of aa/nt if two
-    or more atoms are within the cutoff distance"""
-    min_distance = 4  # locally declared minimum atom-atom distance
-    n = 0             # number of atom-atom distances that are small enough
-    for base_atom in base_residue.atoms(name=base_atoms):
-        for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
-            distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
-            distance = np.linalg.norm(distance)
-            #print base_residue.unit_id(), aa_residue.unit_id(), distance
-            if distance <= min_distance:
-                n = n+1
-                #print aa_atom.name
-    if n>=c:
-        #print aa_residue.unit_id()
-        return True
-
-def enough_HBs(base_residue, aa_residue, base_atoms):
-    """Calculates number of Hydrogen bonds between amino acid part and base_part
-    and determines if they are enough to form a pseudopair"""
-    min_distance = 4
-    base_key = base_residue.sequence
-    aa_key = aa_residue.sequence
-    n = 0
-    base_HB_atoms = base_atoms + ["O2'"]
-    base_donors = HB_donors[base_key]
-    base_acceptors = HB_acceptors[base_key]
-    aa_donors = HB_donors[aa_key]
-    aa_acceptors = HB_acceptors[aa_key]
-
-    for base_atom in base_residue.atoms(name=base_HB_atoms):
-        for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
-            distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
-            distance = np.linalg.norm(distance)
-            if distance <= min_distance:
-                #print "HB", base_residue.unit_id(), aa_residue.unit_id(), base_atom.name, aa_atom.name, distance
-                if base_atom.name in base_donors and aa_atom.name in aa_acceptors:
-                    n = n+1
-                elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
-                    n = n+1
-#    print base_residue.unit_id(), aa_residue.unit_id(), n
-    if n>=2:
-        return True
 
 def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
     """Finds all amino acids of type "aa" for which center of "aa_part" is within
@@ -113,6 +104,9 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
     # also record which other cubes are neighbors of each cube
     baseCubeList = {}
     baseCubeNeighbors = {}
+
+    print("Working with " + IFE)
+
     for base in bases:
         if len(IFE) > 0:               # check that base is in IFE
             unit_id = base.unit_id()
@@ -124,6 +118,8 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
                 continue
             else:
                 numin += 1
+        else:
+            numin += 1
 
         center = base.centers["base"]
         if len(center) == 3:
@@ -202,17 +198,16 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
                         if not aa_center.any():
                             continue
 
-                        # TODO: rename variable c to be more meaningful
-                        if aa_residue.sequence in set (['LYS', 'SER', 'THR', 'TYR']):
-                            c = 1   # only one atom-atom distance needs to be within 4 Angstroms
+                        if aa_residue.sequence in set(['LYS', 'SER', 'THR', 'TYR']):
+                            num_near_contacts_needed = 1   # only one atom-atom distance needs to be less than 4 Angstroms
                         else:
-                            c = 2   # at least two atom-atom distances need to be within 4 Angstroms
+                            num_near_contacts_needed = 2   # at least two atom-atom distances need to be less than 4 Angstroms
 
-                        # fast first screen for distance between base and amino acid
+                        # screen for distance between base and amino acid
                         if abs(base_center[0]-aa_center[0]) < dist_cent_cutoff and \
                         abs(base_center[1]-aa_center[1]) < dist_cent_cutoff and \
-                        np.linalg.norm(np.subtract(base_center,aa_center)) < dist_cent_cutoff and \
-                        atom_dist_basepart(base_residue, aa_residue, base_atoms, c):
+                        distance_between_vectors(base_center,aa_center) < dist_cent_cutoff and \
+                        enough_near_contacts(base_residue, aa_residue, base_atoms, num_near_contacts_needed):
 
                             count_pair = count_pair + 1
 
@@ -232,25 +227,24 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
 
                             standard_aa_center = standard_aa.centers[aa_part]
 
-                            interaction = type_of_interaction(base_residue, aa_residue, aa_coordinates)
+                            # get a preliminary annotation of the interaction
+                            (interaction,interaction_parameters) = type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms)
 
                             base_aa = None
-                            if interaction == "pseudopair" and enough_HBs(base_residue, aa_residue, base_atoms):
-                                (edge,angle) = detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
-                                base_aa = (base_residue, aa_residue, interaction, edge, standard_aa_center, angle)
+                            if interaction in ["pseudopair","SHB","perpendicular-edge","other-pair"]:
+                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
+                                interaction_parameters["angle-in-plane"] = angle
+                                base_aa = (base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)
 
-                            elif interaction == "SHB":
-                                (edge,angle) = detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
-                                base_aa = (base_residue, aa_residue, interaction, edge, standard_aa_center, angle)
-
-                            elif interaction == "perpendicular-edge":
-                                (edge,angle) = detect_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
-                                base_aa = (base_residue, aa_residue, interaction, edge, standard_aa_center, angle)
-
-                            elif interaction == "stacked" or interaction == "cation-pi" \
-                            or interaction == "perpendicular-stacking":
+                            elif interaction in ["stacked","pi-pi-stacking","cation-pi","perpendicular-stacking","other-stack"]:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
-                                base_aa = (base_residue, aa_residue, interaction, face, standard_aa_center, height)
+                                interaction_parameters["height-above-plane"] = height
+                                base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
+
+                            else:
+                                print("Untrapped interaction: " + interaction)
+                                (face,height) = detect_face(aa_residue, aa_coordinates)
+                                base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
 
                             if base_aa is not None:
                                 list_base_aa.append(base_aa)
@@ -262,78 +256,150 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
 
     return list_base_aa, list_aa_coord, list_base_coord
 
-def type_of_interaction(base_residue, aa_residue, aa_coordinates):
+def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms):
+    """ This function works with base and aa in standard position """
     squared_xy_dist_list = []
-    aa_z =[]
 
     """Defines different sets of amino acids"""
-    stacked_planar_aa = set (["TRP", "TYR", "PHE", "HIS", "ARG", "ASN", "GLN", "GLU", "ASP"])
-    stacked_aliphatic = set(["LEU", "ILE", "PRO", "THR", "MET", "CYS", "VAL", "ALA", "SER"])
-    pseudopair_aa = set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "TYR", "TRP", "PHE", "LYS"])
-    shb_aa = set (["SER", "THR", "LYS"])
+    stacked_aromatic_aa = set (["ARG", "ASN", "ASP", "GLU", "GLN", "HIS", "PHE", "PRO", "TRP", "TYR"])
+    stacked_aliphatic = set(["ALA", "CYS", "ILE", "LEU", "MET", "PRO", "SER", "THR", "VAL"])
+    edge_to_edge_aa = set (["ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "HIS", "LYS", "PHE", "SER", "THR", "TYR", "TRP"])
+    shb_aa = set (["ARG", "ASN", "ASP", "GLU", "GLN", "HIS", "LYS", "SER", "THR", "TYR"])
 
+    # calculate distances from aa atoms to base center
     for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
-        key = aa_atom.name
-        aa_x= aa_coordinates[key][0]
-        aa_y= aa_coordinates[key][1]
+        key  = aa_atom.name
+        aa_x = aa_coordinates[key][0]
+        aa_y = aa_coordinates[key][1]
 
         squared_xy_dist = (aa_x**2) + (aa_y**2)
         squared_xy_dist_list.append(squared_xy_dist)
 
-        aa_z.append(aa_coordinates[key][2])
-
-    mean_z = np.mean(aa_z)
-
     #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
+
+    # for a stacking interaction, the x,y coordinate of at least one atom of the amino acid group needs to be
+    # within sqrt(5) = 2.236 of the base center 0,0
     if min(squared_xy_dist_list) <= 5:
         #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
-        if aa_residue.sequence in stacked_planar_aa:
-            #print "stacking?", base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
-            return stacking_angle(base_residue, aa_residue, min(squared_xy_dist_list))
+        if aa_residue.sequence in stacked_aromatic_aa:
+            return stacking_planar_annotation(base_residue, aa_residue, min(squared_xy_dist_list))
 
         elif aa_residue.sequence in stacked_aliphatic:
-            return stacking_tilt(aa_residue, aa_coordinates)
+            return stacking_non_planar_annotation(aa_residue, aa_coordinates)
 
-    elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in pseudopair_aa:
-            angle= calculate_angle(base_residue, aa_residue)
-            angle = abs(angle)
-            #print "pseudopair?", base_residue.unit_id(), aa_residue.unit_id(), angle
-            if 0 <= angle <= 0.75 or 2.5 <= angle <= 3.14:
-                return "pseudopair"
-            elif 0.95 <= angle <=1.64:
-                return "perpendicular-edge"
+        else:
+            return ("other-stack",{"squared-xy-dist":min(squared_xy_dist_list)})
 
-    elif -1.8 <= mean_z < 1.8 and aa_residue.sequence in shb_aa:
-        base_seq = base_residue.sequence
-        base_atoms = NAbaseheavyatoms[base_seq]
-        if atom_dist_basepart(base_residue, aa_residue, base_atoms, 1):
-            return "SHB"
+    # check for interactions in the plane of the base
+    mean_z = standard_aa_center[2]
+    (num_hydrogen_bonds,hydrogen_bond_list) = count_hydrogen_bonds(base_residue, aa_residue, base_atoms)
 
-def calculate_angle (base_residue, aa_residue):
-    vec1 = vector_calculation(base_residue)
-    vec2 = vector_calculation(aa_residue)
+    if -1.8 <= mean_z < 1.8:
+        if aa_residue.sequence in edge_to_edge_aa:
+            angle = calculate_angle_between_planar_residues(base_residue, aa_residue)
+            if angle:
+                if 0 <= angle <= 45 and num_hydrogen_bonds >= 2:
+                    return ("pseudopair",{"hydrogen-bonds":hydrogen_bond_list})
+                elif 45 <= angle:
+                    return ("perpendicular-edge",{"hydrogen-bonds":hydrogen_bond_list})
 
-    angle = angle_between_planes(vec1, vec2)
-    return angle
+        if aa_residue.sequence in shb_aa:
+#            base_seq = base_residue.sequence
+#            base_atoms = NAbaseheavyatoms[base_seq]
+#            if enough_near_contacts(base_residue, aa_residue, base_atoms, 1):
+            if num_hydrogen_bonds >= 1:
+                return ("SHB",{"hydrogen-bonds":hydrogen_bond_list})
 
-def stacking_angle (base_residue, aa_residue, min_dist):
-    vec1 = vector_calculation(base_residue)
-    vec2 = vector_calculation(aa_residue)
+    return ("other",{"squared-xy-dist":min(squared_xy_dist_list),"mean_z":mean_z})
+
+def enough_near_contacts(base_residue, aa_residue, base_atoms, num_near_contacts_needed):
+    """Calculates atom to atom distance of base atoms and aa atoms
+    Returns true if the number of close contacts is greater than or
+    equal to num_near_contacts_needed"""
+
+    min_distance = 4  # locally declared minimum atom-atom distance
+    n = 0             # number of atom-atom distances that are small enough
+    for base_atom in base_residue.atoms(name=base_atoms):
+        for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
+            distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+            distance = np.linalg.norm(distance)
+
+            if distance <= min_distance:
+                n = n+1
+
+    if n >= num_near_contacts_needed:
+        #print aa_residue.unit_id()
+        return True
+
+def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
+    """Calculates number of Hydrogen bonds between amino acid part and base_part
+    """
+
+    n = 0
+    hydrogen_bond_list = []
+    aa_key = aa_residue.sequence
+
+    if aa_key in HB_donors or aa_key in HB_acceptors:
+        min_distance = 4
+        base_key = base_residue.sequence
+        base_donors = HB_donors[base_key]
+        base_acceptors = HB_acceptors[base_key]
+        base_HB_atoms = list(set(base_donors + base_acceptors))  # don't list O2' twice
+
+        aa_donors = HB_donors[aa_key]
+        aa_acceptors = HB_acceptors[aa_key]
+
+        for base_atom in base_residue.atoms(name=base_HB_atoms):
+            for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
+                distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+                distance = np.linalg.norm(distance)
+                if distance <= min_distance:
+                    #print "HB", base_residue.unit_id(), aa_residue.unit_id(), base_atom.name, aa_atom.name, distance
+                    if base_atom.name in base_donors and aa_atom.name in aa_acceptors:
+                        n = n+1
+                        hydrogen_bond_list.append((base_atom.name,aa_atom.name))
+                    elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
+                        n = n+1
+                        hydrogen_bond_list.append((base_atom.name,aa_atom.name))
+    #    print base_residue.unit_id(), aa_residue.unit_id(), n
+
+    return (n,hydrogen_bond_list)
+
+def calculate_angle_between_planar_residues (base_residue, aa_residue):
+    vec1 = normal_vector_calculation(base_residue)
+    vec2 = normal_vector_calculation(aa_residue)
+
+    if len(vec1) == 3 and len(vec2) == 3:
+        angle = smaller_angle_between_vectors(vec1, vec2)
+        return angle
+    else:
+        return None
+
+def stacking_planar_annotation (base_residue, aa_residue, min_dist):
+    """ For planar amino acids, determine the stacking classification
+    according to the angle between the plane of the amino acid and
+    the plane of the base """
+
+    angle = calculate_angle_between_planar_residues(base_residue, aa_residue)
+
+    perpendicular_stack_aa = set(["HIS", "PHE", "TRP", "TYR"])
     perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN"])
-    perpendicular_stack_aa = set(["PHE", "TYR"])
-    angle = angle_between_planes(vec1, vec2)
-    #print "stacked?"
-    #print base_residue.unit_id(), aa_residue.unit_id(), min_dist, angle
-    angle = abs(angle)
-    if angle <=0.68 or 2.45 <= angle <= 3.15:
-        return "stacked"
-    elif 1.2<= angle <=1.64:
-        if aa_residue.sequence in perpendicular_stack_aa:
-            return "perpendicular-stacking"
-        elif aa_residue.sequence in perpendicular_aa:
-            return "cation-pi"
 
-def stacking_tilt(aa_residue, aa_coordinates):
+    if angle:
+        if angle <= 45:
+            return ("pi-pi-stacking",{"angle-between-planes":angle})
+        elif 45 <= angle:
+            if aa_residue.sequence in perpendicular_stack_aa:
+                return ("perpendicular-stacking",{"angle-between-planes":angle})
+            elif aa_residue.sequence in perpendicular_aa:
+                return ("cation-pi",{"angle-between-planes":angle})
+
+    return ("stacking-other",{"angle-between-planes":None})
+
+def stacking_non_planar_annotation(aa_residue, aa_coordinates):
+    """ For non-planar amino acids, determine the stacking type
+    by looking at how spread out the atoms are above/below the
+    plane of the base """
     baa_dist_list = []
 
     for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
@@ -345,25 +411,50 @@ def stacking_tilt(aa_residue, aa_coordinates):
     diff = max_baa - min_baa
     #print aa_residue.unit_id(), diff
     if diff <= tilt_cutoff[aa_residue.sequence]:
-        return "stacked"
+        return ("stacked",{"stacking-diff":diff})
 
-def vector_calculation(residue):
+    return ("stacking-other",{"stacking-diff":diff})
+
+def normal_vector_calculation(residue):
     key = residue.sequence
     P1 = residue.centers[planar_atoms[key][0]]
     P2 = residue.centers[planar_atoms[key][1]]
     P3 = residue.centers[planar_atoms[key][2]]
-#    print key,P1, P2, P3
+#    print key, residue.unit_id(), P1, P2, P3
 
-    vector = np.cross((P2 - P1),(P3-P1))
-    return vector
+    if len(P1) == 3 and len(P2) == 3 and len(P3) == 3:
+        normal_vector = np.cross((P2 - P1),(P3 - P1))
+        return normal_vector
+    else:
+        return []
 
-def angle_between_planes (vec1, vec2):
-    cosang = np.dot(vec1, vec2)
-    sinang = np.linalg.norm(np.cross(vec1, vec2))
-    angle = np.arctan2(sinang, cosang)
-    return angle
+# This function calculates an angle from 0 to 90 degrees between two vectors
+def smaller_angle_between_vectors(vec1, vec2):
+    if len(vec1) == 3 and len(vec2) == 3:
+        cosang = abs(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+        angle = np.arccos(cosang)
+        return 180*abs(angle)/np.pi
+    else:
+        return None
 
-def detect_edge(base_residue, base_coordinates, aa_residue, aa_coordinates):
+# This function calculates an angle from 0 to 180 degrees between two vectors
+def angle_between_vectors(vec1, vec2):
+    if len(vec1) == 3 and len(vec2) == 3:
+        cosang = np.dot(vec1, vec2)
+        sinang = np.linalg.norm(np.cross(vec1, vec2))
+        angle = np.arctan2(sinang, cosang)
+        return 180*angle/np.pi
+    else:
+        return None
+
+# This function calculates an angle from 0 to 180 degrees between two vectors
+def distance_between_vectors(vec1, vec2):
+    if len(vec1) == 3 and len(vec2) == 3:
+        return np.linalg.norm(np.subtract(vec1,vec2))
+    else:
+        return None
+
+def detect_base_edge(base_residue, base_coordinates, aa_residue, aa_coordinates):
     aa_x = []
     aa_y = []
     base_x = []
@@ -381,27 +472,22 @@ def detect_edge(base_residue, base_coordinates, aa_residue, aa_coordinates):
         base_x.append(base_coordinates[key][0])
         base_y.append(base_coordinates[key][1])
 
-    # the following values *should* be zero to many decimal places
+    # the following values *should* be zero to many decimal places, and are in every case I've checked - CLZ
     base_center_x = np.mean(base_x)
     base_center_y = np.mean(base_y)
 
-#    print("base x = %0.8f, base y = %0.8f" % (base_center_x,base_center_y))
-
     y = aa_center_y - base_center_y
     x = aa_center_x - base_center_x
-    angle_aa = np.arctan2(y,x) #values -pi to pi
-    #print base_residue.unit_id(), aa_residue.unit_id(),angle_aa
+    angle_aa = np.arctan2(y,x)         # values -pi to pi
+    angle_deg = (180*angle_aa)/np.pi # values -180 to 180
 
-    purine = set(["A", "G","DA","DG"])
-    pyrimidine = set(["C", "U","DC"])
-    angle_deg = (180*angle_aa)/3.14159 #values -180 to 180
-
-#    print("  Edge angle in rad and deg" +str(angle_aa) + " " + str(angle_deg))
+    purine = set(["A", "G", "DA", "DG"])
+    pyrimidine = set(["C", "U", "DC", "DT"])
 
     if base_residue.sequence in purine:
         if -15 <= angle_deg <= 90:
             return ("fgWC",angle_deg)
-        elif 90 < angle_deg or angle_deg < -160:
+        elif 90 < angle_deg or angle_deg < -100:
             return ("fgH",angle_deg)
         else:
             return ("fgS",angle_deg)
@@ -409,7 +495,7 @@ def detect_edge(base_residue, base_coordinates, aa_residue, aa_coordinates):
     elif base_residue.sequence in pyrimidine:
         if -45 <= angle_deg <= 90:
             return ("fgWC",angle_deg)
-        elif 90 < angle_deg or angle_deg < -150:
+        elif 90 < angle_deg or angle_deg < -90:
             return ("fgH",angle_deg)
         else:
             return ("fgS",angle_deg)
@@ -559,7 +645,7 @@ def draw_aa_cent(aa, aa_part, ax):
             print "Missing residues"
             continue
 
-def writeInteractionsHTML(allInteractionDictionary,outputHTML,version):
+def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
 
     SERVER = False
     SERVER = True
@@ -593,12 +679,20 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version):
         discrepancy = np.zeros((numForDiscrepancy,numForDiscrepancy))
         for i in range(0,numForDiscrepancy):
             instance_1 = allInteractionDictionary[key][i]
-            standard_aa_center_1 = instance_1[4]
+            aa_1 = instance_1[4]
             for j in range(i+1,numForDiscrepancy):
                 instance_2 = allInteractionDictionary[key][j]
-                standard_aa_center_2 = instance_2[4]
-                discrepancy[i][j] = np.linalg.norm(standard_aa_center_1 - standard_aa_center_2)
-                discrepancy[j][i] = np.linalg.norm(standard_aa_center_1 - standard_aa_center_2)
+                aa_2 = instance_2[4]
+                s = 0
+                for atom_name in aa_fg[aa_1.sequence]:
+                    d = distance_between_vectors(aa_1.centers[atom_name],aa_2.centers[atom_name])
+                    if d:
+                        s += d**2
+
+                discrepancy[i][j] = np.sqrt(s)/len(aa_fg[aa_1.sequence])  # average distance between corresponding atoms
+                discrepancy[j][i] = discrepancy[i][j]
+                # discrepancy[j][i] = np.linalg.norm(standard_aa_center_1 - standard_aa_center_2)
+
 
         # base_aa = (base_residue, aa_residue, interaction, edge, standard_aa_center, param)
 
@@ -615,19 +709,30 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version):
         i = 1
         queryNote = "<h2>"+pagetitle+"</h2>\n"
         candidatelist = '<table style="white-space:nowrap;">\n'
-        candidatelist += '<tr><th>Number</th><th>View</th><th>Nucleotide</th><th>Amino acid</th><th>Interaction</th><th>Edge</th><th>a.a. x</th><th>a.a. y</th><th>a.a. z</th><th>Angle/Height</th>\n'
-        for base_id, aa_id, interaction, edge, standard_aa_center, param in allInteractionDictionary[key]:
-            candidatelist += '<tr><td>'+str(i)+'.</td><td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
+        candidatelist += '<tr><th>Number</th><th>View</th><th>Nucleotide</th><th>Amino acid</th><th>Interaction</th><th>Edge</th><th>a.a. x</th><th>a.a. y</th><th>a.a. z</th>'
+        param = allInteractionDictionary[key][0][5]
+        param_list = list(param.keys())
+        for header in param_list:
+            candidatelist += "<th>"+header+"</th>"
+        candidatelist += "</tr>/n"
+        for base_id, aa_id, interaction, edge, standard_aa, param in allInteractionDictionary[key]:
+            candidatelist += '<tr><td>'+str(i)+'.</td><td><label><input type="checkbox" id="'+str(i-1)+'" class="jmolInline" data-coord="'
             candidatelist += base_id +","+ aa_id
             candidatelist += '">&nbsp</td>'
             candidatelist += '<td>%s</td>' % base_id
             candidatelist += '<td>%s</td>' % aa_id
             candidatelist += '<td>%s</td>' % interaction
             candidatelist += '<td>%s</td>' % edge
-            candidatelist += '<td>%0.4f</td>' % standard_aa_center[0]
-            candidatelist += '<td>%0.4f</td>' % standard_aa_center[1]
-            candidatelist += '<td>%0.4f</td>' % standard_aa_center[2]
-            candidatelist += '<td>%0.4f</td>' % param
+            candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][0]
+            candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][1]
+            candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][2]
+            for header in param_list:
+                if isinstance(param[header],float):
+                    candidatelist += '<td>%0.4f</td>' % param[header]
+                elif isinstance(param[header],list):
+                    for pair in param[header]:
+                        candidatelist += '<td>%s-%s</td>' % pair
+
             candidatelist += '</tr>\n'
             i += 1
         candidatelist += '</table>\n'
@@ -648,7 +753,7 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version):
 
         # read template.html into one string
 #        with open(outputHTML+'/localtemplate.html', 'r') as myfile:
-        with open(outputHTML+'/template.html', 'r') as myfile:
+        with open('template.html', 'r') as myfile:
             template = myfile.read()
 
         # replace ###PAGETITLE### with pagetitle
@@ -693,13 +798,17 @@ PDB_List = ['6BHJ','6AI6','6CVO','6DOI','6DPB','6DOF','6DP4','6DO8','6DOX','6DOQ
 PDB_List = ['4V9F']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
 version = "_3.48_2.5"
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
-version = "_3.72_3.0"
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
 version = "_3.74_4.0"
+PDB_List = ['3JB9']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
+version = "_3.72_3.0"
+PDB_List = ['4V9F']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
+version = "_3.48_2.5"
 
-ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
+ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 
 base_seq_list = ['A']
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -722,18 +831,23 @@ except:
 """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
 if __name__=="__main__":
 
-    aa_part = 'aa_fg'
+    timerData = myTimer("start")
+
+    aa_part = 'aa_fg'               # other choices would be ...
     base_part = 'base'
 
     allInteractionDictionary = defaultdict(list)
     result_nt_aa = []               # for accumulating a complete list over all PDB files
 
     outputDataFile = outputBaseAAFG % ""
-    outputDataFile = outputDataFile.replace("aa-fg_base_.csv","RNAProtein.pickle")
+    outputDataFile = outputDataFile.replace("aa-fg_base_.csv","RNAProtein"+version+".pickle")
+
+    timerData = myTimer("Making PDB list",timerData)
 
     if ReadPickleFile:
-        allInteractionDictionary = pickle.load(outputDataFile,'r')
-        writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
+        print("Reading " + outputDataFile)
+        allInteractionDictionary,PDB_List = pickle.load(open(outputDataFile,'rb'))
+        writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
     else:
         PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
         for PDB in PDB_List:
@@ -772,19 +886,21 @@ if __name__=="__main__":
                 continue
 
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
+            timerData = myTimer("Reading CIF files",timerData)
 
-            start = datetime.now()
             try:
                 structure = get_structure(inputPath % PDB)
+
             except:
                 print("Could not load structure")
                 continue
+
+            timerData = myTimer("Finding neighbors",timerData)
 
             bases = structure.residues(sequence= base_seq_list)
     #        bases = structure.residues(chain= ["0","9"], sequence= "C")   # will make it possible to load IFEs easily
 
             amino_acids = structure.residues(sequence=aa_list)
-            print("  Time required to load " + PDB + " " + str(datetime.now() - start))
 
             numBases = 0
             for base in bases:
@@ -800,16 +916,17 @@ if __name__=="__main__":
 
             start = datetime.now()
             baseCubeList, baseCubeNeighbors, aaCubeList, tally = find_neighbors(bases, amino_acids, aa_part, 10, PDB_IFE_Dict[PDB])
-            print("  Time to find neighboring bases and amino acids " + str(datetime.now() - start))
 
             print("  Kept %d bases and omitted %d bases" % tally)
 
-            start = datetime.now()
+            timerData = myTimer("Annotating interactions",timerData)
+
             list_base_aa, list_aa_coord, list_base_coord = annotate_interactions(bases, amino_acids, aa_part, 10, baseCubeList, baseCubeNeighbors, aaCubeList)
-            print("  Time to annotate interactions " + str(datetime.now() - start))
+
+            timerData = myTimer("Recording interactions",timerData)
 
             # accumulate list of interacting units by base, amino acid, interaction type, and edges
-            for base_residue, aa_residue, interaction, edge, standard_aa_center, param in list_base_aa:
+            for base_residue, aa_residue, interaction, edge, standard_aa, param in list_base_aa:
                 base = base_residue.unit_id()
                 # skip symmetry operated instances; generally these are just duplicates
                 if not "||||" in str(base):
@@ -817,7 +934,7 @@ if __name__=="__main__":
                     base_component = str(base).split("|")
                     aa_component = str(aa).split("|")
                     key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
-                    allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa_center,param))  # store tuples
+                    allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
 
             """ 3D plots of base-aa interactions
             for base, aa, interaction in list_base_aa:
@@ -850,5 +967,8 @@ if __name__=="__main__":
 
         # when appropriate, write out HTML files
         if len(PDB_IFE_Dict) > 100:
+            print("Writing " + outputDataFile)
             pickle.dump((allInteractionDictionary,PDB_List),open(outputDataFile,"wb"))
-            writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
+            writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
+
+        myTimer("summary",timerData)
