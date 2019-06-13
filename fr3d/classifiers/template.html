@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<link rel="shortcut icon" href="http://rna.bgsu.edu/rna3dhub/icons/P_icon.png">
+<head>
+  <title>###PAGETITLE###</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js" type="text/javascript"></script>
+  ###JS1###
+  ###JS2###
+  ###JS3###
+  ###REFRESH###
+</head>
+
+<body>
+
+<h2>RNA-protein output</h2>
+###QUERYNAME###
+<br>
+<div style="height:180px;width:100%;border:solid 2px black;overflow:scroll;overflow-x:scroll;overflow-y:scroll;">
+###CANDIDATELIST###
+</div>
+
+<table border=0>
+<tr>
+<td valign="top">
+
+###JS4###
+
+    <input type="button" id="neighborhood" value="Show neighborhood">
+    <input type="button" id="prev" value="Previous">
+    <input type="button" id="next" value="Next">
+    <input type="button" id='all' value='Show all'>
+    <label><input type="checkbox" id="showNtNums">Nucleotide numbers</label>
+    <!--<label><input type="checkbox" id="stereo1">Stereo</label>-->
+    <input type="button" id="stereo2" value="Stereo">
+    Coloring options: <select id="colorOPT">
+                    <option value="Default">Default</option>
+                    <option value="CPK" selected>CPK</option>
+                    <option value="RSR">Real Space R (RSR)</option>
+                    <option value="RSRZ">RSR Z-Score (RSRZ)</option>
+    </select>
+</div>
+
+    <div class='showRSR' style="display:none">
+                    <svg height="30" width="340">
+                        <defs>
+                            <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="10%" style="stop-color:#0d0887; stop-opacity:1" />
+                                <stop offset="20%" style="stop-color:#6603a5; stop-opacity:1" />
+                                <stop offset="30%" style="stop-color:#8a0da2; stop-opacity:1" />
+                                <stop offset="40%" style="stop-color:#ac2693; stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#ca457a; stop-opacity:1" />
+                                <stop offset="60%" style="stop-color:#df6264; stop-opacity:1" />
+                                <stop offset="70%" style="stop-color:#f0824d; stop-opacity:1" />
+                                <stop offset="80%" style="stop-color:#faa638; stop-opacity:1" />
+                                <stop offset="90%" style="stop-color:#fbcc27; stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#f0f921; stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    <rect x="20" y="0" width="300" height="15" fill="url(#grad3)"  />
+                    <text x="20" y="30" font-family="sans-serif" font-size="12px" fill="black">0.0</text>
+                    <text x="90" y="30" font-family="sans-serif" font-size="12px" fill="black">RSR Scale truncated at 0.5</text>
+                    <text x="310" y="30" font-family="sans-serif" font-size="12px" fill="black">0.5</text>
+                    </svg>
+    </div>
+
+                <div class='showRSRZ' style="display:none">
+                    <svg height="45" width="340">
+                        <defs>
+                        <text x="120" y="0" font-family="sans-serif" font-size="12px" fill="black">RSRZ Scale</text>
+                            <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="25%" style="stop-color:green;stop-opacity:1" />
+                                <stop offset="25%" style="stop-color:yellow;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:yellow;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:orange;stop-opacity:1" />
+                                <stop offset="75%" style="stop-color:orange;stop-opacity:1" />
+                                <stop offset="75%" style="stop-color:red;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:red;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    <rect x="20" y="0" width="300" height="15" fill="url(#grad2)"  />
+                    <text x="92" y="30" font-family="sans-serif" font-size="12px" fill="black">1</text>
+                    <text x="167" y="30" font-family="sans-serif" font-size="12px" fill="black">2</text>
+                    <text x="243" y="30" font-family="sans-serif" font-size="12px" fill="black">3</text>
+                    <text x="140" y="45" font-family="sans-serif" font-size="12px" fill="black">RSRZ Scale</text>
+                    </svg>
+                </div>
+</td>
+
+
+    <td valign="top">
+        <div id ='chart' style="text-align: left;">
+          <script src="//d3js.org/d3.v4.min.js"></script>
+
+          <!--
+          The sample data is provided in heatmap.js from lines 70-80
+
+          <script type="text/javascript">
+            var data = "something"
+          </script>
+          -->
+
+###DISCREPANCYDATA###
+###JS5###
+</div>
+</td>
+</tr>
+</table>
+Copyright 2019 Bowling Green State University RNA group
+</body>
+</html>
