@@ -17,6 +17,7 @@ nt_sugar = {}
 nt_backbone = {}
 HB_donors = {}
 HB_acceptors = {}
+HB_weak_donors = {}
 
 
 #List of amino acids for perpendicular interactions
@@ -48,6 +49,7 @@ planar_atoms['U'] = ['C2','N1','N3']    # need DNA atoms for DT
 planar_atoms['DC'] = ['C6','N1','C5']
 planar_atoms['DG'] = ['C4','C5','N3']
 
+# three atoms in certain amino acids used to calculate the plane of the amino acid
 planar_atoms['ARG'] = ['CZ','NH1','NH2']
 planar_atoms['ASN'] = ['CG','OD1','ND2']
 planar_atoms['ASP'] = ['CG','OD1','OD2']
@@ -56,7 +58,7 @@ planar_atoms['GLN'] = ['CD','OE1','NE2']
 planar_atoms['GLU'] = ['CD','OE1','OE2']
 planar_atoms['HIS'] = ['NE2','CD2','CE1']
 planar_atoms['PHE'] = ['CG','CD1','CZ']
-planar_atoms['PRO'] = ['CA','N','CG']
+#planar_atoms['PRO'] = ['CA','N','CG']
 planar_atoms['TRP'] = ['CD2','CG','CE2']
 planar_atoms['TYR'] = ['CE2','CZ','CE1']
 planar_atoms['LYS'] = ['CE','CD','NZ']         # need to verify
@@ -102,21 +104,22 @@ HB_acceptors ['DT'] = ["O2", "O4", "O2'"]
 
 HB_donors['ARG'] = ['NE', 'NH1', 'NH2']
 HB_acceptors['ARG'] = []
+HB_weak_donors['ARG'] = ['CA','CD']
 
-HB_donors['ASN'] = ['ND2', 'OD1']        # list both because sometimes they are flipped
-HB_acceptors['ASN'] = ['OD1', 'ND2']     # this allows a mis-modeled structure to have
-                                         # an identified hydrogen bond
-HB_donors['ASP'] = ['OD1', 'OD2']        # could have OH, could be donor
+HB_donors['ASN'] = ['ND2']
+HB_acceptors['ASN'] = ['OD1']
+
+HB_donors['ASP'] = ['OD1', 'OD2']        # could have OH, exactly one of the oxygens could be donor
 HB_acceptors['ASP'] = ['OD1', 'OD2']
 
-HB_donors['GLN'] = ['NE2', 'OE1']        # list both in case of mis-modeled structure
-HB_acceptors['GLN'] = ['OE1', 'NE2']
+HB_donors['GLN'] = ['NE2']
+HB_acceptors['GLN'] = ['OE1']
 
-HB_donors['GLU'] = ['OE1', 'OE2']        # could have OH, could be donor
+HB_donors['GLU'] = ['OE1', 'OE2']        # could have OH, exactly one of the oxygens could be donor
 HB_acceptors['GLU'] = ['OE1', 'OE2']
 
-HB_donors['HIS'] = ['CD2', 'CE1', 'ND1', 'NE2']
-HB_acceptors['HIS'] = ['CD2', 'CE1', 'ND1', 'NE2']   # list both in case of 180 degree rotation
+HB_donors['HIS'] = ['ND1', 'NE2']
+HB_acceptors['HIS'] = ['CD2', 'CE1']
 
 HB_donors['LYS'] = ['NZ']
 HB_acceptors['LYS'] = []
@@ -271,8 +274,8 @@ NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
 NAbasehydrogens['DC'] = ['H1','H6','H5','1H4','2H4']
 NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
 NAbasehydrogens['DG'] = ['H1','H8','H9','1H2','2H2']
-#NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
-#NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
+NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
+NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 #Amino acid computation definitions
 
@@ -332,20 +335,20 @@ aa_linker['PRO'] = []
 aa_fg['PRO'] = ['CB','CG','CD']
 
 aa_backbone['MET'] = backbone
-aa_linker['MET'] = ['CB']
-aa_fg['MET'] = ['CG','SD','CE']
+aa_linker['MET'] = []
+aa_fg['MET'] = ['CB','CG','SD','CE']
 
 aa_backbone['ILE'] = backbone
-aa_linker['ILE'] = ['CB']
-aa_fg['ILE'] = ['CG1','CG2','CD1']
+aa_linker['ILE'] = []
+aa_fg['ILE'] = ['CB','CG1','CG2','CD1']
 
 aa_backbone['LEU'] = backbone
-aa_linker['LEU'] = ['CB']
-aa_fg['LEU'] = ['CG','CD2','CD1']
+aa_linker['LEU'] = []
+aa_fg['LEU'] = ['CB','CG','CD2','CD1']
 
 aa_backbone['VAL'] = backbone
-aa_linker['VAL'] = ['CB']
-aa_fg['VAL'] = ['CG1','CG2']
+aa_linker['VAL'] = []
+aa_fg['VAL'] = ['CB','CG1','CG2']
 
 aa_backbone['ALA'] = backbone
 aa_linker['ALA'] = []
@@ -356,8 +359,8 @@ aa_linker['GLY'] = []
 aa_fg['GLY'] = []
 
 aa_backbone['SER'] = backbone
-aa_linker['SER'] = ['CB']
-aa_fg['SER'] = ['OG']
+aa_linker['SER'] = []
+aa_fg['SER'] = ['CB','OG']
 
 aa_backbone['THR'] = backbone
 aa_linker['THR'] = ['CB']

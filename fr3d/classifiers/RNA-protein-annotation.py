@@ -40,6 +40,15 @@ from os import path
 
 from time import time
 
+HB_donor_hydrogens = {}
+HB_donor_hydrogens['A'] = {"N6":["1H6","2H6"], "C2":["H2"], "C8":["H8"], "O2'":[]}
+HB_donor_hydrogens['G'] = {"N1":["H1"], "N2":["2H2","1H2"], "C8":["H8"], "O2'":[]}
+HB_donor_hydrogens['C'] = {"N4":["1H4","2H4"], "C5":["H5"], "C6":["H6"], "O2'":[]}
+HB_donor_hydrogens['U'] = {"N3":["H3"], "C5":["H5"], "C6":["H6"], "O2'":[]}
+
+
+
+
 def myTimer(state,data={}):
 
     # add elapsed time to the current state of the timer
@@ -68,25 +77,33 @@ def myTimer(state,data={}):
 
 def get_structure(filename):
 
+    if ".pdb" in filename:
+        filename = filename.replace(".cif","")
+
     if os.path.exists(filename+".pickle"):
-        print("Loading " + filename + ".pickle")
+        print("  Loading " + filename + ".pickle")
         structure = pickle.load(open(filename+".pickle","rb"))
         return structure
 
     if not os.path.exists(filename):
-        mmCIFname = filename[-8:]
-        print("Downloading "+mmCIFname)
+        mmCIFname = filename[-8:]               # last 8 characters ... awkward
+        print("  Downloading "+mmCIFname)
         f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
         myfile = f.read()
         with open(filename, 'w') as outfile:
             outfile.write(myfile)
 
+    # uncomment the following line to focus on downloading CIF files; sometimes it hangs and you restart
+#    raise Exception("Skipping CIF reading for now")
+
     with open(filename, 'rb') as raw:
-        print("Loading " + filename)
+        print("  Loading " + filename)
         structure = Cif(raw).structure()
         """All RNA bases are placed in the standard orientation. All Hydrogen
  atoms are inferred. Rotation matrix is calculated for each base."""
-        structure.infer_hydrogens()
+
+#        structure.infer_hydrogens()  # they are already inferred; doing this again repeats each hydrogen atom twice!
+
 #        pickle.dump(structure,open(filename+".pickle","wb"))  # larger file sizes than .cif ... not sure why
 
         return structure
@@ -105,7 +122,7 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
     baseCubeList = {}
     baseCubeNeighbors = {}
 
-    print("Working with " + IFE)
+    print("  Working with " + IFE)
 
     for base in bases:
         if len(IFE) > 0:               # check that base is in IFE
@@ -172,6 +189,7 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
     aaList_len = None
     new_aaList_len = None
     list_base_aa = []
+    hbond_aa_dict = {}
 
     for key in baseCubeList:
         for aakey in baseCubeNeighbors[key]:
@@ -228,21 +246,20 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
                             standard_aa_center = standard_aa.centers[aa_part]
 
                             # get a preliminary annotation of the interaction
-                            (interaction,interaction_parameters) = type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms)
+#                            (interaction,interaction_parameters) = type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms)
+                            (interaction,interaction_parameters) = type_of_interaction(standard_base, standard_aa, aa_coordinates, standard_aa_center, base_atoms)
 
                             base_aa = None
-                            if interaction in ["pseudopair","SHB","perpendicular-edge","other-pair"]:
+                            if interaction in ["pseudopair","SHB","perpendicular-edge","other-edge"]:
                                 (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
                                 interaction_parameters["angle-in-plane"] = angle
                                 base_aa = (base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)
 
                             elif interaction in ["stacked","pi-pi-stacking","cation-pi","perpendicular-stacking","other-stack"]:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
-                                interaction_parameters["height-above-plane"] = height
                                 base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
 
                             else:
-                                print("Untrapped interaction: " + interaction)
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
                                 base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
 
@@ -254,15 +271,29 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
                                 for aa_atom in aa_residue.atoms():
                                     list_aa_coord.append(aa_coordinates)
 
-    return list_base_aa, list_aa_coord, list_base_coord
+                            # detect one amino acid interacting with two bases
+                            if interaction in ["pseudopair","SHB","perpendicular-edge"]:
+                                if aa_residue.unit_id() in hbond_aa_dict:
+                                    hbond_aa_dict[aa_residue.unit_id()].append((base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters))
+                                    print("  %s makes hbonds with %d bases" % (aa_residue.unit_id(),len(hbond_aa_dict[aa_residue.unit_id()])))
+                                else:
+                                    hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
+
+
+    print("  Found %d nucleotide-amino acid pairs" % count_pair)
+    print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
+
+    return list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict
 
 def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms):
     """ This function works with base and aa in standard position """
     squared_xy_dist_list = []
 
     """Defines different sets of amino acids"""
-    stacked_aromatic_aa = set (["ARG", "ASN", "ASP", "GLU", "GLN", "HIS", "PHE", "PRO", "TRP", "TYR"])
+    planar_aa = set (["ARG", "ASN", "ASP", "GLU", "GLN", "HIS", "PHE", "TRP", "TYR"])
     stacked_aliphatic = set(["ALA", "CYS", "ILE", "LEU", "MET", "PRO", "SER", "THR", "VAL"])
+    # Note:  LYS and GLY are not in the previous lists
+
     edge_to_edge_aa = set (["ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "HIS", "LYS", "PHE", "SER", "THR", "TYR", "TRP"])
     shb_aa = set (["ARG", "ASN", "ASP", "GLU", "GLN", "HIS", "LYS", "SER", "THR", "TYR"])
 
@@ -279,16 +310,18 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
 
     # for a stacking interaction, the x,y coordinate of at least one atom of the amino acid group needs to be
     # within sqrt(5) = 2.236 of the base center 0,0
-    if min(squared_xy_dist_list) <= 5:
+    min_dist = np.sqrt(min(squared_xy_dist_list))
+
+    if min_dist <= 2.236:
         #print base_residue.unit_id(), aa_residue.unit_id(), min(squared_xy_dist_list), mean_z
-        if aa_residue.sequence in stacked_aromatic_aa:
-            return stacking_planar_annotation(base_residue, aa_residue, min(squared_xy_dist_list))
+        if aa_residue.sequence in planar_aa:
+            return stacking_planar_annotation(base_residue, aa_residue, min_dist)
 
         elif aa_residue.sequence in stacked_aliphatic:
-            return stacking_non_planar_annotation(aa_residue, aa_coordinates)
+            return stacking_non_planar_annotation(aa_residue, aa_coordinates, min_dist)
 
         else:
-            return ("other-stack",{"squared-xy-dist":min(squared_xy_dist_list)})
+            return ("other-stack",{"dist-xy-from-center":min_dist})
 
     # check for interactions in the plane of the base
     mean_z = standard_aa_center[2]
@@ -299,9 +332,9 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
             angle = calculate_angle_between_planar_residues(base_residue, aa_residue)
             if angle:
                 if 0 <= angle <= 45 and num_hydrogen_bonds >= 2:
-                    return ("pseudopair",{"hydrogen-bonds":hydrogen_bond_list})
+                    return ("pseudopair",{"hydrogen-bonds":hydrogen_bond_list,"angle-between-planes":angle})
                 elif 45 <= angle:
-                    return ("perpendicular-edge",{"hydrogen-bonds":hydrogen_bond_list})
+                    return ("perpendicular-edge",{"hydrogen-bonds":hydrogen_bond_list,"angle-between-planes":angle})
 
         if aa_residue.sequence in shb_aa:
 #            base_seq = base_residue.sequence
@@ -310,7 +343,9 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
             if num_hydrogen_bonds >= 1:
                 return ("SHB",{"hydrogen-bonds":hydrogen_bond_list})
 
-    return ("other",{"squared-xy-dist":min(squared_xy_dist_list),"mean_z":mean_z})
+        return ("other-edge",{"hydrogen-bonds":hydrogen_bond_list})
+
+    return ("other",{"dist-xy-from-center":min_dist,"hydrogen-bonds":hydrogen_bond_list})
 
 def enough_near_contacts(base_residue, aa_residue, base_atoms, num_near_contacts_needed):
     """Calculates atom to atom distance of base atoms and aa atoms
@@ -333,47 +368,99 @@ def enough_near_contacts(base_residue, aa_residue, base_atoms, num_near_contacts
 
 def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
     """Calculates number of Hydrogen bonds between amino acid part and base_part
+    and returns the number and a list of pairs of atoms from (base,aa)
     """
 
     n = 0
+    n0 = 0
     hydrogen_bond_list = []
+    hb0 = []
+
     aa_key = aa_residue.sequence
 
+    hb_angle_cutoff = 100
+    min_distance = 4
+
+    used_base_atoms = []
+    used_aa_atoms = []
+    carboxylate_donor_used = False   # track the two oxygens on ASP and GLU; only one can be a donor
+
+    # these three amino acids can be mis-modeled with the functional group flipped 180 degrees
+    if aa_key in ["ASN","GLN","HIS"]:
+        num_flips = 2
+    else:
+        num_flips = 1
+
     if aa_key in HB_donors or aa_key in HB_acceptors:
-        min_distance = 4
         base_key = base_residue.sequence
-        base_donors = HB_donors[base_key]
+        base_donors = HB_donor_hydrogens[base_key].keys()
         base_acceptors = HB_acceptors[base_key]
         base_HB_atoms = list(set(base_donors + base_acceptors))  # don't list O2' twice
 
-        aa_donors = HB_donors[aa_key]
-        aa_acceptors = HB_acceptors[aa_key]
+        for flip in range(0,num_flips):
+            n = 0
+            hydrogen_bond_list = []
+            if flip == 0:
+                aa_donors = HB_donors[aa_key]
+                aa_acceptors = HB_acceptors[aa_key]
+                flip_name = ""
+            else:
+                # pretend that these three amino acids are flipped; they are often mis-modeled
+                if aa_key == "ASN":
+                    aa_donors = ["OD1"]
+                    aa_acceptors = ["ND2"]
+                elif aa_key == "GLN":
+                    aa_donors = ["OE1"]
+                    aa_acceptors = ["NE2"]
+                elif aa_key == "HIS":
+                    aa_donors = ['CD2', 'CE1']
+                    aa_acceptors = ['ND1', 'NE2']
+                flip_name = "f"
 
-        for base_atom in base_residue.atoms(name=base_HB_atoms):
-            for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
-                distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
-                distance = np.linalg.norm(distance)
-                if distance <= min_distance:
-                    #print "HB", base_residue.unit_id(), aa_residue.unit_id(), base_atom.name, aa_atom.name, distance
-                    if base_atom.name in base_donors and aa_atom.name in aa_acceptors:
-                        n = n+1
-                        hydrogen_bond_list.append((base_atom.name,aa_atom.name))
-                    elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
-                        n = n+1
-                        hydrogen_bond_list.append((base_atom.name,aa_atom.name))
+            for base_atom in base_residue.atoms(name=base_HB_atoms):
+                for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
+                    distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+                    distance = np.linalg.norm(distance)
+                    if distance <= min_distance:
+                        #print "HB", base_residue.unit_id(), aa_residue.unit_id(), base_atom.name, aa_atom.name, distance
+                        if base_atom.name in base_donors and aa_atom.name in aa_acceptors:
+                            for hydrogen_atom in base_residue.atoms(name=HB_donor_hydrogens[base_key][base_atom.name]):
+                                hb_angle = calculate_hb_angle(base_atom.coordinates(),hydrogen_atom.coordinates(),aa_atom.coordinates())
+    #                            print("hb_angle %10.8f" % hb_angle)
+                                if hb_angle > hb_angle_cutoff:
+                                    if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
+                                        n = n+1
+                                    hydrogen_bond_list.append((base_atom.name,hydrogen_atom.name,aa_atom.name+flip_name,distance,hb_angle))
+                                    used_base_atoms.append(base_atom.name)
+                                    used_aa_atoms.append(aa_atom.name)
+
+                        elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
+                            if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
+                                # aa with carboxylate, only count one oxygen as a donor
+                                if aa_key == "ASP" or aa_key == "GLU":
+                                    if not carboxylate_donor_used:
+                                        n = n + 1
+                                    carboxylate_donor_used = True
+                                else:
+                                    n = n+1
+                            hydrogen_bond_list.append((base_atom.name,"H?",aa_atom.name+flip_name,distance,0))
+                            used_base_atoms.append(base_atom.name)
+                            used_aa_atoms.append(aa_atom.name)
+                        if flip == 0 and num_flips == 2:
+                            n0 = n
+                            hb0 = hydrogen_bond_list
+
     #    print base_residue.unit_id(), aa_residue.unit_id(), n
 
+    if num_flips == 2:
+        if n0 >= n:
+            n = n0
+            hydrogen_bond_list = hb0
+        else:
+            print("Found a flipped amino acid"+base_key+" "+aa_key+" "+str(n)+"$$$$$$$$$$$$$$$$$")
+            print(hydrogen_bond_list)
+
     return (n,hydrogen_bond_list)
-
-def calculate_angle_between_planar_residues (base_residue, aa_residue):
-    vec1 = normal_vector_calculation(base_residue)
-    vec2 = normal_vector_calculation(aa_residue)
-
-    if len(vec1) == 3 and len(vec2) == 3:
-        angle = smaller_angle_between_vectors(vec1, vec2)
-        return angle
-    else:
-        return None
 
 def stacking_planar_annotation (base_residue, aa_residue, min_dist):
     """ For planar amino acids, determine the stacking classification
@@ -382,21 +469,23 @@ def stacking_planar_annotation (base_residue, aa_residue, min_dist):
 
     angle = calculate_angle_between_planar_residues(base_residue, aa_residue)
 
+    # cation is about the type of amino acid.  List them ... HIS is positive sometimes.
+    #
     perpendicular_stack_aa = set(["HIS", "PHE", "TRP", "TYR"])
     perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN"])
 
     if angle:
         if angle <= 45:
             return ("pi-pi-stacking",{"angle-between-planes":angle})
-        elif 45 <= angle:
+        elif angle > 45:
             if aa_residue.sequence in perpendicular_stack_aa:
-                return ("perpendicular-stacking",{"angle-between-planes":angle})
+                return ("perpendicular-stacking",{"angle-between-planes":angle,"dist-xy-from-center":min_dist})
             elif aa_residue.sequence in perpendicular_aa:
-                return ("cation-pi",{"angle-between-planes":angle})
+                return ("cation-pi",{"angle-between-planes":angle,"dist-xy-from-center":min_dist})
 
-    return ("stacking-other",{"angle-between-planes":None})
+    return ("other-stack",{"angle-between-planes":None,"dist-xy-from-center":min_dist})
 
-def stacking_non_planar_annotation(aa_residue, aa_coordinates):
+def stacking_non_planar_annotation(aa_residue, aa_coordinates, min_dist):
     """ For non-planar amino acids, determine the stacking type
     by looking at how spread out the atoms are above/below the
     plane of the base """
@@ -411,9 +500,20 @@ def stacking_non_planar_annotation(aa_residue, aa_coordinates):
     diff = max_baa - min_baa
     #print aa_residue.unit_id(), diff
     if diff <= tilt_cutoff[aa_residue.sequence]:
-        return ("stacked",{"stacking-diff":diff})
+        return ("stacked",{"stacking-diff":diff,"dist-xy-from-center":min_dist})
 
-    return ("stacking-other",{"stacking-diff":diff})
+    return ("other-stack",{"stacking-diff":diff,"dist-xy-from-center":min_dist})
+
+def calculate_angle_between_planar_residues (base_residue, aa_residue):
+    vec1 = normal_vector_calculation(base_residue)
+    vec2 = normal_vector_calculation(aa_residue)
+
+    if len(vec1) == 3 and len(vec2) == 3:
+        angle = smaller_angle_between_vectors(vec1, vec2)
+        return angle
+    else:
+        print("Missing a normal vector %s %s" % (base_residue.unit_id(),aa_residue.unit_id()))
+        return None
 
 def normal_vector_calculation(residue):
     key = residue.sequence
@@ -427,6 +527,11 @@ def normal_vector_calculation(residue):
         return normal_vector
     else:
         return []
+
+# this function calculates the angle made from A to B to C from 0 to 180 degrees
+def calculate_hb_angle(A,B,C):
+    if len(A) == 3 and len(B) == 3 and len(C) == 3:
+        return angle_between_vectors(np.subtract(A,B),np.subtract(C,B))
 
 # This function calculates an angle from 0 to 90 degrees between two vectors
 def smaller_angle_between_vectors(vec1, vec2):
@@ -467,17 +572,32 @@ def detect_base_edge(base_residue, base_coordinates, aa_residue, aa_coordinates)
     aa_center_x = np.mean(aa_x)
     aa_center_y = np.mean(aa_y)
 
-    for base_atom in base_residue.atoms(name=NAbaseheavyatoms[base_residue.sequence]):
+    NAsixsidedringatoms = ['N1','C2','N3','C4','C5','C6']
+
+#    for base_atom in base_residue.atoms(name=NAbaseheavyatoms[base_residue.sequence]):
+    for base_atom in base_residue.atoms(name=NAsixsidedringatoms):
         key = base_atom.name
         base_x.append(base_coordinates[key][0])
         base_y.append(base_coordinates[key][1])
 
-    # the following values *should* be zero to many decimal places, and are in every case I've checked - CLZ
     base_center_x = np.mean(base_x)
     base_center_y = np.mean(base_y)
 
-    y = aa_center_y - base_center_y
+    """
+    reference_atom = {'A':'C2', 'C':'O2', 'G':'N2', 'U':'O2'}    # for WC versus Sugar edge
+    reference_atom = {'A':'N6', 'C':'N4', 'G':'O6', 'U':'O4'}    # for WC versus Hoogsteen edge
+    x = base_coordinates[reference_atom[base_residue.sequence]][0] - base_center_x
+    y = base_coordinates[reference_atom[base_residue.sequence]][1] - base_center_y
+    angle_aa = np.arctan2(y,x)         # values -pi to pi
+    angle_deg = (180*angle_aa)/np.pi # values -180 to 180
+    print("Base %s has S/WC reference angle %10.8f" % (base_residue.sequence,angle_deg))
+
+    reference_atom = {'A':'N9', 'C':'N1', 'G':'N9', 'U':'N1'}    # for WC versus Hoogsteen edge
+    print("Base %s has N1/N9 x value %10.8f" % (base_residue.sequence,base_coordinates[reference_atom[base_residue.sequence]][0]))
+    """
+
     x = aa_center_x - base_center_x
+    y = aa_center_y - base_center_y
     angle_aa = np.arctan2(y,x)         # values -pi to pi
     angle_deg = (180*angle_aa)/np.pi # values -180 to 180
 
@@ -485,17 +605,17 @@ def detect_base_edge(base_residue, base_coordinates, aa_residue, aa_coordinates)
     pyrimidine = set(["C", "U", "DC", "DT"])
 
     if base_residue.sequence in purine:
-        if -15 <= angle_deg <= 90:
+        if -14 <= angle_deg <= 104:
             return ("fgWC",angle_deg)
-        elif 90 < angle_deg or angle_deg < -100:
+        elif 104 < angle_deg or aa_center_x < -1.3:
             return ("fgH",angle_deg)
         else:
             return ("fgS",angle_deg)
 
     elif base_residue.sequence in pyrimidine:
-        if -45 <= angle_deg <= 90:
+        if -32 <= angle_deg <= 86:
             return ("fgWC",angle_deg)
-        elif 90 < angle_deg or angle_deg < -90:
+        elif 86 < angle_deg or aa_center_x < -0.37:
             return ("fgH",angle_deg)
         else:
             return ("fgS",angle_deg)
@@ -650,18 +770,33 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
     SERVER = False
     SERVER = True
     if not SERVER:
-        JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
-        JS2 = '  <script src="./js/jquery.jmolToolsRNAProtein.js"></script>'
-        JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
+        JS1 = '<script src="./js/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'
+        JS3 = '<script src="./js/imagehandlinglocal.js"></script>'
         JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
         JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+        JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
+        JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
+        CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
+        CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
+
     else:
-        JS1 = '  <script src="http://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
-        JS2 = '  <script src="http://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
-        JS2 = '  <script src="./js/jquery.jmolToolsRNAProtein.js"></script>'   # special code to superimpose bases
-        JS3 = '  <script src="http://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
+        JS1 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'   # special code to superimpose bases
+        JS3 = '<script src="http://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
         JS4 = '<script src="http://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
         JS5 = '<script type="text/javascript" src="http://rna.bgsu.edu/webfr3d/js/heatmap.js"></script>'
+        JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
+        JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
+        CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
+        CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
+
+    # not working yet, so omit:
+    JS6 = ""
+    JS7 = ""
+
+    count_pair = 0
 
     for key in allInteractionDictionary:
         pagetitle = key.replace(" ","-")
@@ -670,7 +805,8 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
 #        print("Writing HTML file for "+key+" in "+htmlfilename+".html, found "+ str(len(allInteractionDictionary[key])) + " instances")
 
         fields = key.split("_")
-        print(fields[0]+"\t"+fields[1]+"\t"+fields[2]+"\t"+fields[3]+"\t\t"+str(len(allInteractionDictionary[key])))
+        print(fields[0]+"\t"+fields[1]+"\t"+fields[2]+"\t"+fields[3]+"\t"+str(len(allInteractionDictionary[key])))
+        count_pair += len(allInteractionDictionary[key])
 
         # limit the number of instances shown, to be able to compute and display discrepancy
         numForDiscrepancy = min(300,len(allInteractionDictionary[key]))
@@ -708,13 +844,25 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
         # write out text for radio boxes to display each individual interaction
         i = 1
         queryNote = "<h2>"+pagetitle+"</h2>\n"
-        candidatelist = '<table style="white-space:nowrap;">\n'
-        candidatelist += '<tr><th>Number</th><th>View</th><th>Nucleotide</th><th>Amino acid</th><th>Interaction</th><th>Edge</th><th>a.a. x</th><th>a.a. y</th><th>a.a. z</th>'
+
+        candidatelist = '<table style="white-space:nowrap;" id="table">\n'
+        candidatelist += '<thead><tr><th><span onclick="sortTable(1)">Number</span></th>'
+        candidatelist += '<th>View</th>'
+        candidatelist += '<th><span onclick="sortTable(3)">Nucleotide</span></th>'
+        candidatelist += '<th><span onclick="sortTable(4)">Amino acid</span></th>'
+        candidatelist += '<th><span onclick="sortTable(5)">Interaction</span></th>'
+        candidatelist += '<th><span onclick="sortTable(6)">Edge</span></th>'
+        candidatelist += '<th><span onclick="sortTable(7)">a.a. x</span></th>'
+        candidatelist += '<th><span onclick="sortTable(8)">a.a. y</span></th>'
+        candidatelist += '<th><span onclick="sortTable(9)">a.a. z</span></th>'
         param = allInteractionDictionary[key][0][5]
-        param_list = list(param.keys())
+        param_list = sorted(list(param.keys()))
+        col = 9
         for header in param_list:
-            candidatelist += "<th>"+header+"</th>"
-        candidatelist += "</tr>/n"
+            col += 1
+            candidatelist += '<th><span onclick="sortTable(%d)">%s</span></th>' % (col,header)
+        candidatelist += "</tr></thead>\n"
+        candidatelist += '<tbody id="table_rows">\n'
         for base_id, aa_id, interaction, edge, standard_aa, param in allInteractionDictionary[key]:
             candidatelist += '<tr><td>'+str(i)+'.</td><td><label><input type="checkbox" id="'+str(i-1)+'" class="jmolInline" data-coord="'
             candidatelist += base_id +","+ aa_id
@@ -730,12 +878,14 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
                 if isinstance(param[header],float):
                     candidatelist += '<td>%0.4f</td>' % param[header]
                 elif isinstance(param[header],list):
-                    for pair in param[header]:
-                        candidatelist += '<td>%s-%s</td>' % pair
+                    for hbond in param[header]:
+                        candidatelist += '<td>%s-%s-%s,%0.2fA,%0.2fd</td>' % hbond
+                else:
+                    candidatelist += '<td>Error</td>'
 
             candidatelist += '</tr>\n'
             i += 1
-        candidatelist += '</table>\n'
+        candidatelist += '</tbody></table>\n'
         candidatelist = candidatelist
 
         # write out text to tell what values to put in the heat map
@@ -774,11 +924,171 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
         template = template.replace("###JS4###",JS4)
         template = template.replace("###REFRESH###","")
         template = template.replace("###JS5###",JS5)    # include heatmap.js code
-
+        template = template.replace("###JS6###",JS6)
+        template = template.replace("###JS7###",JS7)
+        template = template.replace("###CSS1###",CSS1)
+        template = template.replace("###CSS2###",CSS2)
 
         # write htmlfilename
         with open(outputHTML+'/'+htmlfilename+'.html', 'w') as myfile:
             myfile.write(template)
+
+    print("Wrote out %d pairwise interactions" % count_pair)
+
+        # upload the files to /var/www/html/RNAprotein
+
+def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
+
+    SERVER = True
+    SERVER = False
+    if not SERVER:
+        JS1 = '<script src="./js/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'
+        JS3 = '<script src="./js/imagehandlinglocal.js"></script>'
+        JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
+        JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+        JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
+        JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
+        CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
+        CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
+
+    else:
+        JS1 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'   # special code to superimpose bases
+        JS3 = '<script src="http://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
+        JS4 = '<script src="http://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
+        JS5 = '<script type="text/javascript" src="http://rna.bgsu.edu/webfr3d/js/heatmap.js"></script>'
+        JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
+        JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
+        CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
+        CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
+
+    # not working yet, so omit:
+    JS6 = ""
+    JS7 = ""
+
+    count_pair = 0
+
+    for key in allAATwoBaseDictionary:
+        pagetitle = key.replace(" ","-")
+        htmlfilename = key.replace(" ","-") + version
+
+#        print("Writing HTML file for "+key+" in "+htmlfilename+".html, found "+ str(len(allAATwoBaseDictionary[key])) + " instances")
+
+        fields = key.split("_")
+        print(key+"\t"+str(len(allAATwoBaseDictionary[key])))
+        count_pair += len(allAATwoBaseDictionary[key])
+
+        # limit the number of instances shown, to be able to compute and display discrepancy
+        numForDiscrepancy = min(300,len(allAATwoBaseDictionary[key]))
+
+        # calculate discrepancies between all instances, up to 300
+        discrepancy = np.zeros((numForDiscrepancy,numForDiscrepancy))
+        for i in range(0,numForDiscrepancy):
+            instance_1 = allAATwoBaseDictionary[key][i]
+            for j in range(i+1,numForDiscrepancy):
+                instance_2 = allAATwoBaseDictionary[key][j]
+                s = 0
+                discrepancy[i][j] = 0
+                discrepancy[j][i] = discrepancy[i][j]
+
+        # use greedy insertion 100 times to find a decent ordering of the instances
+        newOrder, bestPathLength, distances = orderWithPathLengthFromDistanceMatrix(discrepancy,100)
+
+        # rewrite the list of instances, limiting it to numForDiscrepancy
+        newList = []
+        for i in range(0,len(newOrder)):
+            newList.append(allAATwoBaseDictionary[key][newOrder[i]])
+        allAATwoBaseDictionary[key] = newList
+
+        # write out text for radio boxes to display each individual interaction
+        i = 1
+        queryNote = "<h2>"+pagetitle+"</h2>\n"
+
+        candidatelist = '<table style="white-space:nowrap;" id="table">\n'
+        candidatelist += '<thead><tr><th><span onclick="sortTable(1)">Number</span></th>'
+        candidatelist += '<th>View</th>'
+        candidatelist += '<th><span onclick="sortTable(3)">Amino acid</span></th>'
+        candidatelist += '<th><span onclick="sortTable(4)">Nucleotide1</span></th>'
+        candidatelist += '<th><span onclick="sortTable(5)">Nucleotide2</span></th>'
+        candidatelist += '<th><span onclick="sortTable(6)">Edge</span></th>'
+        candidatelist += '<th><span onclick="sortTable(7)">a.a. x</span></th>'
+        candidatelist += '<th><span onclick="sortTable(8)">a.a. y</span></th>'
+        candidatelist += '<th><span onclick="sortTable(9)">a.a. z</span></th>'
+        col = 9
+        param_list = []
+        for header in param_list:
+            col += 1
+            candidatelist += '<th><span onclick="sortTable(%d)">%s</span></th>' % (col,header)
+        candidatelist += "</tr></thead>\n"
+        candidatelist += '<tbody id="table_rows">\n'
+        for group in allAATwoBaseDictionary[key]:
+            aa = group[0][1]
+            base1 = group[0][0]
+            base2 = group[1][0]
+            candidatelist += '<tr><td>'+str(i)+'.</td><td><label><input type="checkbox" id="'+str(i-1)+'" class="jmolInline" data-coord="'
+            candidatelist += aa.unit_id() +","+ base1.unit_id() +","+ base2.unit_id()
+            candidatelist += '">&nbsp</td>'
+            candidatelist += '<td>%s</td>' % aa.unit_id()
+            candidatelist += '<td>%s</td>' % base1.unit_id()
+            candidatelist += '<td>%s</td>' % base2.unit_id()
+#            candidatelist += '<td>%s</td>' % edge
+#            candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][0]
+#            candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][1]
+#            candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][2]
+
+            candidatelist += '</tr>\n'
+            i += 1
+        candidatelist += '</tbody></table>\n'
+        candidatelist = candidatelist
+
+        # write out text to tell what values to put in the heat map
+        discrepancyText = ''
+        for c in range(0,numForDiscrepancy):
+            instance1 = allAATwoBaseDictionary[key][c][0][1].unit_id()  # id of aa
+            for d in range(0,numForDiscrepancy):
+                instance2 = allAATwoBaseDictionary[key][d][0][1].unit_id()  # id of aa
+
+                discrepancyText += '{"discrepancy": ' + str(discrepancy[newOrder[c]][newOrder[d]])
+                discrepancyText += ', "ife1": "' + str(c+1) + "-" + instance1 + '", "ife1_index": ' + str(c)
+                discrepancyText += ', "ife2": "' + str(d+1) + "-" + instance2 + '", "ife2_index": ' + str(d) + '}'
+                if c < numForDiscrepancy-1 or d < numForDiscrepancy-1:
+                    discrepancyText += ',\n'
+
+        # read template.html into one string
+#        with open(outputHTML+'/localtemplate.html', 'r') as myfile:
+        with open('template.html', 'r') as myfile:
+            template = myfile.read()
+
+        # replace ###PAGETITLE### with pagetitle
+        template = template.replace("###PAGETITLE###",pagetitle)
+
+        # replace ###CANDIDATELIST### with candidatelist
+        template = template.replace("###CANDIDATELIST###",candidatelist)
+
+        # replace ###DISCREPANCYDATA### with discrepancyText
+        discrepancyText = "var data =  [\n" + discrepancyText + "]"
+        discrepancyText = '<script type="text/javascript">\n' + discrepancyText + '\n</script>'
+        template = template.replace("###DISCREPANCYDATA###",discrepancyText)
+
+        template = template.replace("###QUERYNAME###",queryNote)
+        template = template.replace("###JS1###",JS1)
+        template = template.replace("###JS2###",JS2)
+        template = template.replace("###JS3###",JS3)
+        template = template.replace("###JS4###",JS4)
+        template = template.replace("###REFRESH###","")
+        template = template.replace("###JS5###",JS5)    # include heatmap.js code
+        template = template.replace("###JS6###",JS6)
+        template = template.replace("###JS7###",JS7)
+        template = template.replace("###CSS1###",CSS1)
+        template = template.replace("###CSS2###",CSS2)
+
+        # write htmlfilename
+        with open(outputHTML+'/'+htmlfilename+'.html', 'w') as myfile:
+            myfile.write(template)
+
+    print("Wrote out %d AA-two-base interactions" % count_pair)
 
         # upload the files to /var/www/html/RNAprotein
 
@@ -796,19 +1106,19 @@ PDB_List = ['6A2H']
 PDB_List = ['6A2H','6A2I','6IDE','6N60','6N61','6N62','5YUU','6DKS','6E8C','6GVQ','6GVT','6GVT','6GVU','5YUX','6BHX','6FWR','6FWS','6MG2','6MG3','6BQU','6BSE','6BSF','6FBQ','6FBR','6IG1','5YTC','5YTD','5YTE','5YTF','5YTG','5YTH','5Z3N','5ZVA','5ZVB','5YBD','5YUZ','5YV0','5YUS','5YUW','5YV3','5ZLV','6A47','6A4B','6E93','6E94','5WCU','5Z6Z','5ZFW','5ZFY','5ZFZ']
 PDB_List = ['6BHJ','6AI6','6CVO','6DOI','6DPB','6DOF','6DP4','6DO8','6DOX','6DOQ','6DPM','6DPF','6DOJ','6DP8','6DOC','6DP1','6DOU','6DON','6DPJ','6DPC','6DOG','6DP5','6DO9','6DOY','6DOR','6DPN','6DPG','6DOK','6DP9','6DOD','6DP2','6DMN','6DOV','6DOO','6DPK','6DPD','6DOH','6DP6','6DOA','6DOZ','6DOS','6DPO','6DOL','6DPH','6DPA','6DOE','6DP3','6DMV','6DOW','6DOP','6DPL','6DPE','6DP7','6DOB','6DP0','6DPP','6DOT','6DOM','6DPI','5ZRF','6D95','5ZQF','6D8P','6D9L','6D92','6D8A','6D8F','6D9K','6DT8','6DTA','6CVT','6CVP','6CVQ','6CVR','5W4U','5W51','5XPA','5USB','5XPG','5USN','5USO','6BM2','6BM4','6BLO','6BQF','6BLP','5XN0','5XN2','5XMA','6BSH','6BSI','6BSJ','6BSG','6AR3','6AR1','5OT2','5WTI','5OLA','5XOW','5VAJ','5KW1','5XOG','5O6U','5XUT','5XUU','5WJR','5XUZ','5XUS','5VI5','5X21','5VZH','5VZ8','5X22','5VZB','5TWS','5VZE','5W7O','5W7N','5MGA','5N9G','5XH6','5NFV','5XH7','5VO8','5UX0','5UHC','5UH6','5UH8','5UH9','5UH5','5X2G','5X2H','5U30','5U31','5U33','5SWM','5KK5','5AWH','5I2D','5FW2','5FW3','5B43','5FW1','4Z7K','5CR2','5IPL','5IPM','5IPN','5B2S','5B2T','5FQ5','5F0Q','5B2R','5F0S','5E18','5E17','5B2P','5B2Q','5B2O','5EV3','5EV4','5EV1','5EV2','5H9E','5H9F','5F9R','4XLN','4XLR','5CZZ','5AXW','5C4X','5C44','5C4A','5C4J','5C3E','4Y7N','4Y52','3X1L','4WB3','4PGY','4YLN','4YLO','4YLP','4WQS','4X67','4X6A','4S20','4Q5V','4QCL','4QYZ','4PY5','4UN3','4UN4','4UN5','4Q5S','4PQU','4PUO','4Q0B','4PWD','4PUQ','4O9M','4OL8','4OO8','4NDF','4NDG','4NDI','4KHW','4KHY','4KHS','4KI4','4KHU','4KI6','4H8K','4BOC','4BWM','4BXX','4BY1','4BY7','4K4Y','4K4V','4FXD','4FYD','4HKQ','4GZY','4GZZ','4HHT','4B3Q','4B3O','4B3P','3ULD','4BBS','4G7O','4GG4','3TWH','4DB4','4FO6','4DQS','3UQ2','3UQ0','4E7A','4A93','4A3G','4A3M','4A3D','4A3J','4A3E','4A3K','4A3B','4A3F','4A3L','4A3C','3S2H','3S1Q','3RZO','3S17','3S1R','3S14','3S1M','3S2D','3S15','3S1N','3RZD','3S16','3QRQ','3PO3','3PO2','3PGW','3OLA','3O3H','3AOH','3AOI','3O3F','3O3G','3M3Y','3M4O','3KYL','3IIN','3I55','3KJO','3HXM','3HK2','3HM9','3HVR','3HO1','3HJF','3I4M','3I4N','3HOU','3HOY','3HOV','3HOZ','3HOW','3HOX','3H3V','3ER8','3GTP','3GTL','3GTQ','3GTG','3GTM','3GTJ','3GTO','3GTK','3F73','3E2E','3E3J','2VUM','2R7Y','3BO4','3BSU','2R7Z','2QK9','2QKB','2QKK','2PPB','2Q2T','2Q2U','2O5J','2O5I','2YU9','2JA7','2JA8','2JA5','2JA6','2NVX','2E2I','2NVZ','2E2H','2NVQ','2E2J','2NVT','2HVS','2HVR','2G8F','2G8U','2G8H','2G8V','2G8I','2G8W','2G8K','1ZBI','1ZBL','1Y77','1Y1W','1Y1Y','1R9T','1R9S','1SI2','1S76','1S77','1SFO','1S0V','1Q7Y','1NH3','1H38','1MSW','1I6H','1HYS','1QLN','1D9D','1D9F']
 PDB_List = ['4V9F']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
-version = "_3.48_2.5"
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
-version = "_3.74_4.0"
 PDB_List = ['3JB9']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
 version = "_3.72_3.0"
-PDB_List = ['4V9F']
+PDB_List = ['1OCT']
+PDB_List = ['4v9fFH.pdb']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
+version = "_3.74_4.0"
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
 version = "_3.48_2.5"
+PDB_List = ['4V9F']
 
-ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
+ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
 
 base_seq_list = ['A']
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -837,6 +1147,8 @@ if __name__=="__main__":
     base_part = 'base'
 
     allInteractionDictionary = defaultdict(list)
+    allAATwoBaseDictionary = defaultdict(list)
+
     result_nt_aa = []               # for accumulating a complete list over all PDB files
 
     outputDataFile = outputBaseAAFG % ""
@@ -846,6 +1158,7 @@ if __name__=="__main__":
 
     if ReadPickleFile:
         print("Reading " + outputDataFile)
+        timerData = myTimer("Reading pickle file",timerData)
         allInteractionDictionary,PDB_List = pickle.load(open(outputDataFile,'rb'))
         writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
     else:
@@ -877,6 +1190,7 @@ if __name__=="__main__":
                 PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
 
         counter = 0
+        count_pair = 0
 
         for PDB in PDB_IFE_Dict:
             counter += 1
@@ -921,20 +1235,32 @@ if __name__=="__main__":
 
             timerData = myTimer("Annotating interactions",timerData)
 
-            list_base_aa, list_aa_coord, list_base_coord = annotate_interactions(bases, amino_acids, aa_part, 10, baseCubeList, baseCubeNeighbors, aaCubeList)
+            list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict = annotate_interactions(bases, amino_acids, aa_part, 10, baseCubeList, baseCubeNeighbors, aaCubeList)
 
             timerData = myTimer("Recording interactions",timerData)
 
             # accumulate list of interacting units by base, amino acid, interaction type, and edges
             for base_residue, aa_residue, interaction, edge, standard_aa, param in list_base_aa:
                 base = base_residue.unit_id()
-                # skip symmetry operated instances; generally these are just duplicates
+                # skip symmetry operated instances; generally these are just duplicates anyway
                 if not "||||" in str(base):
                     aa = aa_residue.unit_id()
                     base_component = str(base).split("|")
                     aa_component = str(aa).split("|")
                     key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
+                    count_pair += 1
                     allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
+
+            # accumulate a list of amino acids hydrogen bonding with more than one base
+            for aa_unit_id in hbond_aa_dict:
+                if len(hbond_aa_dict[aa_unit_id]) > 1:
+                    # skip symmetry operated instances; generally these are just duplicates anyway
+                    if not "||||" in str(aa_unit_id):
+                        group = hbond_aa_dict[aa_unit_id]
+                        key = group[0][1].sequence + "-" + group[0][0].sequence + "-" + group[1][0].sequence
+                        key = group[0][1].sequence
+                        print(key)
+                        allAATwoBaseDictionary[key].append(group)
 
             """ 3D plots of base-aa interactions
             for base, aa, interaction in list_base_aa:
@@ -957,18 +1283,20 @@ if __name__=="__main__":
             #accumulate a full list of resultant RNA-aa pairs
     #        result_nt_aa.extend(list_base_aa)
 
-            print("  Total number of interactions: " + str(len(list_base_aa)))
-
             #writing out output files
             #text_output(result_nt_aa)
 
             csv_output(list_base_aa)
             print("  Wrote output to " + outputBaseAAFG % PDB)
 
+        print("Recorded %d pairwise interactions" % count_pair)
+
         # when appropriate, write out HTML files
-        if len(PDB_IFE_Dict) > 100:
+        if len(PDB_IFE_Dict) > 0:
             print("Writing " + outputDataFile)
-            pickle.dump((allInteractionDictionary,PDB_List),open(outputDataFile,"wb"))
+            timerData = myTimer("Writing HTML files",timerData)
+            pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_List),open(outputDataFile,"wb"))
+            writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
             writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
 
-        myTimer("summary",timerData)
+myTimer("summary",timerData)

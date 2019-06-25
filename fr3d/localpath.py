@@ -10,5 +10,5 @@ outputBaseAAFG = 'E:\\Leontis\\Python scripts\\Outputs\\aa-fg_base_%s.csv'
 inputPath = 'C:\\Users\\zirbel\\Documents\\FR3D\\PDBFiles\\%s.cif'
 outputText = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\proteinRNA_%s.txt'
 outputBaseAAFG = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\aa-fg_base_%s.csv'
-outputHTML = 'C:\\Users\\zirbel\\Dropbox\\RNA protein interactions\\output'
+outputHTML = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\output'
 
