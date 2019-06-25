@@ -137,7 +137,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
 
 
 def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
-                       angle_weight=1.0, center_weight=[1.0]):
+                       angle_weight=None, center_weight=None):
     """Compute discrepancies given matrices, not components.
 
     :param list centers1: A list (or list numpy.array) of all centers.
@@ -156,16 +156,22 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
     assert len(centers1) == len(rotations1)
     assert len(centers1) >= 3
 
+    if not angle_weight:
+        angle_weight = [1] * len(centers1)
+
+    if not center_weight:
+        center_weight = [1] * len(centers1)
+
     rotation_matrix, new1, mean1, RMSD, sse = \
         besttransformation_weighted(centers1, centers2, center_weight)
-    rotation_matrix = np.transpose(rotation_matrix)
 
     orientation_error = 0
+    angles = []
     for r1, r2 in zip(rotations1, rotations2):
-        angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r1),
-                                         np.transpose(r2)))
-        orientation_error += np.square(angle)
-
+        if r1.shape[0] > 0 and r2.shape[0] > 0:
+            angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r2),
+                                             np.transpose(r1)))
+            orientation_error += np.square(angle)
     n = len(centers1)
-    discrepancy = np.sqrt(sse + angle_weight * orientation_error) / n
+    discrepancy = np.sqrt(sse + orientation_error) / n
     return discrepancy
