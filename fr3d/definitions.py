@@ -19,7 +19,6 @@ HB_donors = {}
 HB_acceptors = {}
 HB_weak_donors = {}
 
-
 #List of amino acids for perpendicular interactions
 
 Perp_aa = set(['ARG','LYS','GLU','ASP','GLN','ASN','HIS','TYR','TRP','PHE'])
@@ -109,17 +108,20 @@ HB_weak_donors['ARG'] = ['CA','CD']
 HB_donors['ASN'] = ['ND2']
 HB_acceptors['ASN'] = ['OD1']
 
-HB_donors['ASP'] = ['OD1', 'OD2']        # could have OH, exactly one of the oxygens could be donor
+#HB_donors['ASP'] = ['OD1', 'OD2']        # could have OH, exactly one of the oxygens could be donor
+HB_donors['ASP'] = []                     # 99.9% of the time OD1, OD2 do not act as donors
 HB_acceptors['ASP'] = ['OD1', 'OD2']
 
 HB_donors['GLN'] = ['NE2']
 HB_acceptors['GLN'] = ['OE1']
 
-HB_donors['GLU'] = ['OE1', 'OE2']        # could have OH, exactly one of the oxygens could be donor
+#HB_donors['GLU'] = ['OE1', 'OE2']        # could have OH, exactly one of the oxygens could be donor
+HB_donors['GLU'] = []                     # 99.9% of the time OE1, OE2 do not act as donors
 HB_acceptors['GLU'] = ['OE1', 'OE2']
 
 HB_donors['HIS'] = ['ND1', 'NE2']
-HB_acceptors['HIS'] = ['CD2', 'CE1']
+HB_weak_donors['HIS'] = ['CE1','CD2']
+HB_acceptors['HIS'] = ['ND1', 'NE2']     # exactly one can be an acceptor
 
 HB_donors['LYS'] = ['NZ']
 HB_acceptors['LYS'] = []
@@ -133,7 +135,7 @@ HB_acceptors ['SER'] = ['OG']
 HB_donors ['THR'] = ['OG1']
 HB_acceptors ['THR'] = ['OG1']
 
-HB_donors ['TRP'] = ['CD1','NE1','CE2','CD2','CE3','CZ3','CH2','CZ2']
+HB_donors ['TRP'] = ['CD1','NE1','CE3','CZ3','CH2','CZ2']
 HB_acceptors ['TRP'] = []       # can we list the functional group center as a "base"?
 
 HB_donors ['TYR'] = ['OH', 'CD1','CD2', 'CE1', 'CE2']
