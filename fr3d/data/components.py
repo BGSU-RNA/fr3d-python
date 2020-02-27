@@ -8,6 +8,85 @@ import numpy as np
 
 from fr3d.unit_ids import encode
 
+def unit_vector(v):
+    return v / np.linalg.norm(v)
+
+# This function calculates an angle from 0 to 180 degrees between two vectors
+def angle_between_vectors(vec1, vec2):
+    if len(vec1) == 3 and len(vec2) == 3:
+        cosang = np.dot(vec1, vec2)
+        sinang = np.linalg.norm(np.cross(vec1, vec2))
+        angle = np.arctan2(sinang, cosang)
+        return 180*angle/np.pi
+    else:
+        return None
+
+# This function calculates an angle from 0 to 180 degrees between two vectors
+def angle_between_three_points(P1,P2,P3):
+    if len(P1) == 3 and len(P2) == 3 and len(P3) == 3:
+        return angle_between_vectors(P1-P2,P3-P2)
+    else:
+        return None
+
+# return positions of hydrogens making a tetrahedron with center C and vertices P1 and P2
+def pyramidal_hydrogens(P1,C,P2,bondLength=1):
+
+    # infer positions one way
+    V1 = P1
+    V2 = P2
+    # vector from V2 to C
+    u = unit_vector(C-V2)
+    # construct Rodriques rotation matrix
+    # matrix to rotate 120 degrees around vector u
+    W = np.array([[0,-u[2],u[1]],[u[2],0,-u[0]],[-u[1],u[0],0]])
+    R = np.identity(3) + (np.sqrt(3)/2)*W + 1.5 * np.dot(W,W)
+    # remaining vertices are vector from C to V1 rotated 120 degrees in either direction
+    V3 = C + bondLength * unit_vector(np.dot(R,V1-C))
+    V4 = C + bondLength * unit_vector(np.dot(np.transpose(R),V1-C))
+
+    # infer positions the other way
+    V1 = P2
+    V2 = P1
+    # vector from V2 to C
+    u = unit_vector(C-V2)
+    # construct Rodriques rotation matrix
+    # matrix to rotate 120 degrees around vector u
+    W = np.array([[0,-u[2],u[1]],[u[2],0,-u[0]],[-u[1],u[0],0]])
+    R = np.identity(3) + (np.sqrt(3)/2)*W + 1.5 * np.dot(W,W)
+    # remaining vertices are vector from C to V1 rotated 120 degrees in either direction
+    VV4 = C + bondLength * unit_vector(np.dot(R,V1-C))
+    VV3 = C + bondLength * unit_vector(np.dot(np.transpose(R),V1-C))
+
+    # average the two inferred positions
+    P3 = (V3+VV3)/2
+    P4 = (V4+VV4)/2
+
+    # diagnostics if desired
+    if 1 > 0:
+        print("pyramidal_hydrogens V3, VV3 distance",np.linalg.norm(V3-VV3))
+        print("pyramidal_hydrogens V4, VV4 distance",np.linalg.norm(V4-VV4))
+        print("pyramidal_hydrogens P1-C-P2 angle",angle_between_three_points(P1,C,P2),"as input")
+        print("pyramidal_hydrogens P1-C-P3 angle",angle_between_three_points(P1,C,P3),"as inferred")
+        print("pyramidal_hydrogens P1-C-P4 angle",angle_between_three_points(P1,C,P4),"as inferred")
+        print("pyramidal_hydrogens P2-C-P3 angle",angle_between_three_points(P2,C,P3),"as inferred")
+        print("pyramidal_hydrogens P2-C-P4 angle",angle_between_three_points(P2,C,P4),"as inferred")
+        print("pyramidal_hydrogens P3-C-P4 angle",angle_between_three_points(P3,C,P4),"as inferred")
+    return P3, P4
+
+def planar_hydrogens(P1,P2,P3,bondLength=1):
+
+    A = unit_vector(P2 - P1)
+    N1 = P3 + A
+    B = unit_vector(P3 - P2)
+    N2 = P3 + B - A
+
+    # diagnostics if desired
+    if 1 > 0:
+        print("planar_hydrogens P1-P2-P3 angle",angle_between_three_points(P1,P2,P3),"as input")
+        print("planar_hydrogens P2-P3-N1 angle",angle_between_three_points(P2,P3,N1),"as inferred")
+        print("planar_hydrogens P2-P3-N2 angle",angle_between_three_points(P2,P3,N2),"as inferred")
+    return N1, N2
+
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
     and ligands.
@@ -190,6 +269,39 @@ class Component(EntitySelector):
                                             z=newcoordinates[0, 2]))
             except:
                 print self.unit_id(), "Adding hydrogens failed"
+
+        elif self.sequence == "ARG":
+            try:
+                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"])
+                self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HH12",x=N2[0],y=N2[1],z=N2[2]))
+
+                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
+                self._atoms.append(Atom(name="HH22",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HH21",x=N2[0],y=N2[1],z=N2[2]))
+
+                # the following lines assume that NH2 is closer to CD than NH1 is
+                # however, some structures aren't labeled that way, and so either N1 or N2
+                # could be the correct location for HE
+                N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
+                self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
+
+                N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
+                self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HD2",x=N2[0],y=N2[1],z=N2[2]))
+
+                N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+                self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
+
+                N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
+
+                N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+            except:
+                print("Most likely a missing atom in %s" % self.unit_id())
 
     def transform(self, transform_matrix):
         """Create a new component from "self" by applying the 4x4 transformation
