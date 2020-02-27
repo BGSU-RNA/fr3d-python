@@ -8,18 +8,27 @@ Name: RNA-protein detection
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
+from fr3d.definitions import NAbasehydrogens
+from fr3d.definitions import nt_sugar
+from fr3d.definitions import nt_phosphate
 from fr3d.definitions import Ribophos_connect
 from fr3d.definitions import aa_connections
 from fr3d.definitions import aa_backconnect
 from fr3d.definitions import aa_fg
+from fr3d.definitions import aa_linker
+from fr3d.definitions import aa_backbone
 from fr3d.definitions import tilt_cutoff
 from fr3d.definitions import planar_atoms
 from fr3d.definitions import HB_donors
+from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
+
+from discrepancy import matrix_discrepancy
 import numpy as np
 import csv
 import urllib
 import pickle
+import math
 
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -27,6 +36,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
 from fr3d.localpath import outputText
 from fr3d.localpath import outputBaseAAFG
+from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 
@@ -46,8 +56,303 @@ HB_donor_hydrogens['G'] = {"N1":["H1"], "N2":["2H2","1H2"], "C8":["H8"], "O2'":[
 HB_donor_hydrogens['C'] = {"N4":["1H4","2H4"], "C5":["H5"], "C6":["H6"], "O2'":[]}
 HB_donor_hydrogens['U'] = {"N3":["H3"], "C5":["H5"], "C6":["H6"], "O2'":[]}
 
+distance_for_base_atom_type_vdw = {}
+
+distance_for_base_atom_type_vdw['CHn'] = 1.92
+distance_for_base_atom_type_vdw['CH'] = 1.82
+distance_for_base_atom_type_vdw['C'] = 1.74
+distance_for_base_atom_type_vdw['S'] = 1.92
+distance_for_base_atom_type_vdw['N'] = 1.66
+distance_for_base_atom_type_vdw['O'] = 1.51
+distance_for_base_atom_type_vdw['H2O'] = 1.68
+
+distance_for_atom_type_vdw = {}
+
+distance_for_atom_type_vdw['CA'] = 1.9
+distance_for_atom_type_vdw['C'] = 1.75
+distance_for_atom_type_vdw['CH'] = 2.01
+distance_for_atom_type_vdw['CH2'] = 1.92
+distance_for_atom_type_vdw['CH2b'] = 1.91
+distance_for_atom_type_vdw['CH2ch'] = 1.88
+distance_for_atom_type_vdw['CH3'] = 1.92
+distance_for_atom_type_vdw['CHar'] = 1.82
+distance_for_atom_type_vdw['Car'] = 1.74
+distance_for_atom_type_vdw['CHim'] = 1.74
+distance_for_atom_type_vdw['Cco'] = 1.81
+distance_for_atom_type_vdw['Ccoo'] = 1.76
+distance_for_atom_type_vdw['SH'] = 1.88
+distance_for_atom_type_vdw['S'] = 1.94
+distance_for_atom_type_vdw['N'] = 1.71
+distance_for_atom_type_vdw['NH'] = 1.66
+distance_for_atom_type_vdw['NH+'] = 1.65
+distance_for_atom_type_vdw['NH2'] = 1.62
+distance_for_atom_type_vdw['NH2+'] = 1.67
+distance_for_atom_type_vdw['NH3+'] = 1.67
+distance_for_atom_type_vdw['O'] = 1.49
+distance_for_atom_type_vdw['Oco'] = 1.52
+distance_for_atom_type_vdw['Ocoo'] = 1.49
+distance_for_atom_type_vdw['OH'] = 1.54
+distance_for_atom_type_vdw['H2O'] = 1.68
+
+distance_for_base_atom_type_coulombic = {}
+
+distance_for_base_atom_type_coulombic['N'] = 1.47
+distance_for_base_atom_type_coulombic['O'] = 1.38
+distance_for_base_atom_type_coulombic['H2O'] = 1.37
+
+distance_for_atom_type_coulombic = {}
+
+distance_for_atom_type_coulombic['N'] = 1.49
+distance_for_atom_type_coulombic['NH'] = 1.55
+distance_for_atom_type_coulombic['NH+'] = 1.41
+distance_for_atom_type_coulombic['NH2'] = 1.49
+distance_for_atom_type_coulombic['NH2+'] = 1.49
+distance_for_atom_type_coulombic['NH3+'] = 1.4
+distance_for_atom_type_coulombic['O'] = 1.41
+distance_for_atom_type_coulombic['Oco'] = 1.41
+distance_for_atom_type_coulombic['Ocoo'] = 1.35
+distance_for_atom_type_coulombic['OH'] = 1.35
+distance_for_atom_type_coulombic['H2O'] = 1.37
+
+distance_limit_vdw = defaultdict(dict)
+
+for base_name in ["A","C","G","U"]:
+    distance_limit_vdw[base_name]["C1'"] = distance_for_base_atom_type_vdw['CHn']
+    distance_limit_vdw[base_name]["C2'"] = distance_for_base_atom_type_vdw['CHn']
+    distance_limit_vdw[base_name]["C3'"] = distance_for_base_atom_type_vdw['CHn']
+    distance_limit_vdw[base_name]["C4'"] = distance_for_base_atom_type_vdw['CHn']
+    distance_limit_vdw[base_name]["C5'"] = distance_for_base_atom_type_vdw['CHn']
+    distance_limit_vdw[base_name]["O2'"] = distance_for_base_atom_type_vdw['O']
+    distance_limit_vdw[base_name]["O3'"] = distance_for_base_atom_type_vdw['O']
+    distance_limit_vdw[base_name]["O4'"] = distance_for_base_atom_type_vdw['O']
+    distance_limit_vdw[base_name]["O5'"] = distance_for_base_atom_type_vdw['O']
+    distance_limit_vdw[base_name]["PO1"] = distance_for_base_atom_type_vdw['O']
+    distance_limit_vdw[base_name]["PO2"] = distance_for_base_atom_type_vdw['O']
+
+distance_limit_vdw["A"]["N1"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["A"]["C2"] = distance_for_base_atom_type_vdw['CH']
+distance_limit_vdw["A"]["N3"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["A"]["C4"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["A"]["C5"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["A"]["C6"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["A"]["N6"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["A"]["N7"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["A"]["C8"] = distance_for_base_atom_type_vdw['CH']
+distance_limit_vdw["A"]["N9"] = distance_for_base_atom_type_vdw['N']
+
+distance_limit_vdw["G"]["N1"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["G"]["C2"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["G"]["N2"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["G"]["N3"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["G"]["C4"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["G"]["C5"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["G"]["C6"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["G"]["O6"] = distance_for_base_atom_type_vdw['O']
+distance_limit_vdw["G"]["N7"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["G"]["C8"] = distance_for_base_atom_type_vdw['CH']
+distance_limit_vdw["G"]["N9"] = distance_for_base_atom_type_vdw['N']
+
+distance_limit_vdw["C"]["N1"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["C"]["C2"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["C"]["O2"] = distance_for_base_atom_type_vdw['O']
+distance_limit_vdw["C"]["N3"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["C"]["C4"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["C"]["N4"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["C"]["C5"] = distance_for_base_atom_type_vdw['CH']
+distance_limit_vdw["C"]["C6"] = distance_for_base_atom_type_vdw['CH']
+
+distance_limit_vdw["U"]["N1"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["U"]["C2"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["U"]["O2"] = distance_for_base_atom_type_vdw['O']
+distance_limit_vdw["U"]["N3"] = distance_for_base_atom_type_vdw['N']
+distance_limit_vdw["U"]["C4"] = distance_for_base_atom_type_vdw['C']
+distance_limit_vdw["U"]["O4"] = distance_for_base_atom_type_vdw['O']
+distance_limit_vdw["U"]["C5"] = distance_for_base_atom_type_vdw['CH']
+distance_limit_vdw["U"]["C6"] = distance_for_base_atom_type_vdw['CH']
+
+all_aa_list = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
+
+for aa_name in all_aa_list:
+    distance_limit_vdw[aa_name]['CA'] = distance_for_atom_type_vdw['CA']
+    distance_limit_vdw[aa_name]['C'] = distance_for_atom_type_vdw['C']
+    distance_limit_vdw[aa_name]['O'] = distance_for_atom_type_vdw['O']
+    distance_limit_vdw[aa_name]['N'] = distance_for_atom_type_vdw['N']
+
+distance_limit_vdw['ALA']['CB'] = distance_for_atom_type_vdw['CH3']
+
+distance_limit_vdw['CYS']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['CYS']['SG'] = distance_for_atom_type_vdw['SH']
+
+distance_limit_vdw['SER']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['SER']['OG'] = distance_for_atom_type_vdw['OH']
+
+distance_limit_vdw['THR']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['THR']['CG2'] = distance_for_atom_type_vdw['CH']
+distance_limit_vdw['THR']['OG1'] = distance_for_atom_type_vdw['OH']
+
+distance_limit_vdw['ASN']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['ASN']['CG'] = distance_for_atom_type_vdw['Cco']
+distance_limit_vdw['ASN']['OD1'] = distance_for_atom_type_vdw['Oco']
+distance_limit_vdw['ASN']['ND2'] = distance_for_atom_type_vdw['NH2']
+
+distance_limit_vdw['GLN']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['GLN']['CG'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['GLN']['CD'] = distance_for_atom_type_vdw['Cco']
+distance_limit_vdw['GLN']['OE1'] = distance_for_atom_type_vdw['Oco']
+distance_limit_vdw['GLN']['NE2'] = distance_for_atom_type_vdw['NH2']
+
+distance_limit_vdw['ASP']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['ASP']['CG'] = distance_for_atom_type_vdw['Ccoo']
+distance_limit_vdw['ASP']['OD1'] = distance_for_atom_type_vdw['Ocoo']
+distance_limit_vdw['ASP']['OD2'] = distance_for_atom_type_vdw['Ocoo']
+
+distance_limit_vdw['GLU']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['GLU']['CG'] = distance_for_atom_type_vdw['CH2ch']
+distance_limit_vdw['GLU']['CD'] = distance_for_atom_type_vdw['Ccoo']
+distance_limit_vdw['GLU']['OE1'] = distance_for_atom_type_vdw['Ocoo']
+distance_limit_vdw['GLU']['OE2'] = distance_for_atom_type_vdw['Ocoo']
+
+distance_limit_vdw['PHE']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['PHE']['CG'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['PHE']['CD1'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['PHE']['CD2'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['PHE']['CE1'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['PHE']['CE2'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['PHE']['CZ'] = distance_for_atom_type_vdw['CHar']
+
+distance_limit_vdw['TYR']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['TYR']['CG'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['TYR']['CD1'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TYR']['CD2'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TYR']['CE1'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TYR']['CE2'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TYR']['CZ'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['TYR']['OH'] = distance_for_atom_type_vdw['OH']
+
+distance_limit_vdw['HIS']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['HIS']['CG'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['HIS']['ND1'] = distance_for_atom_type_vdw['NH+']
+distance_limit_vdw['HIS']['CD2'] = distance_for_atom_type_vdw['CHim']
+distance_limit_vdw['HIS']['CE1'] = distance_for_atom_type_vdw['CHim']
+distance_limit_vdw['HIS']['NE2'] = distance_for_atom_type_vdw['NH+']
+
+distance_limit_vdw['LEU']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['LEU']['CG'] = distance_for_atom_type_vdw['CH']
+distance_limit_vdw['LEU']['CD1'] = distance_for_atom_type_vdw['CH3']
+distance_limit_vdw['LEU']['CD2'] = distance_for_atom_type_vdw['CH3']
+
+distance_limit_vdw['ILE']['CB'] = distance_for_atom_type_vdw['CH']
+distance_limit_vdw['ILE']['CG1'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['ILE']['CG2'] = distance_for_atom_type_vdw['CH3']
+distance_limit_vdw['ILE']['CD'] = distance_for_atom_type_vdw['CH3']
+
+distance_limit_vdw['VAL']['CB'] = distance_for_atom_type_vdw['CH']
+distance_limit_vdw['VAL']['CG1'] = distance_for_atom_type_vdw['CH3']
+distance_limit_vdw['VAL']['CG2'] = distance_for_atom_type_vdw['CH3']
+
+distance_limit_vdw['MET']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['MET']['CG'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['MET']['SD'] = distance_for_atom_type_vdw['S']
+distance_limit_vdw['MET']['CE'] = distance_for_atom_type_vdw['CH3']
+
+distance_limit_vdw['PRO']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['PRO']['CG'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['PRO']['CD'] = distance_for_atom_type_vdw['CH2']
+
+distance_limit_vdw['LYS']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['LYS']['CG'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['LYS']['CD'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['LYS']['CE'] = distance_for_atom_type_vdw['CH2ch']
+distance_limit_vdw['LYS']['NZ'] = distance_for_atom_type_vdw['NH3+']
+
+distance_limit_vdw['ARG']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['ARG']['CG'] = distance_for_atom_type_vdw['CH2']
+distance_limit_vdw['ARG']['CD'] = distance_for_atom_type_vdw['CH2ch']
+distance_limit_vdw['ARG']['NE'] = distance_for_atom_type_vdw['NH2+']
+distance_limit_vdw['ARG']['CZ'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['ARG']['NH1'] = distance_for_atom_type_vdw['NH2+']
+distance_limit_vdw['ARG']['NH2'] = distance_for_atom_type_vdw['NH2+']
+
+distance_limit_vdw['TRP']['CB'] = distance_for_atom_type_vdw['CH2b']
+distance_limit_vdw['TRP']['CG'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['TRP']['CD1'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TRP']['CD2'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['TRP']['NE1'] = distance_for_atom_type_vdw['NH']
+
+distance_limit_vdw['TRP']['CE2'] = distance_for_atom_type_vdw['Car']
+distance_limit_vdw['TRP']['CZ2'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TRP']['CH2'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TRP']['CE3'] = distance_for_atom_type_vdw['CHar']
+distance_limit_vdw['TRP']['CZ3'] = distance_for_atom_type_vdw['CHar']
+
+distance_limit_vdw['GLY']['CA'] = distance_for_atom_type_vdw['CH2b']
+
+distance_limit_coulombic = defaultdict(dict)
+
+for base_name in ["A","C","G","U"]:
+    distance_limit_coulombic[base_name]["O2'"] = distance_for_base_atom_type_coulombic['O']
+    distance_limit_coulombic[base_name]["O3'"] = distance_for_base_atom_type_coulombic['O']
+    distance_limit_coulombic[base_name]["O4'"] = distance_for_base_atom_type_coulombic['O']
+    distance_limit_coulombic[base_name]["O5'"] = distance_for_base_atom_type_coulombic['O']
+    distance_limit_coulombic[base_name]["PO1"] = distance_for_base_atom_type_coulombic['O']
+    distance_limit_coulombic[base_name]["PO2"] = distance_for_base_atom_type_coulombic['O']
+
+distance_limit_coulombic['A']['N1'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['A']['N3'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['A']['N6'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['A']['N7'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['A']['N9'] = distance_for_base_atom_type_coulombic['N']
+
+distance_limit_coulombic['G']['N1'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['G']['N2'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['G']['N3'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['G']['O6'] = distance_for_base_atom_type_coulombic['O']
+distance_limit_coulombic['G']['N7'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['G']['N9'] = distance_for_base_atom_type_coulombic['N']
+
+distance_limit_coulombic['C']['N1'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['C']['O2'] = distance_for_base_atom_type_coulombic['O']
+distance_limit_coulombic['C']['N3'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['C']['N4'] = distance_for_base_atom_type_coulombic['N']
+
+distance_limit_coulombic['U']['N1'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['U']['O2'] = distance_for_base_atom_type_coulombic['O']
+distance_limit_coulombic['U']['N3'] = distance_for_base_atom_type_coulombic['N']
+distance_limit_coulombic['U']['O4'] = distance_for_base_atom_type_coulombic['O']
 
 
+for aa_name in all_aa_list:
+    distance_limit_coulombic[aa_name]['O'] = distance_for_atom_type_coulombic['O']
+    distance_limit_coulombic[aa_name]['N'] = distance_for_atom_type_coulombic['N']
+
+distance_limit_coulombic['SER']['OG'] = distance_for_atom_type_coulombic['OH']
+
+distance_limit_coulombic['THR']['OG1'] = distance_for_atom_type_coulombic['OH']
+
+distance_limit_coulombic['ASN']['OD1'] = distance_for_atom_type_coulombic['Oco']
+distance_limit_coulombic['ASN']['ND2'] = distance_for_atom_type_coulombic['NH2']
+
+distance_limit_coulombic['GLN']['OE1'] = distance_for_atom_type_coulombic['Oco']
+distance_limit_coulombic['GLN']['NE2'] = distance_for_atom_type_coulombic['NH2']
+
+distance_limit_coulombic['ASP']['OD1'] = distance_for_atom_type_coulombic['Ocoo']
+distance_limit_coulombic['ASP']['OD2'] = distance_for_atom_type_coulombic['Ocoo']
+
+distance_limit_coulombic['GLU']['OE1'] = distance_for_atom_type_coulombic['Ocoo']
+distance_limit_coulombic['GLU']['OE2'] = distance_for_atom_type_coulombic['Ocoo']
+
+distance_limit_coulombic['TYR']['OH'] = distance_for_atom_type_coulombic['OH']
+
+distance_limit_coulombic['HIS']['ND1'] = distance_for_atom_type_coulombic['NH+']
+distance_limit_coulombic['HIS']['NE2'] = distance_for_atom_type_coulombic['NH+']
+
+distance_limit_coulombic['LYS']['NZ'] = distance_for_atom_type_coulombic['NH3+']
+
+distance_limit_coulombic['ARG']['NE'] = distance_for_atom_type_coulombic['NH2+']
+distance_limit_coulombic['ARG']['NH1'] = distance_for_atom_type_coulombic['NH2+']
+distance_limit_coulombic['ARG']['NH2'] = distance_for_atom_type_coulombic['NH2+']
+
+distance_limit_coulombic['TRP']['NE1'] = distance_for_atom_type_coulombic['NH']
 
 def myTimer(state,data={}):
 
@@ -60,7 +365,7 @@ def myTimer(state,data={}):
         print("Summary of time taken:")
         for state in data["allStates"]:
             if not state == "lastTime" and not state == "currentState":
-                print("%-31s: %10.3f seconds" % (state,data[state]))
+                print("%-31s: %10.3f seconds %10.3f minutes" % (state,data[state],data[state]/60))
     elif not state in data:
         data[state] = 0
         # keep track of states and the order in which they were seen
@@ -100,7 +405,7 @@ def get_structure(filename):
         print("  Loading " + filename)
         structure = Cif(raw).structure()
         """All RNA bases are placed in the standard orientation. All Hydrogen
- atoms are inferred. Rotation matrix is calculated for each base."""
+           atoms on bases are inferred. Rotation matrix is calculated for each base."""
 
 #        structure.infer_hydrogens()  # they are already inferred; doing this again repeats each hydrogen atom twice!
 
@@ -108,42 +413,123 @@ def get_structure(filename):
 
         return structure
 
-def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
-    """Finds all amino acids of type "aa" for which center of "aa_part" is within
-    specified distance of center of bases of type "base"
+def build_atom_to_unit_part_list():
+
+    atom_to_part_list = defaultdict(lambda: "unknown")
+
+    for base in NAbaseheavyatoms.keys():
+        for atom in NAbaseheavyatoms[base]:
+            atom_to_part_list[(base,atom)] = "base"
+        for atom in NAbasehydrogens[base]:
+            atom_to_part_list[(base,atom)] = "base"
+        for atom in nt_phosphate[base]:
+            atom_to_part_list[(base,atom)] = "nt_phosphate"
+        for atom in nt_sugar[base]:
+            atom_to_part_list[(base,atom)] = "nt_sugar"
+
+    for aa in aa_backbone.keys():
+        for atom in aa_backbone[aa]:
+            atom_to_part_list[(aa,atom)] = "aa_backbone"
+        for atom in aa_linker[aa]:
+            atom_to_part_list[(aa,atom)] = "aa_linker"
+        for atom in aa_fg[aa]:
+            atom_to_part_list[(aa,atom)] = "aa_fg"
+
+#    print(atom_to_part_list)
+
+    return atom_to_part_list
+
+
+def find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance):
+    """Find all atoms within atom_atom_min_distance of each other,
+    one from a nt, one from an aa, and report these"""
+    # build a set of cubes and record which bases are in which cube
+    # also record which other cubes are neighbors of each cube
+
+    atom_atom_min_distance_squared = atom_atom_min_distance**2
+    contact_list = []
+
+    atom_to_part_list = build_atom_to_unit_part_list()
+
+    # build a set of cubes and record which nt atoms are in which cube
+    ntAtomCubeList = {}
+    ntAtomCubeNeighbors = {}
+    for base in bases:
+        for atom in base.atoms():
+            center = atom.coordinates()
+            if len(center) == 3:
+                x = floor(center[0]/atom_atom_min_distance)
+                y = floor(center[1]/atom_atom_min_distance)
+                z = floor(center[2]/atom_atom_min_distance)
+                key = "%d,%d,%d" % (x,y,z)
+                entry = (center[0],center[1],center[2],atom.name,base.unit_id(),atom_to_part_list[(base.sequence,atom.name)])
+                if key in ntAtomCubeList:
+                    ntAtomCubeList[key].append(entry)
+                else:
+                    ntAtomCubeList[key] = [entry]
+                    ntAtomCubeNeighbors[key] = []
+                    for a in [-1,0,1]:
+                        for b in [-1,0,1]:
+                            for c in [-1,0,1]:
+                                k = "%d,%d,%d" % (x+a,y+b,z+c)
+                                ntAtomCubeNeighbors[key].append(k)
+
+    # build a set of cubes and record which amino acids are in which cube
+    aaAtomCubeList = {}
+    for aa in amino_acids:
+        for atom in aa.atoms():
+            center = atom.coordinates()
+            if len(center) == 3:
+                x = floor(center[0]/atom_atom_min_distance)
+                y = floor(center[1]/atom_atom_min_distance)
+                z = floor(center[2]/atom_atom_min_distance)
+                key = "%d,%d,%d" % (x,y,z)
+                entry = (center[0],center[1],center[2],atom.name,aa.unit_id(),atom_to_part_list[(aa.sequence,atom.name)])
+                if key in aaAtomCubeList:
+                    aaAtomCubeList[key].append(entry)
+                else:
+                    aaAtomCubeList[key] = [entry]
+
+    # loop over nt atoms and aa atoms and find those within atom_atom_min_distance
+    for key in ntAtomCubeList:                           # one nt atom cube
+        for aakey in ntAtomCubeNeighbors[key]:           # neighboring cube
+            if aakey in aaAtomCubeList:                  # if an aa atom lies in the neighbor cube
+                for ntAtom in ntAtomCubeList[key]:       # loop over nt atoms in first cube
+                    for aaAtom in aaAtomCubeList[aakey]: # and over aa atoms in neighbor cube
+                        x = abs(ntAtom[0] - aaAtom[0])   # coordinates are stored in 0, 1, 2 of entry
+                        y = abs(ntAtom[1] - aaAtom[1])   # coordinates are stored in 0, 1, 2 of entry
+                        z = abs(ntAtom[2] - aaAtom[2])   # coordinates are stored in 0, 1, 2 of entry
+
+                        if x > atom_atom_min_distance or \
+                           y > atom_atom_min_distance or \
+                           x*x + y*y + z*z > atom_atom_min_distance_squared:
+                            continue
+
+                        distance = math.sqrt(x*x + y*y + z*z)
+
+                        contact_list.append("%s\t%s\t%s\t%s\t%s\t%s\t%8.4f\n" % (ntAtom[4],ntAtom[5],ntAtom[3],aaAtom[4],aaAtom[5],aaAtom[3],distance))
+
+    return contact_list
+
+def find_neighbors(bases, amino_acids, screen_distance_cutoff, IFE, nt_reference="C1'", aa_reference="aa_fg"):
+    """Finds all amino acids for which center of "aa_part" is within
+    specified distance of center of bases
     For annotating files in a representative set, it also screens for the
     base being in the given IFE. """
-
-    numin = 0
-    numout = 0
 
     # build a set of cubes and record which bases are in which cube
     # also record which other cubes are neighbors of each cube
     baseCubeList = {}
     baseCubeNeighbors = {}
 
-    print("  Working with " + IFE)
-
+    # build a set of cubes and record which bases are in which cube
     for base in bases:
-        if len(IFE) > 0:               # check that base is in IFE
-            unit_id = base.unit_id()
-            fields = unit_id.split("|")
-            a = fields[0] + "|" + fields[1] + "|" + fields[2]
-            if not a in IFE:
-#                print("Omitting %s because it is not in %s" % (unit_id,IFE))
-                numout += 1
-                continue
-            else:
-                numin += 1
-        else:
-            numin += 1
 
-        center = base.centers["base"]
+        center = base.centers[nt_reference]               # a reasonably central atom
         if len(center) == 3:
-#            print(base.unit_id() + str(center))
-            x = floor(center[0]/dist_cent_cutoff)
-            y = floor(center[1]/dist_cent_cutoff)
-            z = floor(center[2]/dist_cent_cutoff)
+            x = floor(center[0]/screen_distance_cutoff)
+            y = floor(center[1]/screen_distance_cutoff)
+            z = floor(center[2]/screen_distance_cutoff)
             key = "%d,%d,%d" % (x,y,z)
             if key in baseCubeList:
                 baseCubeList[key].append(base)
@@ -159,11 +545,11 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
     # build a set of cubes and record which amino acids are in which cube
     aaCubeList = {}
     for aa in amino_acids:
-        center = aa.centers[aa_part]
+        center = aa.centers[aa_reference]     # as of 9/1/2019, some aa lack C atom because of alt ids A or B
         if len(center) == 3:
-            x = floor(center[0]/dist_cent_cutoff)
-            y = floor(center[1]/dist_cent_cutoff)
-            z = floor(center[2]/dist_cent_cutoff)
+            x = floor(center[0]/screen_distance_cutoff)
+            y = floor(center[1]/screen_distance_cutoff)
+            z = floor(center[2]/screen_distance_cutoff)
             key = "%d,%d,%d" % (x,y,z)
             if key in aaCubeList:
                 aaCubeList[key].append(aa)
@@ -172,11 +558,65 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff, IFE):
         else:
             print("  Missing center coordinates for " + str(aa))
 
-    return baseCubeList, baseCubeNeighbors, aaCubeList, (numin,numout)
+    return baseCubeList, baseCubeNeighbors, aaCubeList
 
-def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCubeList, baseCubeNeighbors, aaCubeList):
+# produce a list of interacting atoms marked by their group
+def get_interacting_atoms(nt_residue,aa_residue):
 
-    # loop through base cubes, loop through neighboring cubes,
+    interacting_atoms = defaultdict(list)
+
+    atom_atom_min_distance_squared = atom_atom_min_distance**2
+    nt_parts = ['base','nt_sugar','nt_phosphate']
+    aa_parts = ['aa_fg','aa_backbone','aa_linker']
+    nt_parts = ['base']
+    aa_parts = ['aa_fg']
+
+    for nt_part in nt_parts:
+        if nt_part == "base" and nt_residue.sequence in NAbaseheavyatoms:
+            nt_atoms = NAbaseheavyatoms[nt_residue.sequence]
+            if nt_residue.sequence in NAbasehydrogens:
+                nt_atoms += NAbasehydrogens[nt_residue.sequence]
+        elif nt_part == "nt_sugar" and nt_residue.sequence in nt_sugar:
+            nt_atoms = nt_sugar[nt_residue.sequence]
+        elif nt_residue.sequence in nt_phosphate:
+            nt_atoms = nt_phosphate[nt_residue.sequence]
+        else:
+            nt_atoms = []
+            continue
+
+        for aa_part in aa_parts:
+            if aa_part == "aa_fg" and aa_residue.sequence in aa_fg:
+                aa_atoms = aa_fg[aa_residue.sequence]
+            elif aa_part == "aa_backbone" and aa_residue.sequence in aa_backbone:
+                aa_atoms = aa_backbone[aa_residue.sequence]
+            elif aa_residue.sequence in aa_linker:
+                aa_atoms = aa_linker[aa_residue.sequence]
+            else:
+                aa_atoms = []
+                continue
+
+            for nt_atom in nt_residue.atoms(name=nt_atoms):
+                nt = nt_atom.coordinates()
+                for aa_atom in aa_residue.atoms(name=aa_atoms):
+                    aa = aa_atom.coordinates()
+                    x = abs(nt[0]-aa[0])
+                    y = abs(nt[1]-aa[1])
+                    z = abs(nt[2]-aa[2])
+
+                    if x <= atom_atom_min_distance and \
+                       y <= atom_atom_min_distance and \
+                       x**2 + y**2 + z**2 <= atom_atom_min_distance_squared:
+                        distance = math.sqrt(x**2 + y**2 + z**2)
+                        interacting_atoms[(nt_part,aa_part)].append((nt_atom,aa_atom,distance))
+
+#    if len(interacting_atoms) > 0:
+#        print(interacting_atoms)
+
+    return interacting_atoms
+
+def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeList, baseCubeNeighbors, aaCubeList):
+
+    # loop through base cubes, loop through neighboring amino acid cubes,
     # then loop through bases and amino acids in the two cubes,
     # screening distances between them, then annotating interactions
     """Finds all amino acids of type "aa" for which center of "aa_part" is within
@@ -190,46 +630,64 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
     new_aaList_len = None
     list_base_aa = []
     hbond_aa_dict = {}
+    contact_list = []
+
+    max_screen_distance = 0
 
     for key in baseCubeList:
         for aakey in baseCubeNeighbors[key]:
             if aakey in aaCubeList:
                 for base_residue in baseCubeList[key]:
-                    base_seq = base_residue.sequence
-                    base_atoms = NAbaseheavyatoms[base_seq]
-
-                    base_center = base_residue.centers["base"]
-
-                    if not base_center.any():
-                        continue
-
-                    # check sets of three atoms that lie in the plane of the base, for normal calculations
-                    if not base_residue.centers[planar_atoms[base_seq][0]].any():
-                        continue
-                    if not base_residue.centers[planar_atoms[base_seq][1]].any():
-                        continue
-                    if not base_residue.centers[planar_atoms[base_seq][2]].any():
-                        continue
-
                     for aa_residue in aaCubeList[aakey]:
-                        aa_center = aa_residue.centers[aa_part]
-                        if not aa_center.any():
+                        displacement = abs(base_residue.centers["C1'"]-aa_residue.centers["aa_fg"])
+                        if displacement[0] > screen_distance_cutoff or \
+                           displacement[1] > screen_distance_cutoff or \
+                           np.linalg.norm(displacement) > screen_distance_cutoff:
                             continue
 
-                        if aa_residue.sequence in set(['LYS', 'SER', 'THR', 'TYR']):
-                            num_near_contacts_needed = 1   # only one atom-atom distance needs to be less than 4 Angstroms
-                        else:
-                            num_near_contacts_needed = 2   # at least two atom-atom distances need to be less than 4 Angstroms
+                        screen_distance = np.linalg.norm(displacement)
+                        interacting_atoms = get_interacting_atoms(base_residue,aa_residue)
 
-                        # screen for distance between base and amino acid
-                        if abs(base_center[0]-aa_center[0]) < dist_cent_cutoff and \
-                        abs(base_center[1]-aa_center[1]) < dist_cent_cutoff and \
-                        distance_between_vectors(base_center,aa_center) < dist_cent_cutoff and \
-                        enough_near_contacts(base_residue, aa_residue, base_atoms, num_near_contacts_needed):
+                        if len(interacting_atoms) > 0:
+                            if screen_distance > max_screen_distance:
+                                max_screen_distance = screen_distance
+
+                        # annotate interactions between base and functional group in detail
+                        if ("base","aa_fg") in interacting_atoms:
+
+                            if aa_residue.sequence in set(['LYS', 'SER', 'THR', 'TYR']):
+                                if len(interacting_atoms[("base","aa_fg")]) < 1:
+                                    continue
+                            else:
+                                if len(interacting_atoms[("base","aa_fg")]) < 2:
+                                    continue
+
+                            base_center = base_residue.centers["base"]
+
+                            if not base_center.any():
+                                continue
+
+                            base_seq = base_residue.sequence
+                            base_atoms = NAbaseheavyatoms[base_seq]
+
+                            # check sets of three atoms that lie in the plane of the base, for normal calculations
+                            if not base_residue.centers[planar_atoms[base_seq][0]].any():
+                                continue
+                            if not base_residue.centers[planar_atoms[base_seq][1]].any():
+                                continue
+                            if not base_residue.centers[planar_atoms[base_seq][2]].any():
+                                continue
+
+                            aa_center = aa_residue.centers[aa_part]
+                            if not aa_center.any():
+                                continue
 
                             count_pair = count_pair + 1
 
                             rotation_matrix = base_residue.rotation_matrix
+
+                            # note:  translate_rotate_component is in components.py and calls infer_hydrogens
+
 
                             # rotate base atoms into standard orientation
                             base_coordinates = {}
@@ -272,16 +730,17 @@ def annotate_interactions(bases, amino_acids, aa_part, dist_cent_cutoff, baseCub
                                     list_aa_coord.append(aa_coordinates)
 
                             # detect one amino acid interacting with two bases
-                            if interaction in ["pseudopair","SHB","perpendicular-edge"]:
+                            if interaction in ["pseudopair","SHB"]:
                                 if aa_residue.unit_id() in hbond_aa_dict:
                                     hbond_aa_dict[aa_residue.unit_id()].append((base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters))
-                                    print("  %s makes hbonds with %d bases" % (aa_residue.unit_id(),len(hbond_aa_dict[aa_residue.unit_id()])))
+#                                    print("  %s makes hbonds with %d bases" % (aa_residue.unit_id(),len(hbond_aa_dict[aa_residue.unit_id()])))
                                 else:
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
 
     print("  Found %d nucleotide-amino acid pairs" % count_pair)
     print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
+    print("  Maximum screen distance for actual contacts is %8.4f" % max_screen_distance)
 
     return list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict
 
@@ -339,7 +798,6 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
         if aa_residue.sequence in shb_aa:
 #            base_seq = base_residue.sequence
 #            base_atoms = NAbaseheavyatoms[base_seq]
-#            if enough_near_contacts(base_residue, aa_residue, base_atoms, 1):
             if num_hydrogen_bonds >= 1:
                 return ("SHB",{"hydrogen-bonds":hydrogen_bond_list})
 
@@ -347,118 +805,176 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
 
     return ("other",{"dist-xy-from-center":min_dist,"hydrogen-bonds":hydrogen_bond_list})
 
-def enough_near_contacts(base_residue, aa_residue, base_atoms, num_near_contacts_needed):
-    """Calculates atom to atom distance of base atoms and aa atoms
-    Returns true if the number of close contacts is greater than or
-    equal to num_near_contacts_needed"""
-
-    min_distance = 4  # locally declared minimum atom-atom distance
-    n = 0             # number of atom-atom distances that are small enough
-    for base_atom in base_residue.atoms(name=base_atoms):
-        for aa_atom in aa_residue.atoms(name=aa_fg[aa_residue.sequence]):
-            distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
-            distance = np.linalg.norm(distance)
-
-            if distance <= min_distance:
-                n = n+1
-
-    if n >= num_near_contacts_needed:
-        #print aa_residue.unit_id()
-        return True
-
 def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
     """Calculates number of Hydrogen bonds between amino acid part and base_part
     and returns the number and a list of pairs of atoms from (base,aa)
     """
 
-    n = 0
-    n0 = 0
+    n = 0                            # number of independent hydrogen bonds being counted toward pseudopairs
     hydrogen_bond_list = []
-    hb0 = []
 
     aa_key = aa_residue.sequence
 
+    if not (aa_key in HB_donors or aa_key in HB_acceptors or aa_key in HB_weak_donors):
+        return (n,hydrogen_bond_list)
+
+    n0 = 0
+    hb0 = []
+
     hb_angle_cutoff = 100
-    min_distance = 4
+    screen_distance = 4.3                 # around 85% are higher than 4; 4 is a good first screen
 
     used_base_atoms = []
     used_aa_atoms = []
     carboxylate_donor_used = False   # track the two oxygens on ASP and GLU; only one can be a donor
+    HIS_acceptor_used = False        # track the two nitrogens on HIS; only one can be an acceptor
 
-    # these three amino acids can be mis-modeled with the functional group flipped 180 degrees
-    if aa_key in ["ASN","GLN","HIS"]:
-        num_flips = 2
+    base_key = base_residue.sequence
+    base_donors = HB_donor_hydrogens[base_key].keys()
+    base_acceptors = HB_acceptors[base_key]
+    base_HB_atoms = list(set(base_donors + base_acceptors))  # don't list atoms twice
+
+    # these amino acids can be mis-modeled with the functional group flipped 180 degrees
+    if aa_key in ["ASN","GLN"]:
+        num_flip_states = 2
     else:
-        num_flips = 1
+        num_flip_states = 1
 
-    if aa_key in HB_donors or aa_key in HB_acceptors:
-        base_key = base_residue.sequence
-        base_donors = HB_donor_hydrogens[base_key].keys()
-        base_acceptors = HB_acceptors[base_key]
-        base_HB_atoms = list(set(base_donors + base_acceptors))  # don't list O2' twice
+    # check some amino acids in original and flipped orientations
+    for flip in range(0,num_flip_states):
+        n = 0
+        hydrogen_bond_list = []
+        if flip == 0:
+            aa_donors = HB_donors[aa_key]
+            if aa_key in HB_weak_donors:
+                base_donors += HB_weak_donors[aa_key]
+            aa_acceptors = HB_acceptors[aa_key]
+            flip_name = ""
+        else:
+            # pretend that these three amino acids are flipped; they are often mis-modeled
+            if aa_key == "ASN":
+                aa_donors = ["OD1"]
+                aa_acceptors = ["ND2"]
+            elif aa_key == "GLN":
+                aa_donors = ["OE1"]
+                aa_acceptors = ["NE2"]
+            # for now, don't try to recognize flipped HIS, just check for donors/acceptors
+#                elif aa_key == "HIS":
+#                    aa_donors = ['CD2', 'CE1']
+#                    aa_acceptors = ['ND1', 'NE2']
+            flip_name = "f"
 
-        for flip in range(0,num_flips):
-            n = 0
-            hydrogen_bond_list = []
-            if flip == 0:
-                aa_donors = HB_donors[aa_key]
-                aa_acceptors = HB_acceptors[aa_key]
-                flip_name = ""
-            else:
-                # pretend that these three amino acids are flipped; they are often mis-modeled
-                if aa_key == "ASN":
-                    aa_donors = ["OD1"]
-                    aa_acceptors = ["ND2"]
-                elif aa_key == "GLN":
-                    aa_donors = ["OE1"]
-                    aa_acceptors = ["NE2"]
-                elif aa_key == "HIS":
-                    aa_donors = ['CD2', 'CE1']
-                    aa_acceptors = ['ND1', 'NE2']
-                flip_name = "f"
+        for base_atom in base_residue.atoms(name=base_HB_atoms):
+            for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
+                difference = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+                distance = np.linalg.norm(difference)
 
-            for base_atom in base_residue.atoms(name=base_HB_atoms):
-                for aa_atom in aa_residue.atoms(name=aa_fg[aa_key]):
-                    distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
-                    distance = np.linalg.norm(distance)
-                    if distance <= min_distance:
-                        #print "HB", base_residue.unit_id(), aa_residue.unit_id(), base_atom.name, aa_atom.name, distance
-                        if base_atom.name in base_donors and aa_atom.name in aa_acceptors:
-                            for hydrogen_atom in base_residue.atoms(name=HB_donor_hydrogens[base_key][base_atom.name]):
-                                hb_angle = calculate_hb_angle(base_atom.coordinates(),hydrogen_atom.coordinates(),aa_atom.coordinates())
-    #                            print("hb_angle %10.8f" % hb_angle)
-                                if hb_angle > hb_angle_cutoff:
-                                    if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
-                                        n = n+1
-                                    hydrogen_bond_list.append((base_atom.name,hydrogen_atom.name,aa_atom.name+flip_name,distance,hb_angle))
-                                    used_base_atoms.append(base_atom.name)
-                                    used_aa_atoms.append(aa_atom.name)
+                if distance > screen_distance:
+                    continue
 
-                        elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
+                # check the distance between heavy atoms, depending on the two interacting atoms and the residues
+                if ("O" in base_atom.name or "N" in base_atom.name) and ("O" in aa_atom.name or "N" in aa_atom.name):
+                    h_bond_ideal_distance  = distance_limit_coulombic[base_residue.sequence][base_atom.name]
+                    h_bond_ideal_distance += distance_limit_coulombic[aa_residue.sequence][aa_atom.name]
+                    h_bond_over_distance = distance - h_bond_ideal_distance
+
+                    hbondtext = base_residue.sequence +"\t"+ base_atom.name +"\t"+ str(distance_limit_coulombic[base_residue.sequence][base_atom.name]) +"\t"
+                    hbondtext += aa_residue.sequence +"\t"+ aa_atom.name +"\t"+ str(distance_limit_coulombic[aa_residue.sequence][aa_atom.name])
+                    hbondtext += "\t"+ str(h_bond_ideal_distance) +"\t"+ str(distance) +"\t"+ str(h_bond_over_distance)
+
+                else:
+                    h_bond_ideal_distance  = distance_limit_vdw[base_residue.sequence][base_atom.name]
+                    h_bond_ideal_distance += distance_limit_vdw[aa_residue.sequence][aa_atom.name]
+                    h_bond_over_distance = distance - h_bond_ideal_distance
+
+                    hbondtext = base_residue.sequence +"\t"+ base_atom.name +"\t"+ str(distance_limit_vdw[base_residue.sequence][base_atom.name]) +"\t"
+                    hbondtext += aa_residue.sequence +"\t"+ aa_atom.name +"\t"+ str(distance_limit_vdw[aa_residue.sequence][aa_atom.name])
+                    hbondtext += "\t"+ str(h_bond_ideal_distance) +"\t"+ str(distance) +"\t"+ str(h_bond_over_distance)
+
+#                print("hbond\t"+hbondtext)
+
+                if distance > h_bond_ideal_distance + 0.4:
+                    continue
+                    h_bond_over_distance = distance - h_bond_ideal_distance
+
+                if base_atom.name in base_donors and aa_atom.name in aa_acceptors:
+                    # loop through hydrogens whose locations are known
+                    for hydrogen_atom in base_residue.atoms(name=HB_donor_hydrogens[base_key][base_atom.name]):
+                        hb_angle = calculate_hb_angle(base_atom.coordinates(),hydrogen_atom.coordinates(),aa_atom.coordinates())
+#                            print("hb_angle %10.8f" % hb_angle)
+                        if hb_angle > hb_angle_cutoff:
                             if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
-                                # aa with carboxylate, only count one oxygen as a donor
-                                if aa_key == "ASP" or aa_key == "GLU":
-                                    if not carboxylate_donor_used:
+                                if aa_key == "HIS":
+                                    if not HIS_acceptor_used:
                                         n = n + 1
-                                    carboxylate_donor_used = True
+                                    HIS_acceptor_used = True
                                 else:
-                                    n = n+1
-                            hydrogen_bond_list.append((base_atom.name,"H?",aa_atom.name+flip_name,distance,0))
+                                    n = n + 1
+                            hydrogen_bond_list.append((base_atom.name,hydrogen_atom.name,aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
                             used_base_atoms.append(base_atom.name)
                             used_aa_atoms.append(aa_atom.name)
-                        if flip == 0 and num_flips == 2:
-                            n0 = n
-                            hb0 = hydrogen_bond_list
 
-    #    print base_residue.unit_id(), aa_residue.unit_id(), n
+                    # for O2', coordinates of H are not known, so check angles separately
+                    if base_atom.name == "O2'":
+                        hb_angle = calculate_hb_angle(base_residue.centers["C2'"],base_atom.coordinates(),aa_atom.coordinates())
+#                        print("C2'-O2'-A angle %10.8f" % hb_angle)
+                        if hb_angle > 80:
+                            if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
+                                if aa_key == "HIS":
+                                    if not HIS_acceptor_used:
+                                        n = n + 1
+                                    HIS_acceptor_used = True
+                                else:
+                                    n = n + 1
+                            hydrogen_bond_list.append((base_atom.name,"O2'H",aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
+                            used_base_atoms.append(base_atom.name)
+                            used_aa_atoms.append(aa_atom.name)
 
-    if num_flips == 2:
-        if n0 >= n:
-            n = n0
+
+                elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
+                    # check OH group on certain amino acids; coordinates of H are not known
+                    if (aa_key == "SER" and aa_atom.name == "OG") or \
+                       (aa_key == "THR" and aa_atom.name == "OG1") or \
+                       (aa_key == "TYR" and aa_atom.name == "OH"):
+
+                        if aa_key == "TYR":
+                            carbon = "CZ"
+                        else:
+                            carbon = "CB"
+
+                        hb_angle = calculate_hb_angle(aa_residue.centers[carbon],aa_atom.coordinates(),base_atom.coordinates())
+#                        if hb_angle:
+#                            print("%s-OH-%s angle %10.8f ------------ http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (carbon,base_atom.name,hb_angle,base_residue.unit_id(),aa_residue.unit_id()))
+
+                        if hb_angle > 80:
+                            if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
+                                n = n + 1
+                            hydrogen_bond_list.append((base_atom.name,"OHH",aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
+                            used_base_atoms.append(base_atom.name)
+                            used_aa_atoms.append(aa_atom.name)
+
+                    if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
+                        # aa with carboxylate, only count one oxygen as a donor
+                        if aa_key == "ASP" or aa_key == "GLU":
+                            if not carboxylate_donor_used:
+                                n = n + 1
+                            carboxylate_donor_used = True
+                        else:
+                            n = n+1
+                    hydrogen_bond_list.append((base_atom.name,"H?",aa_atom.name+flip_name,h_bond_ideal_distance,distance,0))
+                    used_base_atoms.append(base_atom.name)
+                    used_aa_atoms.append(aa_atom.name)
+                if flip == 0 and num_flip_states == 2:
+                    n0 = n
+                    hb0 = hydrogen_bond_list
+
+    if num_flip_states == 2:
+        if n0 >= n:       # second flip is not strictly better
+            n = n0        # use the first set of hydrogen bonds
             hydrogen_bond_list = hb0
         else:
-            print("Found a flipped amino acid"+base_key+" "+aa_key+" "+str(n)+"$$$$$$$$$$$$$$$$$")
-            print(hydrogen_bond_list)
+            print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n)+" $$$$$$$$$$$$$$$$$")
+#            print(hydrogen_bond_list)
 
     return (n,hydrogen_bond_list)
 
@@ -536,6 +1052,7 @@ def calculate_hb_angle(A,B,C):
 # This function calculates an angle from 0 to 90 degrees between two vectors
 def smaller_angle_between_vectors(vec1, vec2):
     if len(vec1) == 3 and len(vec2) == 3:
+        # the following line sometimes causes "RuntimeWarning: invalid value encountered in double_scalars" on 5JTE
         cosang = abs(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
         angle = np.arccos(cosang)
         return 180*abs(angle)/np.pi
@@ -549,6 +1066,13 @@ def angle_between_vectors(vec1, vec2):
         sinang = np.linalg.norm(np.cross(vec1, vec2))
         angle = np.arctan2(sinang, cosang)
         return 180*angle/np.pi
+    else:
+        return None
+
+# This function calculates an angle from 0 to 180 degrees between two vectors
+def angle_between_three_points(P1,P2,P3):
+    if len(P1) == 3 and len(P2) == 3 and len(P3) == 3:
+        return angle_between_vectors(P1-P2,P3-P2)
     else:
         return None
 
@@ -633,6 +1157,9 @@ def detect_face(aa_residue, aa_coordinates):
     else:
         return ("fgs3",mean_z)
 
+def unit_vector(v):
+    return v / np.linalg.norm(v)
+
 def text_output(result_list):
     with open(outputText % PDB, 'wb') as target:
         for result in result_list:
@@ -652,12 +1179,17 @@ def csv_output(result_list):
             #print base, aa, interaction
             base_component = str(base).split("|")
             aa_component = str(aa).split("|")
-            writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], 'RNA residue':base_component[3],'RNA residue number': base_component[4],'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
+            writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], \
+                'RNA residue':base_component[3],'RNA residue number': base_component[4],\
+                'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],\
+                'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
 
         """for base_residue, aa_residue,interaction in result_list:
                     base_component = str(base_residue).split("|")
                     aa_component = str(aa_residue).split("|")
-                    writer.writerow({'RNA Chain ID': base_component[2], 'RNA residue':base_component[3],'RNA residue number': base_component[4],'Protein Chain ID':ChainNames[PDB][aa_component[2]],'AA residue': aa_component[3],'AA residue number': aa_component[4], 'Interaction': interaction})"""
+                    writer.writerow({'RNA Chain ID': base_component[2], 'RNA residue':base_component[3],\
+                    'RNA residue number': base_component[4],'Protein Chain ID':ChainNames[PDB][aa_component[2]],\
+                    'AA residue': aa_component[3],'AA residue number': aa_component[4], 'Interaction': interaction})"""
 
 
 
@@ -732,6 +1264,40 @@ def draw_aa(aa, ax):
             print "Missing residues"
             continue
 
+def draw_one_aa(aa, ax):
+    #Connects atoms to draw neighboring bases and amino acids for 3D plots
+    new_aa_x=[]
+    new_aa_y=[]
+    new_aa_z=[]
+
+    back_aa_x=[]
+    back_aa_y=[]
+    back_aa_z=[]
+
+    if 0 == 0:
+        for atomname in aa_connections[aa.sequence]:
+            coord_aa=[]
+            coord_aa= aa.centers[atomname]
+            new_aa_x.append(coord_aa[0])
+            new_aa_y.append(coord_aa[1])
+            new_aa_z.append(coord_aa[2])
+        aa_lines= ax.plot(new_aa_x, new_aa_y, new_aa_z, label= 'Amino acid')
+        plt.setp(aa_lines, 'color', 'r', 'linewidth', 1.0)
+        for atom in aa.atoms():
+            ax.text(atom.x,atom.y,atom.z,atom.name)
+            if atom.name[0] == "H":
+                print(atom.name)
+                ax.plot([atom.x],[atom.y],[atom.z],'k.')
+
+        for atomname in aa_backconnect[aa.sequence]:
+            back_aa=[]
+            back_aa= aa.centers[atomname]
+            back_aa_x.append(back_aa[0])
+            back_aa_y.append(back_aa[1])
+            back_aa_z.append(back_aa[2])
+        aa_lines= ax.plot(back_aa_x, back_aa_y, back_aa_z, label= 'Amino acid')
+        plt.setp(aa_lines, 'color', 'y', 'linewidth', 1.0)
+
 def draw_aa_cent(aa, aa_part, ax):
     #Connects atoms to draw neighboring bases and amino acids for 3D plots
     for aacoord_list in list_aa_coord:
@@ -764,6 +1330,66 @@ def draw_aa_cent(aa, aa_part, ax):
         except:
             print "Missing residues"
             continue
+
+def PlotAndAnalyzeAAHydrogens(aa):
+    if aa.sequence == "ARG":
+
+        # this output checks angles
+        A = unit_vector(aa.centers["NE"] - aa.centers["CZ"])
+        B = unit_vector(aa.centers["NH1"] - aa.centers["CZ"])
+        C = unit_vector(aa.centers["NH2"] - aa.centers["CZ"])
+        print("Fitted hydrogen atoms for ARG")
+        print("B-A length",np.linalg.norm(B-A))
+        print("C-A length",np.linalg.norm(C-A))
+        print("B-A angle",angle_between_vectors(B,A))
+        print("C-B angle",angle_between_vectors(C,B))
+        print("A-C angle",angle_between_vectors(A,C))
+        print("HH12-NH1-HH11 angle",angle_between_three_points(aa.centers["HH12"],aa.centers["NH1"],aa.centers["HH11"]))
+        print("HH22-NH2-HH21 angle",angle_between_three_points(aa.centers["HH22"],aa.centers["NH2"],aa.centers["HH21"]))
+        print("CG-CD-NE  angle",angle_between_three_points(aa.centers["CG"],aa.centers["CD"],aa.centers["NE"]))
+        print("CG-CD-HD2 angle",angle_between_three_points(aa.centers["CG"],aa.centers["CD"],aa.centers["HD2"]))
+        print("CG-CD-HD3 angle",angle_between_three_points(aa.centers["CG"],aa.centers["CD"],aa.centers["HD3"]))
+        print("NE-CD-HD2 angle",angle_between_three_points(aa.centers["NE"],aa.centers["CD"],aa.centers["HD2"]))
+        print("NE-CD-HD3 angle",angle_between_three_points(aa.centers["NE"],aa.centers["CD"],aa.centers["HD3"]))
+
+        print(aa.centers["HD2"])
+        print(aa.centers["HD3"])
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.axis("equal")
+        draw_one_aa(aa, ax)
+        plt.title('Hydrogens added to '+aa.sequence)
+        plt.show()
+
+def WriteProteinUnits(PDB,amino_acids):
+    all_aa_list = []
+    for aa in amino_acids:
+        fields = aa.unit_id().split("|")
+        my_tuple = (aa.unit_id(),fields[2],aa.index,aa.centers['aa_fg'])
+        all_aa_list.append(my_tuple)
+
+    new_all_aa_list = sorted(all_aa_list, key=lambda x: (x[1],x[2]))
+
+    ids = []
+    chainPositions = []
+    centers = []
+    rotations = []
+    for my_tuple in new_all_aa_list:
+        if len(my_tuple[3]) == 3:
+#            print(my_tuple)
+            ids.append(my_tuple[0])
+            chainPositions.append(my_tuple[2])
+            centers.append(my_tuple[3])
+            rotations.append(np.zeros((0,3,3)))
+        else:
+            print("missing center",my_tuple)
+
+    dataPathUnits = "C:/Users/zirbel/Dropbox/2018 FR3D intersecting pairs/data/units/"
+
+    with open(dataPathUnits + PDB + '_protein.pickle', 'wb') as handle:
+        pickle.dump((ids,chainPositions,centers,rotations), handle, protocol = 2)  # protocol 2 is safe for Python 2.7
+
 
 def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
 
@@ -833,7 +1459,7 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
         # base_aa = (base_residue, aa_residue, interaction, edge, standard_aa_center, param)
 
         # use greedy insertion 100 times to find a decent ordering of the instances
-        newOrder, bestPathLength, distances = orderWithPathLengthFromDistanceMatrix(discrepancy,100)
+        newOrder, bestPathLength, distances = orderWithPathLengthFromDistanceMatrix(discrepancy,10)
 
         # rewrite the list of instances, limiting it to numForDiscrepancy
         newList = []
@@ -879,7 +1505,7 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
                     candidatelist += '<td>%0.4f</td>' % param[header]
                 elif isinstance(param[header],list):
                     for hbond in param[header]:
-                        candidatelist += '<td>%s-%s-%s,%0.2fA,%0.2fd</td>' % hbond
+                        candidatelist += '<td>%s-%s-%s,%0.2fA,%0.2fA,%0.2fd</td>' % hbond
                 else:
                     candidatelist += '<td>Error</td>'
 
@@ -939,11 +1565,11 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
 
 def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
 
-    SERVER = True
     SERVER = False
+    SERVER = True
     if not SERVER:
         JS1 = '<script src="./js/JSmol.min.nojq.js"></script>'
-        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsAATwoBase.js"></script>'
         JS3 = '<script src="./js/imagehandlinglocal.js"></script>'
         JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
         JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
@@ -955,7 +1581,7 @@ def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
     else:
         JS1 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
         JS2 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
-        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'   # special code to superimpose bases
+        JS2 = '<script src="./js/jquery.jmolToolsAATwoBase.js"></script>'   # special code to superimpose bases
         JS3 = '<script src="http://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
         JS4 = '<script src="http://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
         JS5 = '<script type="text/javascript" src="http://rna.bgsu.edu/webfr3d/js/heatmap.js"></script>'
@@ -986,11 +1612,24 @@ def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
         # calculate discrepancies between all instances, up to 300
         discrepancy = np.zeros((numForDiscrepancy,numForDiscrepancy))
         for i in range(0,numForDiscrepancy):
-            instance_1 = allAATwoBaseDictionary[key][i]
+            group1 = allAATwoBaseDictionary[key][i]
+            centers1 = [group1[0][1].centers[aa_part]]
+            centers1.append(group1[0][0].centers["base"])
+            centers1.append(group1[1][0].centers["base"])
+            rotations1 = [np.empty((0,0))]
+            rotations1.append(group1[0][0].rotation_matrix)
+            rotations1.append(group1[1][0].rotation_matrix)
+
             for j in range(i+1,numForDiscrepancy):
-                instance_2 = allAATwoBaseDictionary[key][j]
+                group2 = allAATwoBaseDictionary[key][j]
+                centers2 = [group2[0][1].centers[aa_part]]
+                centers2.append(group2[0][0].centers["base"])
+                centers2.append(group2[1][0].centers["base"])
+                rotations2 = [np.empty((0,0))]
+                rotations2.append(group2[0][0].rotation_matrix)
+                rotations2.append(group2[1][0].rotation_matrix)
                 s = 0
-                discrepancy[i][j] = 0
+                discrepancy[i][j] = matrix_discrepancy(centers1,rotations1,centers2,rotations2)
                 discrepancy[j][i] = discrepancy[i][j]
 
         # use greedy insertion 100 times to find a decent ordering of the instances
@@ -1103,19 +1742,23 @@ PDB_List = ['4V9F','4YBB','4Y4O','6AZ3','4P95']
 PDB_List = ['3BT7']
 PDB_List = ['5I4A']
 PDB_List = ['6A2H']
-PDB_List = ['6A2H','6A2I','6IDE','6N60','6N61','6N62','5YUU','6DKS','6E8C','6GVQ','6GVT','6GVT','6GVU','5YUX','6BHX','6FWR','6FWS','6MG2','6MG3','6BQU','6BSE','6BSF','6FBQ','6FBR','6IG1','5YTC','5YTD','5YTE','5YTF','5YTG','5YTH','5Z3N','5ZVA','5ZVB','5YBD','5YUZ','5YV0','5YUS','5YUW','5YV3','5ZLV','6A47','6A4B','6E93','6E94','5WCU','5Z6Z','5ZFW','5ZFY','5ZFZ']
-PDB_List = ['6BHJ','6AI6','6CVO','6DOI','6DPB','6DOF','6DP4','6DO8','6DOX','6DOQ','6DPM','6DPF','6DOJ','6DP8','6DOC','6DP1','6DOU','6DON','6DPJ','6DPC','6DOG','6DP5','6DO9','6DOY','6DOR','6DPN','6DPG','6DOK','6DP9','6DOD','6DP2','6DMN','6DOV','6DOO','6DPK','6DPD','6DOH','6DP6','6DOA','6DOZ','6DOS','6DPO','6DOL','6DPH','6DPA','6DOE','6DP3','6DMV','6DOW','6DOP','6DPL','6DPE','6DP7','6DOB','6DP0','6DPP','6DOT','6DOM','6DPI','5ZRF','6D95','5ZQF','6D8P','6D9L','6D92','6D8A','6D8F','6D9K','6DT8','6DTA','6CVT','6CVP','6CVQ','6CVR','5W4U','5W51','5XPA','5USB','5XPG','5USN','5USO','6BM2','6BM4','6BLO','6BQF','6BLP','5XN0','5XN2','5XMA','6BSH','6BSI','6BSJ','6BSG','6AR3','6AR1','5OT2','5WTI','5OLA','5XOW','5VAJ','5KW1','5XOG','5O6U','5XUT','5XUU','5WJR','5XUZ','5XUS','5VI5','5X21','5VZH','5VZ8','5X22','5VZB','5TWS','5VZE','5W7O','5W7N','5MGA','5N9G','5XH6','5NFV','5XH7','5VO8','5UX0','5UHC','5UH6','5UH8','5UH9','5UH5','5X2G','5X2H','5U30','5U31','5U33','5SWM','5KK5','5AWH','5I2D','5FW2','5FW3','5B43','5FW1','4Z7K','5CR2','5IPL','5IPM','5IPN','5B2S','5B2T','5FQ5','5F0Q','5B2R','5F0S','5E18','5E17','5B2P','5B2Q','5B2O','5EV3','5EV4','5EV1','5EV2','5H9E','5H9F','5F9R','4XLN','4XLR','5CZZ','5AXW','5C4X','5C44','5C4A','5C4J','5C3E','4Y7N','4Y52','3X1L','4WB3','4PGY','4YLN','4YLO','4YLP','4WQS','4X67','4X6A','4S20','4Q5V','4QCL','4QYZ','4PY5','4UN3','4UN4','4UN5','4Q5S','4PQU','4PUO','4Q0B','4PWD','4PUQ','4O9M','4OL8','4OO8','4NDF','4NDG','4NDI','4KHW','4KHY','4KHS','4KI4','4KHU','4KI6','4H8K','4BOC','4BWM','4BXX','4BY1','4BY7','4K4Y','4K4V','4FXD','4FYD','4HKQ','4GZY','4GZZ','4HHT','4B3Q','4B3O','4B3P','3ULD','4BBS','4G7O','4GG4','3TWH','4DB4','4FO6','4DQS','3UQ2','3UQ0','4E7A','4A93','4A3G','4A3M','4A3D','4A3J','4A3E','4A3K','4A3B','4A3F','4A3L','4A3C','3S2H','3S1Q','3RZO','3S17','3S1R','3S14','3S1M','3S2D','3S15','3S1N','3RZD','3S16','3QRQ','3PO3','3PO2','3PGW','3OLA','3O3H','3AOH','3AOI','3O3F','3O3G','3M3Y','3M4O','3KYL','3IIN','3I55','3KJO','3HXM','3HK2','3HM9','3HVR','3HO1','3HJF','3I4M','3I4N','3HOU','3HOY','3HOV','3HOZ','3HOW','3HOX','3H3V','3ER8','3GTP','3GTL','3GTQ','3GTG','3GTM','3GTJ','3GTO','3GTK','3F73','3E2E','3E3J','2VUM','2R7Y','3BO4','3BSU','2R7Z','2QK9','2QKB','2QKK','2PPB','2Q2T','2Q2U','2O5J','2O5I','2YU9','2JA7','2JA8','2JA5','2JA6','2NVX','2E2I','2NVZ','2E2H','2NVQ','2E2J','2NVT','2HVS','2HVR','2G8F','2G8U','2G8H','2G8V','2G8I','2G8W','2G8K','1ZBI','1ZBL','1Y77','1Y1W','1Y1Y','1R9T','1R9S','1SI2','1S76','1S77','1SFO','1S0V','1Q7Y','1NH3','1H38','1MSW','1I6H','1HYS','1QLN','1D9D','1D9F']
 PDB_List = ['4V9F']
 PDB_List = ['3JB9']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
 version = "_3.72_3.0"
 PDB_List = ['1OCT']
 PDB_List = ['4v9fFH.pdb']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
-version = "_3.74_4.0"
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
 version = "_3.48_2.5"
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
+version = "_3.74_4.0"
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/3.0A/csv']
+version = "_3.48_3.0"
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
 PDB_List = ['4V9F']
+PDB_List = ['4V9F|1|9']
+PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
+PDB_List = ['4V51','4V9K']
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
@@ -1127,6 +1770,10 @@ base_seq_list = ['A','U','C','G']      # for RNA
 aa_list = ['HIS']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
 
+atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
+base_aa_screen_distance = 18    #
+nt_reference = "C1'"
+aa_reference = "aa_fg"
 
 hasNoProteinFilename = inputPath % "hasNoProtein.pickle"
 hasNoProteinFilename = hasNoProteinFilename.replace(".cif","")
@@ -1135,15 +1782,24 @@ try:
 except:
     hasNoProtein = []
 
-#fig = plt.figure()
-#ax = fig.add_subplot(111, projection='3d')
+# plot one instance of each of the amino acids, showing the hydrogen atoms added
+PlotAA = True
+PlotAA = False
+AlreadyPlotted = {}
+
+# The following lines use this program to write out centers by unit ids, for use in FR3D.
+# That's not really what this program is for, though.
+WriteProteinUnitsFile = True
+WriteProteinInteractionFile = True
+WriteProteinUnitsFile = False
+WriteProteinInteractionFile = False
 
 """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
 if __name__=="__main__":
 
     timerData = myTimer("start")
 
-    aa_part = 'aa_fg'               # other choices would be ...
+    aa_part = 'aa_fg'               # other choices would be ... aa_linker and aa_backbone
     base_part = 'base'
 
     allInteractionDictionary = defaultdict(list)
@@ -1159,12 +1815,30 @@ if __name__=="__main__":
     if ReadPickleFile:
         print("Reading " + outputDataFile)
         timerData = myTimer("Reading pickle file",timerData)
-        allInteractionDictionary,PDB_List = pickle.load(open(outputDataFile,'rb'))
+        allInteractionDictionary,allAATwoBaseDictionary,PDB_List = pickle.load(open(outputDataFile,'rb'))
+        writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
         writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
     else:
         PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
         for PDB in PDB_List:
-            if "nrlist" in PDB:           # referring to a list online
+            if "nrlist" in PDB and "NR_" in PDB:            # referring to an equivalence class online
+                                          # download the entire representative set,
+                                          # then find the right line for the equivalence class
+                                          # then extract the list
+                f = urllib.urlopen(PDB)
+                myfile = f.read()
+                alltbody = myfile.split("tbody")
+                alllines = alltbody[1].split("<a class='pdb'>")
+                del alllines[0]
+                for line in alllines:
+                    fields = line.split("</a>")
+                    print(fields[0])
+                    if len(fields[0]) > 1:
+                        newIFE = fields[0].replace(" ","")   # remove spaces
+                        newPDB = newIFE[0:4]
+                        PDB_IFE_Dict[newPDB] += "+" + newIFE
+
+            elif "nrlist" in PDB:           # referring to a representative set online
                 f = urllib.urlopen(PDB)
                 myfile = f.read()
                 alllines = myfile.split("\n")
@@ -1174,28 +1848,32 @@ if __name__=="__main__":
                     if len(fields) > 1 and len(fields[1]) > 4:
                         newPDB = fields[1][1:5]       # use only PDB identifier, ignore IFE for now
                         PDB_IFE_Dict[newPDB] += "+" + fields[1].replace('"','')
-            elif 0 > 1 and "NR_" in PDB:            # referring to an equivalence class online
-                                          # download the entire representative set,
-                                          # then find the right line for the equivalence class
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
-                alllines = myfile.split("\n")
-                for line in alllines:
-                    fields = line.split(",")
 
-                    if len(fields) > 1 and len(fields[1]) > 4:
-                        newPDB = fields[1][1:5]
+            elif "+" in PDB:
+                newPDB = PDB[0:4]
+                PDB_IFE_Dict[newPDB] = PDB
+
+            elif "|" in PDB:
+                newPDB = PDB[0:4]
+                PDB_IFE_Dict[newPDB] = PDB
 
             else:
                 PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
 
+        print(PDB_IFE_Dict)
+
+
         counter = 0
         count_pair = 0
 
-        for PDB in PDB_IFE_Dict:
+        # loop through 3D structures and annotate interactions
+        PDBs = PDB_IFE_Dict.keys()
+        PDBs = PDBs[::-1]
+
+        for PDB in PDBs:
             counter += 1
 
-            if PDB in hasNoProtein:
+            if 0 > 1 and PDB in hasNoProtein:
                 print("Skipping file " + PDB + " since it has no amino acids")
                 continue
 
@@ -1204,38 +1882,62 @@ if __name__=="__main__":
 
             try:
                 structure = get_structure(inputPath % PDB)
-
             except:
                 print("Could not load structure")
                 continue
 
-            timerData = myTimer("Finding neighbors",timerData)
-
-            bases = structure.residues(sequence= base_seq_list)
-    #        bases = structure.residues(chain= ["0","9"], sequence= "C")   # will make it possible to load IFEs easily
-
-            amino_acids = structure.residues(sequence=aa_list)
+            IFE = PDB_IFE_Dict[PDB]
+            if len(IFE) == 0:
+                bases = structure.residues(sequence= base_seq_list)  # load just the types of bases in base_seq_list
+            else:
+                chain_ids = []
+                chains = IFE.split("+")
+                for chain in chains:
+                    fields = chain.split("|")
+                    chain_ids.append(fields[2])
+                bases = structure.residues(chain = chain_ids, sequence= base_seq_list)
 
             numBases = 0
             for base in bases:
                 numBases += 1
+
+            amino_acids = structure.residues(sequence=aa_list)
+
+            # if desired, write files for FR3D
+            if WriteProteinUnitsFile:
+                timerData = myTimer("Writing units file",timerData)
+                WriteProteinUnits(PDB,amino_acids)
+
             numAA = 0
             for aa in amino_acids:
                 numAA += 1
+
+                if PlotAA and not aa.sequence in AlreadyPlotted:
+                    timerData = myTimer("Plotting amino acids",timerData)
+                    PlotAndAnalyzeAAHydrogens(aa)
+                    AlreadyPlotted[aa.sequence] = 1
+
             print("  Found " + str(numBases) + " bases and " + str(numAA) + " amino acids in " + PDB)
 
             if numAA == 0:
                 hasNoProtein.append(PDB)
                 pickle.dump(hasNoProtein,open(hasNoProteinFilename,"wb"))
 
-            start = datetime.now()
-            baseCubeList, baseCubeNeighbors, aaCubeList, tally = find_neighbors(bases, amino_acids, aa_part, 10, PDB_IFE_Dict[PDB])
+            # find atom-atom contacts
+            timerData = myTimer("Finding atom-atom contacts",timerData)
+            contact_list = find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance)
 
-            print("  Kept %d bases and omitted %d bases" % tally)
+            # find neighbors in order to annotate base-aa_fg interactions
+            timerData = myTimer("Finding neighbors",timerData)
+            print("  Finding neighbors in " + PDB)
+            nt_reference = "base"
+            aa_reference = "aa_fg"
+            base_aa_screen_distance = 10
+            baseCubeList, baseCubeNeighbors, aaCubeList = find_neighbors(bases, amino_acids, base_aa_screen_distance, PDB_IFE_Dict[PDB], nt_reference, aa_reference)
 
+            # annotate base-aa_fg interactions
             timerData = myTimer("Annotating interactions",timerData)
-
-            list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict = annotate_interactions(bases, amino_acids, aa_part, 10, baseCubeList, baseCubeNeighbors, aaCubeList)
+            list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict = annotate_interactions(bases, amino_acids, base_aa_screen_distance, baseCubeList, baseCubeNeighbors, aaCubeList)
 
             timerData = myTimer("Recording interactions",timerData)
 
@@ -1259,7 +1961,6 @@ if __name__=="__main__":
                         group = hbond_aa_dict[aa_unit_id]
                         key = group[0][1].sequence + "-" + group[0][0].sequence + "-" + group[1][0].sequence
                         key = group[0][1].sequence
-                        print(key)
                         allAATwoBaseDictionary[key].append(group)
 
             """ 3D plots of base-aa interactions
@@ -1289,14 +1990,19 @@ if __name__=="__main__":
             csv_output(list_base_aa)
             print("  Wrote output to " + outputBaseAAFG % PDB)
 
+            with open(contact_list_file % PDB, 'w') as clf:
+                clf.writelines(contact_list)
+
+            myTimer("summary",timerData)
+
         print("Recorded %d pairwise interactions" % count_pair)
 
         # when appropriate, write out HTML files
-        if len(PDB_IFE_Dict) > 0:
+        if len(PDB_IFE_Dict) > 100:
             print("Writing " + outputDataFile)
             timerData = myTimer("Writing HTML files",timerData)
             pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_List),open(outputDataFile,"wb"))
             writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
             writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
 
-myTimer("summary",timerData)
+    myTimer("summary",timerData)
