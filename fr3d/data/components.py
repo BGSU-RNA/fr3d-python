@@ -36,7 +36,7 @@ def pyramidal_hydrogens(P1,C,P2,bondLength=1):
     V2 = P2
     # vector from V2 to C
     u = unit_vector(C-V2)
-    # construct Rodriques rotation matrix
+    # construct Rodrigues rotation matrix
     # matrix to rotate 120 degrees around vector u
     W = np.array([[0,-u[2],u[1]],[u[2],0,-u[0]],[-u[1],u[0],0]])
     R = np.identity(3) + (np.sqrt(3)/2)*W + 1.5 * np.dot(W,W)
@@ -49,7 +49,7 @@ def pyramidal_hydrogens(P1,C,P2,bondLength=1):
     V2 = P1
     # vector from V2 to C
     u = unit_vector(C-V2)
-    # construct Rodriques rotation matrix
+    # construct Rodrigues rotation matrix
     # matrix to rotate 120 degrees around vector u
     W = np.array([[0,-u[2],u[1]],[u[2],0,-u[0]],[-u[1],u[0],0]])
     R = np.identity(3) + (np.sqrt(3)/2)*W + 1.5 * np.dot(W,W)
@@ -284,7 +284,7 @@ class Component(EntitySelector):
                 # however, some structures aren't labeled that way, and so either N1 or N2
                 # could be the correct location for HE
                 N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
-                self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HE",x=N2[0],y=N2[1],z=N2[2]))
 
                 N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
                 self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
