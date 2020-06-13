@@ -12,6 +12,7 @@ Ribophos_connect = {}
 tilt_cutoff = {}
 aa_connections = {}
 aa_backconnect = {}
+aa_hydrogen_connections = {}
 nt_phosphate = {}
 nt_sugar = {}
 nt_backbone = {}
@@ -574,8 +575,7 @@ NAbasecoordinates['DG']['1H2'] = [  3.415836,  -1.614107,   0.000000]
 NAbasecoordinates['DG']['2H2'] = [  3.838495,   0.070395,   0.000000]
 
 
-#Definitions for drawing the amino acids
-
+# Definitions for drawing the amino acid backbones.  Each pair gets a line between them.
 aa_backconnect['ARG']=['N','CA','CA','C','C','O','C','CA']
 aa_backconnect['LYS']=['N','CA','CA','C','C','O','C','CA']
 aa_backconnect['HIS']=['N','CA','CA','C','C','O','C','CA']
@@ -597,6 +597,7 @@ aa_backconnect['SER']=['N','CA','CA','C','C','O','C','CA']
 aa_backconnect['THR']=['N','CA','CA','C','C','O','C','CA']
 aa_backconnect['CYS']=['N','CA','CA','C','C','O','C','CA']
 
+# Definitions for drawing the amino acid sidechains.  Each pair gets a line between them.
 aa_connections['ARG'] =['CA','CB','CB','CG','CG','CD','CD','NE','NE','CZ','CZ','NH1','CZ','NH2']
 aa_connections['LYS'] =['CA','CB','CB','CG','CG','CD','CD','CE','CE','NZ']
 aa_connections['HIS'] =['CA','CB','CB','CG','CG','CD2','CD2','NE2','NE2','CE1','CE1','ND1','ND1','CG']
@@ -617,6 +618,9 @@ aa_connections['GLY'] =[]
 aa_connections['SER'] =['CA','CB','CB','OG']
 aa_connections['THR'] =['CA','CB','CB','OG1','CB','CG2']
 aa_connections['CYS'] =['CA','CB','CB','SG']
+
+# Definitions for drawing the amino acid hydrogens.  Each tuple defines a line to be drawn.
+aa_hydrogen_connections['ARG'] = [('N','H'),('N','H2'),('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('CD','HD2'),('CD','HD3'),('NE','HE'),('NH1','HH11'),('NH1','HH12'),('NH2','HH21'),('NH2','HH22')]
 
 #Definitions for drawing the RNA nucleotides
 
