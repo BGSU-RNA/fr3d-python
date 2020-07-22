@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 26 12:44:30 2014 @author: Poorna
+Created on Wed Nov 26 12:44:30 2014 @author: Poorna Roy
 Name: RNA-protein detection
 """
 
@@ -14,6 +14,7 @@ from fr3d.definitions import nt_phosphate
 from fr3d.definitions import Ribophos_connect
 from fr3d.definitions import aa_connections
 from fr3d.definitions import aa_backconnect
+from fr3d.definitions import aa_hydrogen_connections
 from fr3d.definitions import aa_fg
 from fr3d.definitions import aa_linker
 from fr3d.definitions import aa_backbone
@@ -39,6 +40,7 @@ from fr3d.localpath import outputBaseAAFG
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
+from fr3d.data.base import EntitySelector
 
 from fr3d.ordering.greedyInsertion import orderWithPathLengthFromDistanceMatrix
 
@@ -404,10 +406,10 @@ def get_structure(filename):
     with open(filename, 'rb') as raw:
         print("  Loading " + filename)
         structure = Cif(raw).structure()
-        """All RNA bases are placed in the standard orientation. All Hydrogen
-           atoms on bases are inferred. Rotation matrix is calculated for each base."""
+        """All RNA bases are placed in the standard orientation.
+        Rotation matrix is calculated for each base."""
 
-#        structure.infer_hydrogens()  # they are already inferred; doing this again repeats each hydrogen atom twice!
+        structure.infer_hydrogens()  # add hydrogens to RNA bases and amino acids
 
 #        pickle.dump(structure,open(filename+".pickle","wb"))  # larger file sizes than .cif ... not sure why
 
@@ -1275,6 +1277,9 @@ def draw_one_aa(aa, ax):
     back_aa_z=[]
 
     if 0 == 0:
+        for atom in aa.atoms():
+            ax.text(atom.x,atom.y,atom.z,atom.name)
+
         for atomname in aa_connections[aa.sequence]:
             coord_aa=[]
             coord_aa= aa.centers[atomname]
@@ -1283,11 +1288,14 @@ def draw_one_aa(aa, ax):
             new_aa_z.append(coord_aa[2])
         aa_lines= ax.plot(new_aa_x, new_aa_y, new_aa_z, label= 'Amino acid')
         plt.setp(aa_lines, 'color', 'r', 'linewidth', 1.0)
-        for atom in aa.atoms():
-            ax.text(atom.x,atom.y,atom.z,atom.name)
-            if atom.name[0] == "H":
-                print(atom.name)
-                ax.plot([atom.x],[atom.y],[atom.z],'k.')
+
+        for hpair in aa_hydrogen_connections[aa.sequence]:
+            if hpair[0] in aa.centers and hpair[1] in aa.centers:
+                first  = aa.centers[hpair[0]]
+                second = aa.centers[hpair[1]]
+
+                aa_lines = ax.plot([first[0],second[0]],[first[1],second[1]],[first[2],second[2]], label= 'Amino acid')
+                plt.setp(aa_lines, 'color', 'k', 'linewidth', 1.0)
 
         for atomname in aa_backconnect[aa.sequence]:
             back_aa=[]
@@ -1351,6 +1359,9 @@ def PlotAndAnalyzeAAHydrogens(aa):
         print("CG-CD-HD3 angle",angle_between_three_points(aa.centers["CG"],aa.centers["CD"],aa.centers["HD3"]))
         print("NE-CD-HD2 angle",angle_between_three_points(aa.centers["NE"],aa.centers["CD"],aa.centers["HD2"]))
         print("NE-CD-HD3 angle",angle_between_three_points(aa.centers["NE"],aa.centers["CD"],aa.centers["HD3"]))
+
+        print("Hydrogen center HH12")
+        print(aa.centers["HH12"])
 
         print(aa.centers["HD2"])
         print(aa.centers["HD3"])
@@ -1755,10 +1766,11 @@ version = "_3.74_4.0"
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/3.0A/csv']
 version = "_3.48_3.0"
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
-PDB_List = ['4V9F']
 PDB_List = ['4V9F|1|9']
 PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
 PDB_List = ['4V51','4V9K']
+PDB_List = ['4V9F']
+
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
@@ -1783,8 +1795,8 @@ except:
     hasNoProtein = []
 
 # plot one instance of each of the amino acids, showing the hydrogen atoms added
-PlotAA = True
 PlotAA = False
+PlotAA = True
 AlreadyPlotted = {}
 
 # The following lines use this program to write out centers by unit ids, for use in FR3D.

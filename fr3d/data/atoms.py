@@ -61,7 +61,6 @@ class Atom(object):
 
     def unit_id(self):
         """Create the unit id for this Atom.
-
         :returns: The unit id string.
         """
         return encode({

@@ -62,7 +62,7 @@ def pyramidal_hydrogens(P1,C,P2,bondLength=1):
     P4 = (V4+VV4)/2
 
     # diagnostics if desired
-    if 1 > 0:
+    if 1 > 10:
         print("pyramidal_hydrogens V3, VV3 distance",np.linalg.norm(V3-VV3))
         print("pyramidal_hydrogens V4, VV4 distance",np.linalg.norm(V4-VV4))
         print("pyramidal_hydrogens P1-C-P2 angle",angle_between_three_points(P1,C,P2),"as input")
@@ -81,7 +81,7 @@ def planar_hydrogens(P1,P2,P3,bondLength=1):
     N2 = P3 + (B - A)*bondLength
 
     # diagnostics if desired
-    if 1 > 0:
+    if 1 > 10:
         print("planar_hydrogens P1-P2-P3 angle",angle_between_three_points(P1,P2,P3),"as input")
         print("planar_hydrogens P2-P3-N1 angle",angle_between_three_points(P2,P3,N1),"as inferred")
         print("planar_hydrogens P2-P3-N2 angle",angle_between_three_points(P2,P3,N2),"as inferred")
@@ -141,7 +141,6 @@ class Component(EntitySelector):
             self.centers.define('base', atoms)
 
         self.calculate_rotation_matrix()
-
 
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
@@ -251,7 +250,11 @@ class Component(EntitySelector):
 
     def infer_hydrogens(self):
         """Infer the coordinates of the hydrogen atoms of this component.
-        Currently, it only works for RNA with .sequence
+        Currently, it only works for RNA and DNA
+        Amino acids are being added.
+        This code only adds hydrogens with their name, but the Atom entity
+        does not have the full unit ID of the atom, unlike the heavy atoms
+        taken from the CIF file.
         """
 
         if self.sequence in defs.NAbasehydrogens:
@@ -285,7 +288,7 @@ class Component(EntitySelector):
                 # that way, and so either N1 or N2 could be the correct
                 # location for HE
                 N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
-                self._atoms.append(Atom(name="HE",x=N2[0],y=N2[1],z=N2[2]))
+                self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
 
                 N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
                 self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
@@ -301,6 +304,7 @@ class Component(EntitySelector):
 
                 N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
                 self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+
             except:
                 print("Most likely a missing atom in %s" % self.unit_id())
 
