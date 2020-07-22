@@ -76,9 +76,9 @@ def pyramidal_hydrogens(P1,C,P2,bondLength=1):
 def planar_hydrogens(P1,P2,P3,bondLength=1):
 
     A = unit_vector(P2 - P1)
-    N1 = P3 + A
+    N1 = P3 + A*bondLength
     B = unit_vector(P3 - P2)
-    N2 = P3 + B - A
+    N2 = P3 + (B - A)*bondLength
 
     # diagnostics if desired
     if 1 > 0:
@@ -272,7 +272,7 @@ class Component(EntitySelector):
 
         elif self.sequence == "ARG":
             try:
-                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"])
+                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
                 self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
                 self._atoms.append(Atom(name="HH12",x=N2[0],y=N2[1],z=N2[2]))
 
@@ -280,9 +280,10 @@ class Component(EntitySelector):
                 self._atoms.append(Atom(name="HH22",x=N1[0],y=N1[1],z=N1[2]))
                 self._atoms.append(Atom(name="HH21",x=N2[0],y=N2[1],z=N2[2]))
 
-                # the following lines assume that NH2 is closer to CD than NH1 is
-                # however, some structures aren't labeled that way, and so either N1 or N2
-                # could be the correct location for HE
+                # the following lines assume that NH2 is closer to CD
+                # than NH1 is however, some structures aren't labeled
+                # that way, and so either N1 or N2 could be the correct
+                # location for HE
                 N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
                 self._atoms.append(Atom(name="HE",x=N2[0],y=N2[1],z=N2[2]))
 
