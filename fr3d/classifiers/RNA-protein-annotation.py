@@ -391,12 +391,13 @@ def get_structure(filename):
         print("  Loading " + filename + ".pickle")
         structure = pickle.load(open(filename+".pickle","rb"))
         return structure
-
+    print(filename)
     if not os.path.exists(filename):
         mmCIFname = filename[-8:]               # last 8 characters ... awkward
         print("  Downloading "+mmCIFname)
         f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
         myfile = f.read()
+        print(myfile)
         with open(filename, 'w') as outfile:
             outfile.write(myfile)
 
@@ -1365,7 +1366,7 @@ def PlotAndAnalyzeAAHydrogens(aa):
 
         print(aa.centers["HD2"])
         print(aa.centers["HD3"])
-
+    if aa.sequence in aa_hydrogen_connections:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.axis("equal")
@@ -1769,7 +1770,9 @@ PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
 PDB_List = ['4V9F|1|9']
 PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
 PDB_List = ['4V51','4V9K']
-PDB_List = ['4V9F']
+PDB_List= ['6WJR']
+PDB_List = ['4v9f']
+
 
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
@@ -1892,6 +1895,7 @@ if __name__=="__main__":
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
 
+            structure = get_structure(inputPath % PDB)
             try:
                 structure = get_structure(inputPath % PDB)
             except:

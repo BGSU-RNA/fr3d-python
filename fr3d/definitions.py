@@ -621,6 +621,7 @@ aa_connections['CYS'] =['CA','CB','CB','SG']
 
 # Definitions for drawing the amino acid hydrogens.  Each tuple defines a line to be drawn.
 aa_hydrogen_connections['ARG'] = [('N','H'),('N','H2'),('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('CD','HD2'),('CD','HD3'),('NE','HE'),('NH1','HH11'),('NH1','HH12'),('NH2','HH21'),('NH2','HH22')]
+aa_hydrogen_connections['LYS']= [('NZ','HZ1'),('NZ','HZ2'),('NZ','HZ3'),('CE','HE2'),('CE','HE3'),('HD2','CD'),('CD','HD3'),('CG','HG2'),('CG','HG3'),('CB','HB2'),('CB','HB3'),('CA','HA'),('N','H'),('OXT','HXT')]
 
 #Definitions for drawing the RNA nucleotides
 
