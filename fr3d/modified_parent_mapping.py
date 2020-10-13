@@ -1,5 +1,7 @@
 modified_nucleotides = {}
 
+# keys in the atoms variable are the atoms from the _______ base, values are atoms from the ________ base
+
 modified_nucleotides['SSU'] = {
 "standard":'U',
 "atoms":{'C4': 'C4', 'N1': 'N1', 'N3': 'N3', 'C5': 'C5', 'O4': 'O4', 'C2': 'C2', 'O2': 'O2', 'C6': 'C6'}
