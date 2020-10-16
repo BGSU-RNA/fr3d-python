@@ -5,7 +5,7 @@ from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
 from fr3d.geometry import angleofrotation as angrot
 import numpy as np
-
+NHBondLength=1
 from fr3d.unit_ids import encode
 
 def unit_vector(v):
@@ -274,40 +274,65 @@ class Component(EntitySelector):
                 print self.unit_id(), "Adding hydrogens failed"
 
         elif self.sequence == "ARG":
-            try:
-                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
-                self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
-                self._atoms.append(Atom(name="HH12",x=N2[0],y=N2[1],z=N2[2]))
+            
+            N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
+            self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HH12",x=N2[0],y=N2[1],z=N2[2]))
 
-                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
-                self._atoms.append(Atom(name="HH22",x=N1[0],y=N1[1],z=N1[2]))
-                self._atoms.append(Atom(name="HH21",x=N2[0],y=N2[1],z=N2[2]))
+            N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
+            self._atoms.append(Atom(name="HH22",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HH21",x=N2[0],y=N2[1],z=N2[2]))
 
-                # the following lines assume that NH2 is closer to CD
-                # than NH1 is however, some structures aren't labeled
-                # that way, and so either N1 or N2 could be the correct
-                # location for HE
-                N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
-                self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
+            # the following lines assume that NH2 is closer to CD
+            # than NH1 is however, some structures aren't labeled
+            # that way, and so either N1 or N2 could be the correct
+            # location for HE
+            N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
+            self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
 
-                N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
-                self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
-                self._atoms.append(Atom(name="HD2",x=N2[0],y=N2[1],z=N2[2]))
+            N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
+            self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HD2",x=N2[0],y=N2[1],z=N2[2]))
 
-                N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
-                self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
-                self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
+            N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+            self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
 
-                N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-                self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
-                self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
+            N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+            self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
 
-                N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-                self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+            N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+            self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
 
-            except:
-                print("Most likely a missing atom in %s" % self.unit_id())
+        elif self.sequence == "LYS":
+        
+            N1,N2 = planar_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"],NHBondLength)
+            self._atoms.append(Atom(name="HZ3",x=N1[0],y=N1[1],z=N1[2]))
 
+            N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["CE"])
+            self._atoms.append(Atom(name="HD2",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HD3",x=N2[0],y=N2[1],z=N2[2]))
+
+            N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+            self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
+
+            N1,N2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"])
+            self._atoms.append(Atom(name="HE2",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HE3",x=N2[0],y=N2[1],z=N2[2]))
+
+            N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+            self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
+            self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
+
+            N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+            self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+
+            N1,N2 = planar_hydrogens(self.centers["CD"],self.centers["HD3"],self.centers["NZ"])
+            self._atoms.append(Atom(name="HZ2",x=N1[0],y=N1[1],z=N1[2]))
+            
+                
     def transform(self, transform_matrix):
         """Create a new component from "self" by applying the 4x4 transformation
         matrix. This does not keep the rotation matrix if any,

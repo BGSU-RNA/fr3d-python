@@ -13,3 +13,9 @@ outputBaseAAFG = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\aa-fg_base_%s.
 contact_list_file = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\contact_list_%s.txt'
 outputHTML = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\output'
 
+inputPath = '/Users/katelandsipe/Documents/Research/FR3D/PDBFiles/%s.cif'
+outputText = '/Users/katelandsipe/Documents/Research/FR3D/RNAProtein/proteinRNA_%s.txt'
+outputBaseAAFG = '/Users/katelandsipe/Documents/Research/FR3D/RNAProtein/aa-fg_base_%s.csv'
+contact_list_file = '/Users/katelandsipe/Documents/Research/FR3D/RNAProtein/contact_list_%s.txt'
+outputHTML = '/Users/katelandsipe/Documents/Research/FR3D/RNAProtein/output'
+

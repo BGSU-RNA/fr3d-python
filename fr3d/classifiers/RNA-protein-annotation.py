@@ -391,12 +391,13 @@ def get_structure(filename):
         print("  Loading " + filename + ".pickle")
         structure = pickle.load(open(filename+".pickle","rb"))
         return structure
-
+    print(filename)
     if not os.path.exists(filename):
         mmCIFname = filename[-8:]               # last 8 characters ... awkward
         print("  Downloading "+mmCIFname)
         f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
         myfile = f.read()
+        print(myfile)
         with open(filename, 'w') as outfile:
             outfile.write(myfile)
 
@@ -1365,7 +1366,7 @@ def PlotAndAnalyzeAAHydrogens(aa):
 
         print(aa.centers["HD2"])
         print(aa.centers["HD3"])
-
+    if aa.sequence in aa_hydrogen_connections:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.axis("equal")
@@ -1772,7 +1773,6 @@ PDB_List = ['4V51','4V9K']
 PDB_List = ['4V9F']
 PDB_List = ['6WJR']
 
-
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
 
@@ -1893,6 +1893,7 @@ if __name__=="__main__":
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
 
+            structure = get_structure(inputPath % PDB)
             try:
                 structure = get_structure(inputPath % PDB)
             except:
