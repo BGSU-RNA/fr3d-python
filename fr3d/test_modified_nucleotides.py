@@ -684,10 +684,11 @@ PDB_List = ['6BHJ','6AI6','6CVO','6DOI','6DPB','6DOF','6DP4','6DO8','6DOX','6DOQ
 PDB_List = ['4NLF']
 PDB_List = ['1SK5','5XUT','4NLF','4X1A','1EM0','1DPL']
 PDB_List = ['4RKV'] # 0.9 Angstrom RNA structure, has A and B locations that confuse fr3d-python
-PDB_List = ['4TNA'] # RNA structure with several modified modified_nucleotides
 PDB_List = ['5XUT'] # 5XUT|1|A|ARG|1076 has no sidechain
 PDB_List = ['6UKF'] # DNA structure
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
+PDB_List = ['4TNA'] # RNA structure with several modified modified_nucleotides
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.147/3.5A/csv']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DT']  # for DNA DT only
@@ -697,15 +698,16 @@ base_seq_list = modified_nucleotides.keys()  # to study known modified bases
 plot_nts = False
 plot_nts = True
 
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
-#aa_list = ['HIS']
+# this is a good starting point if you want to see *all* of the modified bases
+bases_plotted = []
 
+# this starting point already includes all modified bases in http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv
+bases_plotted = ['1MA', '1MG', '23G', '2MA', '2MG', '2MU', '3TD', '4OC', '4SU', '5BU', '5IC', '5MC', '5MU', '6IA', '7MG', 'A23', 'A2M', 'A5M', 'AVC', 'CBV', 'CCC', 'FHU', 'G46', 'G7M', 'GDP', 'GRB', 'GTP', 'H2U', 'IU', 'LCA', 'M2G', 'MA6', 'MIA', 'N6G', 'OMC', 'OMG', 'OMU', 'P5P', 'PGP', 'PPU', 'PSU', 'PYO', 'QUO', 'RSQ', 'RUS', 'S4C', 'SUR', 'U37', 'UR3', 'US5', 'YG']
+
+modified_base_count = defaultdict(int)
 
 """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
 if __name__=="__main__":
-
-    aa_part = 'aa_fg'
-    base_part = 'base'
 
     MinMaxZ = 50       # largest z value for base atoms in one base, but smallest value seen so far
 
@@ -728,10 +730,9 @@ if __name__=="__main__":
             PDB_File_List.append(PDB)
 
     PDB_File_List = sorted(list(set(PDB_File_List)))
+    PDB_File_List.reverse()
 
     heavyatoms = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']  # not a complete list ...
-
-    bases_plotted = []
 
     counter = 0
     for PDB in PDB_File_List:
@@ -744,17 +745,18 @@ if __name__=="__main__":
         bases = structure.residues(sequence=base_seq_list)   # show all standard RNA bases
 #        bases = structure.residues()   # show all RNA bases, maybe other units as well
 
-        amino_acids = structure.residues(sequence=aa_list)
         print("Time required to load " + PDB + " " + str(datetime.now() - start))
 
         numBases = 0
         for base in bases:
             numBases += 1
-            print("Analyzing %s",base.unit_id())
+            print("Analyzing %s" % base.unit_id())
             fields = base.unit_id().split("|")
             if base.base_center is None or base.rotation_matrix is None:
                 print("No center or rotation matrix found")
             else:
+
+                modified_base_count[base.sequence] += 1
 
                 print("center " + str(base.centers["base"]))
                 print("rotation ")
@@ -826,5 +828,9 @@ if __name__=="__main__":
                     plt.show()
                     plt.close()
 
+                print("Observed %d modified nucleotides" % len(bases_plotted))
 
-    print(sorted(bases_plotted))
+                print(sorted(bases_plotted))
+
+                for base, count in modified_base_count.items():
+                    print("%4s occured %5d times" % (base,count))
