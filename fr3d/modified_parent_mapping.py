@@ -1,6 +1,6 @@
 modified_nucleotides = {}
 
-# keys in the atoms variable are the atoms from the _______ base, values are atoms from the ________ base
+# keys in the atoms dictionary are the atoms from the modified base, values are atoms from the parent base
 
 modified_nucleotides['SSU'] = {
 "standard":'U',
@@ -574,7 +574,10 @@ modified_nucleotides['3TD'] = {
 
 modified_nucleotides['1MA'] = {
 "standard":'A',
-"atoms":{'C4': 'C4', 'N1': 'N1', 'N3': 'N3', 'C5': 'C5', 'C8': 'C8', 'N7': 'N7', 'C2': 'C2', 'N6': 'N6', 'N9': 'N9', 'C6': 'C6'}
+#"atoms":{'C4': 'C4', 'N1': 'N1', 'N3': 'N3', 'C5': 'C5', 'C8': 'C8', 'N7': 'N7', 'C2': 'C2', 'N6': 'N6', 'N9': 'N9', 'C6': 'C6'}
+# omit N1, N6 because they are out of plane at http://www.rcsb.org/ligand/1ma
+#"atoms":{'C4': 'C4', 'N3': 'N3', 'C5': 'C5', 'C8': 'C8', 'N7': 'N7', 'C2': 'C2', 'N9': 'N9', 'C6': 'C6'}
+"atoms":{'C8': 'C8', 'N7': 'N7', 'N9': 'N9', 'C4': 'C4'}
 }
 
 modified_nucleotides['UMP'] = {
