@@ -1,3 +1,5 @@
+# this program writes the list of corresponding atoms for modified and parent nucleotides as Matlab code
+# that can be used with the Matlab version of FR3D
 
 from modified_parent_mapping import modified_nucleotides
 
