@@ -94,7 +94,7 @@ class Component(EntitySelector):
 
     def __init__(self, atoms, pdb=None, model=None, type=None, chain=None,
                  symmetry=None, sequence=None, number=None, index=None,
-                 insertion_code=None, polymeric=None, alt_id=None):
+                 insertion_code=None, polymeric=None, alt_id=None, inferhydrogens=True):
         """Create a new Component.
 
         :atoms: The atoms this component is composed of.
@@ -114,11 +114,24 @@ class Component(EntitySelector):
         self.insertion_code = insertion_code
         self.polymeric = polymeric
         self.alt_id = alt_id
+        self.base_center = None
+
+        # for bases, calculate and store rotation_matrix
+        # calculate and store base_center; especially for modified nt without all heavy atoms
+        self.calculate_rotation_matrix()
+
+        # initialize centers so they can be used to infer hydrogens
         self.centers = AtomProxy(self._atoms)
 
-        if self.sequence in defs.NAbaseheavyatoms:
-            atoms = defs.NAbaseheavyatoms[self.sequence]
-            self.centers.define('base', atoms)
+        # add hydrogen atoms to standard bases and amino acids
+        if inferhydrogens:
+            self.infer_hydrogens()
+
+        # initialize centers again to include hydrogens
+        self.centers = AtomProxy(self._atoms)
+
+        if self.base_center is not None:
+            self.centers.__setitem__('base',self.base_center)
 
         if self.sequence in defs.nt_sugar:
             atoms = defs.nt_sugar[self.sequence]
@@ -135,12 +148,6 @@ class Component(EntitySelector):
         if self.sequence in defs.aa_backbone:
             atoms = defs.aa_backbone[self.sequence]
             self.centers.define('aa_backbone', atoms)
-
-        if self.sequence in defs.modified_nucleotides:
-            atoms = defs.modified_nucleotides[self.sequence]["atoms"].values()
-            self.centers.define('base', atoms)
-
-        self.calculate_rotation_matrix()
 
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
@@ -185,7 +192,8 @@ class Component(EntitySelector):
                          index=self.index,
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
-                         polymeric=self.polymeric)
+                         polymeric=self.polymeric,
+                         inferhydrogens=False)
 
     def is_complete(self, names, key='name'):
         """This checks if we can find all atoms in this entity with the given
@@ -212,127 +220,139 @@ class Component(EntitySelector):
                 self.sequence not in defs.modified_nucleotides:
             return None
 
-        R = []
-        S = []
-
-        if self.sequence in defs.modified_nucleotides:
-            current = defs.modified_nucleotides[self.sequence]
-            standard_coords = defs.NAbasecoordinates[current["standard"]]
-            for standard, modified in current["atoms"].items():
-                coords = list(self.centers[modified])
-                if coords:
-                    R.append(coords)
-                    S.append(standard_coords[standard])
+        R = []   # 3d coordinates of observed base
+        S = []   # 3d coordinates of standard base in xy plane
 
         if self.sequence in defs.NAbaseheavyatoms:
             baseheavy = defs.NAbaseheavyatoms[self.sequence]
             for atom in self.atoms(name=baseheavy):
-                coordinates = atom.coordinates()
-                R.append(coordinates)
+                R.append(atom.coordinates())
                 S.append(defs.NAbasecoordinates[self.sequence][atom.name])
+
+        if self.sequence in defs.modified_nucleotides:
+            current = defs.modified_nucleotides[self.sequence]
+            standard_coords = defs.NAbasecoordinates[current["standard"]]
+            for atom in self.atoms(name=current["atoms"].keys()):
+                R.append(list(atom.coordinates()))
+                S.append(standard_coords[atom.name])
 
         R = np.array(R)
         R = R.astype(np.float)
         S = np.array(S)
-        try:
-            rotation_matrix, fitted, base_center, rmsd, sse = \
-                besttransformation(R, S)
-            #print self.unit_id(), "Successful rotation matrix"
 
-            #print "Check that two methods of computing the base center are the same"
-            #print base_center
-            #print self.centers["base"]
+        try:
+            rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
+                besttransformation(R, S)
+
+            # meanR is the calculated average of the R points
+            # meanS is the calculated average of the S points
+
         except:
             print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
         self.rotation_matrix = rotation_matrix
 
+        # map the origin out to where the center of the base should be
+        if self.sequence in defs.NAbaseheavyatoms:
+            # standard bases are designed to have meanS zero; less work
+            self.base_center = meanR
+        else:
+            # some modified bases are missing some heavy atoms, meanS not zero
+            self.base_center = np.subtract(meanR,np.dot(rotation_matrix,meanS))
+
+
     def infer_hydrogens(self):
         """Infer the coordinates of the hydrogen atoms of this component.
-        Currently, it only works for RNA and DNA
-        Amino acids are being added.
+        RNA and DNA work, and amino acids are being added.
         This code only adds hydrogens with their name, but the Atom entity
         does not have the full unit ID of the atom, unlike the heavy atoms
         taken from the CIF file.
         """
 
-        if self.sequence in defs.NAbasehydrogens:
-            hydrogens = defs.NAbasehydrogens[self.sequence]
-            coordinates = defs.NAbasecoordinates[self.sequence]
+        try:
 
-            try:
+            if self.sequence in defs.NAbasehydrogens:
+                hydrogens = defs.NAbasehydrogens[self.sequence]
+                coordinates = defs.NAbasecoordinates[self.sequence]
+
+                current_hydrogens = [a.name for a in self._atoms if "H" in a.name]
+                #print("Current hydrogens: ",current_hydrogens)
+
                 for hydrogenatom in hydrogens:
-                    hydrogencoordinates = coordinates[hydrogenatom]
-                    newcoordinates = self.centers["base"] + \
-                        np.dot(hydrogencoordinates, np.transpose(self.rotation_matrix))
-                    self._atoms.append(Atom(name=hydrogenatom,
-                                            x=newcoordinates[0, 0],
-                                            y=newcoordinates[0, 1],
-                                            z=newcoordinates[0, 2]))
-            except:
-                print self.unit_id(), "Adding hydrogens failed"
+                    if not hydrogenatom in current_hydrogens:
+                        #print("Adding",hydrogenatom,"to",self.unit_id())
+                        hydrogencoordinates = coordinates[hydrogenatom]
+                        newcoordinates = self.base_center + \
+                            np.dot(self.rotation_matrix, hydrogencoordinates)
+                        self._atoms.append(Atom(name=hydrogenatom,
+                                                x=newcoordinates[0, 0],
+                                                y=newcoordinates[0, 1],
+                                                z=newcoordinates[0, 2]))
 
-        elif self.sequence == "ARG":
-            
-            N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
-            self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HH12",x=N2[0],y=N2[1],z=N2[2]))
+            elif self.sequence == "ARG":
 
-            N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
-            self._atoms.append(Atom(name="HH22",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HH21",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
+                self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HH12",x=N2[0],y=N2[1],z=N2[2]))
 
-            # the following lines assume that NH2 is closer to CD
-            # than NH1 is however, some structures aren't labeled
-            # that way, and so either N1 or N2 could be the correct
-            # location for HE
-            N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
-            self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
+                N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
+                self._atoms.append(Atom(name="HH22",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HH21",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
-            self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HD2",x=N2[0],y=N2[1],z=N2[2]))
+                # the following lines assume that NH2 is closer to CD
+                # than NH1 is however, some structures aren't labeled
+                # that way, and so either N1 or N2 could be the correct
+                # location for HE
+                N1,N2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
+                self._atoms.append(Atom(name="HE",x=N1[0],y=N1[1],z=N1[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
-            self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
+                self._atoms.append(Atom(name="HD3",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HD2",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+                self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
 
-        elif self.sequence == "LYS":
-        
-            N1,N2 = planar_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"],NHBondLength)
-            self._atoms.append(Atom(name="HZ3",x=N1[0],y=N1[1],z=N1[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["CE"])
-            self._atoms.append(Atom(name="HD2",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HD3",x=N2[0],y=N2[1],z=N2[2]))
+            elif self.sequence == "LYS":
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
-            self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = planar_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"],NHBondLength)
+                self._atoms.append(Atom(name="HZ3",x=N1[0],y=N1[1],z=N1[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"])
-            self._atoms.append(Atom(name="HE2",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HE3",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["CE"])
+                self._atoms.append(Atom(name="HD2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HD3",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
-            self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+                self._atoms.append(Atom(name="HG2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HG3",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+                N1,N2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"])
+                self._atoms.append(Atom(name="HE2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HE3",x=N2[0],y=N2[1],z=N2[2]))
 
-            N1,N2 = planar_hydrogens(self.centers["CD"],self.centers["HD3"],self.centers["NZ"])
-            self._atoms.append(Atom(name="HZ2",x=N1[0],y=N1[1],z=N1[2]))
-            
-                
+                N1,N2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB2",x=N1[0],y=N1[1],z=N1[2]))
+                self._atoms.append(Atom(name="HB3",x=N2[0],y=N2[1],z=N2[2]))
+
+                N1,N2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=N2[0],y=N2[1],z=N2[2]))
+
+                N1,N2 = planar_hydrogens(self.centers["CD"],self.centers["HD3"],self.centers["NZ"])
+                self._atoms.append(Atom(name="HZ2",x=N1[0],y=N1[1],z=N1[2]))
+
+        except:
+            print self.unit_id(), "Adding hydrogens failed"
+
+
     def transform(self, transform_matrix):
         """Create a new component from "self" by applying the 4x4 transformation
         matrix. This does not keep the rotation matrix if any,
@@ -354,8 +374,8 @@ class Component(EntitySelector):
                          index=self.index,
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
-                         polymeric=self.polymeric)
-        comp.infer_hydrogens()
+                         polymeric=self.polymeric,
+                         inferhydrogens=False)
         return comp
 
     def translate_rotate_component(self, component):
@@ -377,8 +397,8 @@ class Component(EntitySelector):
                          index=component.index,
                          insertion_code=component.insertion_code,
                          alt_id=component.alt_id,
-                         polymeric=component.polymeric)
-        newcomp.infer_hydrogens()
+                         polymeric=component.polymeric,
+                         inferhydrogens=False)
         return newcomp
 
     def translate_rotate_atom(self, atom):
@@ -391,7 +411,7 @@ class Component(EntitySelector):
         """
 
         atom_coord = atom.coordinates()
-        translated_coord = np.subtract(atom_coord, self.centers["base"])
+        translated_coord = np.subtract(atom_coord, self.base_center)
         translated_coord_matrix = np.matrix(translated_coord)
         rotated_coord = translated_coord_matrix * self.rotation_matrix
         coord_array = np.array(rotated_coord)
