@@ -115,6 +115,7 @@ class Component(EntitySelector):
         self.polymeric = polymeric
         self.alt_id = alt_id
         self.base_center = None
+        self.rotation_matrix = None
 
         # for bases, calculate and store rotation_matrix
         # calculate and store base_center; especially for modified nt without all heavy atoms
