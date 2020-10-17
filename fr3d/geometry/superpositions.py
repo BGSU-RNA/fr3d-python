@@ -45,7 +45,7 @@ def besttransformation(set1, set2):
     # Same for y, and z.
     dev1 = set1 - mean1
     dev2 = set2 - mean2
-    #  Thus, both sets are translated, so that their centroid coincides with
+    # Thus, both sets are translated, so that their centroid coincides with
     # the origin of the coordinate system.
     # Translation Step is now completed.
 
@@ -83,9 +83,10 @@ def besttransformation(set1, set2):
     new2 = dev2
     rmsd = RMSD(new1, new2)
     sse = sumsquarederror(new1, new2)
+
     #Return the transformation matrix, the new coordinates for the two
     #set of coordinates, respectively.
-    return U, new1, mean1, rmsd, sse
+    return U, new1, mean1, rmsd, sse, mean2
 
 
 def besttransformation_weighted(set1, set2, weights=[1.0]):
