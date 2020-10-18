@@ -833,4 +833,4 @@ if __name__=="__main__":
                 print(sorted(bases_plotted))
 
                 for base, count in modified_base_count.items():
-                    print("%4s occured %5d times" % (base,count))
+                    print("%4s occurred %5d times" % (base,count))
