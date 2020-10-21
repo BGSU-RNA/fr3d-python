@@ -611,7 +611,7 @@ aa_connections['PHE'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','C
 aa_connections['PRO'] =['CA','CB','CB','CG','CG','CD','CD','N']
 aa_connections['MET'] =['CA','CB','CB','CG','CG','SD','SD','CE']
 aa_connections['ILE'] =['CA','CB','CB','CG1','CG1','CG2','CG2','CD1']
-aa_connections['LEU'] =['CA','CB','CB','CG','CG','CD2','CD2','CD1']
+aa_connections['LEU'] =['CA','CB','CB','CG','CG','CD2','CG','CD1'] #Switch CD2 with CG because of unnessary bond between CD2 and CD1
 aa_connections['ALA'] =['CA','CB']
 aa_connections['VAL'] =['CA','CB','CB','CG1','CB','CG2']
 aa_connections['GLY'] =[]
@@ -620,12 +620,16 @@ aa_connections['THR'] =['CA','CB','CB','OG1','CB','CG2']
 aa_connections['CYS'] =['CA','CB','CB','SG']
 
 # Definitions for drawing the amino acid hydrogens.  Each tuple defines a line to be drawn.
+aa_hydrogen_connections['ALA']=[('CA','HA'),('CB','HB1'),('CB','HB2'),('CB','HB3')]
 aa_hydrogen_connections['ARG'] = [('N','H'),('N','H2'),('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('CD','HD2'),('CD','HD3'),('NE','HE'),('NH1','HH11'),('NH1','HH12'),('NH2','HH21'),('NH2','HH22')]
-aa_hydrogen_connections['LYS']= [('NZ','HZ1'),('NZ','HZ2'),('NZ','HZ3'),('CE','HE2'),('CE','HE3'),('HD2','CD'),('CD','HD3'),('CG','HG2'),('CG','HG3'),('CB','HB2'),('CB','HB3'),('CA','HA'),('N','H'),('OXT','HXT')]
-aa_hydrogen_connections['GLY']=[('CA','HA3'),('CA','HA2')]
-aa_hydrogen_connections['GLU']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('HG2','CG'),('HG3','CG')]
+aa_hydrogen_connections['ASN']=[('CA','HA'),('CB','HB3'),('CB','HB2'),('ND2','HD21'),('ND2','HD22')]
 aa_hydrogen_connections['ASP']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('HD2','OD2')]
-aa_hydrogen_connections['ALA']=[('CA','HA'),('CB','HB1'),('CB','HB2'),('CB','HB2')]
+aa_hydrogen_connections['CYS']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('SG','HG')]
+aa_hydrogen_connections['GLU']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('HG2','CG'),('HG3','CG')]
+aa_hydrogen_connections['GLY']=[('CA','HA3'),('CA','HA2')]
+aa_hydrogen_connections['HIS']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD2','HD2'),('NE2','HE2'),('CE1','HE1'),('ND1','HD1')]
+aa_hydrogen_connections['LEU']=[('CA','HA'),('CB','HB2'),('CB','HB3'), ('CG','HG'),('CD2','HD21'),('CD2','HD22'),('CD2','HD23'),('CD1','HD11'),('CD1','HD12'),('CD1','HD13')]
+aa_hydrogen_connections['LYS']= [('NZ','HZ1'),('NZ','HZ2'),('NZ','HZ3'),('CE','HE2'),('CE','HE3'),('HD2','CD'),('CD','HD3'),('CG','HG2'),('CG','HG3'),('CB','HB2'),('CB','HB3'),('CA','HA'),('N','H'),('OXT','HXT')]
 
 #Definitions for drawing the RNA nucleotides
 
