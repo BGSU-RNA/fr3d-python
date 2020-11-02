@@ -5,7 +5,6 @@ import warnings
 import logging
 import operator as op
 import functools as ft
-import copy
 
 import numpy as np
 
@@ -299,62 +298,31 @@ class Cif(object):
     def __breaks__(self):
         pass
 
-    def __group_alt_atoms__(self, atoms):
-        def ordering_key(atoms):
-            return atoms[0].alt_id
-
-        alt_ids = coll.defaultdict(list)
-        for atom in atoms:
-            alt_ids[atom.alt_id].append(atom)
-
-        if len(alt_ids) == 1:
-            return alt_ids.values()
-
-        if None in alt_ids:
-            common = alt_ids.pop(None)
-            for alt_id, specific_atoms in alt_ids.items():
-                for common_atom in common:
-                    copied = copy.deepcopy(common_atom)
-                    copied.alt_id = alt_id
-                    specific_atoms.append(copied)
-
-        return sorted(alt_ids.values(), key=ordering_key)
-
     def __residues__(self, pdb):
-        key = op.attrgetter(
-            'pdb',
-            'model',
-            'chain',
-            'component_id',
-            'component_number',
-            'insertion_code',
-            'symmetry',
-        )
-        mapping = it.groupby(sorted(self.__atoms__(pdb), key=key), key)
+        mapping = it.groupby(sorted(self.__atoms__(pdb),
+                                    key=lambda a: a.component_unit_id()),
+                             lambda a: a.component_unit_id())
 
-        for comp_id, all_atoms in mapping:
-            for atoms in self.__group_alt_atoms__(list(all_atoms)):
-                first = atoms[0]
-                type = self._chem.get(first.component_id, {})
-                type = type.get('type', None)
-                alt_id = first.alt_id
-                if alt_id == '.':
-                    alt_id = None
-
-                yield Component(
-                    atoms,
-                    pdb=first.pdb,
-                    model=first.model,
-                    type=type,
-                    alt_id=alt_id,
-                    chain=first.chain,
-                    symmetry=first.symmetry,
-                    sequence=first.component_id,
-                    number=first.component_number,
-                    index=first.component_index,
-                    insertion_code=first.insertion_code,
-                    polymeric=first.polymeric,
-                )
+        for comp_id, atoms in mapping:
+            atoms = list(atoms)
+            first = atoms[0]
+            type = self._chem.get(first.component_id, {})
+            type = type.get('type', None)
+            alt_id = first.alt_id
+            if alt_id == '.':
+                alt_id = None
+            yield Component(atoms,
+                            pdb=first.pdb,
+                            model=first.model,
+                            type=type,
+                            alt_id=alt_id,
+                            chain=first.chain,
+                            symmetry=first.symmetry,
+                            sequence=first.component_id,
+                            number=first.component_number,
+                            index=first.component_index,
+                            insertion_code=first.insertion_code,
+                            polymeric=first.polymeric)
 
     def __atoms__(self, pdb):
         max_operators = max(len(op) for op in self._assemblies.values())
