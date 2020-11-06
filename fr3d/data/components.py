@@ -142,6 +142,13 @@ class Component(EntitySelector):
             atoms = defs.nt_phosphate[self.sequence]
             self.centers.define('nt_phosphate', atoms)
 
+        # attempt to add sugar and phosphate centers for all modified nucleotides
+        if self.sequence in defs.modified_nucleotides:
+            atoms = defs.nt_sugar['A']
+            self.centers.define('nt_sugar', atoms)
+            atoms = defs.nt_phosphate['A']
+            self.centers.define('nt_phosphate', atoms)
+            
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
