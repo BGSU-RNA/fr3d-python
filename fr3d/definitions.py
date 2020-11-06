@@ -259,20 +259,22 @@ nt_backbone['G'] = ribose + phosphate
 nt_backbone['U'] = ribose + phosphate
 
 # for DNA
-nt_backbone['DA'] = ribose + phosphate
-nt_backbone['DC'] = ribose + phosphate
-nt_backbone['DG'] = ribose + phosphate
-nt_backbone['DT'] = ribose + phosphate
+DNAribose = ["C1'","C2'","C3'","O3'","C4'","O4'","C5'"]
+
+nt_sugar['DA'] = DNAribose
+nt_sugar['DC'] = DNAribose
+nt_sugar['DG'] = DNAribose
+nt_sugar['DT'] = DNAribose
 
 nt_phosphate['DA'] = phosphate
 nt_phosphate['DC'] = phosphate
 nt_phosphate['DG'] = phosphate
 nt_phosphate['DT'] = phosphate
 
-nt_sugar['DA'] = ribose
-nt_sugar['DC'] = ribose
-nt_sugar['DG'] = ribose
-nt_sugar['DT'] = ribose
+nt_backbone['DA'] = DNAribose + phosphate
+nt_backbone['DC'] = DNAribose + phosphate
+nt_backbone['DG'] = DNAribose + phosphate
+nt_backbone['DT'] = DNAribose + phosphate
 
 """Defining the parts of DNA nucleotides that we use to compute DNA-amino acid interactions"""
 
