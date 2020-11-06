@@ -244,32 +244,37 @@ ribose = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'"]
 phosphate = ["O5'","P","OP1","OP2"]
 
 nt_phosphate['A'] = phosphate
-nt_phosphate['U'] = phosphate
 nt_phosphate['C'] = phosphate
 nt_phosphate['G'] = phosphate
+nt_phosphate['U'] = phosphate
 
 nt_sugar['A'] = ribose
-nt_sugar['U'] = ribose
 nt_sugar['C'] = ribose
 nt_sugar['G'] = ribose
+nt_sugar['U'] = ribose
+
+nt_backbone['A'] = ribose + phosphate
+nt_backbone['C'] = ribose + phosphate
+nt_backbone['G'] = ribose + phosphate
+nt_backbone['U'] = ribose + phosphate
 
 # for DNA
 nt_backbone['DA'] = ribose + phosphate
-nt_backbone['DT'] = ribose + phosphate
 nt_backbone['DC'] = ribose + phosphate
 nt_backbone['DG'] = ribose + phosphate
+nt_backbone['DT'] = ribose + phosphate
 
 nt_phosphate['DA'] = phosphate
-nt_phosphate['DT'] = phosphate
 nt_phosphate['DC'] = phosphate
 nt_phosphate['DG'] = phosphate
+nt_phosphate['DT'] = phosphate
 
 nt_sugar['DA'] = ribose
-nt_sugar['DT'] = ribose
 nt_sugar['DC'] = ribose
 nt_sugar['DG'] = ribose
+nt_sugar['DT'] = ribose
 
-"""Defining the parts of DNA nucleotides that we use to compute RNA-amino acid interactions"""
+"""Defining the parts of DNA nucleotides that we use to compute DNA-amino acid interactions"""
 
 NAbaseheavyatoms['DA'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
 NAbasehydrogens['DA'] = ['H2','H8','H9','1H6','2H6']
