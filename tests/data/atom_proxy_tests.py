@@ -1,5 +1,4 @@
 from unittest import TestCase
-from nose import SkipTest
 
 import numpy as np
 
@@ -34,6 +33,9 @@ class AtomProxyTest(TestCase):
 
     def test_knows_is_missing_a_value(self):
         self.assertFalse('bob' in self.proxy)
+
+    def test_gives_empty_numpy_for_unknown_value(self):
+        self.assertFalse(self.proxy['bob'].any())
 
     def test_it_knows_if_has_atom(self):
         self.assertTrue('a1' in self.proxy)
@@ -131,13 +133,23 @@ class AtomProxyTest(TestCase):
 
     def test_lookup_unknown_atoms_gives_empty(self):
         val = self.proxy.lookup(['3'], allow_missing=True)
-        self.assertEquals([], val)
+        self.assertFalse(val.any())
 
     def test_lookup_of_unknown_key_gives_empty(self):
         val = self.proxy.lookup('3', allow_missing=True)
-        self.assertEquals([], val)
+        self.assertFalse(val.any())
+
+    def test_lookup_with_unknown_key_and_no_allowed_raises_error(self):
+        self.assertRaises(KeyError, self.proxy.lookup, '3',
+                          allow_missing=False)
 
     def test_lookup_defaults_to_allow_missing(self):
         val = self.proxy.lookup(['a1', 'c2', '3'])
         ans = np.array([0.5, 0.5, 0.0])
         np.testing.assert_array_almost_equal(ans, val, decimal=3)
+
+    def test_can_get_name_of_defined_centers(self):
+        assert self.proxy.definitions() == []
+        self.proxy.define('bob', ['a1', 'c2'])
+        self.proxy.define('other', ['c2', 'b1'])
+        assert sorted(self.proxy.definitions()) == sorted(['bob', 'other'])

@@ -1,3 +1,7 @@
 # FR3D #
 
+[![Build Status](https://api.travis-ci.org/BGSU-RNA/fr3d-python.png?branch=develop)](https://travis-ci.org/BGSU-RNA/fr3d-python)
+
 This is an implementation of the FR3D program in python.
+
+To run the first time, navigate to the fr3d-python folder and run "python setup.py install"

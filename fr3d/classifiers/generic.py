@@ -50,11 +50,8 @@ class Classifier(object):
                                 distance=self.distance)
         classified = []
         for (first, second) in pairs:
-            try:
-                classification = self.classification(first, second)
-                if classification:
-                    classified.append((first, second, classification))
-            except:
-                pass
+            classification = self.classification(first, second)
+            if classification:
+                classified.append((first.unit_id(), second.unit_id(), classification))
 
         return classified

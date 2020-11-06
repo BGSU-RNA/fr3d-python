@@ -1,12 +1,12 @@
-import itertools as it
+import pytest
 
 import numpy as np
-from nose import SkipTest
+import itertools as it
+
+from fr3d.definitions import RNAbaseheavyatoms as HEAVY
 
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
-
-from fr3d.unit_ids import decode
 
 from tests.cif import ReaderTest
 
@@ -60,8 +60,16 @@ class SimpleCIFTest(ReaderTest):
     def test_loads_all_symmetry_operators(self):
         self.assertEqual(2, len(self.cif._operators))
 
+    @pytest.mark.skip()
     def test_loads_correct_symmetry_operatrs(self):
-        raise SkipTest
+        pass
+
+    def test_knows_if_has_block(self):
+        assert self.cif.has_table('atom_site')
+        assert self.cif.has_table('_atom_site')
+
+    def test_knows_if_does_not_have_a_block(self):
+        assert self.cif.has_table('bob') is False
 
 
 class SimpleTableTest(ReaderTest):
@@ -210,30 +218,6 @@ class StructureWithTransformationVector(ReaderTest):
         np.testing.assert_array_almost_equal(ans, val)
 
 
-class SequenceMappingTest(ReaderTest):
-    name = '1GID'
-
-    def setUp(self):
-        super(SequenceMappingTest, self).setUp()
-        self.data = list(self.cif.experimental_sequence_mapping('A'))
-
-    def test_can_compute_mapping(self):
-        val = self.data[-1]
-        ans = ('C', '1GID|Sequence|A|C|158', '1GID|1|A|C|260')
-        self.assertEqual(ans, val)
-
-
-class LargeSequenceMappingTest(ReaderTest):
-    name = '1S72'
-
-    def setUp(self):
-        super(LargeSequenceMappingTest, self).setUp()
-        self.data = list(self.cif.experimental_sequence_mapping('0'))
-
-    def test_can_compute_full_mapping(self):
-        self.assertEqual(2922, len(self.data))
-
-
 class ProblematicReadingTest(ReaderTest):
     name = '1AQ3'
 
@@ -244,88 +228,52 @@ class ProblematicReadingTest(ReaderTest):
         self.assertEquals('P_1', atom.symmetry)
 
 
-class MutipleEntriesInExpSeqTest(ReaderTest):
-    name = '1I9K'
+class MissingAssemblyReadingTest(ReaderTest):
+    name = '2UUA'
 
-    def test_can_map_exp_seq(self):
-        mapping = list(self.cif.experimental_sequence_mapping('A'))
-        self.assertEquals(6, len(mapping))
-
-
-class MappingWithMissingTest(ReaderTest):
-    name = '1IBK'
-
-    def test_can_create_correct_mappings(self):
-        mapping = self.cif.experimental_sequence_mapping('A')
-        val = next(mapping)[2]
-        self.assertEquals(None, val)
+    def test_will_give_all_operators_if_unknown_chain(self):
+        assert [op['name'] for op in self.cif.operators('X')] == ['1_555']
 
 
-class ExperimentalMappingWithNoIdentityOperator(ReaderTest):
-    name = '4OQ8'
+class AltIdReadingTest(ReaderTest):
+    name = '3R1E'
 
-    def test_can_generate_a_mapping(self):
-        mapping = self.cif.experimental_sequence_mapping('B')
-        val = decode(next(mapping)[2])
-        self.assertEquals('P_1', val['symmetry'])
+    def residue(self, unit_id):
+        residues = self.structure.residues()
+        return next(r for r in residues if r.unit_id() == unit_id)
 
+    def test_it_loads_all_atoms_with_alt_ids(self):
+        unit_ids = [
+            '3R1E|1|A|C|5||B',
+            '3R1E|1|A|C|5||A',
+        ]
+        for unit_id in unit_ids:
+            residues = self.structure.residues()
+            val = next(r for r in residues if r.unit_id() == unit_id)
+            msg = "Incomplete: %s" % unit_id
+            assert val.is_complete(HEAVY[val.sequence]), msg
 
-class ExperimentalMappingWithNoIdentityOperators2(ReaderTest):
-    name = '4OQ9'
+    def test_does_not_generate_unneeded_unit_without_alt_ids(self):
+        unit_ids = set(r.unit_id() for r in self.structure.residues())
+        assert '3R1E|1|A|C|5' not in unit_ids
 
-    def test_can_generate_mappings(self):
-        mapping = self.cif.experimental_sequence_mapping('1')
-        val = decode(next(mapping)[2])
-        self.assertEquals('P_1', val['symmetry'])
+    def test_loads_all_residues(self):
+        ans = [
+            '3R1E|1|A|G|1',
+            '3R1E|1|A|C|2',
+            '3R1E|1|A|GRB|3',
+            '3R1E|1|A|G|4',
+            '3R1E|1|A|C|5||A',
+            '3R1E|1|A|C|5||B',
+            '3R1E|1|A|G|6||A',
+            '3R1E|1|A|G|6||B',
+            '3R1E|1|A|G|7',
+            '3R1E|1|A|C|8',
+        ]
+        residues = self.structure.residues(chain='A')
+        assert sorted([r.unit_id() for r in residues]) == sorted(ans)
 
-
-class MappingWithNonStandardModel(ReaderTest):
-    name = '4R3I'
-
-    def test_can_generate_mapping_to_model_0(self):
-        mapping = self.cif.experimental_sequence_mapping('B')
-        val = decode(next(mapping)[2])
-        self.assertEquals(0, val['model'])
-
-
-class MappingWithDuplicateEntries(ReaderTest):
-    name = '4X4N'
-
-    def setUp(self):
-        super(MappingWithDuplicateEntries, self).setUp()
-        self.mapping = list(self.cif.experimental_sequence_mapping('G'))
-
-    def test_it_creates_correct_number_of_mappings(self):
-        # 14 (unosbered) + 2 * 18 (observed with 2 alt ids each)
-        self.assertEquals(50, len(self.mapping))
-
-    def test_it_can_map_to_none(self):
-        val = self.mapping[28]
-        ans = ('C', '4X4N|Sequence|G|C|20', None)
-        self.assertEquals(ans, val)
-
-    def test_it_takes_the_first_entry(self):
-        val = self.mapping[43:45]
-        ans = [('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|A|29||A'),
-               ('A', '4X4N|Sequence|G|A|29', '4X4N|1|G|G|29||B')]
-        self.assertEquals(ans, val)
-
-    def test_it_does_duplicate(self):
-        val = self.mapping[45]
-        ans = ('U', '4X4N|Sequence|G|U|30', '4X4N|1|G|C|30||B')
-        self.assertEquals(ans, val)
-
-
-class MappingWithAltidsTest(ReaderTest):
-    name = '2G32'
-
-    def setUp(self):
-        super(MappingWithAltidsTest, self).setUp()
-        self.mapping = list(self.cif.experimental_sequence_mapping('L'))
-
-    def test_it_builds_all_mappings(self):
-        self.assertEquals(16, len(self.mapping))
-
-    def test_it_build_mappings_using_alt_ids(self):
-        val = self.mapping[0]
-        self.assertEquals('2G32|1|L|0C|90||A', val[2])
+    def test_it_does_not_copy_over_unneeded_atoms(self):
+        residue = self.residue('3R1E|1|A|G|6||A')
+        atom = list(residue.atoms(name='N1'))[0]
+        np.testing.assert_almost_equal(atom.x, -11.480)

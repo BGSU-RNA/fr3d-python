@@ -57,6 +57,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     """
 
     assert len(ntlist1) == len(ntlist2)
+    assert len(ntlist1) >= 3
 
     # TODO: Should we allow users to pass a tuple too?
     if not isinstance(centers, list):
@@ -133,3 +134,38 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     discrepancy = np.sqrt(sse + angleweight*orientationerror) / len(ntlist1)
     return discrepancy
     #I must be calculating this part incorrectly, since rotation_matrix is cor
+
+
+def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
+                       angle_weight=1.0, center_weight=[1.0]):
+    """Compute discrepancies given matrices, not components.
+
+    :param list centers1: A list (or list numpy.array) of all centers.
+    :param list rotations1: A list of all rotation matrices.
+    :param list centers2: A list (or list numpy.array) of all centers.
+    :param list rotations2: A list of all rotation matrices.
+    :param float angle_weight: The weight to give to the angle component of
+    discrepancy.
+    :param float center_weight: The weight to give to the center component of
+    discrepancy.
+    :returns: A float, the discprenacy.
+    """
+
+    assert len(centers1) == len(centers2)
+    assert len(rotations1) == len(rotations2)
+    assert len(centers1) == len(rotations1)
+    assert len(centers1) >= 3
+
+    rotation_matrix, new1, mean1, RMSD, sse = \
+        besttransformation_weighted(centers1, centers2, center_weight)
+    rotation_matrix = np.transpose(rotation_matrix)
+
+    orientation_error = 0
+    for r1, r2 in zip(rotations1, rotations2):
+        angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r1),
+                                         np.transpose(r2)))
+        orientation_error += np.square(angle)
+
+    n = len(centers1)
+    discrepancy = np.sqrt(sse + angle_weight * orientation_error) / n
+    return discrepancy

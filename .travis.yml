@@ -1,0 +1,18 @@
+---
+sudo: false
+language: python
+python:
+    - "2.7"
+addons:
+  apt:
+    packages:
+    - libatlas-dev
+    - libatlas-base-dev
+    - liblapack-dev
+    - gfortran
+    - libgmp-dev
+    - libmpfr-dev
+    - ccache
+install:
+    - travis_wait .ci/install-deps.sh
+script: py.test

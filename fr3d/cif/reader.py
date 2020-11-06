@@ -3,6 +3,8 @@ import itertools as it
 import collections as coll
 import warnings
 import logging
+import operator as op
+import functools as ft
 
 import numpy as np
 
@@ -11,7 +13,6 @@ from pdbx.reader.PdbxParser import PdbxReader as Reader
 from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
-from fr3d.unit_ids import encode
 
 
 """ The set of symbols that mark an operator expression as complex """
@@ -48,6 +49,19 @@ class MissingSymmetry(Exception):
     pass
 
 
+class UnmppedResidueException(Exception):
+    """This is raised if we do not map all residues in a chain to the
+    experimental sequence.
+    """
+    pass
+
+
+class TooManyMappedResidueException(Exception):
+    """Raised if too many units are mapped.
+    """
+    pass
+
+
 class Cif(object):
     """Top level container for all Cif related data. This assumes that each
     mmCIF file contains a single datablock. This doesn't have to be true but
@@ -75,27 +89,27 @@ class Cif(object):
 
     def __load_operators__(self):
         operators = {}
-        for op in self.pdbx_struct_oper_list:
-            op['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
-            op['vector'] = [None] * 3
+        for oper in self.pdbx_struct_oper_list:
+            oper['matrix'] = [[None] * 3, [None] * 3, [None] * 3]
+            oper['vector'] = [None] * 3
 
             for row in range(3):
-                op['vector'][row] = float(op['vector[%s]' % str(row + 1)])
+                oper['vector'][row] = float(oper['vector[%s]' % str(row + 1)])
 
                 for column in range(3):
                     key = 'matrix[%s][%s]' % (str(row + 1), str(column + 1))
-                    op['matrix'][row][column] = float(op[key])
+                    oper['matrix'][row][column] = float(oper[key])
 
             transform = np.zeros((4, 4))
-            transform[0:3, 0:3] = op['matrix']
-            transform[0:3, 3] = op['vector']
+            transform[0:3, 0:3] = oper['matrix']
+            transform[0:3, 3] = oper['vector']
             transform[3, 3] = 1.0
 
-            op['matrix'] = np.array(op['matrix'])
-            op['vector'] = np.array(op['vector'])
-            op['transform'] = np.array(transform)
+            oper['matrix'] = np.array(oper['matrix'])
+            oper['vector'] = np.array(oper['vector'])
+            oper['transform'] = np.array(transform)
 
-            operators[op['id']] = op
+            operators[oper['id']] = oper
 
         identity = self.__identity_operator__()
         operators[identity['id']] = identity
@@ -196,52 +210,90 @@ class Cif(object):
         the unit id.
         """
 
+        chain_compare = ft.partial(op.eq, chain)
+        if isinstance(chain, (list, tuple, set)):
+            chain_compare = ft.partial(op.contains, set(chain))
+
         pdb = self.data.getName()
         mapping = coll.defaultdict(list)
         for residue in self.__residues__(pdb):
-            if residue.chain == chain:
-                key = (residue.number, residue.insertion_code)
+            if chain_compare(residue.chain):
+                key = (residue.chain, residue.number, residue.insertion_code)
                 mapping[key].append(residue.unit_id())
         mapping = dict(mapping)
 
         entries = self.pdbx_poly_seq_scheme
-        filtered = it.ifilter(lambda r: r['pdb_strand_id'] == chain, entries)
-        # model = self.atom_site[0]['pdbx_PDB_model_num']
+        filtered = it.ifilter(lambda r: chain_compare(r['pdb_strand_id']),
+                              entries)
 
+        # So in some structures, such as 4X4N, there is more than one entry for
+        # the same seq id but with a different sequence, ie, position 29 has
+        # two entries one as an A and one as a G. Looking at the PDB page I see
+        # that it uses the first entry and A. Without being able to pick which
+        # one is 'correct', we will just use the first one. Thus our usage of a
+        # prev parameter to allow use to skip producing a mapping if the last
+        # unit we have seen is the same as the current unit. This also forces
+        # us into having an index variable, and not just using enumerate.
+        prev = None
+        index = 0
         seen = set()
-        prev_number = None
-        for index, row in enumerate(filtered):
+        for row in filtered:
+            current_chain = row['pdb_strand_id']
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
                 insertion_code = None
 
             number = row['pdb_seq_num']
-            if number == '?' or row['auth_seq_num'] == '?':
-                unit_ids = [None]
-            else:
-                if prev_number == number:
-                    self.logger.warning("Duplicate pdbx_poly_seq_scheme "
-                                        "entry at %s", number)
-                    continue
+            if number == '?':
+                self.logger.warning("Bad seq number pdbx_poly_seq_scheme "
+                                    "entry at %s", row)
+                continue
 
-                prev_number = number
-                key = (int(number), insertion_code)
+            number = int(number)
+            key = (current_chain, number, insertion_code)
 
-                if key not in mapping:
-                    raise ValueError("Could not find unit for %s", key)
+            # Here is where we skip if we have a duplicate seq_id entry. We do
+            # not skip at the level of unit_id because there may be more than
+            # one unit mapping to a seq_id for units with alt ids.
+            if prev is not None and key == prev:
+                continue
 
-                unit_ids = mapping[key]
+            # It is possible that this is error prone, since I think there is a
+            # formal constraint on pdbx_poly_seq_scheme to require that units
+            # appear grouped by chain. That said, I've never seen a case where
+            # this isn't true.
+            if prev is not None and prev[0] != current_chain:
+                index = 0
 
-            seq_data = (pdb, chain, row['mon_id'], row['seq_id'])
+            prev = key
+            unit_ids = mapping.get(key, [None])
+            seq_data = (pdb, current_chain, row['mon_id'], number)
             seq_id = '%s|Sequence|%s|%s|%s' % seq_data
+            if insertion_code:
+                seq_id += ('|||%s' % insertion_code)
 
             if seq_id in seen:
-                raise ValueError("Can't map one sequence residue twice")
+                raise ValueError("Can't map one sequence residue %s twice" %
+                                 seq_id)
 
             seen.add(seq_id)
             for unit_id in unit_ids:
-                seen.add(unit_id)
-                yield (row['mon_id'], seq_id, unit_id)
+                if unit_id in seen:
+                    raise ValueError("Can't map one unit id %s twice" %
+                                     unit_id)
+
+                if unit_id is not None:
+                    seen.add(unit_id)
+
+                yield {
+                    'unit_id': unit_id,
+                    'seq_id': seq_id,
+                    'seq_unit': row['mon_id'],
+                    'index': index,
+                    'number': number,
+                    'chain': current_chain,
+                }
+            index += 1
 
     def __breaks__(self):
         pass
@@ -281,6 +333,9 @@ class Cif(object):
         def operator(entry):
             pdb, atom, number = entry
             operators = self.operators(atom['label_asym_id'])
+            if not operators:
+                self.logger.warning("No operator found for %s", atom)
+                return None
             if number < len(operators):
                 return pdb, atom, operators[number]
             return None
@@ -302,6 +357,8 @@ class Cif(object):
         index = atom['label_seq_id']
         if index != '.':
             index = int(index)
+        else:
+            index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
 
@@ -345,10 +402,21 @@ class Cif(object):
     def table(self, name):
         return Table(self, self.__block__(name))
 
+    def has_table(self, name):
+        block_name = re.sub('^_', '', name)
+        block = self.data.getObj(block_name)
+        return bool(block)
+
     def operators(self, asym_id):
-        matching = []
-        seen = set()
         assemblies = self._assemblies[asym_id]
+        if not assemblies:
+            self.logger.warning("Asym id %s.%s is not part of any assmeblies."
+                                " Defaulting to all operators",
+                                self.pdb, asym_id)
+            assemblies = it.chain.from_iterable(self._assemblies.values())
+
+        seen = set()
+        matching = []
         for assembly in assemblies:
             if assembly['id'] not in seen:
                 seen.add(assembly['id'])

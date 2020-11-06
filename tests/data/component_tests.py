@@ -1,10 +1,15 @@
 import unittest as ut
-from nose import SkipTest
 
+import pytest
 import numpy as np
+from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_almost_equal
+from numpy.testing import assert_array_equal
 
 from fr3d.data import Atom
 from fr3d.data import Component
+from fr3d.cif.reader import Cif
+from fr3d import definitions as defs
 
 
 class BasicTest(ut.TestCase):
@@ -121,7 +126,7 @@ class CenterTest(ut.TestCase):
     def test_computes_center_correctly(self):
         val = self.residue.centers['base']
         ans = np.array([2.0, 2.0, 2.0])
-        np.testing.assert_array_equal(val, ans)
+        assert_array_equal(val, ans)
 
 
 class TransformTest(ut.TestCase):
@@ -154,6 +159,25 @@ class TransformTest(ut.TestCase):
         val = residue.unit_id()
         ans = "1GID|1|A|C|50||||6_555"
         self.assertEquals(ans, val)
+
+    def test_will_compute_rotation_if_parent_has(self):
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        self.residue.infer_hydrogens()
+        assert hasattr(self.residue, 'rotation_matrix')
+        residue = self.residue.transform(trans)
+        assert hasattr(residue, 'rotation_matrix')
+
+    def test_will_not_compute_rotation_if_parent_has_none(self):
+        trans = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, -1.0, 0.0, 97.240],
+                          [0.0, 0.0, -1.0, 0.0],
+                          [0.0, 0.0, 0.0, 1.0]])
+        assert not hasattr(self.residue, 'rotation_matrix')
+        residue = self.residue.transform(trans)
+        assert not hasattr(residue, 'rotation_matrix')
 
 
 class InferHydrogenTest(ut.TestCase):
@@ -243,8 +267,13 @@ class InferHydrogenTest(ut.TestCase):
         atoms = list(self.res.atoms(name=['H1', 'H8', 'H9', '1H2', '2H2']))
         self.assertEqual(len(atoms), 5)
 
+    @pytest.mark.skip()
+    def test_infers_correct_rotation_matrix_for_normal_base(self):
+        pass
+
+    @pytest.mark.skip()
     def test_infers_correct_location(self):
-        raise SkipTest()
+        pass
 
 
 class AtomsWithin(ut.TestCase):
@@ -262,49 +291,49 @@ class AtomsWithin(ut.TestCase):
         ])
 
     def test_knows_if_an_atom_is_within(self):
-        val = self.component1.atoms_within(self.component2, cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0)
         self.assertTrue(val)
 
     def test_works_with_negative_cutoff(self):
-        val = self.component1.atoms_within(self.component2, cutoff=-1.0)
+        val = self.component1.atoms_within(self.component2, -1.0)
         self.assertTrue(val)
 
     def test_knows_if_no_atoms_within_cutoff(self):
-        val = self.component1.atoms_within(self.component2, cutoff=0.5)
+        val = self.component1.atoms_within(self.component2, 0.5)
         self.assertFalse(val)
 
     def test_knows_if_no_atoms_within_negative_cutoff(self):
-        val = self.component1.atoms_within(self.component2, cutoff=-0.5)
+        val = self.component1.atoms_within(self.component2, -0.5)
         self.assertFalse(val)
 
     def test_can_use_given_list_for_first_atoms(self):
-        val = self.component1.atoms_within(self.component2, using=['C3', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           using=['C3', 'N3'])
         self.assertTrue(val)
 
     def test_knows_if_with_given_list_nothing_is_within(self):
-        val = self.component1.atoms_within(self.component2, using=['C4', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           using=['C4', 'N3'])
         self.assertFalse(val)
 
     def test_can_use_to_list_to_detect_near(self):
-        val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['N1', 'N3'])
         self.assertTrue(val)
 
     def test_can_use_to_list_to_detect_not_near(self):
-        val = self.component1.atoms_within(self.component2, to=['C2', 'N3'],
-                                           cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['C2', 'N3'])
         self.assertFalse(val)
 
     def test_can_use_both_to_detect_near(self):
-        val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
-                                           using=['C3', 'N3'], cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['N1', 'N3'], using=['C3', 'N3'])
         self.assertTrue(val)
 
     def test_can_use_both_to_detect_not_near(self):
-        val = self.component1.atoms_within(self.component2, to=['N1', 'N3'],
-                                           using=['C4', 'N3'], cutoff=1.0)
+        val = self.component1.atoms_within(self.component2, 1.0,
+                                           to=['N1', 'N3'], using=['C4', 'N3'])
         self.assertFalse(val)
 
 
@@ -328,3 +357,98 @@ class AtomTest(ut.TestCase):
         val = list(self.component.atoms(name='example'))
         ans = [self.atoms[0], self.atoms[-1]]
         self.assertEquals(ans, val)
+
+
+class StandardTransformationTest(ut.TestCase):
+    def standard_component(self, seq):
+        atoms = []
+        for name, coord in defs.RNAbasecoordinates[seq].items():
+            x, y, z = coord
+            atoms.append(Atom(x=x, y=y, z=z, name=name))
+        component = Component(atoms, sequence=seq)
+        component.infer_hydrogens()
+        assert_array_almost_equal(component.centers['base'], [0, 0, 0])
+        return component
+
+    def test_transforms_self_to_center(self):
+        comp = self.standard_component('A')
+        trans = comp.standard_transformation()
+        transformed = comp.transform(trans)
+        ans = comp.centers['base']
+        val = transformed.centers['base']
+        assert_array_almost_equal(val, ans)
+
+    def test_transforms_moved_to_center(self):
+        comp = self.standard_component('A')
+        assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
+        standard = np.array([[1.0, 0.0, 0.0, 0.0],
+                             [0.0, -1.0, 0.0, 97.240],
+                             [0.0, 0.0, -1.0, 0.0],
+                             [0.0, 0.0, 0.0, 1.0]], dtype=np.float64)
+        moved = comp.transform(standard)
+
+        # Assert centers are as expected
+        assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
+        assert_array_almost_equal(moved.centers['base'], [0, 97.240, 0])
+
+        # Assert using the standard matrix puts it back at 0, 0, 0
+        matrix = moved.standard_transformation()
+        trans = moved.transform(matrix)
+        assert_array_almost_equal(trans.centers['base'], [0, 0, 0])
+
+    def test_moving_other_preserves_distance(self):
+        comp = self.standard_component('A')
+        print('standard')
+        print(comp.rotation_matrix)
+        standard = np.array([
+            [1.000000000, 0.000000000, 0.000000000, 0.000000000],
+            [0.000000000, -2.000000000, 0.000000000, 9.000000000],
+            [0.000000000, 0.000000000, 10.000000000, 0.000000000],
+            [0.000000000, 0.000000000, 0.000000000, 1.000000000]
+        ])
+
+        # Move the standard 9 in y axis
+        moved1 = comp.transform(standard)
+        print('moved1')
+        print(moved1.rotation_matrix)
+
+        # Move the previous component by the same matrix, it is now 18 in y
+        # away from the center
+        moved2 = moved1.transform(standard)
+        distance = 17.2
+
+        # Assert the distance between the moved is as expected
+        assert_almost_equal(moved1.distance(moved2), distance)
+
+        # Assert the moved centers are as expected
+        assert_array_almost_equal(comp.centers['base'], [0, 0, 0])
+        assert_array_almost_equal(moved1.centers['base'], [0, 9.0, 0])
+        assert_array_almost_equal(moved2.centers['base'], [0, -9.0, 0])
+
+        # Transform both using the standard transform of the first
+        matrix = moved1.standard_transformation()
+        trans1 = moved1.transform(matrix)
+        trans2 = moved2.transform(matrix)
+
+        # Assert the distance remains the same
+        assert_almost_equal(trans1.distance(trans2), distance, decimal=1)
+
+        # Assert the first is in the standard location
+        assert_array_almost_equal(trans1.centers['base'], [0, 0, 0])
+
+        # Assert the second is where we expect
+        assert_array_almost_equal(trans2.centers['base'], [1, 18.0, 0])
+
+
+class RealDataTransformationTest(ut.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with open('files/1FJG.cif', 'rb') as raw:
+            cls.structure = Cif(raw).structure()
+        cls.structure.infer_hydrogens()
+
+    def test_transforms_to_origin(self):
+        residue = self.structure.residue('1FJG|1|A|G|107')
+        matrix = residue.standard_transformation()
+        trans = residue.transform(matrix)
+        assert_array_almost_equal(trans.centers['base'], [0, 0, 0])

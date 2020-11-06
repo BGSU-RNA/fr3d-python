@@ -3,7 +3,7 @@ from fr3d.data.base import AtomProxy
 from fr3d.data.atoms import Atom
 from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
-
+from fr3d.geometry import angleofrotation as angrot
 import numpy as np
 
 from fr3d.unit_ids import encode
@@ -42,10 +42,14 @@ class Component(EntitySelector):
             atoms = defs.RNAbaseheavyatoms[self.sequence]
             self.centers.define('base', atoms)
 
-        if self.sequence in defs.nt_backbone:
-            atoms = defs.nt_backbone[self.sequence]
-            self.centers.define('nt_backbone', atoms)
+        if self.sequence in defs.nt_sugar:
+            atoms = defs.nt_sugar[self.sequence]
+            self.centers.define('nt_sugar', atoms)
 
+        if self.sequence in defs.nt_phosphate:
+            atoms = defs.nt_phosphate[self.sequence]
+            self.centers.define('nt_phosphate', atoms)
+            
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
@@ -53,6 +57,10 @@ class Component(EntitySelector):
         if self.sequence in defs.aa_backbone:
             atoms = defs.aa_backbone[self.sequence]
             self.centers.define('aa_backbone', atoms)
+
+        if self.sequence in defs.modified_nucleotides:
+            atoms = defs.modified_nucleotides[self.sequence]["atoms"].values()
+            self.centers.define('base', atoms)
 
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
@@ -117,17 +125,36 @@ class Component(EntitySelector):
     def infer_hydrogens(self):
         """Infer the coordinates of the hydrogen atoms of this component.
         Currently, it only works for RNA with .sequence
+
+        To do:
+        Make a separate method that calculates the rotation matrix
+        This method should calculate the rotation matrix if that has not already been done
+
+
         """
-        if self.sequence not in defs.RNAbaseheavyatoms:
+        if self.sequence not in defs.RNAbaseheavyatoms and \
+                self.sequence not in defs.modified_nucleotides:
             return None
+
         R = []
         S = []
-        baseheavy = defs.RNAbaseheavyatoms[self.sequence]
 
-        for atom in self.atoms(name=baseheavy):
-            coordinates = atom.coordinates()
-            R.append(coordinates)
-            S.append(defs.RNAbasecoordinates[self.sequence][atom.name])
+        mod_nts = defs.modified_nucleotides
+        if self.sequence in mod_nts:
+            current = defs.modified_nucleotides[self.sequence]
+            standard_coords = defs.RNAbasecoordinates[current["standard"]]
+            for standard, modified in current["atoms"].items():
+                coords = list(self.centers[modified])
+                if coords:
+                    R.append(coords)
+                    S.append(standard_coords[standard])
+
+        if self.sequence in defs.RNAbaseheavyatoms:
+            baseheavy = defs.RNAbaseheavyatoms[self.sequence]
+            for atom in self.atoms(name=baseheavy):
+                coordinates = atom.coordinates()
+                R.append(coordinates)
+                S.append(defs.RNAbasecoordinates[self.sequence][atom.name])
 
         R = np.array(R)
         R = R.astype(np.float)
@@ -135,34 +162,39 @@ class Component(EntitySelector):
         try:
             rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
+            #print self.unit_id(), "Successful rotation matrix"
         except:
+
+            print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
         self.rotation_matrix = rotation_matrix
 
-        hydrogens = defs.RNAbasehydrogens[self.sequence]
-        coordinates = defs.RNAbasecoordinates[self.sequence]
+        if self.sequence in defs.RNAbasehydrogens:
+            hydrogens = defs.RNAbasehydrogens[self.sequence]
+            coordinates = defs.RNAbasecoordinates[self.sequence]
 
-        for hydrogenatom in hydrogens:
-            hydrogencoordinates = coordinates[hydrogenatom]
-            newcoordinates = base_center + \
-                np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
-            self._atoms.append(Atom(name=hydrogenatom,
-                                    x=newcoordinates[0, 0],
-                                    y=newcoordinates[0, 1],
-                                    z=newcoordinates[0, 2]))
+            for hydrogenatom in hydrogens:
+                hydrogencoordinates = coordinates[hydrogenatom]
+                newcoordinates = base_center + \
+                    np.dot(hydrogencoordinates, np.transpose(rotation_matrix))
+                self._atoms.append(Atom(name=hydrogenatom,
+                                        x=newcoordinates[0, 0],
+                                        y=newcoordinates[0, 1],
+                                        z=newcoordinates[0, 2]))
 
-    def transform(self, transform):
-        """Create a new component from this one by applying a transformation
-        matrix. This does not keep the rotation matrix if any, but will keep
-        any added hydrogens.
+    def transform(self, transform_matrix):
+        """Create a new component from "self" by applying the transformation
+        matrix. This does not keep the rotation matrix if any,
+        but will keep any added hydrogens.
 
-        :transform: The transformation matrix to apply.
-        :returns: A new Component with the same properties by rotated atoms.
+        :transform_matrix: The transformation matrix to apply.
+        :returns: A new Component with the same properties except with
+        transformed coordinates.
         """
 
-        atoms = [atom.transform(transform) for atom in self.atoms()]
-        return Component(atoms, pdb=self.pdb,
+        atoms = [atom.transform(transform_matrix) for atom in self.atoms()]
+        comp = Component(atoms, pdb=self.pdb,
                          model=self.model,
                          type=self.type,
                          chain=self.chain,
@@ -173,6 +205,92 @@ class Component(EntitySelector):
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
                          polymeric=self.polymeric)
+        if hasattr(self, 'rotation_matrix'):
+            comp.infer_hydrogens()
+        return comp
+
+    def translate_rotate(self, residue):
+        reference = self.centers["base"]
+        rotation = self.rotation_matrix
+        for atom in residue.atoms():
+            atom_coord = atom.coordinates()
+            dist_translate = np.subtract(atom_coord, reference)
+            dist_aa_matrix = np.matrix(dist_translate)
+            rotated_atom = dist_aa_matrix * rotation
+            coord_array = np.array(rotated_atom)
+            a = coord_array.flatten()
+            transformed_coord = a.tolist()    
+        return transformed_coord
+
+    def translate_rotate(self, atom):
+        """Rotate an Atom relative to the center of this component.
+
+        :param Atom atom: The Atom to move.
+        :returns Atom: The moved atom.
+        """
+
+        atom_coord = atom.coordinates()
+        reference = self.centers["base"]
+        dist_translate = np.subtract(atom_coord, reference)
+        dist_aa_matrix = np.matrix(dist_translate)
+        rotation = self.rotation_matrix
+        rotated_atom = dist_aa_matrix * rotation
+        coord_array = np.array(rotated_atom)
+        a = coord_array.flatten()
+        x, y, z = a.tolist()
+        return Atom(x=x, y=y, z=z,
+                    pdb=atom.pdb,
+                    model=atom.model,
+                    chain=atom.chain,
+                    component_id=atom.component_id,
+                    component_number=atom.component_number,
+                    component_index=atom.component_index,
+                    insertion_code=atom.insertion_code,
+                    alt_id=atom.alt_id,
+                    group=atom.group,
+                    type=atom.type,
+                    name=atom.name,
+                    symmetry=atom.symmetry,
+                    polymeric=atom.polymeric)
+
+
+    def standard_transformation(self):
+        """Returns a 4X4 transformation matrix which can be used to transform
+        any component to the same relative location as the "self" argument in
+        its standard location. If this is not an RNA component then this returns
+        None.
+        :returns: A numpy array suitable for input to self.transform to produce
+        a transformed component.
+        """
+
+        if 'base' not in self.centers:
+            return None
+        base_center = self.centers["base"]
+        if len(base_center) == 0:
+            return None
+        seq = self.sequence
+        coords = defs.RNAbasecoordinates[seq]
+        standard_base = [coords[a] for a in defs.RNAbaseheavyatoms[seq]]
+        standard_center = np.mean(standard_base, axis=0)
+        dist_translate = base_center - standard_center
+        matrix = np.zeros((4, 4))
+        matrix[0:3, 0:3] = self.rotation_matrix
+        matrix[0:3, 3] = dist_translate
+        matrix[3, 3] = 1.0
+        return matrix
+
+    def translate(self, aa_residue):
+        if 'base' not in self.centers:
+            return None
+        rotation = self.rotation_matrix
+        for atom in aa_residue:
+            dist_translate = np.subtract(atom, self.centers["base"])
+            rotated_atom = dist_translate*rotation
+            coord_array = np.array(rotated_atom)
+            a = coord_array.flatten()
+            coord = a.tolist()
+        return coord
+
 
     def unit_id(self):
         """Compute the unit id of this Component.
@@ -191,7 +309,7 @@ class Component(EntitySelector):
             'symmetry': self.symmetry
         })
 
-    def atoms_within(self, other, using=None, to=None, cutoff=4.0):
+    def atoms_within(self, other, cutoff, using=None, to=None, min_number=1):
         """Determine if there are any atoms from another component within some
         distance.
 
@@ -209,11 +327,14 @@ class Component(EntitySelector):
         if to:
             kw2['name'] = to
 
+        n = 0
         for atom1 in self.atoms(**kw1):
             for atom2 in other.atoms(**kw2):
                 if atom1.distance(atom2) <= abs(cutoff):
-                    return True
-        return False
+                    n = n+1
+
+        if n >= min_number:
+            return True
 
     def distance(self, other, using='*', to='*'):
         """Compute a center center distance between this and another component.
@@ -251,3 +372,49 @@ class Component(EntitySelector):
 
     def __repr__(self):
         return '<Component %s>' % self.unit_id()
+
+    def angle_between_normals(self, aa_residue):
+        vec1 = self.normal_calculation()
+        vec2 = aa_residue.normal_calculation()
+        return angrot.angle_between_planes(vec1, vec2)
+
+    def normal_calculation(self):
+        key = self.sequence
+        P1 = self.centers[defs.planar_atoms[key][0]]
+        P2 = self.centers[defs.planar_atoms[key][1]]
+        P3 = self.centers[defs.planar_atoms[key][2]]
+        vector = np.cross((P2 - P1), (P3-P1))
+        return vector
+
+    def enough_hydrogen_bonds(self, second, min_distance=4, min_bonds=2):
+        """Calculates atom to atom distance of part "aa_part" of neighboring
+        amino acids of type "aa" from each atom of base. Only returns a pair
+        of aa/nt if two or more atoms are within the cutoff distance.
+        """
+
+        HB_atoms = set(['N', 'NH1','NH2','NE','NZ','ND1','NE2','O','OD1','OE1','OE2', 'OG', 'OH'])
+        n = 0
+        base_seq = self.sequence()
+        for base_atom in self.atoms(name=defs.RNAbaseheavyatoms[base_seq]):
+            for aa_atom in second.atoms(name=defs.aa_fg[second.sequence]):
+                distance = np.subtract(base_atom.coordinates(), aa_atom.coordinates())
+                distance = np.linalg.norm(distance)
+                if distance <= min_distance and aa_atom.name in HB_atoms:
+                    n = n + 1
+                    if n > min_bonds:
+                        return True
+        return False
+    
+    def stacking_tilt(aa_residue, aa_coordinates):
+        baa_dist_list = []
+
+        for aa_atom in aa_residue.atoms(name=defs.aa_fg[aa_residue.sequence]):
+            key = aa_atom.name
+            aa_z = aa_coordinates[key][2]
+            baa_dist_list.append(aa_z)
+        max_baa = max(baa_dist_list)
+        min_baa = min(baa_dist_list)
+        diff = max_baa - min_baa
+        #print aa_residue.unit_id(), diff
+        if diff <= defs.tilt_cutoff[aa_residue.sequence]:
+            return "stacked"

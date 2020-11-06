@@ -235,9 +235,14 @@ class SequenceTest(PersistedBase):
 
     def setUp(self):
         super(SequenceTest, self).setUp()
-        self.data = self.cif.experimental_sequence_mapping('A')
+        self.data = list(self.cif.experimental_sequence_mapping('A'))
 
     def test_can_compute_mapping(self):
-        val = self.data[-1]
-        ans = ('C', '1GID|Sequence|A|C|158', '1GID|1|A|C|260')
-        self.assertEqual(ans, val)
+        assert self.data[-1] == {
+            'seq_id': '1GID|Sequence|A|C|260',
+            'seq_unit': 'C',
+            'number': 260,
+            'unit_id': '1GID|1|A|C|260',
+            'index': 157,
+            'chain': 'A',
+        }

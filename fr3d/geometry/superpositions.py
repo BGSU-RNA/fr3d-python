@@ -25,10 +25,10 @@ def besttransformation(set1, set2):
     """
 
     # Check to make sure same number of (x,y,z) coordinates both sets.
-    #If condition is not true this program stops.
-    assert len(set1) == len(set2)
+    # If condition is not true this program stops.
+    assert len(set1) == len(set2), 'Lengths must match'
     length = len(set1)
-    assert length > 0
+    assert length > 0, 'Must not give empty matrices'
 
     # Translation Step is beginning.
     # These add all x_{ij}'s, y_{ij}'s, z_{ij}'s for each element in
