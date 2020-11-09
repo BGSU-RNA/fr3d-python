@@ -689,6 +689,9 @@ PDB_List = ['6UKF'] # DNA structure
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
 PDB_List = ['4TNA'] # RNA structure with several modified modified_nucleotides
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.147/3.5A/csv']
+PDB_List = ['104D']
+PDB_List = ['1CK5']
+PDB_List = ['6TQA']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DT']  # for DNA DT only

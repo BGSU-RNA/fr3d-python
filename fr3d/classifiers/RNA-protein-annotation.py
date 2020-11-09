@@ -1772,6 +1772,8 @@ PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU
 PDB_List = ['4V51','4V9K']
 PDB_List = ['4V9F']
 PDB_List = ['6WJR']
+PDB_List = ['5J7L']
+
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
@@ -1796,8 +1798,8 @@ except:
     hasNoProtein = []
 
 # plot one instance of each of the amino acids, showing the hydrogen atoms added
-PlotAA = False
 PlotAA = True
+PlotAA = False
 AlreadyPlotted = {}
 
 # The following lines use this program to write out centers by unit ids, for use in FR3D.
