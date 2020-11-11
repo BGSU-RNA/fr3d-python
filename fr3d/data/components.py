@@ -49,7 +49,7 @@ class Component(EntitySelector):
         if self.sequence in defs.nt_phosphate:
             atoms = defs.nt_phosphate[self.sequence]
             self.centers.define('nt_phosphate', atoms)
-            
+
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
@@ -162,10 +162,16 @@ class Component(EntitySelector):
         try:
             rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
-            #print self.unit_id(), "Successful rotation matrix"
         except:
+            if length(R) != length(S):
+                print self.unit_id(), "Rotation matrix calculation failed, different sizes"
+            elif length(S) < 3:
+                print self.unit_id(), "Rotation matrix calculation failed, too few standard atoms"
+            elif length(R) < 3:
+                print self.unit_id(), "Rotation matrix calculation failed, too few new atoms"
+            else:
+                print self.unit_id(), "Rotation matrix calculation failed, not sure why"
 
-            print self.unit_id(), "Rotation matrix calculation failed"
             return None
 
         self.rotation_matrix = rotation_matrix
@@ -219,7 +225,7 @@ class Component(EntitySelector):
             rotated_atom = dist_aa_matrix * rotation
             coord_array = np.array(rotated_atom)
             a = coord_array.flatten()
-            transformed_coord = a.tolist()    
+            transformed_coord = a.tolist()
         return transformed_coord
 
     def translate_rotate(self, atom):
@@ -404,7 +410,7 @@ class Component(EntitySelector):
                     if n > min_bonds:
                         return True
         return False
-    
+
     def stacking_tilt(aa_residue, aa_coordinates):
         baa_dist_list = []
 
