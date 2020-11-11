@@ -14,18 +14,20 @@ class CifAtom(object):
     block and this block differs from that in the standard cif files.
 
     1. This file conatins all atoms, even those produced by rotations.
-    2. All label_* and auth_* fields will be the same and will the values used
-        to copute the unit id of the atom.
-    3. Entity id is '?'.
+    2. All label_* and auth_* fields will be the same and will contain the
+        values used to compute the unit id of the atom.
+    3. The entity id is '?'.
     4. All *_esd, charge, *_esi, occupancy and such entries are '?'.
-    5. We have a final field which the component unit id for each atom.
+    5. An additional final field contains the component unit id for each atom.
     """
 
-    def __init__(self, handle, unit_ids=True):
+    def __init__(self, handle, unit_ids=True, protect_lists_of_lists=False):
         self.writer = Writer(handle)
         self.unit_ids = unit_ids
+        self.protect_lists_of_lists = protect_lists_of_lists
 
-    def atom_container(self, structure):
+
+    def atom_container(self, structure, protect_lists_of_lists):
         atoms = DataCategory('atom_site')
         fields = ['group_PDB', 'id', 'type_symbol', 'label_atom_id',
                   'label_alt_id', 'label_comp_id', 'label_asym_id',
@@ -65,10 +67,26 @@ class CifAtom(object):
 
             atoms.append(data)
 
+        if protect_lists_of_lists is True:
+            # Kludge fix for single atom residues.
+            # Handles cases where single atom residues are not handled
+            #     correctly as lists of lists, but as simple lists instead,
+            #     which has downstream implications in units.coordinates.
+            #
+            # Here, we force a fix, using the line-skipping logic from
+            #     units.coordinates to keep the kludge line out of the output
+            #     data.
+            dummy = [ 'loop_foo', 'foo', 'foo', 'foo', 'foo', 'foo', 'foo',
+                        '?', 'foo', 'foo', 'foo', 'foo', 'foo', '?',
+                        '?', '?', '?', '?', '?', '?',
+                        '.', 'foo', 'foo', 'foo', 'foo', 'foo']
+
+            atoms.append(dummy)
+
         return atoms
 
     def __call__(self, structure):
-        atoms = self.atom_container(structure)
+        atoms = self.atom_container(structure, self.protect_lists_of_lists)
         container = DataContainer(structure.pdb)
         container.append(atoms)
         self.writer.writeContainer(container)

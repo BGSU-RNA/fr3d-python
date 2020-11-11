@@ -3,6 +3,8 @@ import pytest
 import numpy as np
 import itertools as it
 
+from fr3d.definitions import RNAbaseheavyatoms as HEAVY
+
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
 
@@ -231,3 +233,47 @@ class MissingAssemblyReadingTest(ReaderTest):
 
     def test_will_give_all_operators_if_unknown_chain(self):
         assert [op['name'] for op in self.cif.operators('X')] == ['1_555']
+
+
+class AltIdReadingTest(ReaderTest):
+    name = '3R1E'
+
+    def residue(self, unit_id):
+        residues = self.structure.residues()
+        return next(r for r in residues if r.unit_id() == unit_id)
+
+    def test_it_loads_all_atoms_with_alt_ids(self):
+        unit_ids = [
+            '3R1E|1|A|C|5||B',
+            '3R1E|1|A|C|5||A',
+        ]
+        for unit_id in unit_ids:
+            residues = self.structure.residues()
+            val = next(r for r in residues if r.unit_id() == unit_id)
+            msg = "Incomplete: %s" % unit_id
+            assert val.is_complete(HEAVY[val.sequence]), msg
+
+    def test_does_not_generate_unneeded_unit_without_alt_ids(self):
+        unit_ids = set(r.unit_id() for r in self.structure.residues())
+        assert '3R1E|1|A|C|5' not in unit_ids
+
+    def test_loads_all_residues(self):
+        ans = [
+            '3R1E|1|A|G|1',
+            '3R1E|1|A|C|2',
+            '3R1E|1|A|GRB|3',
+            '3R1E|1|A|G|4',
+            '3R1E|1|A|C|5||A',
+            '3R1E|1|A|C|5||B',
+            '3R1E|1|A|G|6||A',
+            '3R1E|1|A|G|6||B',
+            '3R1E|1|A|G|7',
+            '3R1E|1|A|C|8',
+        ]
+        residues = self.structure.residues(chain='A')
+        assert sorted([r.unit_id() for r in residues]) == sorted(ans)
+
+    def test_it_does_not_copy_over_unneeded_atoms(self):
+        residue = self.residue('3R1E|1|A|G|6||A')
+        atom = list(residue.atoms(name='N1'))[0]
+        np.testing.assert_almost_equal(atom.x, -11.480)

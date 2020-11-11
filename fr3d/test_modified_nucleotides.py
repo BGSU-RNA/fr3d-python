@@ -692,6 +692,7 @@ PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.147/3.5A/csv']
 PDB_List = ['104D']
 PDB_List = ['1CK5']
 PDB_List = ['6TQA']
+PDB_List = ['2OB7']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DT']  # for DNA DT only

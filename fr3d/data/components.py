@@ -148,7 +148,7 @@ class Component(EntitySelector):
             self.centers.define('nt_sugar', atoms)
             atoms = defs.nt_phosphate['A']
             self.centers.define('nt_phosphate', atoms)
-            
+
         if self.sequence in defs.aa_fg:
             atoms = defs.aa_fg[self.sequence]
             self.centers.define('aa_fg', atoms)
@@ -251,12 +251,16 @@ class Component(EntitySelector):
         try:
             rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
                 besttransformation(R, S)
-
-            # meanR is the calculated average of the R points
-            # meanS is the calculated average of the S points
-
         except:
-            print self.unit_id(), "Rotation matrix calculation failed"
+            if len(R) != len(S):
+                print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
+            elif len(R) < 3:
+                print("%s Rotation matrix calculation failed, %d new atoms" % (self.unit_id(),len(R)))
+            elif len(S) < 3:
+                print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
+            else:
+                print("%s Rotation matrix calculation failed, not sure why" % self.unit_id())
+
             return None
 
         self.rotation_matrix = rotation_matrix
@@ -385,6 +389,19 @@ class Component(EntitySelector):
                          polymeric=self.polymeric,
                          inferhydrogens=False)
         return comp
+
+    def translate_rotate(self, residue):
+        reference = self.centers["base"]
+        rotation = self.rotation_matrix
+        for atom in residue.atoms():
+            atom_coord = atom.coordinates()
+            dist_translate = np.subtract(atom_coord, reference)
+            dist_aa_matrix = np.matrix(dist_translate)
+            rotated_atom = dist_aa_matrix * rotation
+            coord_array = np.array(rotated_atom)
+            a = coord_array.flatten()
+            transformed_coord = a.tolist()
+        return transformed_coord
 
     def translate_rotate_component(self, component):
         """Translate and rotate the atoms in component according to
