@@ -163,14 +163,14 @@ class Component(EntitySelector):
             rotation_matrix, fitted, base_center, rmsd, sse = \
                 besttransformation(R, S)
         except:
-            if length(R) != length(S):
-                print self.unit_id(), "Rotation matrix calculation failed, different sizes"
-            elif length(S) < 3:
-                print self.unit_id(), "Rotation matrix calculation failed, too few standard atoms"
-            elif length(R) < 3:
-                print self.unit_id(), "Rotation matrix calculation failed, too few new atoms"
+            if len(R) != len(S):
+                print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
+            elif len(R) < 3:
+                print("%s Rotation matrix calculation failed, %d new atoms" % (self.unit_id(),len(R)))
+            elif len(S) < 3:
+                print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
             else:
-                print self.unit_id(), "Rotation matrix calculation failed, not sure why"
+                print("%s Rotation matrix calculation failed, not sure why" % self.unit_id())
 
             return None
 
