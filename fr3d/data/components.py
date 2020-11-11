@@ -131,8 +131,12 @@ class Component(EntitySelector):
         # initialize centers again to include hydrogens
         self.centers = AtomProxy(self._atoms)
 
+        # standard and modified bases should have their rotation matrix
+        # calculated already, and should have a base center set by that
+        # if they don't, there is no sensible way to assign a base center,
+        # for example if the structure just has a backbone trace
         if self.base_center is not None:
-            self.centers.__setitem__('base',self.base_center)
+            self.centers.setcenter('base',self.base_center)
 
         if self.sequence in defs.nt_sugar:
             atoms = defs.nt_sugar[self.sequence]
@@ -241,12 +245,13 @@ class Component(EntitySelector):
             current = defs.modified_nucleotides[self.sequence]
             standard_coords = defs.NAbasecoordinates[current["standard"]]
             for atom in self.atoms(name=current["atoms"].keys()):
-                R.append(list(atom.coordinates()))
+                R.append(atom.coordinates())
                 S.append(standard_coords[atom.name])
 
         R = np.array(R)
         R = R.astype(np.float)
         S = np.array(S)
+        S = S.astype(np.float)
 
         try:
             rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
@@ -271,7 +276,16 @@ class Component(EntitySelector):
             self.base_center = meanR
         else:
             # some modified bases are missing some heavy atoms, meanS not zero
-            self.base_center = np.subtract(meanR,np.dot(rotation_matrix,meanS))
+            # this comes out as a numpy matrix?  different than meanR above
+            base_center = np.subtract(meanR,np.dot(rotation_matrix,meanS))
+            self.base_center = np.array([base_center[0,0],base_center[0,1],base_center[0,2]])
+
+        """ For the life of me, I could not figure out any other way of
+        converting base_center from a 2d array to a 1d array.
+        Taking a slice did not work, reshape did not work, etc.
+        This is crucially important; a 2d array won't be written to the
+        unit_centers table in the database.
+        """
 
 
     def infer_hydrogens(self):
