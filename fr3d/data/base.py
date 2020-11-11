@@ -98,6 +98,16 @@ class AtomProxy(col.MutableMapping):
         else:
             self._data[name] = set(atoms)
 
+    def setcenter(self, name, vector):
+        """Explicitly set the name and the value of a center.
+        This is useful for the base center for modified nts,
+        because that is not calculated as the average of a
+        given set of atoms; they may be missing from the base
+        """
+
+        self._data[name] = vector
+        self._definitions[name] = ["Base atoms"]
+
     def definition(self, name):
         """Get the definition for the given name. If the name is not defined
         then None is returned.
