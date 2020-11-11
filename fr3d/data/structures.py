@@ -159,16 +159,24 @@ class Structure(object):
         """
 
         def fn():
+
             for residue in self.residues(**kwargs):
                 if atoms:
                     yield residue, residue.centers[atoms]
-                if 'base' in residue.centers:
+                if 'base' in residue.centers and len(residue.centers['base']) == 3:
+#                    print("fr3d-python structures.py base in residue %s" % residue.unit_id())
+#                    print(residue.centers['base'])
                     yield residue, residue.centers['base']
-                elif 'aa_fg' in residue.centers:
+                elif 'aa_fg' in residue.centers and len(residue.centers['aa_fg']) == 3:
+#                    print("fr3d-python structures.py aa_fg in residue %s * atoms:" % residue.unit_id())
+#                    print(residue.centers['*'])
                     yield residue, residue.centers['aa_fg']
                 elif 'modified_nucleotides' in residue.centers:
+#                    print("fr3d-python structures.py modified_nucleotides in residue %s" % residue.unit_id())
                     yield residue, residue.centers['modified_nucleotides']
                 else:
+#                    print("fr3d-python structures.py residue %s has no centers" % residue.unit_id())
+#                    print(residue.centers['*'])
                     yield residue, residue.centers['*']
         return CoordinateTree(fn())
 
