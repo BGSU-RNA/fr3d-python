@@ -296,27 +296,27 @@ class Component(EntitySelector):
         taken from the CIF file.
         """
 
+        if self.sequence in defs.NAbasehydrogens and self.rotation_matrix is not None:
+            hydrogens = defs.NAbasehydrogens[self.sequence]
+            coordinates = defs.NAbasecoordinates[self.sequence]
+
+            current_hydrogens = [a.name for a in self._atoms if "H" in a.name]
+            #print("Current hydrogens: ",current_hydrogens)
+
+            for hydrogenatom in hydrogens:
+                if not hydrogenatom in current_hydrogens:
+                    #print("Adding",hydrogenatom,"to",self.unit_id())
+                    hydrogencoordinates = coordinates[hydrogenatom]
+                    newcoordinates = self.base_center + \
+                        np.dot(self.rotation_matrix, hydrogencoordinates)
+                    self._atoms.append(Atom(name=hydrogenatom,
+                                            x=newcoordinates[0, 0],
+                                            y=newcoordinates[0, 1],
+                                            z=newcoordinates[0, 2]))
+
         try:
 
-            if self.sequence in defs.NAbasehydrogens:
-                hydrogens = defs.NAbasehydrogens[self.sequence]
-                coordinates = defs.NAbasecoordinates[self.sequence]
-
-                current_hydrogens = [a.name for a in self._atoms if "H" in a.name]
-                #print("Current hydrogens: ",current_hydrogens)
-
-                for hydrogenatom in hydrogens:
-                    if not hydrogenatom in current_hydrogens:
-                        #print("Adding",hydrogenatom,"to",self.unit_id())
-                        hydrogencoordinates = coordinates[hydrogenatom]
-                        newcoordinates = self.base_center + \
-                            np.dot(self.rotation_matrix, hydrogencoordinates)
-                        self._atoms.append(Atom(name=hydrogenatom,
-                                                x=newcoordinates[0, 0],
-                                                y=newcoordinates[0, 1],
-                                                z=newcoordinates[0, 2]))
-
-            elif self.sequence == "ARG":
+            if self.sequence == "ARG":
 
                 N1,N2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
                 self._atoms.append(Atom(name="HH11",x=N1[0],y=N1[1],z=N1[2]))
