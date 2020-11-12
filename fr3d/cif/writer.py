@@ -62,10 +62,18 @@ class CifAtom(object):
                     '.', atom.component_number, atom.component_id,
                     atom.chain, atom.name, atom.model]
 
-            if self.unit_ids:
-                data.append(atom.component_unit_id())
+            # atoms added by infer_hydrogens don't have information to make
+            # the unit_id and should not be written out anyway
+            # So if the next line fails, don't write the atom out.
+            try:
+                unit_id = atom.component_unit_id()
 
-            atoms.append(data)
+                if self.unit_ids:
+                    data.append(atom.component_unit_id())
+
+                atoms.append(data)
+            except:
+                continue
 
         if protect_lists_of_lists is True:
             # Kludge fix for single atom residues.
