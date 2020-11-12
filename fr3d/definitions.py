@@ -152,74 +152,71 @@ Hoogsteen_2 = {}
 Sugar_1 = {}
 Sugar_2 = {}
 
-# define base edges for RNA
+# define base edge limits for RNA
 
 WC_1['A']= ["C2"]
-WC_1['A']= ["C6", "N6"]
+WC_2['A']= ["C6", "N6"]
 Hoogsteen_1['A']= ["C6", "N6"]
 Hoogsteen_2['A']= ["C8"]
 Sugar_1['A']= ["N1","C1'"]
 Sugar_2['A']= ["C2"]
 
+WC_1['C']= ["C2", "O2"]
+WC_2['C']= ["C4", "N4"]
+Hoogsteen_1['C']= ["C4", "N4"]
+Hoogsteen_2['C']= ["C5"]         # why not go all the way to C6?
+Sugar_1['C']= ["N1","C1'"]
+Sugar_2['C']= ["C2", "O2"]
+
 WC_1['G']= ["C2", "N2"]
-WC_1['G']= ["C6", "O6"]
+WC_2['G']= ["C6", "O6"]
 Hoogsteen_1['G']= ["C6", "O6"]
 Hoogsteen_2['G']= ["C8"]
 Sugar_1['G']= ["N1","C1'"]
 Sugar_2['G']= ["C2", "N2"]
 
 WC_1['U']= ["C2", "O2"]
-WC_1['U']= ["C4", "O4"]
+WC_2['U']= ["C4", "O4"]
 Hoogsteen_1['U']= ["C4", "O4"]
 Hoogsteen_2['U']= ["C5"]
 Sugar_1['U']= ["N1","C1'"]
 Sugar_2['U']= ["C2", "O2"]
 
-WC_1['C']= ["C2", "O2"]
-WC_1['C']= ["C4", "N4"]
-Hoogsteen_1['C']= ["C4", "N4"]
-Hoogsteen_2['C']= ["C5"]
-Sugar_1['C']= ["N1","C1'"]
-Sugar_2['C']= ["C2", "O2"]
-
-# define base edges for DNA
+# define base edge limits for DNA
 
 WC_1['DA']= ["C2"]
-WC_1['DA']= ["C6", "N6"]
+WC_2['DA']= ["C6", "N6"]
 Hoogsteen_1['DA']= ["C6", "N6"]
 Hoogsteen_2['DA']= ["C8"]
 Sugar_1['DA']= ["N1","C1'"]
 Sugar_2['DA']= ["C2"]
 
-WC_1['DG']= ["C2", "N2"]
-WC_1['DG']= ["C6", "O6"]
-Hoogsteen_1['DG']= ["C6", "O6"]
-Hoogsteen_2['DG']= ["C8"]
-Sugar_1['DG']= ["N1","C1'"]
-Sugar_2['DG']= ["C2", "N2"]
-
-WC_1['U']= ["C2", "O2"]
-WC_1['U']= ["C4", "O4"]
-Hoogsteen_1['U']= ["C4", "O4"]
-Hoogsteen_2['U']= ["C5"]
-Sugar_1['U']= ["N1","C1'"]
-Sugar_2['U']= ["C2", "O2"]
-
 WC_1['DC']= ["C2", "O2"]
-WC_1['DC']= ["C4", "N4"]
+WC_2['DC']= ["C4", "N4"]
 Hoogsteen_1['DC']= ["C4", "N4"]
 Hoogsteen_2['DC']= ["C5"]
 Sugar_1['DC']= ["N1","C1'"]
 Sugar_2['DC']= ["C2", "O2"]
 
-#Defining center-to-center and tilt cutoffs for stacking
-tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 3.1,'CYS': 1.0, 'MET': 1.5}
+WC_1['DG']= ["C2", "N2"]
+WC_2['DG']= ["C6", "O6"]
+Hoogsteen_1['DG']= ["C6", "O6"]
+Hoogsteen_2['DG']= ["C8"]
+Sugar_1['DG']= ["N1","C1'"]
+Sugar_2['DG']= ["C2", "N2"]
+
+WC_1['DT']= ["C2", "O2"]
+WC_2['DT']= ["C4", "O4"]
+Hoogsteen_1['DT']= ["C4", "O4"]
+Hoogsteen_2['DT']= ["C5", "C7"]
+Sugar_1['DT']= ["N1","C1'"]
+Sugar_2['DT']= ["C2", "O2"]
 
 #RNA computation definitions
 
 """Defining the parts of RNA nucleotides that we use to compute RNA-amino acid interactions"""
 
-# This variable is here for backward compatibility
+# This "RNA" variable is here for backward compatibility
 RNAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
 RNAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
 RNAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
@@ -231,15 +228,11 @@ RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
 
 # This should be the new standard, for all nucleic acids
 NAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
-NAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
 NAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
-NAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
 NAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-NAbasehydrogens['G'] = ['H1','H8','H9','H21','H22']
 NAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
-NAbasehydrogens['U'] = ['H5','H1','H3','H6']
 
-# This should be updated for DNA as opposed to RNA
+# RNA backbone
 ribose = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'"]
 phosphate = ["O5'","P","OP1","OP2"]
 
@@ -258,7 +251,13 @@ nt_backbone['C'] = ribose + phosphate
 nt_backbone['G'] = ribose + phosphate
 nt_backbone['U'] = ribose + phosphate
 
-# for DNA
+NAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
+NAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
+NAbasehydrogens['G'] = ['H1','H8','H9','H21','H22']
+NAbasehydrogens['U'] = ['H5','H1','H3','H6']
+
+"""Defining the parts of DNA nucleotides"""
+
 DNAribose = ["C1'","C2'","C3'","O3'","C4'","O4'","C5'"]
 
 nt_sugar['DA'] = DNAribose
@@ -276,18 +275,20 @@ nt_backbone['DC'] = DNAribose + phosphate
 nt_backbone['DG'] = DNAribose + phosphate
 nt_backbone['DT'] = DNAribose + phosphate
 
-"""Defining the parts of DNA nucleotides that we use to compute DNA-amino acid interactions"""
-
 NAbaseheavyatoms['DA'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
-NAbasehydrogens['DA'] = ['H2','H8','H9','1H6','2H6']
 NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
-NAbasehydrogens['DC'] = ['H1','H6','H5','1H4','2H4']
 NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-NAbasehydrogens['DG'] = ['H1','H8','H9','1H2','2H2']
 NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
+
+NAbasehydrogens['DA'] = ['H2','H8','H9','H61','H62']
+NAbasehydrogens['DC'] = ['H1','H6','H5','H41','H42']
+NAbasehydrogens['DG'] = ['H1','H8','H9','H21','H22']
 NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 #Amino acid computation definitions
+
+#Defining center-to-center and tilt cutoffs for stacking
+tilt_cutoff= {'ALA': 2,'VAL': 0.7,'ILE': 1.9,'LEU': 2.1,'ARG': 1.5,'LYS': 1.5,'HIS': 1.2,'ASP': 1.5,'GLU': 1.5,'ASN': 1.4,'GLN': 1.4,'THR': 0.5,'SER': 0.5,'TYR': 2.1,'TRP': 2.1,'PHE': 1.5,'PRO': 3.1,'CYS': 1.0, 'MET': 1.5}
 
 """Defining the functional groups of sidechains of amino acids that interact
 with nts by Hydrogenbonding. aa_fg refers to the functional group of the
@@ -381,7 +382,7 @@ aa_linker['CYS'] = []
 aa_fg['CYS'] = ['CB','SG']
 
 # Quantum mechanics optimized base atom locations, by Jiri Sponer
-# OK to change the listing of nucleotides to a Numpy array, if that helps
+# OK to change the listing of nucleotides to a numpy array, if that helps
 # The numbers are generated by zStandardBases.m; the formatting can be changed there
 # Base centers are placed at the origin (0,0,0)
 RNAbasecoordinates = {}
@@ -508,21 +509,6 @@ NAbasecoordinates['U'][ 'H1'] = [ -0.326420,  -2.523369,   0.000000]
 NAbasecoordinates['U'][ 'H3'] = [  1.765732,   0.930757,   0.000000]
 NAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 
-# T coordinates from http://ndbserver.rutgers.edu/ndbmodule/archives/reports/tsukuba/tsukuba.pdf
-# originally from Clowney, L., Jain, S. C., Srinivasan, A. R., Westbrook, J., Olson, W. K. & Berman, H. M. (1996)
-# "Geometric parameters in nucleic acids: nitrogenous bases," J. Am. Chem. Soc. 118, 509-518.
-#NAbasecoordinates['T'] = {}
-#NAbasecoordinates['T']['C1']  = [-2.481, 5.354, 0.000]
-#NAbasecoordinates['T']['N1']  = [-1.284, 4.500, 0.000]
-#NAbasecoordinates['T']['C2']  = [-1.462, 3.135, 0.000]
-#NAbasecoordinates['T']['O2']  = [-2.562, 2.608, 0.000]
-#NAbasecoordinates['T']['N3']  = [-0.298, 2.407, 0.000]
-#NAbasecoordinates['T']['C4']  = [0.994, 2.897, 0.000]
-#NAbasecoordinates['T']['O4']  = [1.944, 2.119, 0.000]
-#NAbasecoordinates['T']['C5']  = [1.106, 4.338, 0.000]
-#NAbasecoordinates['T']['C5M'] = [2.466, 4.961, 0.001]
-#NAbasecoordinates['T']['C6']  = [-0.024, 5.057, 0.000]
-
 NAbasecoordinates['DA'] = {}
 NAbasecoordinates['DA'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
 NAbasecoordinates['DA'][ 'C4'] = [  0.007975,  -1.020192,   0.000000]
@@ -571,7 +557,7 @@ NAbasecoordinates['DG'][ 'H9'] = [ -1.456680,  -2.721417,   0.000000]
 NAbasecoordinates['DG']['H21'] = [  3.415836,  -1.614107,   0.000000]
 NAbasecoordinates['DG']['H22'] = [  3.838495,   0.070395,   0.000000]
 
-# improvised, should be improved in the near future
+# improvised in fall 2020, should be improved in the near future
 NAbasecoordinates['DT'] = {}
 NAbasecoordinates['DT']['N1'] = [ 0.077892,-1.669793, 0.000000]
 NAbasecoordinates['DT']['C2'] = [ 1.276471,-0.994656, 0.000000]
@@ -587,6 +573,27 @@ NAbasecoordinates['DT']['H6'] = [-1.913009,-1.488609, 0.000000]
 NAbasecoordinates['DT']['H71'] = [-2.422619, 1.940262, 0.339933]
 NAbasecoordinates['DT']['H72'] = [-2.882094, 1.068812,-0.906410]
 NAbasecoordinates['DT']['H73'] = [-3.153579, 0.548710, 0.569770]
+
+#Definitions for drawing nucleotides
+
+RNAconnections['A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
+RNAconnections['U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']
+RNAconnections['G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
+RNAconnections['C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
+
+Ribophos_connect['A'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+Ribophos_connect['U'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+Ribophos_connect['G'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+Ribophos_connect['C'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
+
+NAconnections[ 'A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
+NAconnections[ 'C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
+NAconnections[ 'G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
+NAconnections[ 'U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']
+NAconnections['DA'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
+NAconnections['DC'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
+NAconnections['DG'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
+NAconnections['DT'] =['N1','C2','C2','N3','N3','C4','C3','O4','C4','C5','C5','C7','C5','C6','C6','N1']
 
 # Definitions for drawing the amino acid backbones.  Each pair gets a line between them.
 aa_backconnect['ARG']=['N','CA','CA','C','C','O','C','CA']
@@ -636,23 +643,3 @@ aa_connections['CYS'] =['CA','CB','CB','SG']
 aa_hydrogen_connections['ARG'] = [('N','H'),('N','H2'),('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('CD','HD2'),('CD','HD3'),('NE','HE'),('NH1','HH11'),('NH1','HH12'),('NH2','HH21'),('NH2','HH22')]
 aa_hydrogen_connections['LYS']= [('NZ','HZ1'),('NZ','HZ2'),('NZ','HZ3'),('CE','HE2'),('CE','HE3'),('HD2','CD'),('CD','HD3'),('CG','HG2'),('CG','HG3'),('CB','HB2'),('CB','HB3'),('CA','HA'),('N','H'),('OXT','HXT')]
 
-#Definitions for drawing nucleotides
-
-RNAconnections['A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
-RNAconnections['U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']
-RNAconnections['G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
-RNAconnections['C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
-
-Ribophos_connect['A'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-Ribophos_connect['U'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-Ribophos_connect['G'] = ["N9","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-Ribophos_connect['C'] = ["N1","C1'","C1'","C2'","C2'","O2'","C2'","C3'","C3'","O3'","C3'","C4'","C4'","O4'","O4'","C1'","O4'","C4'","C4'","C5'","C5'","O5'","O5'","P","P","OP1","P","OP2"]
-
-NAconnections[ 'A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
-NAconnections[ 'C'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
-NAconnections[ 'G'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
-NAconnections[ 'U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']
-NAconnections['DA'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
-NAconnections['DC'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
-NAconnections['DG'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
-NAconnections['DT'] =['N1','C2','C2','N3','N3','C4','C3','O4','C4','C5','C5','C7','C5','C6','C6','N1']
