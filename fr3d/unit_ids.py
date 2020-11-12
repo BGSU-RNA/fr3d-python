@@ -2,7 +2,7 @@
 if the id is valid, which means it contains all the required fields.
 """
 
-SEPERATOR = '|'
+SEPARATOR = '|'
 
 FIELDS = ['pdb', 'model', 'chain', 'component_id', 'component_number',
           'atom_name', 'alt_id', 'insertion_code', 'symmetry']
@@ -61,7 +61,7 @@ def encode(data, full=False):
             ordered.pop()
             possible.pop(0)
 
-    return SEPERATOR.join(ordered)
+    return SEPARATOR.join(ordered)
 
 
 def decode(unit_id):
@@ -72,7 +72,7 @@ def decode(unit_id):
     :returns: A dictonary of field: value pairs for the given unit id.
     """
 
-    parts = unit_id.split(SEPERATOR)
+    parts = unit_id.split(SEPARATOR)
     total = dict(DEFAULTS)
     fields = FIELDS[slice(0, len(parts))]
 
