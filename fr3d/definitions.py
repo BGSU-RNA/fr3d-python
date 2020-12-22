@@ -616,7 +616,7 @@ aa_connections['ALA'] =['CA','CB']
 aa_connections['VAL'] =['CA','CB','CB','CG1','CB','CG2']
 aa_connections['GLY'] =[]
 aa_connections['SER'] =['CA','CB','CB','OG']
-aa_connections['THR'] =['CA','CB','CB','OG1','CB','CG2']
+aa_connections['THR'] =['CA','CB','OG1','CB','CB','CG2']
 aa_connections['CYS'] =['CA','CB','CB','SG']
 
 # Definitions for drawing the amino acid hydrogens.  Each tuple defines a line to be drawn.
@@ -635,7 +635,10 @@ aa_hydrogen_connections['MET']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2
 aa_hydrogen_connections['PHE']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD1','HD1'),('CD2','HD2'),('CE1','HE1'),('CE2','HE2'),('CZ','HZ')]
 aa_hydrogen_connections['PRO']=[('CA','HA'), ('N','H'),('CD','HD2'),('CD','HD3'),('CG','HG2'),('CG','HG3'),('CB','HB2'),('CB','HB3')]
 aa_hydrogen_connections['SER']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('OG','HG')]
-aa_hydrogen_connections['THR']=[('CA','HA'),('CB','HB'),('CG','HG21'),('CG','HG22'),('CG','HG23'),('OG','HG1')]
+aa_hydrogen_connections['THR']=[('CA','HA'),('CB','HB'),('CG2','HG21'),('CG2','HG22'),('CG2','HG23'),('OG1','HG1')]
+aa_hydrogen_connections['TRP']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD1','HD1'),('NE1','HE1'),('CZ2','HZ2'),('CH2','HH2'),('CZ3','HZ3'),('CE3','HE3')]
+aa_hydrogen_connections['TYR']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD2','HD2'),('CE2','HE2'),('OH','HH'),('CE1','HE1'),('CD1','HD1')]
+aa_hydrogen_connections['VAL']=[('CA','HA'),('CB','HB'),('CG2','HG21'),('CG2','HG22'),('CG2','HG23'),('CG1','HG11'),('CG1','HG12'),('CG1','HG13')]
 
 #Definitions for drawing the RNA nucleotides
 
