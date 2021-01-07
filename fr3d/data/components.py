@@ -100,6 +100,38 @@ def planar_ring_hydrogen(P1,P2,P3,bondlength=1):
 
     return A1
 
+def tetrahedral_hydrogen(P1,P2,P3,C, bondlength=1):
+
+    V1=P1
+    V2=P2
+    V3=P3
+    
+    # vectors P1->P4, P2->P4 and P3->P4
+    try:
+        u=unit_vector(C-V1)
+    except:
+        print "V1"
+
+    try:
+        v=unit_vector(C-V2)
+    except:
+        print "V2"
+
+    try:
+        w=unit_vector(C-V3)
+    except:
+        print "V3" 
+
+    # adding the hydrogens
+    try:
+        y = unit_vector(u + v)
+        m = unit_vector(y + w)
+        A1 = C + bondlength * m 
+        return A1
+    except:
+        print "FAIL TO ADD"
+         
+
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
     and ligands.
@@ -566,9 +598,11 @@ class Component(EntitySelector):
 
             A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
             self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            #A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
-            #self._atoms.append(Atom(name="HB",x=A2[0],y=A2[1],z=A2[2]))
+            try:
+                A1 = tetrahedral_hydrogen(self.centers["CA"],self.centers["CG2"],self.centers["OG1"],self.centers["CB"])
+                self._atoms.append(Atom(name="HB",x=A1[0],y=A1[1],z=A1[2]))
+            except:
+                print "Error with HB in THR"
 
             #A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
             #self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))

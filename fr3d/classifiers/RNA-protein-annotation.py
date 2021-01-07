@@ -1784,6 +1784,8 @@ base_seq_list = ['A','U','C','G']      # for RNA
 aa_list = ['HIS']
 aa_list = ['ILE']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['THR']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','GLY','SER','TYR','TRP','PHE','PRO','CYS','MET']
 
 atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
 base_aa_screen_distance = 18    #
