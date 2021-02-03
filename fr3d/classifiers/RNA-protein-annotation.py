@@ -30,6 +30,7 @@ import csv
 import urllib
 import pickle
 import math
+import sys
 
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -395,11 +396,16 @@ def get_structure(filename):
     if not os.path.exists(filename):
         mmCIFname = filename[-8:]               # last 8 characters ... awkward
         print("  Downloading "+mmCIFname)
-        f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
-        myfile = f.read()
-        print(myfile)
-        with open(filename, 'w') as outfile:
-            outfile.write(myfile)
+        print("https://files.rcsb.org/download/%s" % mmCIFname)
+        if sys.version_info[0] < 3:
+            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 2
+        else:
+            urllib.request.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
+        #f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
+        #myfile = f.read()
+        #print(myfile[0:1000])
+        #with open(filename, 'w') as outfile:
+            #outfile.write(myfile)
 
     # uncomment the following line to focus on downloading CIF files; sometimes it hangs and you restart
 #    raise Exception("Skipping CIF reading for now")
@@ -634,6 +640,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
     list_base_aa = []
     hbond_aa_dict = {}
     contact_list = []
+    output = []
 
     max_screen_distance = 0
 
@@ -641,8 +648,17 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
         for aakey in baseCubeNeighbors[key]:
             if aakey in aaCubeList:
                 for base_residue in baseCubeList[key]:
+                    if len(base_residue.centers["base"]) < 3:
+                        print("Missing base center for %s" % base_residue.unit_id())
+                        print(base_residue.centers["base"])
+                        continue
                     for aa_residue in aaCubeList[aakey]:
-                        displacement = abs(base_residue.centers["C1'"]-aa_residue.centers["aa_fg"])
+                        if len(aa_residue.centers["aa_fg"]) < 3:
+                            print("Missing aa_fg center for %s" % aa_residue.unit_id())
+                            continue
+                        displacement = abs(base_residue.centers["base"]-aa_residue.centers["aa_fg"])
+                        #print(("  Missing center atom for ") + base_residue.unit_id() + " " + aa_residue.unit_id())
+                        
                         if displacement[0] > screen_distance_cutoff or \
                            displacement[1] > screen_distance_cutoff or \
                            np.linalg.norm(displacement) > screen_distance_cutoff:
@@ -705,12 +721,15 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 aa_coordinates[aa_atom.name] = aa_atom.coordinates()
 
                             standard_aa_center = standard_aa.centers[aa_part]
+                            
 
                             # get a preliminary annotation of the interaction
 #                            (interaction,interaction_parameters) = type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms)
                             (interaction,interaction_parameters) = type_of_interaction(standard_base, standard_aa, aa_coordinates, standard_aa_center, base_atoms)
 
                             base_aa = None
+                            edge = None
+                            face = None
                             if interaction in ["pseudopair","SHB","perpendicular-edge","other-edge"]:
                                 (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
                                 interaction_parameters["angle-in-plane"] = angle
@@ -723,6 +742,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                             else:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
                                 base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
+                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
 
                             if base_aa is not None:
                                 list_base_aa.append(base_aa)
@@ -740,7 +760,23 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 else:
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
+                            
+                            output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center,interaction,edge,face))
+                                    
 
+    save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
+    output_file = "nt_aa_coordinates"
+    protein_aa_interactions = os.path.join(save_path, output_file+".csv")
+    #file = open(protein_aa_interactions, 'a+', newline ='')
+    file = open(protein_aa_interactions, 'a+') 
+  
+    #writing the data into the file 
+    with file:     
+        write = csv.writer(file) 
+        write.writerows(output)
+
+    file.close()
+    
     print("  Found %d nucleotide-amino acid pairs" % count_pair)
     print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
     print("  Maximum screen distance for actual contacts is %8.4f" % max_screen_distance)
@@ -1772,6 +1808,10 @@ PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU
 PDB_List = ['4V51','4V9K']
 PDB_List = ['6WJR']
 PDB_List = ['4v9f']
+PDB_List = ['6TPQ']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.160/2.5A/csv']
+version = "_3.160_2.5"
+PDB_List = ['4KTG']
 
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
@@ -1785,7 +1825,9 @@ aa_list = ['HIS']
 aa_list = ['ILE']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
 aa_list = ['THR']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','GLY','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['HIS']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
 
 atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
 base_aa_screen_distance = 18    #
@@ -1802,6 +1844,7 @@ except:
 # plot one instance of each of the amino acids, showing the hydrogen atoms added
 PlotAA = False
 PlotAA = True
+PlotAA = False
 AlreadyPlotted = {}
 
 # The following lines use this program to write out centers by unit ids, for use in FR3D.
@@ -1900,7 +1943,8 @@ if __name__=="__main__":
             structure = get_structure(inputPath % PDB)
             
             try:
-                structure = get_structure(inputPath % PDB)
+                #structure = get_structure(inputPath % PDB)
+                aaa=1
             except:
                 print("Could not load structure")
                 continue
@@ -1910,8 +1954,9 @@ if __name__=="__main__":
                 bases = structure.residues(sequence= base_seq_list)  # load just the types of bases in base_seq_list
             else:
                 chain_ids = []
+                print(IFE)
                 chains = IFE.split("+")
-                for chain in chains:
+                for chain in chains[1:]:            #skip element zero, leading +
                     fields = chain.split("|")
                     chain_ids.append(fields[2])
                 bases = structure.residues(chain = chain_ids, sequence= base_seq_list)

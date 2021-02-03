@@ -100,36 +100,6 @@ def planar_ring_hydrogen(P1,P2,P3,bondlength=1):
 
     return A1
 
-def tetrahedral_hydrogen(P1,P2,P3,C, bondlength=1):
-
-    V1=P1
-    V2=P2
-    V3=P3
-    
-    # vectors P1->P4, P2->P4 and P3->P4
-    try:
-        u=unit_vector(C-V1)
-    except:
-        print "V1"
-
-    try:
-        v=unit_vector(C-V2)
-    except:
-        print "V2"
-
-    try:
-        w=unit_vector(C-V3)
-    except:
-        print "V3" 
-
-    # adding the hydrogens
-    try:
-        y = unit_vector(u + v)
-        m = unit_vector(y + w)
-        A1 = C + bondlength * m 
-        return A1
-    except:
-        print "FAIL TO ADD"
          
 
 class Component(EntitySelector):
@@ -301,12 +271,11 @@ class Component(EntitySelector):
         does not have the full unit ID of the atom, unlike the heavy atoms
         taken from the CIF file.
         """
+        try:
+            if self.sequence in defs.NAbasehydrogens:
+                hydrogens = defs.NAbasehydrogens[self.sequence]
+                coordinates = defs.NAbasecoordinates[self.sequence]
 
-        if self.sequence in defs.NAbasehydrogens:
-            hydrogens = defs.NAbasehydrogens[self.sequence]
-            coordinates = defs.NAbasecoordinates[self.sequence]
-
-            try:
                 for hydrogenatom in hydrogens:
                     hydrogencoordinates = coordinates[hydrogenatom]
                     newcoordinates = self.centers["base"] + \
@@ -315,371 +284,372 @@ class Component(EntitySelector):
                                             x=newcoordinates[0, 0],
                                             y=newcoordinates[0, 1],
                                             z=newcoordinates[0, 2]))
-            except:
+
+            elif self.sequence == "ALA":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"],NHBondLength)
+                self._atoms.append(Atom(name="HB1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["HB1"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "ARG":
+                
+                A1,A2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
+                self._atoms.append(Atom(name="HH11",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HH12",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
+                self._atoms.append(Atom(name="HH22",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HH21",x=A2[0],y=A2[1],z=A2[2]))
+
+                # the following lines assume that NH2 is closer to CD
+                # than NH1 is however, some structures aren't labeled
+                # that way, and so either A1 or A2 could be the correct
+                # location for HE
+                A1,A2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
+                self._atoms.append(Atom(name="HE",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
+                self._atoms.append(Atom(name="HD3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HD2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+                self._atoms.append(Atom(name="HG2",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG3",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB2",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB3",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "ASN":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["ND2"],NHBondLength)
+                self._atoms.append(Atom(name="HD22",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["OD1"],self.centers["CG"],self.centers["ND2"],NHBondLength)
+                self._atoms.append(Atom(name="HD21",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "ASP":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["OD2"],NHBondLength)
+                self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "CYS":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["SG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["SG"],NHBondLength)
+                self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "GLU":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+                self._atoms.append(Atom(name="HG3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG2",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "GLY":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["N"],self.centers["CA"],self.centers["C"])
+                self._atoms.append(Atom(name="HA3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HA2",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "HIS":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["ND1"],self.centers["CE1"],NHBondLength)
+                self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["NE2"],self.centers["CE1"],self.centers["ND1"],NHBondLength)
+                self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CE1"],self.centers["NE2"],self.centers["CD2"],NHBondLength)
+                self._atoms.append(Atom(name="HE2",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["NE2"],self.centers["CD2"],self.centers["CG"],NHBondLength)
+                self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "ILE":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG1"],self.centers["CD1"])
+                self._atoms.append(Atom(name="HG12",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG13",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CG1"],self.centers["CB"],self.centers["CG2"],NHBondLength)
+                self._atoms.append(Atom(name="HG23",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG23"])
+                self._atoms.append(Atom(name="HG22",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG21",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["CG1"],self.centers["CD1"],NHBondLength)
+                self._atoms.append(Atom(name="HD11",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CG1"],self.centers["CD1"],self.centers["HD11"])
+                self._atoms.append(Atom(name="HD12",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HD13",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "LEU":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB2",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB3",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["N"],self.centers["CG"])
+                self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["HB3"],self.centers["CD1"])
+                self._atoms.append(Atom(name="HD12",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD1"],self.centers["HD12"])
+                self._atoms.append(Atom(name="HD11",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HD13",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["HB2"],self.centers["CD2"])
+                self._atoms.append(Atom(name="HD21",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD2"],self.centers["HD21"])
+                self._atoms.append(Atom(name="HD22",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HD23",x=A2[0],y=A2[1],z=A2[2]))   
+
+            elif self.sequence == "LYS":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["CE"])
+                self._atoms.append(Atom(name="HD3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HD2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
+                self._atoms.append(Atom(name="HG3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"])
+                self._atoms.append(Atom(name="HE3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HE2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"],NHBondLength)
+                self._atoms.append(Atom(name="HZ3",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CE"],self.centers["NZ"],self.centers["HZ3"])
+                self._atoms.append(Atom(name="HZ2",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HZ1",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "MET":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["SD"])
+                self._atoms.append(Atom(name="HG3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CG"],self.centers["SD"],self.centers["CE"],NHBondLength)
+                self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["SD"],self.centers["CE"],self.centers["HE1"])
+                self._atoms.append(Atom(name="HE3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HE2",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "PHE":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD1"],self.centers["CE1"],NHBondLength)
+                self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CD1"],self.centers["CE1"],self.centers["CZ"],NHBondLength)
+                self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CE1"],self.centers["CZ"],self.centers["CE2"],NHBondLength)
+                self._atoms.append(Atom(name="HZ",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CZ"],self.centers["CE2"],self.centers["CD2"],NHBondLength)
+                self._atoms.append(Atom(name="HE2",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD2"],self.centers["CE2"],NHBondLength)
+                self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "PRO":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["N"],self.centers["CD"])
+                self._atoms.append(Atom(name="H",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["N"],self.centers["CD"],self.centers["CG"])
+                self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HD3",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CG"],self.centers["CB"])
+                self._atoms.append(Atom(name="HG2",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG3",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "SER":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["OG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["OG"],NHBondLength)
+                self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
+
+            #elif self.sequence == "THR":
+
+                #A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                #self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+                #try:
+                    #A1 = tetrahedral_hydrogen(self.centers["CA"],self.centers["CG2"],self.centers["OG1"],self.centers["CB"])
+                    #self._atoms.append(Atom(name="HB",x=A1[0],y=A1[1],z=A1[2]))
+                #except:
+                    #print "Error with HB in THR"
+
+                #A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
+                #self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))
+
+                #A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG21"])
+                #self._atoms.append(Atom(name="HG22",x=A1[0],y=A1[1],z=A1[2]))
+                #self._atoms.append(Atom(name="HG23",x=A2[0],y=A2[1],z=A2[2]))
+
+            elif self.sequence == "TRP":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD1"],self.centers["NE1"],NHBondLength)
+                self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CD1"],self.centers["NE1"],self.centers["CE2"],NHBondLength)
+                self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CE2"],self.centers["CZ2"],self.centers["CH2"],NHBondLength)
+                self._atoms.append(Atom(name="HZ2",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CZ2"],self.centers["CH2"],self.centers["CZ3"],NHBondLength)
+                self._atoms.append(Atom(name="HH2",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CH2"],self.centers["CZ3"],self.centers["CE3"],NHBondLength)
+                self._atoms.append(Atom(name="HZ3",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CZ3"],self.centers["CE3"],self.centers["CD2"],NHBondLength)
+                self._atoms.append(Atom(name="HE3",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "TYR":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
+                self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD2"],self.centers["CE2"],NHBondLength)
+                self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CD2"],self.centers["CE2"],self.centers["CZ"],NHBondLength)
+                self._atoms.append(Atom(name="HE2",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CZ"],self.centers["CE1"],self.centers["CD1"],NHBondLength)
+                self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD1"],self.centers["CE1"],NHBondLength)
+                self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
+
+            elif self.sequence == "VAL":
+
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG1"])
+                self._atoms.append(Atom(name="HB",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG1"],NHBondLength)
+                self._atoms.append(Atom(name="HG11",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG1"],self.centers["HG11"])
+                self._atoms.append(Atom(name="HG12",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG13",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"],NHBondLength)
+                self._atoms.append(Atom(name="HG23",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG23"])
+                self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG22",x=A2[0],y=A2[1],z=A2[2]))
+
+        except:
                 print self.unit_id(), "Adding hydrogens failed"
-
-        elif self.sequence == "ALA":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"],NHBondLength)
-            self._atoms.append(Atom(name="HB1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["HB1"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "ARG":
-            
-            A1,A2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
-            self._atoms.append(Atom(name="HH11",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HH12",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH2"])
-            self._atoms.append(Atom(name="HH22",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HH21",x=A2[0],y=A2[1],z=A2[2]))
-
-            # the following lines assume that NH2 is closer to CD
-            # than NH1 is however, some structures aren't labeled
-            # that way, and so either A1 or A2 could be the correct
-            # location for HE
-            A1,A2 = planar_hydrogens(self.centers["NH1"],self.centers["CZ"],self.centers["NE"])
-            self._atoms.append(Atom(name="HE",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["NE"])
-            self._atoms.append(Atom(name="HD3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HD2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
-            self._atoms.append(Atom(name="HG2",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG3",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB2",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB3",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "ASN":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["ND2"],NHBondLength)
-            self._atoms.append(Atom(name="HD22",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["OD1"],self.centers["CG"],self.centers["ND2"],NHBondLength)
-            self._atoms.append(Atom(name="HD21",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "ASP":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["OD2"],NHBondLength)
-            self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "CYS":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["SG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["SG"],NHBondLength)
-            self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "GLU":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
-            self._atoms.append(Atom(name="HG3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG2",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "GLY":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["N"],self.centers["CA"],self.centers["C"])
-            self._atoms.append(Atom(name="HA3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HA2",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "HIS":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["ND1"],self.centers["CE1"],NHBondLength)
-            self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["NE2"],self.centers["CE1"],self.centers["ND1"],NHBondLength)
-            self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CE1"],self.centers["NE2"],self.centers["CD2"],NHBondLength)
-            self._atoms.append(Atom(name="HE2",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["NE2"],self.centers["CD2"],self.centers["CG"],NHBondLength)
-            self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "ILE":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG1"],self.centers["CD1"])
-            self._atoms.append(Atom(name="HG12",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG13",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CG1"],self.centers["CB"],self.centers["CG2"],NHBondLength)
-            self._atoms.append(Atom(name="HG23",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG23"])
-            self._atoms.append(Atom(name="HG22",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG21",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["CG1"],self.centers["CD1"],NHBondLength)
-            self._atoms.append(Atom(name="HD11",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CG1"],self.centers["CD1"],self.centers["HD11"])
-            self._atoms.append(Atom(name="HD12",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HD13",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "LEU":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB2",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB3",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["N"],self.centers["CG"])
-            self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["HB3"],self.centers["CD1"])
-            self._atoms.append(Atom(name="HD12",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD1"],self.centers["HD12"])
-            self._atoms.append(Atom(name="HD11",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HD13",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CB"],self.centers["HB2"],self.centers["CD2"])
-            self._atoms.append(Atom(name="HD21",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD2"],self.centers["HD21"])
-            self._atoms.append(Atom(name="HD22",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HD23",x=A2[0],y=A2[1],z=A2[2]))   
-
-        elif self.sequence == "LYS":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD"],self.centers["CE"])
-            self._atoms.append(Atom(name="HD3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HD2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["CD"])
-            self._atoms.append(Atom(name="HG3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"])
-            self._atoms.append(Atom(name="HE3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HE2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CD"],self.centers["CE"],self.centers["NZ"],NHBondLength)
-            self._atoms.append(Atom(name="HZ3",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CE"],self.centers["NZ"],self.centers["HZ3"])
-            self._atoms.append(Atom(name="HZ2",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HZ1",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "MET":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG"],self.centers["SD"])
-            self._atoms.append(Atom(name="HG3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CG"],self.centers["SD"],self.centers["CE"],NHBondLength)
-            self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["SD"],self.centers["CE"],self.centers["HE1"])
-            self._atoms.append(Atom(name="HE3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HE2",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "PHE":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD1"],self.centers["CE1"],NHBondLength)
-            self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CD1"],self.centers["CE1"],self.centers["CZ"],NHBondLength)
-            self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CE1"],self.centers["CZ"],self.centers["CE2"],NHBondLength)
-            self._atoms.append(Atom(name="HZ",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CZ"],self.centers["CE2"],self.centers["CD2"],NHBondLength)
-            self._atoms.append(Atom(name="HE2",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD2"],self.centers["CE2"],NHBondLength)
-            self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "PRO":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["N"],self.centers["CD"])
-            self._atoms.append(Atom(name="H",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["N"],self.centers["CD"],self.centers["CG"])
-            self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HD3",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CD"],self.centers["CG"],self.centers["CB"])
-            self._atoms.append(Atom(name="HG2",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG3",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "SER":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["OG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["OG"],NHBondLength)
-            self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "THR":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-            try:
-                A1 = tetrahedral_hydrogen(self.centers["CA"],self.centers["CG2"],self.centers["OG1"],self.centers["CB"])
-                self._atoms.append(Atom(name="HB",x=A1[0],y=A1[1],z=A1[2]))
-            except:
-                print "Error with HB in THR"
-
-            #A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
-            #self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))
-
-            #A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG21"])
-            #self._atoms.append(Atom(name="HG22",x=A1[0],y=A1[1],z=A1[2]))
-            #self._atoms.append(Atom(name="HG23",x=A2[0],y=A2[1],z=A2[2]))
-
-        elif self.sequence == "TRP":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD1"],self.centers["NE1"],NHBondLength)
-            self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CD1"],self.centers["NE1"],self.centers["CE2"],NHBondLength)
-            self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CE2"],self.centers["CZ2"],self.centers["CH2"],NHBondLength)
-            self._atoms.append(Atom(name="HZ2",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CZ2"],self.centers["CH2"],self.centers["CZ3"],NHBondLength)
-            self._atoms.append(Atom(name="HH2",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CH2"],self.centers["CZ3"],self.centers["CE3"],NHBondLength)
-            self._atoms.append(Atom(name="HZ3",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CZ3"],self.centers["CE3"],self.centers["CD2"],NHBondLength)
-            self._atoms.append(Atom(name="HE3",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "TYR":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG"])
-            self._atoms.append(Atom(name="HB3",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD2"],self.centers["CE2"],NHBondLength)
-            self._atoms.append(Atom(name="HD2",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CD2"],self.centers["CE2"],self.centers["CZ"],NHBondLength)
-            self._atoms.append(Atom(name="HE2",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CZ"],self.centers["CE1"],self.centers["CD1"],NHBondLength)
-            self._atoms.append(Atom(name="HE1",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1 = planar_ring_hydrogen(self.centers["CG"],self.centers["CD1"],self.centers["CE1"],NHBondLength)
-            self._atoms.append(Atom(name="HD1",x=A1[0],y=A1[1],z=A1[2]))
-
-        elif self.sequence == "VAL":
-
-            A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-            self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG1"])
-            self._atoms.append(Atom(name="HB",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG1"],NHBondLength)
-            self._atoms.append(Atom(name="HG11",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG1"],self.centers["HG11"])
-            self._atoms.append(Atom(name="HG12",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG13",x=A2[0],y=A2[1],z=A2[2]))
-
-            A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"],NHBondLength)
-            self._atoms.append(Atom(name="HG23",x=A1[0],y=A1[1],z=A1[2]))
-
-            A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG23"])
-            self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))
-            self._atoms.append(Atom(name="HG22",x=A2[0],y=A2[1],z=A2[2]))
 
 
                 
