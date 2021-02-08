@@ -561,22 +561,23 @@ class Component(EntitySelector):
                 A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["OG"],NHBondLength)
                 self._atoms.append(Atom(name="HG",x=A1[0],y=A1[1],z=A1[2]))
 
-            #elif self.sequence == "THR":
+            elif self.sequence == "THR":
 
-                #A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
-                #self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
-                #try:
-                    #A1 = tetrahedral_hydrogen(self.centers["CA"],self.centers["CG2"],self.centers["OG1"],self.centers["CB"])
-                    #self._atoms.append(Atom(name="HB",x=A1[0],y=A1[1],z=A1[2]))
-                #except:
-                    #print "Error with HB in THR"
+                A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
+                self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
 
-                #A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
-                #self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))
+                A1,A2 = pyramidal_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
+                self._atoms.append(Atom(name="HB",x=A1[0],y=A1[1],z=A1[2]))
 
-                #A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG21"])
-                #self._atoms.append(Atom(name="HG22",x=A1[0],y=A1[1],z=A1[2]))
-                #self._atoms.append(Atom(name="HG23",x=A2[0],y=A2[1],z=A2[2]))
+                A1,A2 = planar_hydrogens(self.centers["CA"],self.centers["CB"],self.centers["CG2"])
+                self._atoms.append(Atom(name="HG21",x=A1[0],y=A1[1],z=A1[2]))
+
+                A1,A2 = pyramidal_hydrogens(self.centers["CB"],self.centers["CG2"],self.centers["HG21"])
+                self._atoms.append(Atom(name="HG23",x=A1[0],y=A1[1],z=A1[2]))
+                self._atoms.append(Atom(name="HG22",x=A2[0],y=A2[1],z=A2[2]))
+
+                A1,A2 = planar_hydrogens(self.centers["CG2"],self.centers["HG23"],self.centers["OG1"])
+                self._atoms.append(Atom(name="HG1",x=A1[0],y=A1[1],z=A1[2]))
 
             elif self.sequence == "TRP":
 

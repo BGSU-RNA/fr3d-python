@@ -761,7 +761,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
                             
-                            output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center,interaction,edge,face))
+                            output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],interaction,edge,face))
                                     
 
     save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
@@ -1809,9 +1809,9 @@ PDB_List = ['4V51','4V9K']
 PDB_List = ['6WJR']
 PDB_List = ['4v9f']
 PDB_List = ['6TPQ']
+PDB_List = ['4KTG']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.160/2.5A/csv']
 version = "_3.160_2.5"
-PDB_List = ['4KTG']
 
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
@@ -1827,7 +1827,7 @@ aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','TH
 aa_list = ['THR']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
 aa_list = ['HIS']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET','GLY']
 
 atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
 base_aa_screen_distance = 18    #
@@ -1928,7 +1928,7 @@ if __name__=="__main__":
 
         # loop through 3D structures and annotate interactions
         PDBs = PDB_IFE_Dict.keys()
-        PDBs = PDBs[::-1]
+        #PDBs = PDBs[::-1]  #reverse the order of the list
 
         for PDB in PDBs:
             counter += 1
