@@ -721,7 +721,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 aa_coordinates[aa_atom.name] = aa_atom.coordinates()
 
                             standard_aa_center = standard_aa.centers[aa_part]
-                            
+                
 
                             # get a preliminary annotation of the interaction
 #                            (interaction,interaction_parameters) = type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms)
@@ -734,10 +734,12 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
                                 interaction_parameters["angle-in-plane"] = angle
                                 base_aa = (base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)
+                                (face,height) = detect_face(aa_residue, aa_coordinates)
 
                             elif interaction in ["stacked","pi-pi-stacking","cation-pi","perpendicular-stacking","other-stack"]:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
                                 base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
+                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
 
                             else:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
@@ -760,12 +762,14 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 else:
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
-                            
-                            output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],interaction,edge,face))
+                            try:
+                                output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],aa_coordinates['CA'][0],aa_coordinates['CA'][1],aa_coordinates['CA'][2],interaction,edge,face))
+                            except:
+                                print("Missing CA")
                                     
 
     save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
-    output_file = "nt_aa_coordinates"
+    output_file = "nt_aa_coordinates_3A"
     protein_aa_interactions = os.path.join(save_path, output_file+".csv")
     #file = open(protein_aa_interactions, 'a+', newline ='')
     file = open(protein_aa_interactions, 'a+') 
@@ -1812,6 +1816,9 @@ PDB_List = ['6TPQ']
 PDB_List = ['4KTG']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.160/2.5A/csv']
 version = "_3.160_2.5"
+PDB_List = ['4KTG']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.167/3.0A/csv']
+version = "_3.167_3.0"
 
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
@@ -1827,7 +1834,7 @@ aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','TH
 aa_list = ['THR']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
 aa_list = ['HIS']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET','GLY']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','THR','PHE','PRO','CYS','MET','GLY']
 
 atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
 base_aa_screen_distance = 18    #
