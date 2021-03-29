@@ -658,7 +658,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                             continue
                         displacement = abs(base_residue.centers["base"]-aa_residue.centers["aa_fg"])
                         #print(("  Missing center atom for ") + base_residue.unit_id() + " " + aa_residue.unit_id())
-                        
+
                         if displacement[0] > screen_distance_cutoff or \
                            displacement[1] > screen_distance_cutoff or \
                            np.linalg.norm(displacement) > screen_distance_cutoff:
@@ -721,7 +721,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 aa_coordinates[aa_atom.name] = aa_atom.coordinates()
 
                             standard_aa_center = standard_aa.centers[aa_part]
-                            
+
 
                             # get a preliminary annotation of the interaction
 #                            (interaction,interaction_parameters) = type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms)
@@ -760,23 +760,23 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 else:
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
-                            
+
                             output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],interaction,edge,face))
-                                    
+
 
     save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
     output_file = "nt_aa_coordinates"
     protein_aa_interactions = os.path.join(save_path, output_file+".csv")
     #file = open(protein_aa_interactions, 'a+', newline ='')
-    file = open(protein_aa_interactions, 'a+') 
-  
-    #writing the data into the file 
-    with file:     
-        write = csv.writer(file) 
+    file = open(protein_aa_interactions, 'a+')
+
+    #writing the data into the file
+    with file:
+        write = csv.writer(file)
         write.writerows(output)
 
     file.close()
-    
+
     print("  Found %d nucleotide-amino acid pairs" % count_pair)
     print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
     print("  Maximum screen distance for actual contacts is %8.4f" % max_screen_distance)
@@ -1025,9 +1025,9 @@ def stacking_planar_annotation (base_residue, aa_residue, min_dist):
     angle = calculate_angle_between_planar_residues(base_residue, aa_residue)
 
     # cation is about the type of amino acid.  List them ... HIS is positive sometimes.
-    #
+
     perpendicular_stack_aa = set(["HIS", "PHE", "TRP", "TYR"])
-    perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN"])
+    perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN"])  # why is HIS in both lists?
 
     if angle:
         if angle <= 45:
@@ -1316,7 +1316,7 @@ def draw_one_aa(aa, ax):
     for atom in aa.atoms():
         ax.text(atom.x,atom.y,atom.z,atom.name)
 
-    # This code goes from atom to atom to atom, should go pair by pair 
+    # This code goes from atom to atom to atom, should go pair by pair
     for atomname in aa_connections[aa.sequence]:
         coord_aa=[]
         coord_aa= aa.centers[atomname]
@@ -1941,7 +1941,7 @@ if __name__=="__main__":
             timerData = myTimer("Reading CIF files",timerData)
 
             structure = get_structure(inputPath % PDB)
-            
+
             try:
                 #structure = get_structure(inputPath % PDB)
                 aaa=1

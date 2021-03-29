@@ -100,7 +100,7 @@ def planar_ring_hydrogen(P1,P2,P3,bondlength=1):
 
     return A1
 
-         
+
 
 class Component(EntitySelector):
     """This represents things like nucleic acids, amino acids, small molecules
@@ -272,6 +272,7 @@ class Component(EntitySelector):
         taken from the CIF file.
         """
         try:
+
             if self.sequence in defs.NAbasehydrogens:
                 hydrogens = defs.NAbasehydrogens[self.sequence]
                 coordinates = defs.NAbasecoordinates[self.sequence]
@@ -298,7 +299,7 @@ class Component(EntitySelector):
                 self._atoms.append(Atom(name="HB2",x=A2[0],y=A2[1],z=A2[2]))
 
             elif self.sequence == "ARG":
-                
+
                 A1,A2 = planar_hydrogens(self.centers["NE"],self.centers["CZ"],self.centers["NH1"],NHBondLength)
                 self._atoms.append(Atom(name="HH11",x=A1[0],y=A1[1],z=A1[2]))
                 self._atoms.append(Atom(name="HH12",x=A2[0],y=A2[1],z=A2[2]))
@@ -455,7 +456,7 @@ class Component(EntitySelector):
 
                 A1,A2 = pyramidal_hydrogens(self.centers["CG"],self.centers["CD2"],self.centers["HD21"])
                 self._atoms.append(Atom(name="HD22",x=A1[0],y=A1[1],z=A1[2]))
-                self._atoms.append(Atom(name="HD23",x=A2[0],y=A2[1],z=A2[2]))   
+                self._atoms.append(Atom(name="HD23",x=A2[0],y=A2[1],z=A2[2]))
 
             elif self.sequence == "LYS":
 
@@ -653,7 +654,7 @@ class Component(EntitySelector):
                 print self.unit_id(), "Adding hydrogens failed"
 
 
-                
+
     def transform(self, transform_matrix):
         """Create a new component from "self" by applying the 4x4 transformation
         matrix. This does not keep the rotation matrix if any,
