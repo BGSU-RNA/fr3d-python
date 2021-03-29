@@ -762,24 +762,23 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 else:
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
-                            try:
-                                output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],aa_coordinates['CA'][0],aa_coordinates['CA'][1],aa_coordinates['CA'][2],interaction,edge,face))
-                            except:
-                                print("Missing CA")
+                            #try:
+                                #output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],aa_coordinates['CA'][0],aa_coordinates['CA'][1],aa_coordinates['CA'][2],interaction,edge,face))
+                            #except:
+                                #print("Missing CA")
                                     
 
     save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
-    output_file = "nt_aa_coordinates_3A"
-    protein_aa_interactions = os.path.join(save_path, output_file+".csv")
-    #file = open(protein_aa_interactions, 'a+', newline ='')
-    file = open(protein_aa_interactions, 'a+') 
+    #output_file = "nt_aa_coordinates_3A"
+    #protein_aa_interactions = os.path.join(save_path, output_file+".csv")
+    #file = open(protein_aa_interactions, 'a+') 
   
     #writing the data into the file 
-    with file:     
-        write = csv.writer(file) 
-        write.writerows(output)
+    #with file:     
+        #write = csv.writer(file) 
+        #write.writerows(output)
 
-    file.close()
+    #file.close()
     
     print("  Found %d nucleotide-amino acid pairs" % count_pair)
     print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
@@ -953,6 +952,8 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                                     HIS_acceptor_used = True
                                 else:
                                     n = n + 1
+                            print(hydrogen_atom.name, hydrogen_atom.coordinates(), hb_angle)
+                            print(base_residue.rotation_matrix)
                             hydrogen_bond_list.append((base_atom.name,hydrogen_atom.name,aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
                             used_base_atoms.append(base_atom.name)
                             used_aa_atoms.append(aa_atom.name)
@@ -1017,7 +1018,9 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
             hydrogen_bond_list = hb0
         else:
             print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n)+" $$$$$$$$$$$$$$$$$")
-#            print(hydrogen_bond_list)
+#    print(aa_residue.unit_id(),hydrogen_bond_list[])
+    print(hydrogen_bond_list)
+    print("------------ http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base_residue.unit_id(),aa_residue.unit_id()))
 
     return (n,hydrogen_bond_list)
 
@@ -1819,6 +1822,7 @@ version = "_3.160_2.5"
 PDB_List = ['4KTG']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.167/3.0A/csv']
 version = "_3.167_3.0"
+PDB_List = ['4V9F']
 
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
