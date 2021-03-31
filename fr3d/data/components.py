@@ -700,7 +700,7 @@ class Component(EntitySelector):
                          insertion_code=component.insertion_code,
                          alt_id=component.alt_id,
                          polymeric=component.polymeric)
-        newcomp.infer_hydrogens()
+        # newcomp.infer_hydrogens()  # this is not the time to do this
         return newcomp
 
     def translate_rotate_atom(self, atom):
