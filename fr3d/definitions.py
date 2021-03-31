@@ -438,6 +438,7 @@ RNAbasecoordinates['U'][ 'H1'] = [ -0.326420,  -2.523369,   0.000000]
 RNAbasecoordinates['U'][ 'H3'] = [  1.765732,   0.930757,   0.000000]
 RNAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 
+# RNA base coordinates in the xy plane, with heavy atoms centered at (0,0,0)
 NAbasecoordinates = {}
 NAbasecoordinates['A'] = {}
 NAbasecoordinates['A'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
@@ -610,7 +611,7 @@ aa_connections['TYR'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','C
 aa_connections['PHE'] =['CA','CB','CB','CG','CG','CD1','CD1','CE1','CE1','CZ','CZ','CE2','CE2','CD2','CD2','CG']
 aa_connections['PRO'] =['CA','CB','CB','CG','CG','CD','CD','N']
 aa_connections['MET'] =['CA','CB','CB','CG','CG','SD','SD','CE']
-aa_connections['ILE'] =['CA','CB','CG2','CB','CB','CG1','CG1','CD1'] #Switch CB-CG2 instead of CG1-CG2 
+aa_connections['ILE'] =['CA','CB','CG2','CB','CB','CG1','CG1','CD1'] #Switch CB-CG2 instead of CG1-CG2
 aa_connections['LEU'] =['CA','CB','CB','CG','CG','CD2','CG','CD1'] #Switch CD2 with CG because of unnessary bond between CD2 and CD1
 aa_connections['ALA'] =['CA','CB']
 aa_connections['VAL'] =['CA','CB','CB','CG1','CB','CG2']
