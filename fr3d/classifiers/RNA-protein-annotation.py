@@ -579,29 +579,33 @@ def get_interacting_atoms(nt_residue,aa_residue):
     aa_parts = ['aa_fg','aa_backbone','aa_linker']
     nt_parts = ['base']
     aa_parts = ['aa_fg']
+    nt_atoms = []
+    aa_atoms = []
 
     for nt_part in nt_parts:
         if nt_part == "base" and nt_residue.sequence in NAbaseheavyatoms:
-            nt_atoms = NAbaseheavyatoms[nt_residue.sequence]
+            # important: start with an empty list and add this list,
+            # rather than making nt_atoms equal to NAbaseheavyatoms[...]
+            # and then appending, because that will append to the list
+            # in the dictionary, with unpredictable results.
+            nt_atoms += NAbaseheavyatoms[nt_residue.sequence]
             if nt_residue.sequence in NAbasehydrogens:
                 nt_atoms += NAbasehydrogens[nt_residue.sequence]
         elif nt_part == "nt_sugar" and nt_residue.sequence in nt_sugar:
-            nt_atoms = nt_sugar[nt_residue.sequence]
+            nt_atoms += nt_sugar[nt_residue.sequence]
         elif nt_residue.sequence in nt_phosphate:
-            nt_atoms = nt_phosphate[nt_residue.sequence]
+            nt_atoms += nt_phosphate[nt_residue.sequence]
         else:
-            nt_atoms = []
             continue
 
         for aa_part in aa_parts:
             if aa_part == "aa_fg" and aa_residue.sequence in aa_fg:
-                aa_atoms = aa_fg[aa_residue.sequence]
+                aa_atoms += aa_fg[aa_residue.sequence]
             elif aa_part == "aa_backbone" and aa_residue.sequence in aa_backbone:
-                aa_atoms = aa_backbone[aa_residue.sequence]
+                aa_atoms += aa_backbone[aa_residue.sequence]
             elif aa_residue.sequence in aa_linker:
-                aa_atoms = aa_linker[aa_residue.sequence]
+                aa_atoms += aa_linker[aa_residue.sequence]
             else:
-                aa_atoms = []
                 continue
 
             for nt_atom in nt_residue.atoms(name=nt_atoms):
@@ -707,12 +711,15 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
 
                             # note:  translate_rotate_component is in components.py and calls infer_hydrogens
 
-
                             # rotate base atoms into standard orientation
                             base_coordinates = {}
                             standard_base = base_residue.translate_rotate_component(base_residue)
+
                             for base_atom in standard_base.atoms():
-                                base_coordinates[base_atom.name]= base_atom.coordinates()
+                                base_coordinates[base_atom.name] = base_atom.coordinates()
+                                # heavy atoms are close to ideal, hydrogens are almost exactly right
+                                # print("Standard orientation " + base_atom.name + " coordinates")
+                                # print(base_atom.coordinates())
 
                             # rotate amino acid atoms into standard orientation
                             aa_coordinates = {}
@@ -951,8 +958,7 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                                     HIS_acceptor_used = True
                                 else:
                                     n = n + 1
-                            print(hydrogen_atom.name, hydrogen_atom.coordinates(), hb_angle)
-                            print(base_residue.rotation_matrix)
+                            # print(hydrogen_atom.name, hydrogen_atom.coordinates(), hb_angle)
                             hydrogen_bond_list.append((base_atom.name,hydrogen_atom.name,aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
                             used_base_atoms.append(base_atom.name)
                             used_aa_atoms.append(aa_atom.name)
@@ -1018,9 +1024,12 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
         else:
             print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n)+" $$$$$$$$$$$$$$$$$")
 #    print(aa_residue.unit_id(),hydrogen_bond_list[])
-    print(hydrogen_bond_list)
-    print("------------ http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base_residue.unit_id(),aa_residue.unit_id()))
 
+    if len(hydrogen_bond_list) > 0:
+        for hbond in hydrogen_bond_list:
+            print(hbond)
+        print("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base_residue.unit_id(),aa_residue.unit_id()))
+        print("")
     return (n,hydrogen_bond_list)
 
 def stacking_planar_annotation (base_residue, aa_residue, min_dist):
