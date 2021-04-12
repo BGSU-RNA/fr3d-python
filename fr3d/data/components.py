@@ -677,7 +677,7 @@ class Component(EntitySelector):
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
                          polymeric=self.polymeric)
-        comp.infer_hydrogens()
+        #comp.infer_hydrogens()
         return comp
 
     def translate_rotate_component(self, component):
