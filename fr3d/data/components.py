@@ -651,7 +651,7 @@ class Component(EntitySelector):
                 self._atoms.append(Atom(name="HG22",x=A2[0],y=A2[1],z=A2[2]))
 
         except:
-                print self.unit_id(), "Adding hydrogens failed"
+                print("%s Adding hydrogens failed" % self.unit_id())
 
 
 
