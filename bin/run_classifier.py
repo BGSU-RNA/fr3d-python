@@ -30,5 +30,5 @@ if __name__=="__main__":
     for PDB in PDB_List:
         structure = get_structure('E:\\Leontis\\Python scripts\\CIF\\%s.cif' % PDB)
         classifier = Classifier()
-        print classifier.classify(structure)
+        print(classifier.classify(structure))
         
