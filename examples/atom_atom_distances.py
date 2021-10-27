@@ -7,6 +7,11 @@ import argparse
 import collections as coll
 import itertools as it
 
+if sys.version_info[0] < 3:
+    from itertools import ifilter as filter    # old name
+else:
+    from itertools import filter               # new name
+
 import numpy as np
 
 # We import KDTree because this a way of storing points and quickly finding all
@@ -61,7 +66,7 @@ def main(filename, limits):
     results = enumerate(rna_tree.query_ball_tree(aa_tree, 5))
 
     # Filter out all rna atoms that have nothing near by
-    filtered = it.ifilter(lambda (r, a): a, results)
+    filtered = filter(lambda (r, a): a, results)
 
     # Map the results so we transform the rna atom to a residue
     mapped = it.imap(lambda (r, _): (rna_mapping[r], _), filtered)

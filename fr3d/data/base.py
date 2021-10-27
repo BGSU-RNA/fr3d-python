@@ -4,7 +4,12 @@ on, such as Atoms and Components.
 """
 
 import collections as col
-import itertools as it
+
+if sys.version_info[0] < 3:
+    from itertools import ifilter as filter    # old name
+else:
+    from itertools import filter               # new name
+
 import operator as op
 
 import numpy as np
@@ -56,17 +61,17 @@ class EntitySelector(object):
         filtered = iter(self.obj)
         for key, value in self.options.items():
             if key == '_':
-                filtered = it.ifilter(value, filtered)
+                filtered = filter(value, filtered)
             elif callable(value):
-                filtered = it.ifilter(self.__callable_filter__(key, value),
+                filtered = filter(self.__callable_filter__(key, value),
                                       filtered)
             elif isinstance(value, (list, set, tuple)):
                 func = self.__basic_filter__(key, set(value),
                                              lambda a, b: op.contains(b, a))
-                filtered = it.ifilter(func, filtered)
+                filtered = filter(func, filtered)
             else:
                 func = self.__basic_filter__(key, value, op.eq)
-                filtered = it.ifilter(func, filtered)
+                filtered = filter(func, filtered)
 
         return filtered
 

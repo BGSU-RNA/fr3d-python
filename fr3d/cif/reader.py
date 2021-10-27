@@ -7,6 +7,11 @@ import operator as op
 import functools as ft
 import copy
 
+if sys.version_info[0] < 3:
+    from itertools import ifilter as filter    # old name
+else:
+    from itertools import filter               # new name
+
 import numpy as np
 
 from pdbx.reader.PdbxParser import PdbxReader as Reader
@@ -224,7 +229,7 @@ class Cif(object):
         mapping = dict(mapping)
 
         entries = self.pdbx_poly_seq_scheme
-        filtered = it.ifilter(lambda r: chain_compare(r['pdb_strand_id']),
+        filtered = filter(lambda r: chain_compare(r['pdb_strand_id']),
                               entries)
 
         # So in some structures, such as 4X4N, there is more than one entry for
@@ -378,7 +383,7 @@ class Cif(object):
             pdbs = it.repeat(pdb, len(self.atom_site))
             zipped = it.izip(pdbs, self.atom_site, indexes)
             with_operators = it.imap(operator, zipped)
-            filtered = it.ifilter(None, with_operators)
+            filtered = filter(None, with_operators)
             atoms.append(it.imap(lambda a: self.__atom__(*a), filtered))
 
         return it.chain.from_iterable(atoms)
