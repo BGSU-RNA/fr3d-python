@@ -34,7 +34,7 @@ def draw_base(base_seq, ax):
             plt.setp(base_lines, 'color', 'g', 'linewidth', 1.0)
             #ax.text(9, 1, 1, base_residue)
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
 
 def draw_aa(aa, ax):
@@ -67,7 +67,7 @@ def draw_aa(aa, ax):
             aa_lines= ax.plot(back_aa_x, back_aa_y, back_aa_z, label= 'Amino acid')
             plt.setp(aa_lines, 'color', 'y', 'linewidth', 1.0)
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
 
 def draw_aa_cent(aa, aa_part, ax):
@@ -100,7 +100,7 @@ def draw_aa_cent(aa, aa_part, ax):
                 n = n + 1
             ax.scatter(aa_center_x/n, aa_center_y/n, aa_center_z/n, c= 'r', marker = 'o')
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
 
 def draw_base_aa_plots(list_base_aa):
