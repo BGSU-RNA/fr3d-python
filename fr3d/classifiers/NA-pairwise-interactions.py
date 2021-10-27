@@ -185,14 +185,17 @@ def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
     return baseCubeList, baseCubeNeighbors
 
 
-def reverse_edges(interaction):
+def reverse_edges(inter):
 
-    if len(interaction) == 3:
-        return interaction[0] + interaction[2] + interaction[1]
-    elif len(interaction) == 4:
-        return interaction[0] + interaction[1] + interaction[3] + interaction[2]
+    if inter[0] == "n":
+        rev = inter[0] + inter[1] + inter[3] + inter[2] + inter[4:]
     else:
-        return None
+        rev = inter[0] + inter[2] + inter[1] + inter[3:]
+
+    #print("reversed %s and got %s" % (inter,rev))
+
+    return rev
+
 
 def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, baseCubeNeighbors):
 
@@ -200,7 +203,7 @@ def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, bas
     # then loop through bases in the two cubes,
     # screening distances between them, then annotating interactions
 
-    screen_distance_cutoff = 10.5    # minimum distance between base centers to screen for interaction
+    screen_distance_cutoff = 12    # minimum distance between base centers to screen for interaction
 
     count_pair = 0
 
@@ -420,8 +423,9 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
             interaction_to_triple_list[interaction].append((u1,u2,crossing))
 
             # duplicate certain pairs in reversed order
-            # does not deal with near pairs at the moment
             if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
+                interaction_to_triple_list[reverse_edges(interaction)].append((u2,u1,crossing))
+            elif interaction[0:2] in ["nc","nt"] or interaction in ["ns33","ns35","ns53","ns55"]:
                 interaction_to_triple_list[reverse_edges(interaction)].append((u2,u1,crossing))
 
     return interaction_to_triple_list
@@ -1346,15 +1350,16 @@ PDB_List = ['4V51','4V9K']
 PDB_List = ['6WJR']
 PDB_List = ['6TPQ']
 PDB_List = ['4KTG']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.160/2.5A/csv']
 version = "_3.160_2.5"
 PDB_List = ['5KCR']
 PDB_List = ['7ECF']  # DNA quadruplex
 PDB_List = ['4TNA']
-PDB_List = ['4V9F']
 PDB_List = ['5J7L']
-PDB_List = ['4ARC']
 PDB_List = ['4V9F','5J7L','4ARC']
+PDB_List = ['4ARC']
+PDB_List = ['4V9F']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/2.5A/csv']
+PDB_List = ['4ARC']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/all/csv']
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
@@ -1482,6 +1487,8 @@ if __name__=="__main__":
                     interaction_to_triple_list, pair_to_interaction = annotate_nt_nt_in_structure(structure)
                     print("  Annotated these interactions: %s" % interaction_to_triple_list.keys())
 
+
+
                     pickle.dump(interaction_to_triple_list,open(outputDataFilePickle,"wb"),2)
 
             else:
@@ -1607,10 +1614,13 @@ if __name__=="__main__":
 #        print("Recorded %d pairwise interactions" % count_pair)
 
         # when appropriate, write out HTML files
+
+        """
         if len(PDB_IFE_Dict) > 100:
             print("Writing " + outputDataFile)
             timerData = myTimer("Writing HTML files",timerData)
             pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_List),open(outputDataFile,"wb"))
             writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
+        """
 
 myTimer("summary",timerData)
