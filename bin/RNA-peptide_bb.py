@@ -83,7 +83,7 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
             if not base_center.any():
                 continue
         except:
-            print "Incomplete residue", base_residue.unit_id()
+            print("Incomplete residue %s" % base_residue.unit_id())
             continue
         
         aaList_len = len(list_aa_coord)
@@ -153,9 +153,9 @@ def find_neighbors(bases, amino_acids, aa_part, dist_cent_cutoff):
     try:
         if aaList_len == new_aaList_len:
             
-            print 'No neighbors detected with %s' % aa_residue.sequence
+            print('No neighbors detected with %s' % aa_residue.sequence)
     except:
-       print "done"
+       print("done")
     #print "%d neighbors" % count_pair + ' detected in %s' % PDB + ' with %s' % aa 
     
     
@@ -184,7 +184,7 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates):
     elif 3.1 < min(squared_xy_dist_list)< 35.2 and -2.0 <= mean_z < 2.0:
         if aa_residue.sequence in set (["ASP", "GLU", "ASN", "GLN", "HIS", "ARG", "LYS", "SER", "TYR", "TRP", "PHE", "VAL", "LEU", "ILE"]):
             angle= calculate_angle(base_residue, aa_residue)
-            print base_residue.unit_id(), aa_residue.unit_id(), angle
+            print(base_residue.unit_id(), aa_residue.unit_id(), angle)
             if -1.3 <= angle <= 0.79 or 2.3 <= angle <= 3.14:
                 return "pseudopair"
         
@@ -201,7 +201,7 @@ def stacking_angle (base_residue, aa_residue, min_dist):
     vec2 = vector_calculation(aa_residue)
                 
     angle = angle_between_planes(vec1, vec2)
-    print base_residue.unit_id(), aa_residue.unit_id(), min_dist, angle
+    print(base_residue.unit_id(), aa_residue.unit_id(), min_dist, angle)
     if angle <=0.79 or 2.35 <= angle <= 3.15:
         return "stacked"
     
@@ -377,7 +377,7 @@ def draw_base(base_seq, ax):
             plt.setp(base_lines, 'color', 'g', 'linewidth', 1.0)
             #ax.text(9, 1, 1, base_residue)
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
 
 def draw_aa(aa, ax):
@@ -410,7 +410,7 @@ def draw_aa(aa, ax):
             aa_lines= ax.plot(back_aa_x, back_aa_y, back_aa_z, label= 'Amino acid')
             plt.setp(aa_lines, 'color', 'y', 'linewidth', 1.0)
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
         
 def draw_aa_cent(aa, aa_part, ax):
@@ -443,7 +443,7 @@ def draw_aa_cent(aa, aa_part, ax):
                 n = n + 1
             ax.scatter(aa_center_x/n, aa_center_y/n, aa_center_z/n, c= 'r', marker = 'o')
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
                 
 """Inputs a list of PDBs of interest to generate super-imposed plots"""   
