@@ -30,6 +30,7 @@ import csv
 import urllib
 import pickle
 import math
+import sys
 
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -395,11 +396,16 @@ def get_structure(filename):
     if not os.path.exists(filename):
         mmCIFname = filename[-8:]               # last 8 characters ... awkward
         print("  Downloading "+mmCIFname)
-        f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
-        myfile = f.read()
-        print(myfile)
-        with open(filename, 'w') as outfile:
-            outfile.write(myfile)
+        print("https://files.rcsb.org/download/%s" % mmCIFname)
+        if sys.version_info[0] < 3:
+            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 2
+        else:
+            urllib.request.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
+        #f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
+        #myfile = f.read()
+        #print(myfile[0:1000])
+        #with open(filename, 'w') as outfile:
+            #outfile.write(myfile)
 
     # uncomment the following line to focus on downloading CIF files; sometimes it hangs and you restart
 #    raise Exception("Skipping CIF reading for now")
@@ -573,29 +579,33 @@ def get_interacting_atoms(nt_residue,aa_residue):
     aa_parts = ['aa_fg','aa_backbone','aa_linker']
     nt_parts = ['base']
     aa_parts = ['aa_fg']
+    nt_atoms = []
+    aa_atoms = []
 
     for nt_part in nt_parts:
         if nt_part == "base" and nt_residue.sequence in NAbaseheavyatoms:
-            nt_atoms = NAbaseheavyatoms[nt_residue.sequence]
+            # important: start with an empty list and add this list,
+            # rather than making nt_atoms equal to NAbaseheavyatoms[...]
+            # and then appending, because that will append to the list
+            # in the dictionary, with unpredictable results.
+            nt_atoms += NAbaseheavyatoms[nt_residue.sequence]
             if nt_residue.sequence in NAbasehydrogens:
                 nt_atoms += NAbasehydrogens[nt_residue.sequence]
         elif nt_part == "nt_sugar" and nt_residue.sequence in nt_sugar:
-            nt_atoms = nt_sugar[nt_residue.sequence]
+            nt_atoms += nt_sugar[nt_residue.sequence]
         elif nt_residue.sequence in nt_phosphate:
-            nt_atoms = nt_phosphate[nt_residue.sequence]
+            nt_atoms += nt_phosphate[nt_residue.sequence]
         else:
-            nt_atoms = []
             continue
 
         for aa_part in aa_parts:
             if aa_part == "aa_fg" and aa_residue.sequence in aa_fg:
-                aa_atoms = aa_fg[aa_residue.sequence]
+                aa_atoms += aa_fg[aa_residue.sequence]
             elif aa_part == "aa_backbone" and aa_residue.sequence in aa_backbone:
-                aa_atoms = aa_backbone[aa_residue.sequence]
+                aa_atoms += aa_backbone[aa_residue.sequence]
             elif aa_residue.sequence in aa_linker:
-                aa_atoms = aa_linker[aa_residue.sequence]
+                aa_atoms += aa_linker[aa_residue.sequence]
             else:
-                aa_atoms = []
                 continue
 
             for nt_atom in nt_residue.atoms(name=nt_atoms):
@@ -634,6 +644,7 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
     list_base_aa = []
     hbond_aa_dict = {}
     contact_list = []
+    output = []
 
     max_screen_distance = 0
 
@@ -641,8 +652,17 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
         for aakey in baseCubeNeighbors[key]:
             if aakey in aaCubeList:
                 for base_residue in baseCubeList[key]:
+                    if len(base_residue.centers["base"]) < 3:
+                        print("Missing base center for %s" % base_residue.unit_id())
+                        print(base_residue.centers["base"])
+                        continue
                     for aa_residue in aaCubeList[aakey]:
-                        displacement = abs(base_residue.centers["C1'"]-aa_residue.centers["aa_fg"])
+                        if len(aa_residue.centers["aa_fg"]) < 3:
+                            print("Missing aa_fg center for %s" % aa_residue.unit_id())
+                            continue
+                        displacement = abs(base_residue.centers["base"]-aa_residue.centers["aa_fg"])
+                        #print(("  Missing center atom for ") + base_residue.unit_id() + " " + aa_residue.unit_id())
+
                         if displacement[0] > screen_distance_cutoff or \
                            displacement[1] > screen_distance_cutoff or \
                            np.linalg.norm(displacement) > screen_distance_cutoff:
@@ -691,12 +711,15 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
 
                             # note:  translate_rotate_component is in components.py and calls infer_hydrogens
 
-
                             # rotate base atoms into standard orientation
                             base_coordinates = {}
                             standard_base = base_residue.translate_rotate_component(base_residue)
+
                             for base_atom in standard_base.atoms():
-                                base_coordinates[base_atom.name]= base_atom.coordinates()
+                                base_coordinates[base_atom.name] = base_atom.coordinates()
+                                # heavy atoms are close to ideal, hydrogens are almost exactly right
+                                # print("Standard orientation " + base_atom.name + " coordinates")
+                                # print(base_atom.coordinates())
 
                             # rotate amino acid atoms into standard orientation
                             aa_coordinates = {}
@@ -711,18 +734,23 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                             (interaction,interaction_parameters) = type_of_interaction(standard_base, standard_aa, aa_coordinates, standard_aa_center, base_atoms)
 
                             base_aa = None
+                            edge = None
+                            face = None
                             if interaction in ["pseudopair","SHB","perpendicular-edge","other-edge"]:
                                 (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
                                 interaction_parameters["angle-in-plane"] = angle
                                 base_aa = (base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)
+                                (face,height) = detect_face(aa_residue, aa_coordinates)
 
                             elif interaction in ["stacked","pi-pi-stacking","cation-pi","perpendicular-stacking","other-stack"]:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
                                 base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
+                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
 
                             else:
                                 (face,height) = detect_face(aa_residue, aa_coordinates)
                                 base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
+                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
 
                             if base_aa is not None:
                                 list_base_aa.append(base_aa)
@@ -740,6 +768,23 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 else:
                                     hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
 
+                            #try:
+                                #output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],aa_coordinates['CA'][0],aa_coordinates['CA'][1],aa_coordinates['CA'][2],interaction,edge,face))
+                            #except:
+                                #print("Missing CA")
+
+
+    save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
+    #output_file = "nt_aa_coordinates_3A"
+    #protein_aa_interactions = os.path.join(save_path, output_file+".csv")
+    #file = open(protein_aa_interactions, 'a+')
+
+    #writing the data into the file
+    #with file:
+        #write = csv.writer(file)
+        #write.writerows(output)
+
+    #file.close()
 
     print("  Found %d nucleotide-amino acid pairs" % count_pair)
     print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
@@ -913,6 +958,7 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                                     HIS_acceptor_used = True
                                 else:
                                     n = n + 1
+                            # print(hydrogen_atom.name, hydrogen_atom.coordinates(), hb_angle)
                             hydrogen_bond_list.append((base_atom.name,hydrogen_atom.name,aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
                             used_base_atoms.append(base_atom.name)
                             used_aa_atoms.append(aa_atom.name)
@@ -977,8 +1023,13 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
             hydrogen_bond_list = hb0
         else:
             print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n)+" $$$$$$$$$$$$$$$$$")
-#            print(hydrogen_bond_list)
+#    print(aa_residue.unit_id(),hydrogen_bond_list[])
 
+    if len(hydrogen_bond_list) > 0:
+        for hbond in hydrogen_bond_list:
+            print(hbond)
+        print("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base_residue.unit_id(),aa_residue.unit_id()))
+        print("")
     return (n,hydrogen_bond_list)
 
 def stacking_planar_annotation (base_residue, aa_residue, min_dist):
@@ -989,9 +1040,9 @@ def stacking_planar_annotation (base_residue, aa_residue, min_dist):
     angle = calculate_angle_between_planar_residues(base_residue, aa_residue)
 
     # cation is about the type of amino acid.  List them ... HIS is positive sometimes.
-    #
+
     perpendicular_stack_aa = set(["HIS", "PHE", "TRP", "TYR"])
-    perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN"])
+    perpendicular_aa = set (["HIS", "ARG", "LYS", "ASN", "GLN"])  # why is HIS in both lists?
 
     if angle:
         if angle <= 45:
@@ -1231,7 +1282,7 @@ def draw_base(base_seq, ax):
             plt.setp(base_lines, 'color', 'g', 'linewidth', 1.0)
             #ax.text(9, 1, 1, base_residue)
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
 
 def draw_aa(aa, ax):
@@ -1277,35 +1328,35 @@ def draw_one_aa(aa, ax):
     back_aa_y=[]
     back_aa_z=[]
 
-    if 0 == 0:
-        for atom in aa.atoms():
-            ax.text(atom.x,atom.y,atom.z,atom.name)
+    for atom in aa.atoms():
+        ax.text(atom.x,atom.y,atom.z,atom.name)
 
-        for atomname in aa_connections[aa.sequence]:
-            coord_aa=[]
-            coord_aa= aa.centers[atomname]
-            new_aa_x.append(coord_aa[0])
-            new_aa_y.append(coord_aa[1])
-            new_aa_z.append(coord_aa[2])
-        aa_lines= ax.plot(new_aa_x, new_aa_y, new_aa_z, label= 'Amino acid')
-        plt.setp(aa_lines, 'color', 'r', 'linewidth', 1.0)
+    # This code goes from atom to atom to atom, should go pair by pair
+    for atomname in aa_connections[aa.sequence]:
+        coord_aa=[]
+        coord_aa= aa.centers[atomname]
+        new_aa_x.append(coord_aa[0])
+        new_aa_y.append(coord_aa[1])
+        new_aa_z.append(coord_aa[2])
+    aa_lines= ax.plot(new_aa_x, new_aa_y, new_aa_z, label= 'Amino acid')
+    plt.setp(aa_lines, 'color', 'r', 'linewidth', 1.0)
 
-        for hpair in aa_hydrogen_connections[aa.sequence]:
-            if hpair[0] in aa.centers and hpair[1] in aa.centers:
-                first  = aa.centers[hpair[0]]
-                second = aa.centers[hpair[1]]
+    for hpair in aa_hydrogen_connections[aa.sequence]:
+        if hpair[0] in aa.centers and hpair[1] in aa.centers:
+            first  = aa.centers[hpair[0]]
+            second = aa.centers[hpair[1]]
 
-                aa_lines = ax.plot([first[0],second[0]],[first[1],second[1]],[first[2],second[2]], label= 'Amino acid')
-                plt.setp(aa_lines, 'color', 'k', 'linewidth', 1.0)
+            aa_lines = ax.plot([first[0],second[0]],[first[1],second[1]],[first[2],second[2]], label= 'Amino acid')
+            plt.setp(aa_lines, 'color', 'k', 'linewidth', 1.0)
 
-        for atomname in aa_backconnect[aa.sequence]:
-            back_aa=[]
-            back_aa= aa.centers[atomname]
-            back_aa_x.append(back_aa[0])
-            back_aa_y.append(back_aa[1])
-            back_aa_z.append(back_aa[2])
-        aa_lines= ax.plot(back_aa_x, back_aa_y, back_aa_z, label= 'Amino acid')
-        plt.setp(aa_lines, 'color', 'y', 'linewidth', 1.0)
+    for atomname in aa_backconnect[aa.sequence]:
+        back_aa=[]
+        back_aa= aa.centers[atomname]
+        back_aa_x.append(back_aa[0])
+        back_aa_y.append(back_aa[1])
+        back_aa_z.append(back_aa[2])
+    aa_lines= ax.plot(back_aa_x, back_aa_y, back_aa_z, label= 'Amino acid')
+    plt.setp(aa_lines, 'color', 'y', 'linewidth', 1.0)
 
 def draw_aa_cent(aa, aa_part, ax):
     #Connects atoms to draw neighboring bases and amino acids for 3D plots
@@ -1770,9 +1821,16 @@ PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
 PDB_List = ['4V9F|1|9']
 PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
 PDB_List = ['4V51','4V9K']
-PDB_List = ['4V9F']
 PDB_List = ['6WJR']
-PDB_List = ['5J7L']
+PDB_List = ['4v9f']
+PDB_List = ['6TPQ']
+PDB_List = ['4KTG']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.160/2.5A/csv']
+version = "_3.160_2.5"
+PDB_List = ['4KTG']
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.167/3.0A/csv']
+version = "_3.167_3.0"
+PDB_List = ['4V9F']
 
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
@@ -1783,7 +1841,12 @@ base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = ['A','U','C','G']      # for RNA
 
 aa_list = ['HIS']
+aa_list = ['ILE']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['THR']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
+aa_list = ['HIS']
+aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','THR','PHE','PRO','CYS','MET','GLY']
 
 atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
 base_aa_screen_distance = 18    #
@@ -1883,7 +1946,7 @@ if __name__=="__main__":
 
         # loop through 3D structures and annotate interactions
         PDBs = PDB_IFE_Dict.keys()
-        PDBs = PDBs[::-1]
+        #PDBs = PDBs[::-1]  #reverse the order of the list
 
         for PDB in PDBs:
             counter += 1
@@ -1896,8 +1959,10 @@ if __name__=="__main__":
             timerData = myTimer("Reading CIF files",timerData)
 
             structure = get_structure(inputPath % PDB)
+
             try:
-                structure = get_structure(inputPath % PDB)
+                #structure = get_structure(inputPath % PDB)
+                aaa=1
             except:
                 print("Could not load structure")
                 continue
@@ -1907,8 +1972,9 @@ if __name__=="__main__":
                 bases = structure.residues(sequence= base_seq_list)  # load just the types of bases in base_seq_list
             else:
                 chain_ids = []
+                print(IFE)
                 chains = IFE.split("+")
-                for chain in chains:
+                for chain in chains[1:]:            #skip element zero, leading +
                     fields = chain.split("|")
                     chain_ids.append(fields[2])
                 bases = structure.residues(chain = chain_ids, sequence= base_seq_list)

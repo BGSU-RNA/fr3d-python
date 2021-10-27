@@ -14,6 +14,8 @@ outputHTML = '/Users/katelandsipe/Documents/Research/FR3D/RNAProtein/output'
 inputPath = 'C:\\Users\\zirbel\\Documents\\FR3D\\PDBFiles\\%s.cif'
 outputText = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\proteinRNA_%s.txt'
 outputBaseAAFG = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\aa-fg_base_%s.csv'
+outputNAPairwiseInteractions = 'C:\\Users\\zirbel\\Documents\\FR3D\\NAPairwiseInteractions\\'
+outputNAPickleInteractions = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data\\pairs\\'
 contact_list_file = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\contact_list_%s.txt'
 outputHTML = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\output'
 

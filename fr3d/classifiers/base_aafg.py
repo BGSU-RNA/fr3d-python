@@ -52,7 +52,7 @@ class Classifier(BaseClassifier):
                 squared_xy_dist_list.append(squared_xy_dist)
                 aa_z_list.append(aa_z)
             except:
-                print "Incomplete residue"
+                print("Incomplete residue")
         
         mean_z = np.mean(aa_z)
         min_xy = min(squared_xy_dist_list)

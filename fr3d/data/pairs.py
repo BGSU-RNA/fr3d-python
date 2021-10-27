@@ -2,6 +2,7 @@
 """
 
 import itertools as it
+import sys
 
 
 class Pairs(object):
@@ -121,6 +122,9 @@ class Pairs(object):
                                self.structure.residues(**self._second))
 
         # Exclude pairs of 1 component
-        pairs = it.ifilter(lambda (a, b): a != b, pairs)
+        if sys.version_info[0] < 3:
+            pairs = it.ifilter(lambda (a, b): a != b, pairs)
+        else:
+            pairs = it.filter(lambda (a, b): a != b, pairs)
 
         return pairs
