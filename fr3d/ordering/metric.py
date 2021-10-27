@@ -59,7 +59,7 @@ class MetricTSPeuc2D:
           if lineData[0][:16] == "EDGE_WEIGHT_TYPE":
             if lineData[len(lineData)-1].strip() != "EUC_2D":
               # Error!
-              print "Invalid input file! Attempting anyway."
+              print("Invalid input file! Attempting anyway.")
           if lineData[0][:18] == "NODE_COORD_SECTION": curMode = "DATA"
         elif curMode == "DATA" and lineData[0].isdigit():
           self.data.append(lineData[1:])
@@ -92,7 +92,7 @@ class MetricTSPeuc2DnoMemo:
           if lineData[0][:16] == "EDGE_WEIGHT_TYPE":
             if lineData[len(lineData)-1].strip() != "EUC_2D":
               # Error!
-              print "Invalid input file! Attempting anyway."
+              print("Invalid input file! Attempting anyway.")
           if lineData[0][:18] == "NODE_COORD_SECTION": curMode = "DATA"
         elif curMode == "DATA" and lineData[0].isdigit():
           self.data.append(lineData[1:])
