@@ -13,7 +13,7 @@ def main(filename):
         print('Iterating over atoms')
     for residue in structure.residues(chain='A', sequence = 'C'):
         for atom in residue.atoms():
-            print residue.unit_id()            
+            print(residue.unit_id())
             print(atom.name)
 main('E:\\Leontis\\Python scripts\\CIF\\2AW7.cif')
         
