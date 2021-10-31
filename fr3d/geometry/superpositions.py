@@ -3,8 +3,8 @@ coordinates.
 """
 
 import numpy
-from RMSD import RMSD
-from RMSD import sumsquarederror
+from fr3d.geometry.RMSD import sumsquarederror
+from fr3d.geometry.RMSD import RMSD
 
 
 def besttransformation(set1, set2):
