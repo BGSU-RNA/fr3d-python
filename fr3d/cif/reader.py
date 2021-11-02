@@ -6,9 +6,10 @@ import logging
 import operator as op
 import functools as ft
 import copy
+import sys
 
 if sys.version_info[0] < 3:
-    from itertools import ifilter as filter    # old name
+   from itertools import ifilter as filter    # old name
 else:
     from itertools import filter               # new name
 
