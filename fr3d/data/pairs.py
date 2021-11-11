@@ -2,10 +2,14 @@
 """
 
 import itertools as it
-
 import sys
+
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter    # old name
+#else:
+#    from itertools import filter               # new name
+
+
 
 class Pairs(object):
     """This class provides a way to iterate over pairs in a structure. This
@@ -124,6 +128,6 @@ class Pairs(object):
                                self.structure.residues(**self._second))
 
         # Exclude pairs of 1 component
-        pairs = filter(lambda (a, b): a != b, pairs)
+        pairs = filter(lambda a, b: a != b, pairs)
 
         return pairs

@@ -28,6 +28,7 @@ from discrepancy import matrix_discrepancy
 import numpy as np
 import csv
 import urllib
+import urllib.request
 import pickle
 import math
 import sys
@@ -400,7 +401,7 @@ def get_structure(filename):
         if sys.version_info[0] < 3:
             urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 2
         else:
-            urllib.request.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
+            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
         #f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
         #myfile = f.read()
         #print(myfile[0:1000])

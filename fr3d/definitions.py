@@ -1,4 +1,4 @@
-from modified_parent_mapping import modified_nucleotides
+from fr3d.modified_parent_mapping import modified_nucleotides
 
 RNAbaseheavyatoms = {}
 RNAbasehydrogens = {}

@@ -10,8 +10,6 @@ import sys
 
 if sys.version_info[0] < 3:
    from itertools import ifilter as filter    # old name
-else:
-    from itertools import filter               # new name
 
 import numpy as np
 
@@ -379,13 +377,23 @@ class Cif(object):
             return None
 
         atoms = []
-        for index in xrange(max_operators):
-            indexes = it.repeat(index, len(self.atom_site))
-            pdbs = it.repeat(pdb, len(self.atom_site))
-            zipped = it.izip(pdbs, self.atom_site, indexes)
-            with_operators = it.imap(operator, zipped)
-            filtered = filter(None, with_operators)
-            atoms.append(it.imap(lambda a: self.__atom__(*a), filtered))
+        if sys.version_info[0] < 3:
+            for index in xrange(max_operators):
+                indexes = it.repeat(index, len(self.atom_site))
+                pdbs = it.repeat(pdb, len(self.atom_site))
+                zipped = it.izip(pdbs, self.atom_site, indexes)
+                with_operators = it.imap(operator, zipped)
+                filtered = filter(None, with_operators)
+                atoms.append(it.imap(lambda a: self.__atom__(*a), filtered))
+        else:
+            for index in range(max_operators):
+                indexes = it.repeat(index, len(self.atom_site))
+                pdbs = it.repeat(pdb, len(self.atom_site))
+                zipped = zip(pdbs, self.atom_site, indexes)
+                with_operators = map(operator, zipped)
+                filtered = filter(None, with_operators)
+                atoms.append(map(lambda a: self.__atom__(*a), filtered))
+            
 
         return it.chain.from_iterable(atoms)
 
@@ -500,7 +508,10 @@ class Table(object):
 
         if self.rows is None:
             length = self.block.getRowCount()
-            self.rows = [self.__row__(index) for index in xrange(length)]
+            if sys.version_info[0] < 3:
+                self.rows = [self.__row__(index) for index in xrange(length)]
+            else:
+                self.rows = [self.__row__(index) for index in range(length)]
 
     def column(self, name):
         """Get a column by name"""

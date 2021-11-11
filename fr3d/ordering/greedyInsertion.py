@@ -1,7 +1,7 @@
 #!/usr/local/bin/python -O
 
 from random import shuffle
-from metric import GivenDistances
+from fr3d.ordering.metric import GivenDistances
 from numpy import median
 from numpy import isnan
 
