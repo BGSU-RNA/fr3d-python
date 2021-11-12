@@ -27,11 +27,13 @@ from fr3d.definitions import HB_acceptors
 from discrepancy import matrix_discrepancy
 import numpy as np
 import csv
-import urllib
-import urllib.request
+import sys
+if sys.version_info[0] < 3:
+    import urllib
+else:
+    import urllib.request
 import pickle
 import math
-import sys
 
 import matplotlib.pyplot as plt
 from collections import defaultdict
