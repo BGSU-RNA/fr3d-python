@@ -5,6 +5,7 @@ from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
 from fr3d.geometry import angleofrotation as angrot
 import numpy as np
+import sys
 NHBondLength=1
 from fr3d.unit_ids import encode
 
@@ -185,11 +186,19 @@ class Component(EntitySelector):
         """
 
         name = kwargs.get('name')
-        if isinstance(name, basestring):
-            definition = self.centers.definition(name)
-            if definition:
-                kwargs['name'] = definition
-
+        
+        if sys.version_info[0] < 3:
+            if isinstance(name, basestring):
+                definition = self.centers.definition(name)
+                if definition:
+                    kwargs['name'] = definition
+        else:
+            if isinstance(name, str):
+                definition = self.centers.definition(name)
+                if definition:
+                    kwargs['name'] = definition
+            
+            
         return EntitySelector(self._atoms, **kwargs)
 
     def coordinates(self, **kwargs):

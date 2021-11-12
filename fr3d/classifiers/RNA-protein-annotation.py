@@ -879,7 +879,10 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
     HIS_acceptor_used = False        # track the two nitrogens on HIS; only one can be an acceptor
 
     base_key = base_residue.sequence
-    base_donors = HB_donor_hydrogens[base_key].keys()
+    if sys.version_info[0] < 3:
+        base_donors = HB_donor_hydrogens[base_key].keys()
+    else:
+        base_donors = list(HB_donor_hydrogens[base_key].keys())
     base_acceptors = HB_acceptors[base_key]
     base_HB_atoms = list(set(base_donors + base_acceptors))  # don't list atoms twice
 
@@ -1223,21 +1226,37 @@ def text_output(result_list):
             target.close
 
 def csv_output(result_list):
-    with open(outputBaseAAFG % PDB, 'wb') as csvfile:
-        fieldnames = ['RNA ID', 'AA ID', 'RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge', 'Param']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for base_residue, aa_residue, interaction, edge, standard_aa_center, param in result_list:
-            base = base_residue.unit_id()
-            aa = aa_residue.unit_id()
-            #print base, aa, interaction
-            base_component = str(base).split("|")
-            aa_component = str(aa).split("|")
-            writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], \
-                'RNA residue':base_component[3],'RNA residue number': base_component[4],\
-                'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],\
-                'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
+    if sys.version_info[0] < 3:    
+        with open(outputBaseAAFG % PDB, 'wb') as csvfile:
+            fieldnames = ['RNA ID', 'AA ID', 'RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge', 'Param']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for base_residue, aa_residue, interaction, edge, standard_aa_center, param in result_list:
+                base = base_residue.unit_id()
+                aa = aa_residue.unit_id()
+                #print base, aa, interaction
+                base_component = str(base).split("|")
+                aa_component = str(aa).split("|")
+                writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], \
+                    'RNA residue':base_component[3],'RNA residue number': base_component[4],\
+                    'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],\
+                    'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
+    else: 
+        with open(outputBaseAAFG % PDB, 'w', newline='') as csvfile:
+            fieldnames = ['RNA ID', 'AA ID', 'RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge', 'Param']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for base_residue, aa_residue, interaction, edge, standard_aa_center, param in result_list:
+                base = base_residue.unit_id()
+                aa = aa_residue.unit_id()
+                #print base, aa, interaction
+                base_component = str(base).split("|")
+                aa_component = str(aa).split("|")
+                writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], \
+                    'RNA residue':base_component[3],'RNA residue number': base_component[4],\
+                    'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],\
+                    'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
+ 
 
         """for base_residue, aa_residue,interaction in result_list:
                     base_component = str(base_residue).split("|")

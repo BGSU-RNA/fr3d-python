@@ -7,8 +7,6 @@ import collections as col
 import sys 
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter    # old name
-#else:
-#   from itertools import filter               # new name
 
 import operator as op
 
@@ -97,11 +95,17 @@ class AtomProxy(col.MutableMapping):
         """
 
         self._definitions[name] = atoms
-
-        if isinstance(atoms, basestring):
-            self._data[name] = set([atoms])
+        
+        if sys.version_info[0] < 3:
+            if isinstance(atoms, basestring):
+                self._data[name] = set([atoms])
+            else:
+                self._data[name] = set(atoms)
         else:
-            self._data[name] = set(atoms)
+            if isinstance(atoms, str):
+                self._data[name] = set([atoms])
+            else:
+                self._data[name] = set(atoms)
 
     def setcenter(self, name, vector):
         """Explicitly set the name and the value of a center.
