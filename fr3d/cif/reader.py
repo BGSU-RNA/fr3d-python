@@ -9,8 +9,8 @@ import copy
 import sys
 
 if sys.version_info[0] < 3:
-   from itertools import ifilter as filter    # old name
-
+    from itertools import ifilter as filter # old name
+    
 import numpy as np
 
 from pdbx.reader.PdbxParser import PdbxReader as Reader
@@ -84,7 +84,6 @@ class Cif(object):
 
         if handle is None and data is None:
             raise ValueError("Must give either handle or data")
-
         self.pdb = self.data.getName()
         self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
@@ -155,7 +154,7 @@ class Cif(object):
                     op = self._operators[operator]
                     assemblies[asym_id].append(op)
 
-        for asym_id, ops in assemblies.items():
+        for asym_id, ops in list(assemblies.items()):
             if not ops:
                 self.logger.info("Adding default identity operator for %s",
                                  asym_id)
@@ -228,8 +227,7 @@ class Cif(object):
         mapping = dict(mapping)
 
         entries = self.pdbx_poly_seq_scheme
-        filtered = filter(lambda r: chain_compare(r['pdb_strand_id']),
-                              entries)
+        filtered = [r for r in entries if chain_compare(r['pdb_strand_id'])]
 
         # So in some structures, such as 4X4N, there is more than one entry for
         # the same seq id but with a different sequence, ie, position 29 has
@@ -312,17 +310,17 @@ class Cif(object):
             alt_ids[atom.alt_id].append(atom)
 
         if len(alt_ids) == 1:
-            return alt_ids.values()
+            return list(alt_ids.values())
 
         if None in alt_ids:
             common = alt_ids.pop(None)
-            for alt_id, specific_atoms in alt_ids.items():
+            for alt_id, specific_atoms in list(alt_ids.items()):
                 for common_atom in common:
                     copied = copy.deepcopy(common_atom)
                     copied.alt_id = alt_id
                     specific_atoms.append(copied)
 
-        return sorted(alt_ids.values(), key=ordering_key)
+        return sorted(list(alt_ids.values()), key=ordering_key)
 
     def __residues__(self, pdb):
         key = op.attrgetter(
@@ -361,7 +359,7 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        max_operators = max(len(op) for op in self._assemblies.values())
+        max_operators = max(len(op) for op in list(self._assemblies.values()))
 
         if not max_operators:
             raise ValueError("Could not find any operators")
@@ -389,12 +387,20 @@ class Cif(object):
             for index in range(max_operators):
                 indexes = it.repeat(index, len(self.atom_site))
                 pdbs = it.repeat(pdb, len(self.atom_site))
-                zipped = zip(pdbs, self.atom_site, indexes)
-                with_operators = map(operator, zipped)
-                filtered = filter(None, with_operators)
-                atoms.append(map(lambda a: self.__atom__(*a), filtered))
-            
-
+                zipped = list(zip(pdbs, self.atom_site, indexes))
+                with_operators = list(map(operator, zipped))
+                #print(zipped)
+                #print("<" + ",".join(zipped) + ">")                
+                #print("ZIPPED VALUES")
+                #for val in zipped:
+                    #print(("\t" + str(val)))
+                #print("WITH_OPERATORS VALUES")
+                #for val in with_operators:
+                    #print(("\t" + str(val)))
+                #print("<" + ",".join(with_operators) + ">")
+                filtered = [_f for _f in with_operators if _f]
+                atoms.append([self.__atom__(*a) for a in filtered])
+                
         return it.chain.from_iterable(atoms)
 
     def __atom__(self, pdb, atom, symmetry):
@@ -459,7 +465,7 @@ class Cif(object):
             self.logger.warning("Asym id %s.%s is not part of any assemblies."
                                 " Defaulting to all operators",
                                 self.pdb, asym_id)
-            assemblies = it.chain.from_iterable(self._assemblies.values())
+            assemblies = it.chain.from_iterable(list(self._assemblies.values()))
 
         seen = set()
         matching = []
@@ -534,7 +540,7 @@ class Table(object):
         to be ordered. The row will be a dict of the form { attribute: value }.
         Each attribute will have the name of the block stripped.
         """
-        return dict(zip(self.columns, self.block.getRow(number)))
+        return dict(list(zip(self.columns, self.block.getRow(number))))
 
     def __getattr__(self, name):
         """Get the column with the given name.
