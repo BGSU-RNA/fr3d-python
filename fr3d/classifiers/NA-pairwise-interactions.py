@@ -197,18 +197,22 @@ def reverse_edges(inter):
     return rev
 
 
-def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, baseCubeNeighbors):
-
-    # loop through nt cubes, loop through neighboring nt cubes,
-    # then loop through bases in the two cubes,
-    # screening distances between them, then annotating interactions
+def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, baseCubeNeighbors, timerData):
+    """
+    loop through nt cubes, loop through neighboring nt cubes,
+    then loop through bases in the two cubes,
+    screening distances between them, then annotating interactions
+    """
 
     screen_distance_cutoff = 12    # minimum distance between base centers to screen for interaction
 
     count_pair = 0
 
-    pair_to_interaction = {}
+    pair_to_interaction = {}       # note:  this will need to return a list, not a text string,
+                                   # because one pair of nucleotides could make more than one interaction
     interaction_to_pair_list = defaultdict(list)
+
+    datapoints = []
 
     list_nt_nt = []
     contact_list = []
@@ -253,7 +257,14 @@ def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, bas
 
 #                        print("  Checking for an interaction between %-18s and %-18s center-center distance %7.4f" % (nt1.unit_id(),nt2.unit_id(),screen_distance))
 
-                        interaction = check_base_backbone_O_stack(nt1,nt2)
+                        timerData = myTimer("Check base oxygen stack",timerData)
+
+                        interaction, datapoint = check_base_oxygen_stack_rings(nt1,nt2,parent1,True)
+                        #interaction, datapoint = check_base_oxygen_stack(nt1,nt2,True)
+
+                        # store all datapoints for studying later
+                        if datapoint:
+                            datapoints.append(datapoint)
 
                         if len(interaction) > 0:
 
@@ -267,6 +278,9 @@ def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, bas
 
                         parent2 = get_parent(nt2.sequence)
                         parent_pair = parent1 + "," + parent2
+
+
+
 
 #                       Note that AA, CC, GG, UU are being checked twice already!
 #                       need to add T and have a plan for DNA nucleotides as well
@@ -283,7 +297,11 @@ def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, bas
 
                             glycosidic_displacement = np.subtract(gly2,gly1)
 
+                            timerData = myTimer("Check coplanar",timerData)
+
                             pair_data = check_coplanar(nt1,nt2,glycosidic_displacement)
+
+                            timerData = myTimer("Check basepairing",timerData)
 
                             interaction = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs)
                             if False and len(interaction) > 1:
@@ -314,9 +332,11 @@ def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, bas
     print("  Found %d nucleotide-nucleotide pairs" % count_pair)
     print("  Maximum screen distance for actual contacts is %8.4f" % max_screen_distance)
 
+    timerData = myTimer("Calculate crossing",timerData)
+
     interaction_to_triple_list = calculate_crossing_numbers(bases,interaction_to_pair_list)
 
-    return interaction_to_triple_list, pair_to_interaction, list_nt_nt
+    return interaction_to_triple_list, pair_to_interaction, datapoints, timerData
 
 def calculate_crossing_numbers(bases,interaction_to_pair_list):
     # Identify which cWW pairs are nested
@@ -430,20 +450,23 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
 
     return interaction_to_triple_list
 
-def annotate_nt_nt_in_structure(structure):
+def annotate_nt_nt_in_structure(structure,timerData):
     """
     This function can be called from the pipeline to annotate a structure
     """
 
     bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
     print("  Building nucleotide cubes in " + PDB)
+    timerData = myTimer("Building cubes",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes(bases, nt_nt_screen_distance, nt_reference_point)
 
     # annotate nt-nt interactions
     print("  Annotating interactions")
-    interaction_to_triple_list, pair_to_interaction, list_nt_nt = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors)
+    interaction_to_triple_list, pair_to_interaction, datapoints, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, timerData)
 
-    return interaction_to_triple_list, pair_to_interaction
+    print("  Found %d datapoints in %s" % (len(datapoints),PDB))
+
+    return interaction_to_triple_list, pair_to_interaction, datapoints, timerData
 
 
 def get_parent(sequence):
@@ -459,26 +482,41 @@ def get_parent(sequence):
     else:
         return None
 
-def check_base_backbone_O_stack(nt1,nt2):
+def translate_rotate_point(nt,point):
+    """
+    Use the rotation matrix and center of nt to move point into standard position
+    """
+
+    translated_coord = np.subtract(point, nt.centers["base"])
+    translated_coord_matrix = np.matrix(translated_coord)
+    rotated_coord = translated_coord_matrix * nt.rotation_matrix
+    coord_array = np.array(rotated_coord)
+    a = coord_array.flatten()
+    new_point = a.tolist()
+
+    return new_point
+
+
+def check_base_oxygen_stack(nt1,nt2,get_datapoint=False):
+    '''
+    Does one of the backbone oxygens of nt2 stack on the base of nt1?
+    '''
 
     interaction = ""
 
-    # rotate nt2 to origin
-    standard_nt2 = nt1.translate_rotate_component(nt2)
-
     oxygens = ["O2'","O3'","O4'","O5'","OP1","OP2"]
-    qmin = 6
+
+    qmin = 6      # q measures the quality of the interaction
     qmax = 0      # track to see when to bail out for large q
 
     for oxygen in oxygens:
 
-        oxygen_atom = standard_nt2.centers[oxygen]
+        oxygen_point = nt2.centers[oxygen]
 
-        if len(oxygen_atom) == 3:
+        if len(oxygen_point) == 3:
 
-            x = oxygen_atom[0]
-            y = oxygen_atom[1]
-            z = oxygen_atom[2]
+            x,y,z = translate_rotate_point(nt1,oxygen_point)
+
             r = math.sqrt(x*x + y*y)
             q = x*x + y*y + 8*(abs(z)-2.9)**2    # measure of quality of location
 
@@ -492,14 +530,14 @@ def check_base_backbone_O_stack(nt1,nt2):
 
     # require r < 2 and abs(z)-2.9 < sqrt(1/2)=0.707, and elliptical between those two
     if qmin < 4:
-        if z > 0:
+        if zmin > 0:
             interaction = "s3" + min_oxygen
         else:
             interaction = "s5" + min_oxygen
 
     # require r < sqrt(6)=.4495 and abs(z)-2.9 < sqrt(6/9)=0.8165 and elliptical between
     elif qmin < 6:
-        if z > 0:
+        if zmin > 0:
             interaction = "ns3" + min_oxygen
         else:
             interaction = "ns5" + min_oxygen
@@ -507,7 +545,181 @@ def check_base_backbone_O_stack(nt1,nt2):
     if False and len(interaction) > 0:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,xmin,ymin,zmin,rmin,qmin,nt1.unit_id(),nt2.unit_id()))
 
-    return interaction
+    if get_datapoint and len(interaction) > 0:
+        datapoint = {}
+        datapoint['x'] = xmin
+        datapoint['y'] = ymin
+        datapoint['z'] = zmin
+        datapoint['q'] = qmin
+        datapoint['r'] = rmin
+        datapoint['nt1_seq'] = nt1.sequence
+        datapoint['nt2_seq'] = nt2.sequence
+        datapoint['interaction'] = interaction
+        datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+    else:
+        datapoint = []
+
+    return interaction, datapoint
+
+def check_base_oxygen_stack_rings(nt1,nt2,parent1,get_datapoint=False):
+    '''
+    Does one of the backbone oxygens of nt2 stack inside a ring on the base of nt1?
+    '''
+
+    interaction = ""
+
+    oxygens = ["O2'","O3'","O4'","O5'","OP1","OP2"]
+    oxygen_points = []  # list of translated rotated points
+
+    true_found = False
+
+    zmin = 999    # keep track of oxygen closest to the plane and over a ring
+
+    for oxygen in oxygens:
+
+        oxygen_point = nt2.centers[oxygen]
+
+        if len(oxygen_point) == 3:
+
+            x,y,z = translate_rotate_point(nt1,oxygen_point)
+
+            oxygen_points.append([x,y,z])
+
+            ring1 = False
+            ring2 = False
+
+            if abs(z) < 3.5:
+                if parent1 == 'A' or parent1 == 'DA':
+                    if -1.302671*x + -0.512161*y + -0.512114 > 0:  # Left of C4-C5
+                        if -0.014382*x + -1.379291*y +  0.382370 > 0:  # Left of C5-N7
+                            if  1.286593*x + -0.316949*y +  2.517358 > 0:  # Left of N7-C8
+                                if  0.833587*x +  1.089911*y +  2.912966 > 0:  # Left of C8-N9
+                                    if -0.803127*x +  1.118490*y +  1.147479 > 0:  # Left of N9-C4
+                                        ring1 = True
+                                        print('ring1\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                    else:
+                        if  0.363524*x +  1.290539*y +  1.313698 > 0:  # Left of C4-N3
+                            if -1.076359*x +  0.793555*y +  2.495722 > 0:  # Left of N3-C2
+                                if -1.308429*x + -0.337740*y +  2.633517 > 0:  # Left of C2-N1
+                                    if -0.319116*x + -1.301200*y +  1.862429 > 0:  # Left of N1-C6
+                                        if  1.037709*x + -0.957315*y +  0.793620 > 0:  # Left of C6-C5
+                                            ring2 = True
+                                            print('ring2\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                elif parent1 == 'C' or parent1 == 'DC':
+                    if -0.599253*x +  1.289335*y +  1.686062 > 0:  # Left of N1-C2
+                        if -1.378522*x +  0.022802*y +  1.272927 > 0:  # Left of C2-N3
+                            if -0.676851*x + -1.128767*y +  1.187225 > 0:  # Left of N3-C4
+                                if  0.596389*x + -1.312333*y +  1.653099 > 0:  # Left of C4-C5
+                                    if  1.359882*x + -0.033090*y +  2.071781 > 0:  # Left of C5-C6
+                                        if  0.698355*x +  1.162053*y +  1.990943 > 0:  # Left of C6-N1
+                                            ring2 = True
+                                            print('ring2\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                elif parent1 == 'G' or parent1 == 'DG':
+                    if -1.306197*x + -0.492373*y + -0.896488 > 0:  # Left of C4-C5
+                        if -0.023230*x + -1.376606*y +  0.510698 > 0:  # Left of C5-N7
+                            if  1.278249*x + -0.337248*y +  2.960145 > 0:  # Left of N7-C8
+                                if  0.841883*x +  1.088640*y +  3.089984 > 0:  # Left of C8-N9
+                                    if -0.790705*x +  1.117587*y +  0.761380 > 0:  # Left of N9-C4
+                                        ring1 = True
+                                        print('ring1\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                    if  0.449709*x +  1.286231*y +  1.337347 > 0:  # Left of C4-N3
+                        if -0.992445*x +  0.855594*y +  2.112909 > 0:  # Left of N3-C2
+                            if -1.324604*x + -0.362005*y +  2.250906 > 0:  # Left of C2-N1
+                                if -0.533023*x + -1.330285*y +  2.026599 > 0:  # Left of N1-C6
+                                    if  1.094166*x + -0.941908*y +  1.272410 > 0:  # Left of C6-C5
+                                        ring2 = True
+                                        print('ring2\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                elif parent1 == 'U':
+                    if -0.589251*x +  1.260286*y +  1.716262 > 0:  # Left of N1-C2
+                        if -1.384641*x + -0.064970*y +  1.232961 > 0:  # Left of C2-N3
+                            if -0.834465*x + -1.135313*y +  1.246706 > 0:  # Left of N3-C4
+                                if  0.745842*x + -1.256133*y +  1.824059 > 0:  # Left of C4-C5
+                                    if  1.352820*x +  0.018369*y +  2.049668 > 0:  # Left of C5-C6
+                                        if  0.709695*x +  1.177761*y +  2.015286 > 0:  # Left of C6-N1
+                                            ring2 = True
+                                            print('ring2\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                elif parent1 == 'DT':
+                    if -0.675137*x +  1.198579*y +  2.053967 > 0:  # Left of N1-C2
+                        if -1.365448*x + -0.109817*y +  1.633725 > 0:  # Left of C2-N3
+                            if -0.742906*x + -1.165341*y +  1.298813 > 0:  # Left of N3-C4
+                                if  0.767749*x + -1.221287*y +  1.359137 > 0:  # Left of C4-C5
+                                    if  1.338191*x +  0.092630*y +  1.600513 > 0:  # Left of C5-C6
+                                        if  0.677551*x +  1.205236*y +  1.959719 > 0:  # Left of C6-N1
+                                            ring2 = True
+                                            print('ring2\t%s\t%s\t%s\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (oxygen,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+
+            if ring1 or ring2:
+                true_found = True
+                if abs(z) < abs(zmin):       # better than any previous stacking
+                    xmin = x
+                    ymin = y
+                    zmin = z
+                    min_oxygen = oxygen
+                    if ring1:
+                        ringmin = "ring1"
+                    else:
+                        ringmin = "ring2"
+
+    if true_found:
+        qmin = 0
+        if zmin > 0:
+            interaction = "s3" + min_oxygen
+        else:
+            interaction = "s5" + min_oxygen
+
+    else:
+
+        qmin = 6      # q measures the quality of the interaction
+        qmax = 0      # track to see when to bail out for large q
+
+        for [x,y,z] in oxygen_points:
+
+            q = x*x + y*y + 8*(abs(z)-2.9)**2    # measure of quality of location
+
+            if q < qmin:
+                qmin = q
+                xmin = x
+                ymin = y
+                zmin = z
+                min_oxygen = oxygen
+                ringmin = None
+
+        # previous code for true interactions
+        # require r < 2 and abs(z)-2.9 < sqrt(1/2)=0.707, and elliptical between those two
+        """
+        if qmin < 4:
+            if zmin > 0:
+                interaction = "s3" + min_oxygen
+            else:
+                interaction = "s5" + min_oxygen
+        """
+
+        # code for near interactions
+        # require r < sqrt(6)=.4495 and abs(z)-2.9 < sqrt(6/9)=0.8165 and elliptical between
+        if qmin < 6:
+            if zmin > 0:
+                interaction = "ns3" + min_oxygen
+            else:
+                interaction = "ns5" + min_oxygen
+
+    if False and len(interaction) > 0:
+        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,xmin,ymin,zmin,rmin,qmin,nt1.unit_id(),nt2.unit_id()))
+
+    if get_datapoint and len(interaction) > 0:
+        datapoint = {}
+        datapoint['ring'] = ringmin
+        datapoint['x'] = xmin
+        datapoint['y'] = ymin
+        datapoint['z'] = zmin
+        datapoint['q'] = qmin
+        datapoint['nt1_seq'] = nt1.sequence
+        datapoint['nt2_seq'] = nt2.sequence
+        datapoint['interaction'] = interaction
+        datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+    else:
+        datapoint = []
+
+    return interaction, datapoint
 
 def check_coplanar(nt1,nt2,glycosidic_displacement):
     """ Given nt1 and nt2, check specific criteria to say that
@@ -1357,18 +1569,14 @@ PDB_List = ['4TNA']
 PDB_List = ['5J7L']
 PDB_List = ['4V9F','5J7L','4ARC']
 PDB_List = ['4ARC']
-PDB_List = ['4V9F']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/2.5A/csv']
 PDB_List = ['4ARC']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/all/csv']
-
-ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
-ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
+PDB_List = ['4V9F']
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
-base_seq_list = ['A','U','C','G']      # for RNA
-base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = []                     # for all nucleic acids, modified or not
+base_seq_list = ['A','U','C','G']      # for RNA
 
 nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
@@ -1396,231 +1604,212 @@ if __name__=="__main__":
 
     timerData = myTimer("Making PDB list",timerData)
 
-    allOutputDataFile = outputNAPairwiseInteractions + "AllInteractions.pickle"
+    all_datapoints = []
 
-    if ReadPickleFile:
-        print("Reading " + outputDataFile)
-        timerData = myTimer("Reading pickle file",timerData)
-        allInteractionDictionary,allAATwoBaseDictionary,PDB_List = pickle.load(open(allOutputDataFile,'rb'))
-        writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
-    else:
-        PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
-        for PDB in PDB_List:
-            if "nrlist" in PDB and "NR_" in PDB:
-                                          # referring to an equivalence class online
-                                          # download the entire representative set,
-                                          # then find the right line for the equivalence class
-                                          # then extract the list
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
-                alltbody = myfile.split("tbody")
-                alllines = alltbody[1].split("<a class='pdb'>")
-                del alllines[0]
-                for line in alllines:
-                    fields = line.split("</a>")
-                    if len(fields[0]) > 1:
-                        newIFE = fields[0].replace(" ","")   # remove spaces
-                        newPDB = newIFE[0:4]
-                        PDB_IFE_Dict[newPDB] += "+" + newIFE
+    PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
+    for PDB in PDB_List:
+        if "nrlist" in PDB and "NR_" in PDB:
+                                      # referring to an equivalence class online
+                                      # download the entire representative set,
+                                      # then find the right line for the equivalence class
+                                      # then extract the list
+            f = urllib.urlopen(PDB)
+            myfile = f.read()
+            alltbody = myfile.split("tbody")
+            alllines = alltbody[1].split("<a class='pdb'>")
+            del alllines[0]
+            for line in alllines:
+                fields = line.split("</a>")
+                if len(fields[0]) > 1:
+                    newIFE = fields[0].replace(" ","")   # remove spaces
+                    newPDB = newIFE[0:4]
+                    PDB_IFE_Dict[newPDB] += "+" + newIFE
 
-            elif "nrlist" in PDB:           # referring to a representative set online
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
-                alllines = myfile.split("\n")
-                for line in alllines:
-                    fields = line.split(",")
+        elif "nrlist" in PDB:           # referring to a representative set online
+            f = urllib.urlopen(PDB)
+            myfile = f.read()
+            alllines = myfile.split("\n")
+            for line in alllines:
+                fields = line.split(",")
 
-                    if len(fields) > 1 and len(fields[1]) > 4:
-                        newPDB = fields[1][1:5]       # use only PDB identifier, ignore IFE for now
-                        PDB_IFE_Dict[newPDB] += "+" + fields[1].replace('"','')
+                if len(fields) > 1 and len(fields[1]) > 4:
+                    newPDB = fields[1][1:5]       # use only PDB identifier, ignore IFE for now
+                    PDB_IFE_Dict[newPDB] += "+" + fields[1].replace('"','')
 
-            elif "+" in PDB:                      # in case multiple chains in an IFE
-                newPDB = PDB.split("|")[0]        # in case model, chain is indicated
-                PDB_IFE_Dict[newPDB] = PDB
+        elif "+" in PDB:                      # in case multiple chains in an IFE
+            newPDB = PDB.split("|")[0]        # in case model, chain is indicated
+            PDB_IFE_Dict[newPDB] = PDB
 
-            elif "|" in PDB:                      # in case model, chain is indicated
-                newPDB = PDB.split("|")[0]
-                PDB_IFE_Dict[newPDB] = PDB
+        elif "|" in PDB:                      # in case model, chain is indicated
+            newPDB = PDB.split("|")[0]
+            PDB_IFE_Dict[newPDB] = PDB
 
+        else:
+            PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
+
+    print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
+
+    counter = 0
+    count_pair = 0
+
+    # loop through 3D structures and annotate interactions
+    PDBs = PDB_IFE_Dict.keys()
+    #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
+
+    for PDB in PDBs:
+        counter += 1
+
+        outputDataFileCSV =    outputNAPairwiseInteractions + PDB + ".csv"
+        outputDataFilePickle = outputNAPickleInteractions + PDB + "_RNA_pairs_exp.pickle"
+
+        if test_for_pipeline:
+
+            print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
+            timerData = myTimer("Reading CIF files",timerData)
+
+            if ShowStructureReadingErrors:
+                # do this to make sure to see any error messages
+                structure = get_structure(inputPath % PDB,PDB)
             else:
-                PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
-
-        print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
-
-        counter = 0
-        count_pair = 0
-
-        # loop through 3D structures and annotate interactions
-        PDBs = PDB_IFE_Dict.keys()
-        #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
-
-        for PDB in PDBs:
-            counter += 1
-
-            outputDataFileCSV =    outputNAPairwiseInteractions + PDB + ".csv"
-            outputDataFilePickle = outputNAPickleInteractions + PDB + "_RNA_pairs_exp.pickle"
-
-            if test_for_pipeline:
-
-                if not os.path.exists(outputDataFilePickle):
-
-                    print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
-                    timerData = myTimer("Reading CIF files",timerData)
-
-                    if ShowStructureReadingErrors:
-                        # do this to make sure to see any error messages
-                        structure = get_structure(inputPath % PDB,PDB)
-                    else:
-                        # do it this way to suppress error messages
-                        try:
-                            structure = get_structure(inputPath % PDB,PDB)
-                        except:
-                            print("  Could not load structure %s" % PDB)
-                            continue
-
-                    # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
-                    # need to be able to identify each chain that is available
-                    # write_unit_data_file(PDB,unit_data_path,structure)
-
-                    timerData = myTimer("Test for pipeline",timerData)
-
-                    interaction_to_triple_list, pair_to_interaction = annotate_nt_nt_in_structure(structure)
-                    print("  Annotated these interactions: %s" % interaction_to_triple_list.keys())
-
-
-
-                    pickle.dump(interaction_to_triple_list,open(outputDataFilePickle,"wb"),2)
-
-            else:
-
-                print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
-                timerData = myTimer("Reading CIF files",timerData)
-
-                if ShowStructureReadingErrors:
-                    # do this to make sure to see any error messages
+                # do it this way to suppress error messages
+                try:
                     structure = get_structure(inputPath % PDB,PDB)
+                except:
+                    print("  Could not load structure %s" % PDB)
+                    continue
+
+            # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
+            # need to be able to identify each chain that is available
+            # write_unit_data_file(PDB,unit_data_path,structure)
+
+            timerData = myTimer("Test for pipeline",timerData)
+
+            interaction_to_triple_list, pair_to_interaction, datapoints, timerData = annotate_nt_nt_in_structure(structure,timerData)
+
+            all_datapoints += datapoints
+
+            # turn this off during development and testing
+            if False:
+                print("  Annotated these interactions: %s" % interaction_to_triple_list.keys())
+                pickle.dump(interaction_to_triple_list,open(outputDataFilePickle,"wb"),2)
+
+
+            myTimer("summary",timerData)
+
+
+        else:
+
+            print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
+            timerData = myTimer("Reading CIF files",timerData)
+
+            if ShowStructureReadingErrors:
+                # do this to make sure to see any error messages
+                structure = get_structure(inputPath % PDB,PDB)
+            else:
+                # do it this way to suppress error messages
+                try:
+                    structure = get_structure(inputPath % PDB,PDB)
+                except:
+                    print("Could not load structure %s" % PDB)
+                    continue
+
+            # extract nucleotides to analyze
+            IFE = PDB_IFE_Dict[PDB]          #
+            if len(IFE) == 0:                # use the whole PDB file
+                if base_seq_list:
+                    bases = structure.residues(sequence = base_seq_list)  # load just the types of bases in base_seq_list
                 else:
-                    # do it this way to suppress error messages
-                    try:
-                        structure = get_structure(inputPath % PDB,PDB)
-                    except:
-                        print("Could not load structure %s" % PDB)
-                        continue
+                    bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+            else:                            # use specific chains only
+                chain_ids = []
+                print("  Keeping only bases in chains %s" % IFE)
+                chains = IFE.split("+")
+                for chain in chains[1:]:            #skip element zero, leading +
+                    fields = chain.split("|")
+                    chain_ids.append(fields[2])
+                if base_seq_list:
+                    bases = structure.residues(chain = chain_ids, sequence = base_seq_list)  # load just the types of bases in base_seq_list
+                else:
+                    bases = structure.residues(chain = chain_ids)  # load all bases
 
-                # extract nucleotides to analyze
-                IFE = PDB_IFE_Dict[PDB]          #
-                if len(IFE) == 0:                # use the whole PDB file
-                    if base_seq_list:
-                        bases = structure.residues(sequence = base_seq_list)  # load just the types of bases in base_seq_list
-                    else:
-                        bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-                else:                            # use specific chains only
-                    chain_ids = []
-                    print("  Keeping only bases in chains %s" % IFE)
-                    chains = IFE.split("+")
-                    for chain in chains[1:]:            #skip element zero, leading +
-                        fields = chain.split("|")
-                        chain_ids.append(fields[2])
-                    if base_seq_list:
-                        bases = structure.residues(chain = chain_ids, sequence = base_seq_list)  # load just the types of bases in base_seq_list
-                    else:
-                        bases = structure.residues(chain = chain_ids)  # load all bases
+            # ??? record which RNA/DNA chains are actually present
+            # count nucleotides
+            numBases = 0
+            for base in bases:
+                numBases += 1
+            print("  Found " + str(numBases) + " bases in " + PDB)
 
-                # ??? record which RNA/DNA chains are actually present
-                # count nucleotides
-                numBases = 0
-                for base in bases:
-                    numBases += 1
-                print("  Found " + str(numBases) + " bases in " + PDB)
+            # build cubes to be able to find potential pairs quickly
+            timerData = myTimer("Building cubes",timerData)
+            print("  Building nucleotide cubes in " + PDB)
+            baseCubeList, baseCubeNeighbors = make_nt_cubes(bases, nt_nt_screen_distance, nt_reference_point)
 
-                # build cubes to be able to find potential pairs quickly
-                timerData = myTimer("Building cubes",timerData)
-                print("  Building nucleotide cubes in " + PDB)
-                baseCubeList, baseCubeNeighbors = make_nt_cubes(bases, nt_nt_screen_distance, nt_reference_point)
+            # annotate nt-nt interactions
+            timerData = myTimer("Annotating interactions",timerData)
+            interaction_to_triple_list, pair_to_interaction, datapoints, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, timerData)
 
-                # annotate nt-nt interactions
-                timerData = myTimer("Annotating interactions",timerData)
-                Python_pairs, list_nt_nt = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors)
+            # used to return Python_pairs, datapoints, timerData
 
-                timerData = myTimer("Recording interactions",timerData)
+            timerData = myTimer("Recording interactions",timerData)
 
 
 
 
 
-                # compare to previous annotations, may be machine specific
+            # compare to previous annotations, may be machine specific
 
-                pathAndFileName = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs/%s_RNA_pairs.pickle" % PDB
+            pathAndFileName = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs/%s_RNA_pairs.pickle" % PDB
 
-                if not os.path.exists(pathAndFileName):
-                    pairsFileName = PDB + '_RNA_pairs.pickle'
-                    print("Downloading "+pairsFileName)
-                    if sys.version_info[0] < 3:
-                        urllib.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName)  # python 2
-                    else:
-                        urllib.request.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName)  # python 3
-
-
-                all_pair_types= ['cWW', 'tWW', 'cWH', 'tWH', 'cWS', 'tWS', 'cHH', 'tHH', 'cHS', 'tHS', 'cSS', 'tSS']
-                Matlab_pairs = load_basepair_annotations(pathAndFileName,all_pair_types)
-
-                comparison_filename = "C:/Users/zirbel/Documents/FR3D/Python FR3D/comparison/comparison_%s.txt" % PDB
-                compare_annotations(Matlab_pairs,Python_pairs,all_pair_types,comparison_filename)
+            if not os.path.exists(pathAndFileName):
+                pairsFileName = PDB + '_RNA_pairs.pickle'
+                print("Downloading "+pairsFileName)
+                if sys.version_info[0] < 3:
+                    urllib.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName)  # python 2
+                else:
+                    urllib.request.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName)  # python 3
 
 
-                # write out pairs in the format that WebFR3D reads
+            all_pair_types= ['cWW', 'tWW', 'cWH', 'tWH', 'cWS', 'tWS', 'cHH', 'tHH', 'cHS', 'tHS', 'cSS', 'tSS']
+            Matlab_pairs = load_basepair_annotations(pathAndFileName,all_pair_types)
+
+            comparison_filename = "C:/Users/zirbel/Documents/FR3D/Python FR3D/comparison/comparison_%s.txt" % PDB
+            compare_annotations(Matlab_pairs,Python_pairs,all_pair_types,comparison_filename)
 
 
-                # accumulate list of interacting units by base, interaction type, and edges
-                for nt1, nt2, interaction, edge, standard_aa, param in list_nt_nt:
-                    base = base_residue.unit_id()
-                    # skip symmetry operated instances; generally these are just duplicates anyway
-                    if not "||||" in str(base):
-                        aa = aa_residue.unit_id()
-                        base_component = str(base).split("|")
-                        aa_component = str(aa).split("|")
-                        key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
-                        count_pair += 1
-                        allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
+            # write out pairs in the format that WebFR3D reads
+            # accumulate list of interacting units by base, interaction type, and edges
+            for nt1, nt2, interaction, edge, standard_aa, param in list_nt_nt:
+                base = base_residue.unit_id()
+                # skip symmetry operated instances; generally these are just duplicates anyway
+                if not "||||" in str(base):
+                    aa = aa_residue.unit_id()
+                    base_component = str(base).split("|")
+                    aa_component = str(aa).split("|")
+                    key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
+                    count_pair += 1
+                    allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
 
-                """ 3D plots of base-aa interactions
-                for base, aa, interaction in list_nt_nt:
-                    base_seq = base.sequence
-                    aa= aa.sequence
+            #writing out output files
+            #text_output(result_nt_nt)
 
-                    draw_base(base_seq, ax)
-                    draw_aa(aa, ax)
+ #           csv_output(list_nt_nt)
+#            print("  Wrote output to " + outputNAPairwiseInteractions + PDB)
 
-                    ax.set_xlabel('X Axis')
-                    ax.set_ylabel('Y Axis')
-                    ax.set_zlabel('Z Axis')
-                    ax.set_xlim3d(10, -15)
-                    ax.set_ylim3d(10, -15)
-                    ax.set_zlim3d(10, -15)
-                    plt.title('%s with ' % base_seq +'%s' % aa + ' %s' % "null")
-                    plt.show()
-                              """
-                #accumulate a full list of resultant RNA-aa pairs
-        #        result_nt_nt.extend(list_nt_nt)
+            myTimer("summary",timerData)
 
-                #writing out output files
-                #text_output(result_nt_nt)
+        # datapoints is a variable to save xyz data of specific points making an interaction
+        # save all datapoints of interactions after each file in case of a crash
+        all_datapoints_output_file = outputNAPairwiseInteractions + "AllDatapoints.pickle"
+        pickle.dump(all_datapoints,open(all_datapoints_output_file,"wb"),2)
 
-     #           csv_output(list_nt_nt)
-    #            print("  Wrote output to " + outputNAPairwiseInteractions + PDB)
 
-                myTimer("summary",timerData)
+    # when appropriate, write out HTML files
+    """
+    if len(PDB_IFE_Dict) > 100:
+        print("Writing " + outputDataFile)
+        timerData = myTimer("Writing HTML files",timerData)
+        pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_List),open(outputDataFile,"wb"))
+        writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
+    """
 
-#        print("Recorded %d pairwise interactions" % count_pair)
-
-        # when appropriate, write out HTML files
-
-        """
-        if len(PDB_IFE_Dict) > 100:
-            print("Writing " + outputDataFile)
-            timerData = myTimer("Writing HTML files",timerData)
-            pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_List),open(outputDataFile,"wb"))
-            writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
-        """
-
-myTimer("summary",timerData)
+    myTimer("summary",timerData)
