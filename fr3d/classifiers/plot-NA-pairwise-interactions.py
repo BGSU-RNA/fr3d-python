@@ -97,8 +97,10 @@ def load_basepair_annotations(filename,all_pair_types):
     return pair_to_interaction
 
 
-def draw_base(base_seq,ax):
-    """Connects atoms to draw one base"""
+def draw_base(base_seq,dimensions,ax):
+    """
+    Connects atoms to draw one base in the specified number of dimensions
+    """
 
     NAbasecolor = {}
     NAbasecolor['A'] = [1,0,0]   # red
@@ -120,38 +122,14 @@ def draw_base(base_seq,ax):
         new_base_y.append(coord_base[1])
         new_base_z.append(coord_base[2])
 
-    print(new_base_x)
+    #print(new_base_x)
 
-    ax.plot(new_base_x, new_base_y, new_base_z, color=NAbasecolor[base_seq], linewidth=2.0)
-    #ax.plot(new_base_y, new_base_z, new_base_x, color=NAbasecolor[base_seq], linewidth=2.0)
+    if dimensions == 2:
+        ax.plot(new_base_x, new_base_y, color=NAbasecolor[base_seq], linewidth=2.0)
+    else:
+        ax.plot(new_base_x, new_base_y, new_base_z, color=NAbasecolor[base_seq], linewidth=2.0)
 
     return
-
-
-    #base_lines = ax.plot(new_base_x, new_base_y, new_base_z, label= 'Base')
-    #ax.scatter(basecenter[0], basecenter[1], basecenter[2], zdir='y', color='b', marker='o')
-    #ax.scatter(x = 0, y= 0, z= 0, color='b', marker='o')
-
-    #plt.setp(base_lines, 'color', NAbasecolor[base_seq], 'linewidth', 4.0)
-
-    #ax.scatter(basecenter[0], basecenter[1], basecenter[2], zdir='y', color='b', marker='o')
-    #ax.scatter(x = 0, y= 0, z= 0, color='b', marker='o')
-    #plt.setp(base_lines, 'color', 'b', 'linewidth', 1.0)
-
-
-    back_base_x = []
-    back_base_y = []
-    back_base_z = []
-
-    for atomname in Ribophos_connect[base_seq]:
-        back_base=[]
-        back_base= basecoord_list[atomname]
-        back_base_x.append(back_base[0])
-        back_base_y.append(back_base[1])
-        back_base_z.append(back_base[2])
-    #base_lines= ax.plot(back_base_x, back_base_y, back_base_z, label= 'Base', color='r')
-    #plt.setp(base_lines, 'color', 'g', 'linewidth', 4.0)
-    #ax.text(9, 1, 1, base_residue)
 
 
 #=======================================================================
@@ -159,7 +137,8 @@ def draw_base(base_seq,ax):
 base_seq_list = ['DA','DC','DG','DT']  # for DNA
 base_seq_list = ['A','C','G','U']      # for RNA
 
-interaction_lists = [["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2"]]
+interaction_lists = [["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2"],
+                    ["ns3O2'","ns3O3'","ns3O4'","ns3O5'","ns3OP1","ns3OP2","ns5O2'","ns5O3'","ns5O4'","ns5O5'","ns5OP1","ns5OP2"]]
 
 # plot one instance of each of the pairwise interactions
 PlotPair = False
@@ -176,27 +155,21 @@ if __name__=="__main__":
     # load all datapoints of interactions after each file in case of a crash
     all_datapoints_output_file = outputNAPairwiseInteractions + "AllDatapoints.pickle"
     all_datapoints = pickle.load(open(all_datapoints_output_file,'rb'))
-    print("Loaded %d datapoints" % len(all_datapoints))
+    print("Loaded %d datapoints from %s" % (len(all_datapoints),all_datapoints_output_file))
 
     # loop over nt1 bases, then over interactions of interest
 
-    fig = plt.figure()
 
-    for v, nt1_seq in enumerate(base_seq_list):
+    for interaction_list in interaction_lists:
 
-        """
-        if nt1_seq == 'A':
-            ax = axs[0,0]
-        elif nt1_seq == 'C':
-            ax = axs[0,1]
-        elif nt1_seq == 'G':
-            ax = axs[1,0]
-        else:
-            ax = axs[1,1]
-        """
+        fig = plt.figure()
+        for v, nt1_seq in enumerate(base_seq_list):
 
-        for interaction_list in interaction_lists:
-            ax = fig.add_subplot(2, 2, v+1, projection='3d')
+            if "n" in interaction_list[0]:
+                ax = fig.add_subplot(2, 2, v+1)
+            else:
+                ax = fig.add_subplot(2, 2, v+1, projection='3d')
+
             ax.axis("equal")
 
             datapoints = []
@@ -209,13 +182,13 @@ if __name__=="__main__":
 
             near_color = [1,0,0]  # red
             true_color = [0,0,0]  # black
-            ring1_color = [0,1,1] # cyan
-            ring2_color = [0,0,1] # blue
+            ring5_color = [0,1,1] # cyan
+            ring6_color = [0,0,1] # blue
 
             c = 0
             for datapoint in all_datapoints:
-                if datapoint['nt1_seq'] == nt1_seq and datapoint['interaction'].replace("n","") in interaction_list:
-#                if datapoint['nt1_seq'] == nt1_seq and datapoint['interaction'] in interaction_list:
+#                if datapoint['nt1_seq'] == nt1_seq and datapoint['interaction'].replace("n","") in interaction_list:
+                if datapoint['nt1_seq'] == nt1_seq and datapoint['interaction'] in interaction_list:
                     c += 1
                     if c <= 1000:
                         datapoints.append(datapoint)
@@ -227,23 +200,25 @@ if __name__=="__main__":
                         else:
                             colors3d.append(true_color)
 
-                        if datapoint['ring'] == 'ring1':
-                            colors2d.append(ring1_color)
-                        elif datapoint['ring'] == 'ring2':
-                            colors2d.append(ring2_color)
+                        if datapoint['ring'] == 'ring5':
+                            colors2d.append(ring5_color)
+                        elif datapoint['ring'] == 'ring6':
+                            colors2d.append(ring6_color)
                         else:
                             colors2d.append(near_color)
 
-                    if datapoint['ring'] and (datapoint['y'] > 0.1 or datapoint['x'] > 0):
-                        print(datapoint)
+#                    if datapoint['ring'] and (datapoint['y'] > 0.1 or datapoint['x'] > 0):
+#                        print(datapoint)
 
-            ax.scatter(xvalues,yvalues,zvalues,color=colors3d)
-
-            ax.scatter(xvalues,yvalues,[0 for i in zvalues],color=colors2d)
-
-            ax.set_title('Base %s with %s sO interactions' % (nt1_seq,len(datapoints)))
-
-            draw_base(nt1_seq,ax)
+            if "n" in interaction_list[0]:
+                ax.scatter(xvalues,yvalues,color=colors2d,marker=".")
+                ax.set_title('Base %s with %s near sO interactions' % (nt1_seq,len(datapoints)))
+                draw_base(nt1_seq,2,ax)
+            else:
+                ax.scatter(xvalues,yvalues,zvalues,color=colors3d,marker=".")
+                ax.scatter(xvalues,yvalues,[0 for i in zvalues],color=colors2d,marker=".")
+                ax.set_title('Base %s with %s sO interactions' % (nt1_seq,len(datapoints)))
+                draw_base(nt1_seq,3,ax)
 
             print("Plotted %d points" % len(datapoints))
 
