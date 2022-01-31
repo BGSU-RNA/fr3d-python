@@ -44,7 +44,10 @@ import urllib
 import pickle
 import math
 import sys
-
+if sys.version_info[0] < 3:
+        from urllib import urlopen
+else:
+    from urllib.request import urlopen 
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from mpl_toolkits.mplot3d import Axes3D
@@ -1361,6 +1364,7 @@ PDB_List = ['4V9F']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/2.5A/csv']
 PDB_List = ['4ARC']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/all/csv']
+PDB_List = ['4V9F']
 
 ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
@@ -1424,8 +1428,12 @@ if __name__=="__main__":
                         PDB_IFE_Dict[newPDB] += "+" + newIFE
 
             elif "nrlist" in PDB:           # referring to a representative set online
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
+                if sys.version_info[0] < 3: 
+                    f = urllib.urlopen(PDB)
+                else:
+                    f = urlopen(PDB)
+                myfile = f.read().decode()
+                #print(type(myfile.decode()))
                 alllines = myfile.split("\n")
                 for line in alllines:
                     fields = line.split(",")
@@ -1453,7 +1461,6 @@ if __name__=="__main__":
         # loop through 3D structures and annotate interactions
         PDBs = PDB_IFE_Dict.keys()
         #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
-
         for PDB in PDBs:
             counter += 1
 
