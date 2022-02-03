@@ -190,7 +190,7 @@ if __name__=="__main__":
 #                if datapoint['nt1_seq'] == nt1_seq and datapoint['interaction'].replace("n","") in interaction_list:
                 if datapoint['nt1_seq'] == nt1_seq and datapoint['interaction'] in interaction_list:
                     c += 1
-                    if c <= 1000:
+                    if c <= 10000:
                         datapoints.append(datapoint)
                         xvalues.append(datapoint['x'])
                         yvalues.append(datapoint['y'])
