@@ -29,32 +29,27 @@ def generate_code(p1,p2,a1,a2,i,r=0):
 
 	return t
 
+def iterate_over_atom_lists(atom_lists,r=0):
+	for sequence in sorted(atom_lists.keys()):
+		print(sequence)
+		atom_list = atom_lists[sequence]
+		for i in range(1,len(atom_list)):
+			a1 = atom_list[i-1]
+			a2 = atom_list[i]
+			p1 = NAbasecoordinates[sequence][a1][0:2]
+			p2 = NAbasecoordinates[sequence][a2][0:2]
+			print(generate_code(p1,p2,a1,a2,i,r))
 
-atom_lists = {}
-atom_lists['A'] = ['C4','C5','N7','C8','N9','C4','N3','C2','N1','C6','C5']
-atom_lists['C'] = ['N1','C2','N3','C4','C5','C6','N1']
-atom_lists['G'] = ['C4','C5','N7','C8','N9','C4','N3','C2','N1','C6','C5']
-atom_lists['DT'] = ['N1','C2','N3','C4','C5','C6','N1']
-atom_lists['U'] = ['N1','C2','N3','C4','C5','C6','N1']
+ring_atom_lists = {}
+ring_atom_lists['A'] = ['C4','C5','N7','C8','N9','C4','N3','C2','N1','C6','C5']
+ring_atom_lists['C'] = ['N1','C2','N3','C4','C5','C6','N1']
+ring_atom_lists['G'] = ['C4','C5','N7','C8','N9','C4','N3','C2','N1','C6','C5']
+ring_atom_lists['DT'] = ['N1','C2','N3','C4','C5','C6','N1']
+ring_atom_lists['U'] = ['N1','C2','N3','C4','C5','C6','N1']
 
-for sequence in ['A','C','G','DT','U']:
-	print(sequence)
-	atom_list = atom_lists[sequence]
-	for i in range(1,len(atom_list)):
-		a1 = atom_list[i-1]
-		a2 = atom_list[i]
-		p1 = NAbasecoordinates[sequence][a1][0:2]
-		p2 = NAbasecoordinates[sequence][a2][0:2]
-		print(generate_code(p1,p2,a1,a2,i+4))
+print('Code to check that an (x,y) point is inside a base ring')
+iterate_over_atom_lists(ring_atom_lists,0)
 
-for sequence in ['A','C','G','DT','U']:
-	print(sequence)
-	atom_list = atom_lists[sequence]
-	for i in range(1,len(atom_list)):
-		a1 = atom_list[i-1]
-		a2 = atom_list[i]
-		p1 = NAbasecoordinates[sequence][a1][0:2]
-		p2 = NAbasecoordinates[sequence][a2][0:2]
-		print(generate_code(p1,p2,a1,a2,i+4,0.5))
-
+print('Code to check that an (x,y) point is close to being inside a base ring')
+iterate_over_atom_lists(ring_atom_lists,0.5)
 
