@@ -85,7 +85,7 @@ def myTimer(state,data={}):
         data[currentState] += time() - data["lastTime"]
 
     if state == "summary":
-        total = 0
+        total = 0.00000001   # avoid dividing by 0
         for state in data["allStates"]:
             if not state == "lastTime" and not state == "currentState":
                 total += data[state]
@@ -93,7 +93,10 @@ def myTimer(state,data={}):
         print("Summary of time taken:")
         for state in data["allStates"]:
             if not state == "lastTime" and not state == "currentState":
-                print("%-31s: %10.3f seconds %10.3f minutes %10.3f% of total" % (state,data[state],data[state]/60,100*data[state]/total))
+                print("%-31s: %10.3f seconds %10.3f minutes %10.3f%% of total" % (state,data[state],data[state]/60,100*data[state]/total))
+
+        print("%-31s: %10.3f seconds %10.3f minutes %10.3f%% of total" % ("Total",total,total/60,100))
+
 
     elif not state in data:
         data[state] = 0
@@ -1724,8 +1727,8 @@ PDB_List = ['4ARC']
 PDB_List = ['4ARC']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/all/csv']
 PDB_List = ['4V9F','6ZMI','7K00']
-PDB_List = ['4V9F']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.215/2.5A/csv']
+PDB_List = ['4V9F']
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
@@ -1904,10 +1907,6 @@ if __name__=="__main__":
 
             timerData = myTimer("Recording interactions",timerData)
 
-
-
-
-
             # compare to previous annotations, may be machine specific
 
             pathAndFileName = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs/%s_RNA_pairs.pickle" % PDB
@@ -1945,6 +1944,7 @@ if __name__=="__main__":
 
         # pair_to_data is a variable to save xyz data of specific points making an interaction
         # save all pair_to_data of interactions after each file in case of a crash
+        timerData = myTimer("Recording interactions",timerData)
         all_pair_to_data_output_file = outputNAPairwiseInteractions + "all_pair_to_data.pickle"
         pickle.dump(all_pair_to_data,open(all_pair_to_data_output_file,"wb"),2)
 
