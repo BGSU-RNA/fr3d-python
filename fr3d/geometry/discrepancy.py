@@ -115,8 +115,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
                         W.append(C1star_weights[i])
                 else:
                     raise MissingPhosphateException(centers)
-    #rotation_matrix, _, _, RMSD = besttransformation(R, S)
-    # Superimpose R and S with weights? I need to make changes.
+
     rotation_matrix, new1, mean1, RMSD, sse = besttransformation_weighted(R, S, W)
     rotation_matrix = np.transpose(rotation_matrix)
     #The rotation_matrix that is outputted from besttransformation is the
@@ -133,7 +132,6 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
             orientationerror += np.square(angle)
     discrepancy = np.sqrt(sse + angleweight*orientationerror) / len(ntlist1)
     return discrepancy
-    #I must be calculating this part incorrectly, since rotation_matrix is cor
 
 
 def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
@@ -151,27 +149,137 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
     :returns: A float, the discprenacy.
     """
 
-    assert len(centers1) == len(centers2)
-    assert len(rotations1) == len(rotations2)
-    assert len(centers1) == len(rotations1)
-    assert len(centers1) >= 3
+    n = len(centers1)
+
+    assert len(centers2) == n
+    assert len(rotations1) == n
+    assert len(rotations2) == n
+    assert n >= 2
 
     if not angle_weight:
-        angle_weight = [1] * len(centers1)
+        angle_weight = [1] * n
 
     if not center_weight:
-        center_weight = [1] * len(centers1)
+        center_weight = [1] * n
 
-    rotation_matrix, new1, mean1, RMSD, sse = \
-        besttransformation_weighted(centers1, centers2, center_weight)
+    if n > 2:
+        rotation_matrix, new1, mean1, RMSD, sse = \
+            besttransformation_weighted(centers1, centers2, center_weight)
 
-    orientation_error = 0
-    angles = []
-    for r1, r2 in zip(rotations1, rotations2):
-        if r1.shape[0] > 0 and r2.shape[0] > 0:
-            angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r2),
-                                             np.transpose(r1)))
-            orientation_error += np.square(angle)
+        orientation_error = 0
+        angles = []
+        for r1, r2 in zip(rotations1, rotations2):
+            if r1.shape[0] > 0 and r2.shape[0] > 0:
+                angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r2),
+                                                 np.transpose(r1)))
+                orientation_error += np.square(angle)
+        discrepancy = np.sqrt(sse + orientation_error) / n
+
+    else:
+
+        R1 = np.dot(np.transpose(rotations1[1]),rotations1[0])  # rotation from nt 0 to nt1 of 1st motif
+        R2 = np.dot(np.transpose(rotations2[0]),rotations2[1])  # rotation from nt 0 to nt1 of 2nd motif
+
+        rot1 = np.dot(R1,R2)                                    #
+        ang1 = angle_of_rotation(rot1)
+
+        rot2 = np.dot(np.transpose(R1),np.transpose(R2))
+        ang2 = angle_of_rotation(rot2)
+
+        T1 = np.dot(centers1[1] - centers1[0],rotations1[0])
+        T2 = np.dot(centers1[0] - centers1[1],rotations1[1])
+
+        S1 = np.dot(centers2[1] - centers2[0],rotations2[0])
+        S2 = np.dot(centers2[0] - centers2[1],rotations2[1])
+
+        D1 = T1-S1
+        D2 = T2-S2
+
+        discrepancy  = np.sqrt(D1[0]**2 + D1[1]**2 + D1[2]**2 + (angle_weight[0]*ang1)**2)
+        discrepancy += np.sqrt(D2[0]**2 + D2[1]**2 + D2[2]**2 + (angle_weight[0]*ang2)**2)
+
+#        factor = 1/(4*np.sqrt(2))    # factor to multiply by discrepancy; faster to precompute?
+
+        discrepancy  = discrepancy * 0.17677669529663687
+
+    return discrepancy
+
+def matrix_discrepancy_cutoff(centers1, rotations1, centers2, rotations2, cutoff,
+                       angle_weight=None, center_weight=None):
+    """Compute discrepancies given matrices, not components.
+
+    :param list centers1: A list (or list numpy.array) of all centers.
+    :param list rotations1: A list of all rotation matrices.
+    :param list centers2: A list (or list numpy.array) of all centers.
+    :param list rotations2: A list of all rotation matrices.
+    :param float cutoff: If discrepancy > cutoff, return none
+    :param float angle_weight: The weight to give to the angle component of
+    discrepancy.
+    :param float center_weight: The weight to give to the center component of
+    discrepancy.
+    :returns: A float, the discprenacy.
+    """
+
     n = len(centers1)
-    discrepancy = np.sqrt(sse + orientation_error) / n
+
+    assert len(centers2) == n
+    assert len(rotations1) == n
+    assert len(rotations2) == n
+    assert n >= 2
+
+    if not angle_weight:
+        angle_weight = [1] * n
+
+    if not center_weight:
+        center_weight = [1] * n
+
+    if n > 2:
+        # solve np.sqrt(sse + orientation_error) / n > cutoff to give sse + orientation_error > (n*cutoff)**2
+        temp_cutoff = (n * cutoff)**2
+
+        rotation_matrix, new1, mean1, RMSD, sse = \
+            besttransformation_weighted(centers1, centers2, center_weight)
+
+        total_error = sse
+        if total_error > temp_cutoff:
+            return None
+
+        angles = []
+        for r1, r2 in zip(rotations1, rotations2):
+            if r1.shape[0] > 0 and r2.shape[0] > 0:
+                angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r2),
+                                                 np.transpose(r1)))
+                total_error += np.square(angle)
+                if total_error > temp_cutoff:
+                    return None
+
+        discrepancy = np.sqrt(total_error) / n
+
+    else:
+
+        R1 = np.dot(np.transpose(rotations1[1]),rotations1[0])  # rotation from nt 0 to nt1 of 1st motif
+        R2 = np.dot(np.transpose(rotations2[0]),rotations2[1])  # rotation from nt 0 to nt1 of 2nd motif
+
+        rot1 = np.dot(R1,R2)                                    #
+        ang1 = angle_of_rotation(rot1)
+
+        rot2 = np.dot(np.transpose(R1),np.transpose(R2))
+        ang2 = angle_of_rotation(rot2)
+
+        T1 = np.dot(centers1[1] - centers1[0],rotations1[0])
+        T2 = np.dot(centers1[0] - centers1[1],rotations1[1])
+
+        S1 = np.dot(centers2[1] - centers2[0],rotations2[0])
+        S2 = np.dot(centers2[0] - centers2[1],rotations2[1])
+
+        D1 = T1-S1
+        D2 = T2-S2
+
+        discrepancy  = np.sqrt(D1[0]**2 + D1[1]**2 + D1[2]**2 + (angle_weight[0]*ang1)**2)
+        discrepancy += np.sqrt(D2[0]**2 + D2[1]**2 + D2[2]**2 + (angle_weight[0]*ang2)**2)
+
+#        factor = 1/(4*np.sqrt(2))    # factor to multiply by discrepancy; faster to precompute?
+
+        discrepancy  = discrepancy * 0.17677669529663687
+
     return discrepancy
