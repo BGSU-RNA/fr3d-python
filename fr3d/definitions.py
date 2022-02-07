@@ -576,6 +576,16 @@ NAbasecoordinates['DT']['H72'] = [-2.882094, 1.068812,-0.906410]
 NAbasecoordinates['DT']['H73'] = [-3.153579, 0.548710, 0.569770]
 
 #Definitions for drawing nucleotides
+NAbasecolor = {}
+NAbasecolor['A'] = [1,0,0]   # red
+NAbasecolor['C'] = [1,214.0/255,0]   # yellowish
+NAbasecolor['G'] = [0.5,1,0]   # green
+NAbasecolor['U'] = [0,1,1]   # cyan
+NAbasecolor['DA'] = [1,0,0]   # red
+NAbasecolor['DC'] = [1,214.0/255,0]   # yellowish
+NAbasecolor['DG'] = [0.5,1,0]   # green
+NAbasecolor['DT'] = [0,0,1]   # blue
+
 
 RNAconnections['A'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
 RNAconnections['U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C6','C6','N1']
