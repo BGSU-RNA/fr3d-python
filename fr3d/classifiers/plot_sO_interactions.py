@@ -52,6 +52,7 @@ from class_limits import nt_nt_cutoffs
 """
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbasecoordinates
+from fr3d.definitions import NAbasecolor
 
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -89,16 +90,6 @@ def draw_base(base_seq,dimensions,ax):
     Connects atoms to draw one base in the specified number of dimensions
     """
 
-    NAbasecolor = {}
-    NAbasecolor['A'] = [1,0,0]   # red
-    NAbasecolor['C'] = [1,214.0/255,0]   # yellowish
-    NAbasecolor['G'] = [0.5,1,0]   # green
-    NAbasecolor['U'] = [0,1,1]   # cyan
-    NAbasecolor['DA'] = [1,0,0]   # red
-    NAbasecolor['DC'] = [1,214.0/255,0]   # yellowish
-    NAbasecolor['DG'] = [0.5,1,0]   # green
-    NAbasecolor['DT'] = [0,0,1]   # blue
-
     new_base_x = []
     new_base_y = []
     new_base_z = []
@@ -127,30 +118,54 @@ if __name__=="__main__":
     base_seq_list = ['DA','DC','DG','DT']  # for DNA
     base_seq_list = ['A','C','G','U']      # for RNA
 
-    base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
-    base_combination_list = ['A,U','G,C','A,A','A,C','A,G','C,C','C,U','G,G','G,U','U,U']
+    interaction_lists = [["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2"],
+                        ["ns3O2'","ns3O3'","ns3O4'","ns3O5'","ns3OP1","ns3OP2","ns5O2'","ns5O3'","ns5O4'","ns5O5'","ns5OP1","ns5OP2"]]
 
-    interaction_lists = [["cWW"],["tWW"]]
+    # plot one instance of each of the pairwise interactions
+    PlotPair = False
+    PlotPair = True
+    AlreadyPlotted = {}
 
     unit_data_path = "C:/Users/zirbel/Documents/GitHub/fr3d-python/data/units"
 
-    near_color  = [1,0,0] # red
-    true_color  = [0,0,0] # black
+    near_color = [1,0,0]  # red
+    true_color = [0,0,0]  # black
     ring5_color = [0,1,1] # cyan
     ring6_color = [0,0,1] # blue
+    O4_color = [1,0,0]  # red
+    O2_color = [0,1,1]  # cyan
+    OP_color = [0,0,0]  # black
+
+    color_by_oxygen = True
+    color_by_oxygen = False
+
+    plot_true_in_3D = False
 
     data_file_name = "all_pair_to_data.pickle"
+    data_file_name = "all_pair_to_data_3.216_2.0.pickle"
 
-    # load all datapoints of interactions after each file in case of a crash
-    pair_to_data_output_file = outputNAPairwiseInteractions + data_file_name
-    pair_to_data = pickle.load(open(pair_to_data_output_file,'rb'))
-    print("Loaded %d datapoints from %s" % (len(pair_to_data),pair_to_data_output_file))
+    # load all datapoints on pairs of bases, whether annotated as paired or not
+    pair_to_data_file = outputNAPairwiseInteractions + data_file_name
+    print("Loading datapoints from %s" % (pair_to_data_file))
+    pair_to_data, all_PDB_ids = pickle.load(open(pair_to_data_file,'rb'))
+    print("Loaded %d datapoints from %s" % (len(pair_to_data),pair_to_data_file))
 
     # loop over sets of interactions
     for interaction_list in interaction_lists:
 
-        # loop over base combinations
-        for base_combination in base_combination_list:
+        fig = plt.figure()
+
+        # loop over individual bases, to make separate plots for each base
+        for v, nt1_seq in enumerate(base_seq_list):
+
+            if "n" in interaction_list[0]:
+                ax = fig.add_subplot(2, 2, v+1)
+            elif plot_true_in_3D:
+                ax = fig.add_subplot(2, 2, v+1, projection='3d')
+            else:
+                ax = fig.add_subplot(2, 2, v+1)
+
+            ax.axis("equal")
 
             # accumulate data specific to this base
             xvalues = []
@@ -206,25 +221,34 @@ if __name__=="__main__":
                 colors2d = colorsoxy
                 colors3d = colorsoxy
 
-            # make the figure
-            fig = plt.figure()
-            ax = fig.add_subplot(1, 3, 1)
-            ax.axis("equal")
-
             if "n" in interaction_list[0]:
                 # 2D plot for near interactions
                 ax.scatter(xvalues,yvalues,color=colors2d,marker=".")
                 ax.set_title('Base %s with %s near sO interactions' % (nt1_seq,c))
                 draw_base(nt1_seq,2,ax)
-            else:
+            elif plot_true_in_3D:
                 # 3D plot for true interactions
                 ax.scatter(xvalues,yvalues,zvalues,color=colors3d,marker=".")
                 ax.scatter(xvalues,yvalues,[0 for i in zvalues],color=colors2d,marker=".")
                 ax.set_title('Base %s with %s sO interactions' % (nt1_seq,c))
                 draw_base(nt1_seq,3,ax)
+            else:
+                # 2D plot for true interactions
+                ax.scatter(xvalues,yvalues,color=colors2d,marker=".")
+                ax.set_title('Base %s with %s sO interactions' % (nt1_seq,c))
+                draw_base(nt1_seq,2,ax)
 
             print("Plotted %d points for %s" % (c,nt1_seq))
 
-            # show all plots for this interaction_list
-            plt.show()
+        # show all plots for this interaction_list
+        if color_by_oxygen:
+            print("Red for O4', cyan for O2' and O3', black for O5', O1P, O2P")
+        elif "n" in interaction_list[0]:
+            print("Cyan for points in or near the 5-sided ring, blue for 6-sided")
+        else:
+            print("Black for true interactions with z coordinate, cyan for 5-sided ring, blue for 6-sided")
+
+        figManager = plt.get_current_fig_manager()
+        figManager.full_screen_toggle()
+        plt.show()
 
