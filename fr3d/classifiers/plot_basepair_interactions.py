@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from collections import defaultdict
 
+import math
 import os
 import sys
 if sys.version_info[0] < 3:
@@ -292,7 +293,24 @@ def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
                             ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             ax.text(0,cc*0.7,"%s %d" % (interaction,subcategory),color = color[cc],fontsize=12)
                             cc += 1
-                        if variables == 2:            # angle and normal
+                        if variables == 2:            # theta and r
+                            xmin = limits['xmin']
+                            xmax = limits['xmax']
+                            ymin = limits['ymin']
+                            ymax = limits['ymax']
+                            t1 = math.atan2(ymin,xmax)*180/3.141592654
+                            t2 = math.atan2(ymax,xmax)*180/3.141592654
+                            t3 = math.atan2(ymax,xmin)*180/3.141592654
+                            t4 = math.atan2(ymin,xmin)*180/3.141592654
+                            r1 = math.sqrt(xmax**2+ymin**2)
+                            r2 = math.sqrt(xmax**2+ymax**2)
+                            r3 = math.sqrt(xmin**2+ymax**2)
+                            r4 = math.sqrt(xmin**2+ymin**2)
+
+                            ax.plot([t1,t2,t3,t4,t1],[r1,r2,r3,r4,r1],color[cc])
+                            ax.text(0,cc*0.7,"%s %d" % (interaction,subcategory),color = color[cc],fontsize=12)
+                            cc += 1
+                        if variables == 3:            # angle and normal
                             xmin = limits['anglemin']
                             xmax = limits['anglemax']
                             ymin = max(-1.005,limits['normalmin'])  # clamp
@@ -311,7 +329,7 @@ def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
                                 ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
 
                             cc += 1
-                        if variables == 3:            # gap and z
+                        if variables == 4:            # gap and z
                             xmin = -0.01
                             xmax = limits['gapmax']
                             ymin = limits['zmin'] - cc*0.04
@@ -344,15 +362,41 @@ if __name__=="__main__":
     cyan  = [0,1,1] # cyan
     blue  = [0,0,1] # blue
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
     PDB_list = ['4V9F','7K00']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
     # load all datapoints on pairs of bases, whether annotated as paired or not
     all_PDB_ids = PDB_IFE_Dict.keys()
     print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
+
+    PDB_skip_set = set(['1R9F','5NXT','4KTG'])
+
+    # load annotations of these PDB files from the BGSU RNA server
+    print('Loading Matlab annotations of these files')
+    Matlab_annotation_to_pair = defaultdict(list)
+    pair_to_Matlab_annotation = defaultdict(str)
+    for PDB_id in all_PDB_ids:
+        interaction_to_pairs = load_Matlab_FR3D_pairs(PDB_id)
+        num_pairs = 0
+        for interaction in interaction_to_pairs.keys():
+            # store all basepairs and only basepairs
+            if "c" in interaction or "t" in interaction:
+                num_pairs += 1
+                Matlab_annotation_to_pair[interaction] += interaction_to_pairs[interaction]
+                for pair in interaction_to_pairs[interaction]:
+                    pair_to_Matlab_annotation[pair] = interaction
+        if num_pairs == 0:
+            print("No Matlab-annotated pairs in %s" % PDB_id)
+            PDB_skip_set.add(PDB_id)
+
+    print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
+    print("Found these Matlab annotations: %s" % sorted(Matlab_annotation_to_pair.keys()))
+
+    all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
+    print("Loading Python annotations from %d PDB files" % len(all_PDB_ids))
 
     pair_to_data = defaultdict(dict)
 
@@ -362,26 +406,10 @@ if __name__=="__main__":
         try:
             new_dict = pickle.load(open(pair_to_data_file,'rb'))
             pair_to_data.update(new_dict)
-
+            if len(new_dict.keys()) == 0:
+                print("No Python-annotated pairs in %s" % PDB)
         except:
             print("Not able to load annotations for %s" % PDB)
-
-    # load annotations of these PDB files from the BGSU RNA server
-    print('Loading Matlab annotations of these files')
-    Matlab_annotation_to_pair = defaultdict(list)
-    pair_to_Matlab_annotation = defaultdict(str)
-    for PDB_id in all_PDB_ids:
-        interaction_to_pairs = load_Matlab_FR3D_pairs(PDB_id)
-        for interaction in interaction_to_pairs.keys():
-            # store all basepairs and only basepairs
-            if "c" in interaction or "t" in interaction:
-                Matlab_annotation_to_pair[interaction] += interaction_to_pairs[interaction]
-                for pair in interaction_to_pairs[interaction]:
-                    pair_to_Matlab_annotation[pair] = interaction
-
-    print("Found these Matlab annotations: %s" % sorted(Matlab_annotation_to_pair.keys()))
-
-    PDB_skip_set = set(['1R9F','5NXT','4KTG'])
 
     # loop over specified sets of interactions
     for interaction_list in interaction_lists:
@@ -406,6 +434,8 @@ if __name__=="__main__":
             # accumulate data specific to this interaction and base combination
             xvalues = []
             yvalues = []
+            rvalues = []
+            tvalues = []
             zvalues = []
             avalues = []
             gvalues = []
@@ -487,6 +517,8 @@ if __name__=="__main__":
                     c += 1
                     xvalues.append(datapoint['x'])
                     yvalues.append(datapoint['y'])
+                    rvalues.append(math.sqrt(datapoint['x']**2 + datapoint['y']**2))
+                    tvalues.append(math.atan2(datapoint['y'],datapoint['x'])*180/3.141592654)
                     zvalues.append(datapoint['z'])
                     gvalues.append(datapoint['gap12'])
                     avalues.append(datapoint['angle_in_plane'])
@@ -503,12 +535,12 @@ if __name__=="__main__":
                     elif Python and not Matlab:
                         color = blue
                         size = 40
-                        print("blue = extra:  %s Python %4s Matlab %4s %s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
+                        print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
                     elif not Python and Matlab:
                         color = red
                         size = 40
-                        print("red = missing: %s Python %4s Matlab %4s %s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
+                        print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
                     else:
                         color = [0,1,0]
@@ -520,24 +552,29 @@ if __name__=="__main__":
 
             # make the figure
             if c > 0:
-                fig = plt.figure(figsize=(11.0, 5.0))
+                fig = plt.figure(figsize=(11.0, 4.0))
 
-                ax = fig.add_subplot(1, 3, 1)
+                ax = fig.add_subplot(1, 4, 1)
                 ax.axis("equal")
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,1)
                 ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('x and y for %d %s %s' % (c,base_combination,interaction_list[0]))
                 draw_base(nt1_seq,2,ax)
 
-                ax = fig.add_subplot(1, 3, 2)
+                ax = fig.add_subplot(1, 4, 2)
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,2)
-                ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('angle and normal, blue=extra')
+                ax.scatter(tvalues,rvalues,color=colors2d,marker=".",s=sizes)
+                ax.set_title('theta and radius')
 
-                ax = fig.add_subplot(1, 3, 3)
+                ax = fig.add_subplot(1, 4, 3)
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,3)
+                ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
+                ax.set_title('angle and normal, blue=Matlab only')
+
+                ax = fig.add_subplot(1, 4, 4)
+                plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,4)
                 ax.scatter(gvalues,zvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('gap12 and z values, red=missing')
+                ax.set_title('gap12 and z values, red=Python only')
 
                 # show all plots for this interaction_list
                 figManager = plt.get_current_fig_manager()
