@@ -606,6 +606,12 @@ NAconnections['DC'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5
 NAconnections['DG'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
 NAconnections['DT'] =['N1','C2','C2','N3','N3','C4','C3','O4','C4','C5','C5','C7','C5','C6','C6','N1']
 
+#NAhydrogenconnections = {}
+#NAhydrogenconnections[ 'A'] =[]
+#NAhydrogenconnections[ 'C'] =[]
+#NAhydrogenconnections[ 'G'] =[]
+#NAhydrogenconnections[ 'U'] =[]
+
 # Definitions for drawing the amino acid backbones.  Each pair gets a line between them.
 aa_backconnect['ARG']=['N','CA','CA','C','C','O','C','CA']
 aa_backconnect['LYS']=['N','CA','CA','C','C','O','C','CA']
