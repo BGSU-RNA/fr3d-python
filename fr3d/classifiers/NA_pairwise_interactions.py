@@ -205,8 +205,6 @@ def reverse_edges(inter):
     else:
         rev = inter[0] + inter[2] + inter[1] + inter[3:]
 
-    #print("reversed %s and got %s" % (inter,rev))
-
     return rev
 
 
@@ -217,20 +215,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     screening distances between them, then annotating interactions
     """
 
-
-    get_datapoint = True           # collect data about each pair to pass back
-
     count_pair = 0
 
-    pair_to_interaction = {}       # note:  this will need to return a list, not a text string,
-                                   # because one pair of nucleotides could make more than one interaction
-    interaction_to_pair_list = defaultdict(list)
+    pair_to_interaction = defaultdict(list)      # each pair can make more than one interaction
+    interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
 
-    pair_to_data = defaultdict(dict)
-
-    list_nt_nt = []
-    contact_list = []
-    output = []
+    get_datapoint = True                         # collect data about each pair to pass back
+    pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
@@ -243,12 +234,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         print(nt1.centers["base"])
                         continue
 
-                    parent1 = get_parent(nt1.sequence)
+                    parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
                     gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
 
                     if len(gly1) < 3:
                         print("  Missing glycosidic atom for %s" % nt1.unit_id())
                         continue
+
+                    number1 = nt1.number                 # nucleotide number
 
                     for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
                         if len(nt2.centers["base"]) < 3:
@@ -264,6 +257,17 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                            displacement[1] > center_center_distance_cutoff or \
                            displacement[2] > center_center_distance_cutoff:
                             continue
+
+                        # avoid comparing alternate coordinates of the same nucleotide
+                        # check in the order most likely to terminate the fastest
+                        if number1 == nt2.number:
+                            if nt1.sequence == nt2.sequence:
+                                if nt1.chain == nt2.chain:
+                                    if nt1.symmetry == nt2.symmetry:
+                                        if nt1.insertion_code == nt2.insertion_code:
+                                            if nt1.alt_id != nt2.alt_id:
+                                                #print("Skipping pair of alternate coordinates", (nt1.unit_id(),nt2.unit_id()))
+                                                continue
 
                         # calculate actual center-center distance, screen
                         center_center_distance = np.linalg.norm(displacement)
@@ -282,6 +286,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 #                        print("  Checking for an interaction between %-18s and %-18s center-center distance %7.4f" % (nt1.unit_id(),nt2.unit_id(),center_center_distance))
 
                         unit_id_pair = (nt1.unit_id(),nt2.unit_id())  # tuple for these nucleotides in this order
+                        reversed_pair = (nt2.unit_id(),nt1.unit_id())
 
                         parent2 = get_parent(nt2.sequence)
                         parent_pair = parent1 + "," + parent2
@@ -299,11 +304,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         # check base-oxygen stack
                         timerData = myTimer("Check base oxygen stack",timerData)
-                        interaction, datapoint = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
+                        interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
 
                         if len(interaction) > 0:
-                            pair_to_interaction[unit_id_pair] = interaction  # fragile, only stores one interaction per pair
+                            pair_to_interaction[unit_id_pair].append(interaction)
                             interaction_to_pair_list[interaction].append(unit_id_pair)
+                            interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                             max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
                         # check coplanar and basepairing for bases in specific orders
@@ -346,18 +352,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 # labeling them as such makes it possible to compare to previous ones
                                 inter += "_exp"
 
-                                pair_to_interaction[unit_id_pair] = inter
+                                pair_to_interaction[unit_id_pair].append(inter)
                                 interaction_to_pair_list[inter].append(unit_id_pair)
 
+                                # record certain interactions in reversed direction as well
 
-                                print(datapoint['url'])
-
-
-                                if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
-                                    pair_to_interaction[(nt2.unit_id(),nt1.unit_id())] = reverse_edges(inter)
-
-                                if (interaction[0] == "n" and interaction[1] in ["c","t"]) or interaction in ["ns33","ns35","ns53","ns55"]:
-                                    pair_to_interaction[(nt2.unit_id(),nt1.unit_id())] = reverse_edges(inter)
+                                if inter[0] in ["c","t","s"] or inter[1] in ["c","t","s"]:
+                                    pair_to_interaction[reversed_pair].append(reverse_edges(inter))
 
                         pair_to_data[unit_id_pair] = datapoint
 
@@ -596,11 +597,12 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
     Does one of the backbone oxygens of nt2 stack inside a ring on the base of nt1?
     '''
 
-    true_z_cutoff = 3.3
+    true_z_cutoff = 3.4
     near_z_cutoff = 3.6
     outside_z_cutoff = (true_z_cutoff + near_z_cutoff)/2
 
     interaction = ""
+    interaction_reversed = ""
 
     oxygens = ["O2'","O3'","O4'","O5'","OP1","OP2"]
     oxygen_points = []  # list of translated rotated points
@@ -701,14 +703,18 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
     if true_found:  # over base ring and z value is OK
         if zmin > 0:
             interaction = "s3" + oxygenmin
+            interaction_reversed = "s" + oxygenmin + "3"
         else:
             interaction = "s5" + oxygenmin
+            interaction_reversed = "s" + oxygenmin + "5"
 
     elif near_found:  # over a base ring, but z value too large for true
         if zmin > 0:
             interaction = "ns3" + oxygenmin
+            interaction_reversed = "ns" + oxygenmin + "3"
         else:
             interaction = "ns5" + oxygenmin
+            interaction_reversed = "ns" + oxygenmin + "5"
 
     else:            # not over a base ring, but maybe close enough
 
@@ -903,8 +909,10 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
         if near_found:
             if zmin > 0:
                 interaction = "ns3" + oxygenmin
+                interaction_reversed = "ns" + oxygenmin + "3"
             else:
                 interaction = "ns5" + oxygenmin
+                interaction_reversed = "ns" + oxygenmin + "5"
 
     if False and len(interaction) > 0:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,xmin,ymin,zmin,nt1.unit_id(),nt2.unit_id()))
@@ -918,7 +926,7 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
             datapoint['sOoxygen'] = oxygenmin
             datapoint['sOinteraction'] = interaction
 
-    return interaction, datapoint
+    return interaction, datapoint, interaction_reversed
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
@@ -1468,11 +1476,10 @@ PDB_list = ['4V9F','5J7L','4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4V9F','6ZMI','7K00']
-
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/2.0A/csv']
 PDB_list = ['4V9F']
 PDB_list = ['2N1Q']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/2.0A/csv']
 
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
