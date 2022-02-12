@@ -4,10 +4,6 @@
     oxygen-base stacking interactions.
 """
 
-from fr3d.definitions import RNAconnections
-from fr3d.definitions import NAbasecoordinates
-from fr3d.definitions import NAbasecolor
-
 from mpl_toolkits.mplot3d import Axes3D
 
 import matplotlib.pyplot as plt
@@ -23,6 +19,7 @@ from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
+from draw_residues import draw_base
 
 
 def load_basepair_annotations(filename,all_pair_types):
@@ -42,30 +39,6 @@ def load_basepair_annotations(filename,all_pair_types):
 
     return pair_to_interaction
 
-
-def draw_base(base_seq,dimensions,ax):
-    """
-    Connects atoms to draw one base in the specified number of dimensions
-    """
-
-    new_base_x = []
-    new_base_y = []
-    new_base_z = []
-
-    for atomname in RNAconnections[base_seq]:
-        coord_base= NAbasecoordinates[base_seq][atomname]
-        new_base_x.append(coord_base[0])
-        new_base_y.append(coord_base[1])
-        new_base_z.append(coord_base[2])
-
-    #print(new_base_x)
-
-    if dimensions == 2:
-        ax.plot(new_base_x, new_base_y, color=NAbasecolor[base_seq], linewidth=2.0)
-    else:
-        ax.plot(new_base_x, new_base_y, new_base_z, color=NAbasecolor[base_seq], linewidth=2.0)
-
-    return
 
 
 #=======================================================================
@@ -198,20 +171,20 @@ if __name__=="__main__":
 
             if "n" in interaction_list[0]:
                 # 2D plot for near interactions
-                ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize)
+                draw_base(nt1_seq,2,ax,zorder=1)
+                ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize,zorder=2)
                 ax.set_title('Base %s with %s near sO interactions' % (nt1_seq,c))
-                draw_base(nt1_seq,2,ax)
             elif plot_true_in_3D:
                 # 3D plot for true interactions
+                draw_base(nt1_seq,3,ax)
                 ax.scatter(xvalues,yvalues,zvalues,color=colors3d,marker=".",s=markersize)
                 ax.scatter(xvalues,yvalues,[0 for i in zvalues],color=colors2d,marker=".",s=markersize)
                 ax.set_title('Base %s with %s sO interactions' % (nt1_seq,c))
-                draw_base(nt1_seq,3,ax)
             else:
                 # 2D plot for true interactions
-                ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize)
+                draw_base(nt1_seq,2,ax,zorder=1)
+                ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize,zorder=2)
                 ax.set_title('Base %s with %s sO interactions' % (nt1_seq,c))
-                draw_base(nt1_seq,2,ax)
 
             print("Plotted %d points for %s" % (c,nt1_seq))
 
