@@ -400,6 +400,7 @@ if __name__=="__main__":
 
     pair_to_data = defaultdict(dict)
 
+    # load output files from NA_pairwise_interactions
     for PDB in all_PDB_ids:
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
         #print("Reading %s" % pair_to_data_file)
