@@ -473,7 +473,8 @@ def find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance):
                 x = floor(center[0]/atom_atom_min_distance)
                 y = floor(center[1]/atom_atom_min_distance)
                 z = floor(center[2]/atom_atom_min_distance)
-                key = "%d,%d,%d" % (x,y,z)
+                model = base.model
+                key = "%d,%d,%d,%s" % (x,y,z,model)
                 entry = (center[0],center[1],center[2],atom.name,base.unit_id(),atom_to_part_list[(base.sequence,atom.name)])
                 if key in ntAtomCubeList:
                     ntAtomCubeList[key].append(entry)
@@ -483,7 +484,7 @@ def find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance):
                     for a in [-1,0,1]:
                         for b in [-1,0,1]:
                             for c in [-1,0,1]:
-                                k = "%d,%d,%d" % (x+a,y+b,z+c)
+                                k = "%d,%d,%d,%s" % (x+a,y+b,z+c,model)
                                 ntAtomCubeNeighbors[key].append(k)
 
     # build a set of cubes and record which amino acids are in which cube
@@ -1829,17 +1830,8 @@ PDB_List = ['5I4A']
 PDB_List = ['6A2H']
 PDB_List = ['4V9F']
 PDB_List = ['3JB9']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
-version = "_3.72_3.0"
 PDB_List = ['1OCT']
 PDB_List = ['4v9fFH.pdb']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
-version = "_3.48_2.5"
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
-version = "_3.74_4.0"
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/3.0A/csv']
-version = "_3.48_3.0"
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
 PDB_List = ['4V9F|1|9']
 PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
 PDB_List = ['4V51','4V9K']
@@ -1847,11 +1839,9 @@ PDB_List = ['6WJR']
 PDB_List = ['4v9f']
 PDB_List = ['6TPQ']
 PDB_List = ['4KTG']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.160/2.5A/csv']
-version = "_3.160_2.5"
 PDB_List = ['4KTG']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.167/3.0A/csv']
-version = "_3.167_3.0"
+PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+version = "_3.217_3.0"
 PDB_List = ['4V9F']
 
 
