@@ -4,52 +4,6 @@
     oxygen-base stacking interactions.
 """
 
-# most of these imports are not needed
-
-"""
-from fr3d.cif.reader import Cif
-from fr3d.definitions import NAbaseheavyatoms
-from fr3d.definitions import NAbasehydrogens
-from fr3d.definitions import nt_sugar
-from fr3d.definitions import nt_phosphate
-from fr3d.definitions import Ribophos_connect
-from fr3d.definitions import aa_connections
-from fr3d.definitions import aa_backconnect
-from fr3d.definitions import aa_hydrogen_connections
-from fr3d.definitions import aa_fg
-from fr3d.definitions import aa_linker
-from fr3d.definitions import aa_backbone
-from fr3d.definitions import tilt_cutoff
-from fr3d.definitions import planar_atoms
-from fr3d.definitions import HB_donors
-from fr3d.definitions import HB_weak_donors
-from fr3d.definitions import HB_acceptors
-from fr3d.modified_parent_mapping import modified_nucleotides
-
-from discrepancy import matrix_discrepancy
-import numpy as np
-import csv
-import urllib
-import math
-import sys
-
-from collections import defaultdict
-# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-from fr3d.data.base import EntitySelector
-
-from fr3d.ordering.greedyInsertion import orderWithPathLengthFromDistanceMatrix
-
-#from fr3d.classifiers.base_aafg import distance_metrics
-from datetime import datetime
-from math import floor
-import os
-from os import path
-
-from time import time
-
-from class_limits import nt_nt_cutoffs
-
-"""
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbasecoordinates
 from fr3d.definitions import NAbasecolor
@@ -58,6 +12,8 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import matplotlib.pyplot as plt
 import pickle
+from collections import defaultdict
+
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -65,6 +21,8 @@ from fr3d.localpath import outputNAPickleInteractions
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
+
+from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 
 
 def load_basepair_annotations(filename,all_pair_types):
@@ -141,19 +99,31 @@ if __name__=="__main__":
 
     plot_true_in_3D = False
 
-    data_file_name = "all_pair_to_data.pickle"
-    data_file_name = "all_pair_to_data_3.216_2.0.pickle"
+    PDB_list = ['4V9F','7K00']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/2.0A/csv']
 
-    # load all datapoints on pairs of bases, whether annotated as paired or not
-    pair_to_data_file = outputNAPairwiseInteractions + data_file_name
-    print("Loading datapoints from %s" % (pair_to_data_file))
-    pair_to_data, all_PDB_ids = pickle.load(open(pair_to_data_file,'rb'))
-    print("Loaded %d datapoints from %s" % (len(pair_to_data),pair_to_data_file))
+    PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
-    # loop over sets of interactions
+    all_PDB_ids = sorted(PDB_IFE_Dict.keys())
+    print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
+
+    pair_to_data = defaultdict(dict)
+
+    # load output files from NA_pairwise_interactions
+    for PDB in all_PDB_ids:
+        pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
+        print("Reading %s" % pair_to_data_file)
+        try:
+            new_dict = pickle.load(open(pair_to_data_file,'rb'))
+            pair_to_data.update(new_dict)
+        except:
+            print("Not able to load annotations for %s" % PDB)
+
+    # loop over sets of interactions, plotting points on bases
     for interaction_list in interaction_lists:
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(10.0,8.0))
 
         # loop over individual bases, to make separate plots for each base
         for v, nt1_seq in enumerate(base_seq_list):
@@ -202,9 +172,9 @@ if __name__=="__main__":
                         else:
                             colors3d.append(true_color)
 
-                        if datapoint['sOring'] == 'ring5':
+                        if 'ring5' in datapoint['sOring']:
                             colors2d.append(ring5_color)
-                        elif datapoint['sOring'] == 'ring6':
+                        elif 'ring6' in datapoint['sOring']:
                             colors2d.append(ring6_color)
                         else:
                             colors2d.append(near_color)
@@ -221,20 +191,25 @@ if __name__=="__main__":
                 colors2d = colorsoxy
                 colors3d = colorsoxy
 
+            if len(xvalues) < 500:
+                markersize = 4
+            else:
+                markersize = 0.5
+
             if "n" in interaction_list[0]:
                 # 2D plot for near interactions
-                ax.scatter(xvalues,yvalues,color=colors2d,marker=".")
+                ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize)
                 ax.set_title('Base %s with %s near sO interactions' % (nt1_seq,c))
                 draw_base(nt1_seq,2,ax)
             elif plot_true_in_3D:
                 # 3D plot for true interactions
-                ax.scatter(xvalues,yvalues,zvalues,color=colors3d,marker=".")
-                ax.scatter(xvalues,yvalues,[0 for i in zvalues],color=colors2d,marker=".")
+                ax.scatter(xvalues,yvalues,zvalues,color=colors3d,marker=".",s=markersize)
+                ax.scatter(xvalues,yvalues,[0 for i in zvalues],color=colors2d,marker=".",s=markersize)
                 ax.set_title('Base %s with %s sO interactions' % (nt1_seq,c))
                 draw_base(nt1_seq,3,ax)
             else:
                 # 2D plot for true interactions
-                ax.scatter(xvalues,yvalues,color=colors2d,marker=".")
+                ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize)
                 ax.set_title('Base %s with %s sO interactions' % (nt1_seq,c))
                 draw_base(nt1_seq,2,ax)
 
@@ -250,5 +225,58 @@ if __name__=="__main__":
 
         figManager = plt.get_current_fig_manager()
         figManager.full_screen_toggle()
-        plt.show()
+
+        if "n" in interaction_list[0]:
+            figure_save_file = outputNAPairwiseInteractions + "sO_near_%d" % len(all_PDB_ids)
+        else:
+            figure_save_file = outputNAPairwiseInteractions + "sO_true_%d" % len(all_PDB_ids)
+        plt.savefig(figure_save_file+".png")
+        plt.savefig(figure_save_file+".pdf")
+        plt.close()
+
+
+
+    # loop over sets of interactions, plotting histograms of z values
+    interaction_list = ["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2",
+                        "ns3O2'","ns3O3'","ns3O4'","ns3O5'","ns3OP1","ns3OP2","ns5O2'","ns5O3'","ns5O4'","ns5O5'","ns5OP1","ns5OP2"]
+
+    fig = plt.figure(figsize=(10.0,8.0))
+
+    # loop over individual bases, to make separate plots for each base
+    for v, nt1_seq in enumerate(base_seq_list):
+
+        ax = fig.add_subplot(2, 2, v+1)
+
+        # accumulate data specific to this base
+        zvalues = []
+
+        # loop over pairs, finding those with the desired base and interaction
+        for pair,datapoint in pair_to_data.items():
+
+            if not datapoint['nt1_seq'] == nt1_seq:
+                continue
+
+            if not 'sOinteraction' in datapoint:
+                continue
+
+            if abs(datapoint['sOz']) < 2:
+                continue
+
+            if datapoint['sOinteraction'] in interaction_list:
+                if not "near" in datapoint['sOring']:
+                    zvalues.append(abs(datapoint['sOz']))
+
+        # plot histogram of z values for this base
+        bins = [2.7+0.05*k for k in range(0,21)]
+        plt.hist(zvalues,bins=bins)
+        ax.set_title('Base %s with %s true and near sO interactions' % (nt1_seq,len(zvalues)))
+
+        print("Plotted %d points for %s" % (len(zvalues),nt1_seq))
+
+    figManager = plt.get_current_fig_manager()
+    figManager.full_screen_toggle()
+    figure_save_file = outputNAPairwiseInteractions + "sO_z_histogram_%d" % len(all_PDB_ids)
+    plt.savefig(figure_save_file+".png")
+    plt.savefig(figure_save_file+".pdf")
+    plt.close()
 
