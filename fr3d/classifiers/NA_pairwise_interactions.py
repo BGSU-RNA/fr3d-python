@@ -88,7 +88,7 @@ def myTimer(state,data={}):
         data[currentState] += time() - data["lastTime"]
 
     if state == "summary":
-        total = 0.0
+        total = 0.000000000001
         for state in data["allStates"]:
             if not state == "lastTime" and not state == "currentState":
                 total += data[state]
@@ -164,8 +164,10 @@ def build_atom_to_unit_part_list():
 
 
 def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
-    """Builds cubes with side length screen_distance_cutoff
+    """
+    Builds cubes with side length screen_distance_cutoff
     using nt_reference as the point for each nucleotide.
+    Cubes are named by a rounded value of x,y,z and by model.
     """
 
     # build a set of cubes and record which bases are in which cube
@@ -180,7 +182,8 @@ def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
             x = floor(center[0]/screen_distance_cutoff)
             y = floor(center[1]/screen_distance_cutoff)
             z = floor(center[2]/screen_distance_cutoff)
-            key = "%d,%d,%d" % (x,y,z)
+            model = base.model
+            key = "%d,%d,%d,%s" % (x,y,z,model)
             if key in baseCubeList:
                 baseCubeList[key].append(base)
             else:
@@ -189,7 +192,7 @@ def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
                 for a in [-1,0,1]:
                     for b in [-1,0,1]:
                         for c in [-1,0,1]:
-                            k = "%d,%d,%d" % (x+a,y+b,z+c)
+                            k = "%d,%d,%d,%s" % (x+a,y+b,z+c,model)
                             baseCubeNeighbors[key].append(k)
 
     return baseCubeList, baseCubeNeighbors
@@ -231,10 +234,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
-    for nt1key in baseCubeList:                                # key to first cube
-        for nt2key in baseCubeNeighbors[nt1key]:               # key to each potential neighboring cube, including the first
-            if nt2key in baseCubeList:                         # if this cube was actually made
-                for nt1 in baseCubeList[nt1key]:               # first nt of a potential pair
+    for nt1key in baseCubeList:                         # key to first cube
+        for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
+            if nt2key in baseCubeList:                  # if this cube was actually made
+                for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
@@ -346,8 +349,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 pair_to_interaction[unit_id_pair] = inter
                                 interaction_to_pair_list[inter].append(unit_id_pair)
 
-                                # TODO this should also be done for near interactions
+
+                                print(datapoint['url'])
+
+
                                 if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
+                                    pair_to_interaction[(nt2.unit_id(),nt1.unit_id())] = reverse_edges(inter)
+
+                                if (interaction[0] == "n" and interaction[1] in ["c","t"]) or interaction in ["ns33","ns35","ns53","ns55"]:
                                     pair_to_interaction[(nt2.unit_id(),nt1.unit_id())] = reverse_edges(inter)
 
                         pair_to_data[unit_id_pair] = datapoint
@@ -587,8 +596,9 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
     Does one of the backbone oxygens of nt2 stack inside a ring on the base of nt1?
     '''
 
-    true_z_cutoff = 3.5
+    true_z_cutoff = 3.3
     near_z_cutoff = 3.6
+    outside_z_cutoff = (true_z_cutoff + near_z_cutoff)/2
 
     interaction = ""
 
@@ -709,7 +719,7 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
             nearring5 = False
             nearring6 = False
 
-            if abs(z) < true_z_cutoff:
+            if abs(z) < outside_z_cutoff:
                 if parent1 == 'A' or parent1 == 'DA':
                     if -1.302671*x + -0.512161*y + -0.512114 > 0:  # Left of C4-C5
                         if -0.014382*x + -1.379291*y +  1.072053 > 0:  # Within  0.500000 Angstroms of being left of C5-N7
@@ -886,9 +896,9 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                     zmin = z
                     oxygenmin = oxygen
                     if nearring5:
-                        ringmin = "ring5"
+                        ringmin = "near_ring5"
                     else:
-                        ringmin = "ring6"
+                        ringmin = "near_ring6"
 
         if near_found:
             if zmin > 0:
@@ -1443,23 +1453,13 @@ PDB_list = ['3BT7']
 PDB_list = ['5I4A']
 PDB_list = ['6A2H']
 PDB_list = ['3JB9']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
-version = "_3.72_3.0"
 PDB_list = ['1OCT']
 PDB_list = ['4v9fFH.pdb']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
-version = "_3.48_2.5"
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
-version = "_3.74_4.0"
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/3.0A/csv']
-version = "_3.48_3.0"
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
 PDB_list = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
 PDB_list = ['4V51','4V9K']
 PDB_list = ['6WJR']
 PDB_list = ['6TPQ']
 PDB_list = ['4KTG']
-version = "_3.160_2.5"
 PDB_list = ['5KCR']
 PDB_list = ['7ECF']  # DNA quadruplex
 PDB_list = ['4TNA']
@@ -1467,12 +1467,13 @@ PDB_list = ['5J7L']
 PDB_list = ['4V9F','5J7L','4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4ARC']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/all/csv']
 PDB_list = ['4V9F','6ZMI','7K00']
 
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/2.0A/csv']
 PDB_list = ['4V9F']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
+PDB_list = ['2N1Q']
+
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
