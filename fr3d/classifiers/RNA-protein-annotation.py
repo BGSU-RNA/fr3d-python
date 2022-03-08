@@ -419,7 +419,7 @@ def get_structure(filename):
         """All RNA bases are placed in the standard orientation.
         Rotation matrix is calculated for each base."""
 
-        structure.infer_hydrogens()  # add hydrogens to RNA bases and amino acids
+        structure.infer_amino_acid_hydrogens()  # add hydrogens to amino acids
 
 #        pickle.dump(structure,open(filename+".pickle","wb"))  # larger file sizes than .cif ... not sure why
 
