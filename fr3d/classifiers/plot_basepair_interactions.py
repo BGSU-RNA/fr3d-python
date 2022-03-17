@@ -17,12 +17,9 @@ if sys.version_info[0] < 3:
 else:
     from urllib.request import urlretrieve as urlretrieve
 
-from fr3d.definitions import RNAconnections
-from fr3d.definitions import NAbasecoordinates
-from fr3d.definitions import NAbasecolor
-
 from class_limits import nt_nt_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
+from draw_residues import draw_base
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -236,43 +233,6 @@ def print_datapoint(datapoint):
 
     return None
 
-def draw_base(base_seq,dimensions,ax):
-    """
-    Connects atoms to draw one base in the specified number of dimensions
-    """
-
-    new_base_x = []
-    new_base_y = []
-    new_base_z = []
-
-    for atomname in RNAconnections[base_seq]:
-        coord_base= NAbasecoordinates[base_seq][atomname]
-        new_base_x.append(coord_base[0])
-        new_base_y.append(coord_base[1])
-        new_base_z.append(coord_base[2])
-
-    #print(new_base_x)
-
-    if dimensions == 2:
-        ax.plot(new_base_x, new_base_y, color=NAbasecolor[base_seq], linewidth=2.0)
-    else:
-        ax.plot(new_base_x, new_base_y, new_base_z, color=NAbasecolor[base_seq], linewidth=2.0)
-
-    return
-
-    """
-    from fr3d.definitions import Ribophos_connect
-
-    for atomname in Ribophos_connect[base_seq]:
-        back_base=[]
-        back_base= basecoord_list[atomname]
-        back_base_x.append(back_base[0])
-        back_base_y.append(back_base[1])
-        back_base_z.append(back_base[2])
-    base_lines= ax.plot(back_base_x, back_base_y, back_base_z, label= 'Base')
-    plt.setp(base_lines, 'color', 'g', 'linewidth', 1.0)
-    #ax.text(9, 1, 1, base_residue)
-    """
 
 def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
 
@@ -400,6 +360,7 @@ if __name__=="__main__":
 
     pair_to_data = defaultdict(dict)
 
+    # load output files from NA_pairwise_interactions
     for PDB in all_PDB_ids:
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
         #print("Reading %s" % pair_to_data_file)

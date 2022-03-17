@@ -208,7 +208,7 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
         R1 = np.dot(np.transpose(rotations1[1]),rotations1[0])  # rotation from nt 0 to nt1 of 1st motif
         R2 = np.dot(np.transpose(rotations2[0]),rotations2[1])  # rotation from nt 0 to nt1 of 2nd motif
 
-        rot1 = np.dot(R1,R2)                                    #
+        rot1 = np.dot(R1,R2)
         ang1 = angle_of_rotation(rot1)
 
         rot2 = np.dot(np.transpose(R1),np.transpose(R2))

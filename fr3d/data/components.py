@@ -6,8 +6,9 @@ from fr3d.geometry.superpositions import besttransformation
 from fr3d.geometry import angleofrotation as angrot
 import numpy as np
 import sys
-NHBondLength=1
 from fr3d.unit_ids import encode
+
+NHBondLength=1
 
 def unit_vector(v):
     return v / np.linalg.norm(v)
@@ -110,7 +111,7 @@ class Component(EntitySelector):
 
     def __init__(self, atoms, pdb=None, model=None, type=None, chain=None,
                  symmetry=None, sequence=None, number=None, index=None,
-                 insertion_code=None, polymeric=None, alt_id=None, inferhydrogens=True):
+                 insertion_code=None, polymeric=None, alt_id=None):
         """Create a new Component.
 
         :atoms: The atoms this component is composed of.
@@ -141,8 +142,10 @@ class Component(EntitySelector):
         self.centers = AtomProxy(self._atoms)
 
         # add hydrogen atoms to standard bases and amino acids
-        if inferhydrogens:
-            self.infer_hydrogens()
+        self.infer_NA_hydrogens()
+
+        # do not routinely add hydrogen atoms to amino acids
+        # self.infer_amino_acid_hydrogens()
 
         # initialize centers again to include hydrogens
         self.centers = AtomProxy(self._atoms)
@@ -312,8 +315,9 @@ class Component(EntitySelector):
         """
 
 
-    def infer_hydrogens(self):
-        """Infer the coordinates of the hydrogen atoms of this component.
+    def infer_NA_hydrogens(self):
+        """
+        Infer the coordinates of the hydrogen atoms of this component.
         RNA and DNA work, and amino acids are being added.
         This code only adds hydrogens with their name, but the Atom entity
         does not have the full unit ID of the atom, unlike the heavy atoms
@@ -333,7 +337,21 @@ class Component(EntitySelector):
                                             y=newcoordinates[0, 1],
                                             z=newcoordinates[0, 2]))
 
-            elif self.sequence == "ALA":
+        except:
+                print("%s Adding hydrogens failed" % self.unit_id())
+
+
+    def infer_amino_acid_hydrogens(self):
+        """
+        Infer the coordinates of the hydrogen atoms of this component.
+        RNA and DNA work, and amino acids are being added.
+        This code only adds hydrogens with their name, but the Atom entity
+        does not have the full unit ID of the atom, unlike the heavy atoms
+        taken from the CIF file.
+        """
+        try:
+
+            if self.sequence == "ALA":
 
                 A1,A2 = pyramidal_hydrogens(self.centers["C"],self.centers["CA"],self.centers["CB"])
                 self._atoms.append(Atom(name="HA",x=A2[0],y=A2[1],z=A2[2]))
@@ -722,9 +740,7 @@ class Component(EntitySelector):
                          index=self.index,
                          insertion_code=self.insertion_code,
                          alt_id=self.alt_id,
-
                          polymeric=self.polymeric)
-        #comp.infer_hydrogens()
         return comp
 
     def translate_rotate(self, residue):

@@ -4,6 +4,7 @@
 
 from fr3d.definitions import NAbasecoordinates
 import math
+import numpy as np
 
 def generate_code(p1,p2,a1,a2,i,r=0):
 	"""
@@ -40,6 +41,61 @@ def iterate_over_atom_lists(atom_lists,r=0):
 			p2 = NAbasecoordinates[sequence][a2][0:2]
 			print(generate_code(p1,p2,a1,a2,i,r))
 
+def iterate_over_rings(atom_lists,r=0):
+	for sequence in sorted(atom_lists.keys()):
+		print(sequence)
+		atom_list = atom_lists[sequence]
+		seq = sequence.replace("5","").replace("6","")  # actual sequence
+		s = np.array([0.0,0.0])
+		for atom in atom_list:
+			s += NAbasecoordinates[seq][atom][0:2]
+		s = s / len(atom_list)         # center of ring
+		d2 = {}
+		for atom in atom_list:
+			p = NAbasecoordinates[seq][atom][0]
+			q = NAbasecoordinates[seq][atom][1]
+			d2[atom] = math.sqrt((p-s[0])**2 + (q-s[1])**2)  # distance squared
+			#print(atom, d2[atom])
+		m = max([d2[atom] for atom in d2])
+
+		# find coefficients of ellipse a(x-s[0])^2 + b(x-s[0])(y-s[0]) + (y-s[1])^2 - k = 0
+		# that best approximates the points
+		amin = 1.0
+		bmin = 0.0
+		kmin = m**2
+
+		minscore = 100
+		scoregap = 100
+		for i in range(0,100000):
+			a = amin + np.random.normal(0,0.01,1)
+			b = bmin + np.random.normal(0,0.01,1)
+			k = kmin + np.random.normal(0,0.01,1)
+			score = 0
+			for atom in atom_list:
+				p = NAbasecoordinates[seq][atom][0]
+				q = NAbasecoordinates[seq][atom][1]
+				score += abs((a*(p-s[0])**2 + b*(p-s[0])*(q-s[1]) + (q-s[1])**2 - k))
+			if score < minscore:
+				amin = a
+				bmin = b
+				kmin = k
+				scoregap = minscore - score
+				minscore = score
+				if i > 5000:
+					print('i=%5d a=%0.6f b=%0.6f k=%0.6f score=%0.6f' % (i,a,b,k,score))
+
+		a = amin
+		b = bmin
+		k = (math.sqrt(kmin)+r)**2  # push out by distance r
+		print('if %0.6f*(x-(%0.6f))**2 + %0.6f*(x-(%0.6f))*(y-(%0.6f)) + (y-(%0.6f))**2 < %0.6f:  # %s r=%0.1f' % (a,s[0],b,s[0],s[1],s[1],k,sequence,r))
+
+		print('if nt1_seq == "%s":' % seq)
+		print('    for i in range(0,1000):       # %s' % sequence)
+		print('        t = 6.28318530718*i/1000')
+		print('        r = math.sqrt(%0.6f/(%0.6f*math.cos(t)**2+%0.6f*math.cos(t)*math.sin(t)+math.sin(t)**2))' % (k,a,b))
+		print('        x.append(%0.6f + r*math.cos(t))' % s[0])
+		print('        y.append(%0.6f + r*math.sin(t))' % s[1])
+
 ring_atom_lists = {}
 ring_atom_lists['A'] = ['C4','C5','N7','C8','N9','C4','N3','C2','N1','C6','C5']
 ring_atom_lists['C'] = ['N1','C2','N3','C4','C5','C6','N1']
@@ -47,9 +103,20 @@ ring_atom_lists['G'] = ['C4','C5','N7','C8','N9','C4','N3','C2','N1','C6','C5']
 ring_atom_lists['DT'] = ['N1','C2','N3','C4','C5','C6','N1']
 ring_atom_lists['U'] = ['N1','C2','N3','C4','C5','C6','N1']
 
+ring_lists = {}
+ring_lists['A6'] = ['C4','N3','C2','N1','C6','C5']
+ring_lists['A5'] = ['C4','C5','N7','C8','N9']
+ring_lists['C'] = ['N1','C2','N3','C4','C5','C6']
+ring_lists['G6'] = ['C4','N3','C2','N1','C6','C5']
+ring_lists['G5'] = ['C4','C5','N7','C8','N9']
+ring_lists['DT'] = ['N1','C2','N3','C4','C5','C6']
+ring_lists['U'] = ['N1','C2','N3','C4','C5','C6']
+
 print('Code to check that an (x,y) point is inside a base ring')
 iterate_over_atom_lists(ring_atom_lists,0)
 
 print('Code to check that an (x,y) point is close to being inside a base ring')
-iterate_over_atom_lists(ring_atom_lists,0.5)
+iterate_over_atom_lists(ring_atom_lists,0.4)
 
+print('Code to check that an (x,y) point is close to the center of a ring')
+iterate_over_rings(ring_lists,0.3)

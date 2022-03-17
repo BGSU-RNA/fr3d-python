@@ -62,12 +62,19 @@ class Structure(object):
         for residue in self._residues:
             residue.calculate_rotation_matrix()
 
-    def infer_hydrogens(self):
+    def infer_NA_hydrogens(self):
         """ Infers hydrogen atoms for all residues.
         """
 
         for residue in self._residues:
-            residue.infer_hydrogens()
+            residue.infer_NA_hydrogens()
+
+    def infer_amino_acid_hydrogens(self):
+        """ Infers hydrogen atoms for all residues.
+        """
+
+        for residue in self._residues:
+            residue.infer_amino_acid_hydrogens()
 
     def residue(self, unit_id):
         """Get a component by unit id or index. If there is no component at the

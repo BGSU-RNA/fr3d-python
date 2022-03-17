@@ -93,7 +93,7 @@ def myTimer(state,data={}):
         data[currentState] += time() - data["lastTime"]
 
     if state == "summary":
-        total = 0.0
+        total = 0.000000000001
         for state in data["allStates"]:
             if not state == "lastTime" and not state == "currentState":
                 total += data[state]
@@ -136,8 +136,10 @@ def get_structure(filename,PDB):
     with open(filename, 'rb') as raw:
         print("  Loading " + filename)
         structure = Cif(raw).structure()
-        """All RNA bases are placed in the standard orientation.
-        Rotation matrix is calculated for each base."""
+        """
+        Rotation matrix is calculated for each base.
+        Hydrogens are not added automatically.
+        """
 
         return structure
 
@@ -169,8 +171,10 @@ def build_atom_to_unit_part_list():
 
 
 def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
-    """Builds cubes with side length screen_distance_cutoff
+    """
+    Builds cubes with side length screen_distance_cutoff
     using nt_reference as the point for each nucleotide.
+    Cubes are named by a rounded value of x,y,z and by model.
     """
 
     # build a set of cubes and record which bases are in which cube
@@ -185,7 +189,8 @@ def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
             x = floor(center[0]/screen_distance_cutoff)
             y = floor(center[1]/screen_distance_cutoff)
             z = floor(center[2]/screen_distance_cutoff)
-            key = "%d,%d,%d" % (x,y,z)
+            model = base.model
+            key = "%d,%d,%d,%s" % (x,y,z,model)
             if key in baseCubeList:
                 baseCubeList[key].append(base)
             else:
@@ -194,7 +199,7 @@ def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
                 for a in [-1,0,1]:
                     for b in [-1,0,1]:
                         for c in [-1,0,1]:
-                            k = "%d,%d,%d" % (x+a,y+b,z+c)
+                            k = "%d,%d,%d,%s" % (x+a,y+b,z+c,model)
                             baseCubeNeighbors[key].append(k)
 
     return baseCubeList, baseCubeNeighbors
@@ -207,8 +212,6 @@ def reverse_edges(inter):
     else:
         rev = inter[0] + inter[2] + inter[1] + inter[3:]
 
-    #print("reversed %s and got %s" % (inter,rev))
-
     return rev
 
 
@@ -219,38 +222,33 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     screening distances between them, then annotating interactions
     """
 
-
-    get_datapoint = True           # collect data about each pair to pass back
-
     count_pair = 0
 
-    pair_to_interaction = {}       # note:  this will need to return a list, not a text string,
-                                   # because one pair of nucleotides could make more than one interaction
-    interaction_to_pair_list = defaultdict(list)
+    pair_to_interaction = defaultdict(list)      # each pair can make more than one interaction
+    interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
 
-    pair_to_data = defaultdict(dict)
-
-    list_nt_nt = []
-    contact_list = []
-    output = []
+    get_datapoint = True                         # collect data about each pair to pass back
+    pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
-    for nt1key in baseCubeList:                                # key to first cube
-        for nt2key in baseCubeNeighbors[nt1key]:               # key to each potential neighboring cube, including the first
-            if nt2key in baseCubeList:                         # if this cube was actually made
-                for nt1 in baseCubeList[nt1key]:               # first nt of a potential pair
+    for nt1key in baseCubeList:                         # key to first cube
+        for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
+            if nt2key in baseCubeList:                  # if this cube was actually made
+                for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
                         continue
 
-                    parent1 = get_parent(nt1.sequence)
+                    parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
                     gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
 
                     if len(gly1) < 3:
                         print("  Missing glycosidic atom for %s" % nt1.unit_id())
                         continue
+
+                    number1 = nt1.number                 # nucleotide number
 
                     for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
                         if len(nt2.centers["base"]) < 3:
@@ -266,6 +264,17 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                            displacement[1] > center_center_distance_cutoff or \
                            displacement[2] > center_center_distance_cutoff:
                             continue
+
+                        # avoid comparing alternate coordinates of the same nucleotide
+                        # check in the order most likely to terminate the fastest
+                        if number1 == nt2.number:
+                            if nt1.sequence == nt2.sequence:
+                                if nt1.chain == nt2.chain:
+                                    if nt1.symmetry == nt2.symmetry:
+                                        if nt1.insertion_code == nt2.insertion_code:
+                                            if nt1.alt_id != nt2.alt_id:
+                                                #print("Skipping pair of alternate coordinates", (nt1.unit_id(),nt2.unit_id()))
+                                                continue
 
                         # calculate actual center-center distance, screen
                         center_center_distance = np.linalg.norm(displacement)
@@ -284,6 +293,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 #                        print("  Checking for an interaction between %-18s and %-18s center-center distance %7.4f" % (nt1.unit_id(),nt2.unit_id(),center_center_distance))
 
                         unit_id_pair = (nt1.unit_id(),nt2.unit_id())  # tuple for these nucleotides in this order
+                        reversed_pair = (nt2.unit_id(),nt1.unit_id())
 
                         parent2 = get_parent(nt2.sequence)
                         parent_pair = parent1 + "," + parent2
@@ -301,11 +311,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         # check base-oxygen stack
                         timerData = myTimer("Check base oxygen stack",timerData)
-                        interaction, datapoint = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
+                        interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
 
                         if len(interaction) > 0:
-                            pair_to_interaction[unit_id_pair] = interaction  # fragile, only stores one interaction per pair
+                            interaction += "_exp"
+                            interaction_reversed += "_exp"
+                            pair_to_interaction[unit_id_pair].append(interaction)
                             interaction_to_pair_list[interaction].append(unit_id_pair)
+                            interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                             max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
                         # check coplanar and basepairing for bases in specific orders
@@ -350,12 +363,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 # labeling them as such makes it possible to compare to previous ones
                                 inter += "_exp"
 
-                                pair_to_interaction[unit_id_pair] = inter
+                                pair_to_interaction[unit_id_pair].append(inter)
                                 interaction_to_pair_list[inter].append(unit_id_pair)
 
-                                # TODO this should also be done for near interactions
-                                if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
-                                    pair_to_interaction[(nt2.unit_id(),nt1.unit_id())] = reverse_edges(inter)
+                                # record certain interactions in reversed direction as well
+
+                                if inter[0] in ["c","t","s"] or inter[1] in ["c","t","s"]:
+                                    pair_to_interaction[reversed_pair].append(reverse_edges(inter))
 
                         pair_to_data[unit_id_pair] = datapoint
 
@@ -596,8 +610,10 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
 
     true_z_cutoff = 3.5
     near_z_cutoff = 3.6
+    outside_z_cutoff = (true_z_cutoff + near_z_cutoff)/2
 
     interaction = ""
+    interaction_reversed = ""
 
     oxygens = ["O2'","O3'","O4'","O5'","OP1","OP2"]
     oxygen_points = []  # list of translated rotated points
@@ -698,14 +714,18 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
     if true_found:  # over base ring and z value is OK
         if zmin > 0:
             interaction = "s3" + oxygenmin
+            interaction_reversed = "s" + oxygenmin + "3"
         else:
             interaction = "s5" + oxygenmin
+            interaction_reversed = "s" + oxygenmin + "5"
 
     elif near_found:  # over a base ring, but z value too large for true
         if zmin > 0:
             interaction = "ns3" + oxygenmin
+            interaction_reversed = "ns" + oxygenmin + "3"
         else:
             interaction = "ns5" + oxygenmin
+            interaction_reversed = "ns" + oxygenmin + "5"
 
     else:            # not over a base ring, but maybe close enough
 
@@ -716,7 +736,8 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
             nearring5 = False
             nearring6 = False
 
-            if abs(z) < true_z_cutoff:
+            """
+            if abs(z) < outside_z_cutoff:
                 if parent1 == 'A' or parent1 == 'DA':
                     if -1.302671*x + -0.512161*y + -0.512114 > 0:  # Left of C4-C5
                         if -0.014382*x + -1.379291*y +  1.072053 > 0:  # Within  0.500000 Angstroms of being left of C5-N7
@@ -769,62 +790,98 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                                     if  1.352820*x +  0.018369*y +  2.726141 > 0:  # Within  0.500000 Angstroms of being left of C5-C6
                                         if  0.709695*x +  1.177761*y +  2.702815 > 0:  # Within  0.500000 Angstroms of being left of C6-N1
                                             nearring6 = True
-
             """
+            # check ellipses only
             if abs(z) < true_z_cutoff:
                 if parent1 == 'A' or parent1 == 'DA':
                     if -1.302671*x + -0.512161*y + -0.512114 > 0:  # Left of C4-C5
-                        if -0.014382*x + -1.379291*y +  0.934116 > 0:  # Within  0.400000 Angstroms of being left of C5-N7
-                            if  1.286593*x + -0.316949*y +  3.047381 > 0:  # Within  0.400000 Angstroms of being left of N7-C8
-                                if  0.833587*x +  1.089911*y +  3.461823 > 0:  # Within  0.400000 Angstroms of being left of C8-N9
-                                    if -0.803127*x +  1.118490*y +  1.698266 > 0:  # Within  0.400000 Angstroms of being left of N9-C4
-                                        nearring5 = True
+                        if 1.033454*(x-(-1.138126))**2 + 0.143656*(x-(-1.138126))*(y-(-0.650781)) + (y-(-0.650781))**2 < 2.163590:  # A5 r=0.3
+                            nearring5 = True
                     else:
-                        if  0.363524*x +  1.290539*y +  1.850003 > 0:  # Within  0.400000 Angstroms of being left of C4-N3
-                            if -1.076359*x +  0.793555*y +  3.030628 > 0:  # Within  0.400000 Angstroms of being left of N3-C2
-                                if -1.308429*x + -0.337740*y +  3.174043 > 0:  # Within  0.400000 Angstroms of being left of C2-N1
-                                    if -0.319116*x + -1.301200*y +  2.398333 > 0:  # Within  0.400000 Angstroms of being left of N1-C6
-                                        if  1.037709*x + -0.957315*y +  1.358356 > 0:  # Within  0.400000 Angstroms of being left of C6-C5
-                                            nearring6 = True
+                        if 1.001608*(x-(0.850305))**2 + 0.169100*(x-(0.850305))*(y-(-0.017921)) + (y-(-0.017921))**2 < 2.766745:  # A6 r=0.3
+                            nearring6 = True
                 elif parent1 == 'C' or parent1 == 'DC':
-                    if -0.599253*x +  1.289335*y +  2.254778 > 0:  # Within  0.400000 Angstroms of being left of N1-C2
-                        if -1.378522*x +  0.022802*y +  1.824412 > 0:  # Within  0.400000 Angstroms of being left of C2-N3
-                            if -0.676851*x + -1.128767*y +  1.713684 > 0:  # Within  0.400000 Angstroms of being left of N3-C4
-                                if  0.596389*x + -1.312333*y +  2.229696 > 0:  # Within  0.400000 Angstroms of being left of C4-C5
-                                    if  1.359882*x + -0.033090*y +  2.615895 > 0:  # Within  0.400000 Angstroms of being left of C5-C6
-                                        if  0.698355*x +  1.162053*y +  2.533245 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
-                                            nearring6 = True
+                    if 0.867183*(x-(-0.298275))**2 + 0.040055*(x-(-0.298275))*(y-(-0.153209)) + (y-(-0.153209))**2 < 2.652492:  # C r=0.3
+                        nearring6 = True
                 elif parent1 == 'G' or parent1 == 'DG':
                     if -1.306197*x + -0.492373*y + -0.896488 > 0:  # Left of C4-C5
-                        if -0.023230*x + -1.376606*y +  1.061418 > 0:  # Within  0.400000 Angstroms of being left of C5-N7
-                            if  1.278249*x + -0.337248*y +  3.488941 > 0:  # Within  0.400000 Angstroms of being left of N7-C8
-                                if  0.841883*x +  1.088640*y +  3.640461 > 0:  # Within  0.400000 Angstroms of being left of C8-N9
-                                    if -0.790705*x +  1.117587*y +  1.308988 > 0:  # Within  0.400000 Angstroms of being left of N9-C4
-                                        nearring5 = True
+                        if 1.032607*(x-(-1.476126))**2 + 0.129895*(x-(-1.476126))*(y-(-0.541964)) + (y-(-0.541964))**2 < 2.157145:  # G5 r=0.3
+                            nearring5 = True
                     else:
-                        if  0.449709*x +  1.286231*y +  1.882380 > 0:  # Within  0.400000 Angstroms of being left of C4-N3
-                            if -0.992445*x +  0.855594*y +  2.637045 > 0:  # Within  0.400000 Angstroms of being left of N3-C2
-                                if -1.324604*x + -0.362005*y +  2.800178 > 0:  # Within  0.400000 Angstroms of being left of C2-N1
-                                    if -0.533023*x + -1.330285*y +  2.599839 > 0:  # Within  0.400000 Angstroms of being left of N1-C6
-                                        if  1.094166*x + -0.941908*y +  1.849906 > 0:  # Within  0.400000 Angstroms of being left of C6-C5
-                                            nearring6 = True
+                        if 1.082495*(x-(0.521747))**2 + 0.260413*(x-(0.521747))*(y-(0.023305)) + (y-(0.023305))**2 < 2.920747:  # G6 r=0.3
+                            nearring6 = True
                 elif parent1 == 'DT':
-                    if -0.675137*x +  1.198579*y +  2.604225 > 0:  # Within  0.400000 Angstroms of being left of N1-C2
-                        if -1.365448*x + -0.109817*y +  2.181667 > 0:  # Within  0.400000 Angstroms of being left of C2-N3
-                            if -0.742906*x + -1.165341*y +  1.851614 > 0:  # Within  0.400000 Angstroms of being left of N3-C4
-                                if  0.767749*x + -1.221287*y +  1.936161 > 0:  # Within  0.400000 Angstroms of being left of C4-C5
-                                    if  1.338191*x +  0.092630*y +  2.137070 > 0:  # Within  0.400000 Angstroms of being left of C5-C6
-                                        if  0.677551*x +  1.205236*y +  2.512771 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
-                                            nearring6 = True
+                    if 0.959551*(x-(0.029169))**2 + 0.128151*(x-(0.029169))*(y-(-0.304375)) + (y-(-0.304375))**2 < 2.766276:  # DT r=0.3
+                        nearring6 = True
                 elif parent1 == 'U':
-                    if -0.589251*x +  1.260286*y +  2.272756 > 0:  # Within  0.400000 Angstroms of being left of N1-C2
-                        if -1.384641*x + -0.064970*y +  1.787427 > 0:  # Within  0.400000 Angstroms of being left of C2-N3
-                            if -0.834465*x + -1.135313*y +  1.810304 > 0:  # Within  0.400000 Angstroms of being left of N3-C4
-                                if  0.745842*x + -1.256133*y +  2.408409 > 0:  # Within  0.400000 Angstroms of being left of C4-C5
-                                    if  1.352820*x +  0.018369*y +  2.590846 > 0:  # Within  0.400000 Angstroms of being left of C5-C6
-                                        if  0.709695*x +  1.177761*y +  2.565310 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
-                                            nearring6 = True
+                    if 0.912164*(x-(-0.302801))**2 + 0.143626*(x-(-0.302801))*(y-(-0.157137)) + (y-(-0.157137))**2 < 2.752991:  # U r=0.3
+                        nearring6 = True
+
+            """ Check ellipses and lines
+            if abs(z) < true_z_cutoff:
+                if parent1 == 'A' or parent1 == 'DA':
+                    if -1.302671*x + -0.512161*y + -0.512114 > 0:  # Left of C4-C5
+                        if 1.033454*(x-(-1.138126))**2 + 0.143656*(x-(-1.138126))*(y-(-0.650781)) + (y-(-0.650781))**2 < 2.163590:  # A5 r=0.3
+                            if -0.014382*x + -1.379291*y +  0.934116 > 0:  # Within  0.400000 Angstroms of being left of C5-N7
+                                if  1.286593*x + -0.316949*y +  3.047381 > 0:  # Within  0.400000 Angstroms of being left of N7-C8
+                                    if  0.833587*x +  1.089911*y +  3.461823 > 0:  # Within  0.400000 Angstroms of being left of C8-N9
+                                        if -0.803127*x +  1.118490*y +  1.698266 > 0:  # Within  0.400000 Angstroms of being left of N9-C4
+                                            nearring5 = True
+                    else:
+                        if 1.001608*(x-(0.850305))**2 + 0.169100*(x-(0.850305))*(y-(-0.017921)) + (y-(-0.017921))**2 < 2.766745:  # A6 r=0.3
+                            if  0.363524*x +  1.290539*y +  1.850003 > 0:  # Within  0.400000 Angstroms of being left of C4-N3
+                                if -1.076359*x +  0.793555*y +  3.030628 > 0:  # Within  0.400000 Angstroms of being left of N3-C2
+                                    if -1.308429*x + -0.337740*y +  3.174043 > 0:  # Within  0.400000 Angstroms of being left of C2-N1
+                                        if -0.319116*x + -1.301200*y +  2.398333 > 0:  # Within  0.400000 Angstroms of being left of N1-C6
+                                            if  1.037709*x + -0.957315*y +  1.358356 > 0:  # Within  0.400000 Angstroms of being left of C6-C5
+                                                nearring6 = True
+                elif parent1 == 'C' or parent1 == 'DC':
+                    if 0.867183*(x-(-0.298275))**2 + 0.040055*(x-(-0.298275))*(y-(-0.153209)) + (y-(-0.153209))**2 < 2.652492:  # C r=0.3
+                        if -0.599253*x +  1.289335*y +  2.254778 > 0:  # Within  0.400000 Angstroms of being left of N1-C2
+                            if -1.378522*x +  0.022802*y +  1.824412 > 0:  # Within  0.400000 Angstroms of being left of C2-N3
+                                if -0.676851*x + -1.128767*y +  1.713684 > 0:  # Within  0.400000 Angstroms of being left of N3-C4
+                                    if  0.596389*x + -1.312333*y +  2.229696 > 0:  # Within  0.400000 Angstroms of being left of C4-C5
+                                        if  1.359882*x + -0.033090*y +  2.615895 > 0:  # Within  0.400000 Angstroms of being left of C5-C6
+                                            if  0.698355*x +  1.162053*y +  2.533245 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
+                                                nearring6 = True
+                elif parent1 == 'G' or parent1 == 'DG':
+                    if -1.306197*x + -0.492373*y + -0.896488 > 0:  # Left of C4-C5
+                        if 1.032607*(x-(-1.476126))**2 + 0.129895*(x-(-1.476126))*(y-(-0.541964)) + (y-(-0.541964))**2 < 2.157145:  # G5 r=0.3
+                            if -0.023230*x + -1.376606*y +  1.061418 > 0:  # Within  0.400000 Angstroms of being left of C5-N7
+                                if  1.278249*x + -0.337248*y +  3.488941 > 0:  # Within  0.400000 Angstroms of being left of N7-C8
+                                    if  0.841883*x +  1.088640*y +  3.640461 > 0:  # Within  0.400000 Angstroms of being left of C8-N9
+                                        if -0.790705*x +  1.117587*y +  1.308988 > 0:  # Within  0.400000 Angstroms of being left of N9-C4
+                                            nearring5 = True
+                    else:
+                        if 1.082495*(x-(0.521747))**2 + 0.260413*(x-(0.521747))*(y-(0.023305)) + (y-(0.023305))**2 < 2.920747:  # G6 r=0.3
+                            if  0.449709*x +  1.286231*y +  1.882380 > 0:  # Within  0.400000 Angstroms of being left of C4-N3
+                                if -0.992445*x +  0.855594*y +  2.637045 > 0:  # Within  0.400000 Angstroms of being left of N3-C2
+                                    if -1.324604*x + -0.362005*y +  2.800178 > 0:  # Within  0.400000 Angstroms of being left of C2-N1
+                                        if -0.533023*x + -1.330285*y +  2.599839 > 0:  # Within  0.400000 Angstroms of being left of N1-C6
+                                            if  1.094166*x + -0.941908*y +  1.849906 > 0:  # Within  0.400000 Angstroms of being left of C6-C5
+                                                nearring6 = True
+                elif parent1 == 'DT':
+                    if 0.959551*(x-(0.029169))**2 + 0.128151*(x-(0.029169))*(y-(-0.304375)) + (y-(-0.304375))**2 < 2.766276:  # DT r=0.3
+                        if -0.675137*x +  1.198579*y +  2.604225 > 0:  # Within  0.400000 Angstroms of being left of N1-C2
+                            if -1.365448*x + -0.109817*y +  2.181667 > 0:  # Within  0.400000 Angstroms of being left of C2-N3
+                                if -0.742906*x + -1.165341*y +  1.851614 > 0:  # Within  0.400000 Angstroms of being left of N3-C4
+                                    if  0.767749*x + -1.221287*y +  1.936161 > 0:  # Within  0.400000 Angstroms of being left of C4-C5
+                                        if  1.338191*x +  0.092630*y +  2.137070 > 0:  # Within  0.400000 Angstroms of being left of C5-C6
+                                            if  0.677551*x +  1.205236*y +  2.512771 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
+                                                nearring6 = True
+                elif parent1 == 'U':
+                    if 0.912164*(x-(-0.302801))**2 + 0.143626*(x-(-0.302801))*(y-(-0.157137)) + (y-(-0.157137))**2 < 2.752991:  # U r=0.3
+                        if -0.589251*x +  1.260286*y +  2.272756 > 0:  # Within  0.400000 Angstroms of being left of N1-C2
+                            if -1.384641*x + -0.064970*y +  1.787427 > 0:  # Within  0.400000 Angstroms of being left of C2-N3
+                                if -0.834465*x + -1.135313*y +  1.810304 > 0:  # Within  0.400000 Angstroms of being left of N3-C4
+                                    if  0.745842*x + -1.256133*y +  2.408409 > 0:  # Within  0.400000 Angstroms of being left of C4-C5
+                                        if  1.352820*x +  0.018369*y +  2.590846 > 0:  # Within  0.400000 Angstroms of being left of C5-C6
+                                            if  0.709695*x +  1.177761*y +  2.565310 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
+                                                nearring6 = True
+
             """
+
+
             """
             if abs(z) < near_z_cutoff:
                 if parent1 == 'A' or parent1 == 'DA':
@@ -893,15 +950,17 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                     zmin = z
                     oxygenmin = oxygen
                     if nearring5:
-                        ringmin = "ring5"
+                        ringmin = "near_ring5"
                     else:
-                        ringmin = "ring6"
+                        ringmin = "near_ring6"
 
         if near_found:
             if zmin > 0:
                 interaction = "ns3" + oxygenmin
+                interaction_reversed = "ns" + oxygenmin + "3"
             else:
                 interaction = "ns5" + oxygenmin
+                interaction_reversed = "ns" + oxygenmin + "5"
 
     if False and len(interaction) > 0:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,xmin,ymin,zmin,nt1.unit_id(),nt2.unit_id()))
@@ -915,7 +974,7 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
             datapoint['sOoxygen'] = oxygenmin
             datapoint['sOinteraction'] = interaction
 
-    return interaction, datapoint
+    return interaction, datapoint, interaction_reversed
 
 def check_base_base_stacking(nt1, nt2, pair_data):
     """Pass in two nucleotides. Base stacking."""
@@ -1645,23 +1704,13 @@ PDB_list = ['3BT7']
 PDB_list = ['5I4A']
 PDB_list = ['6A2H']
 PDB_list = ['3JB9']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.72/3.0A/csv']
-version = "_3.72_3.0"
 PDB_list = ['1OCT']
 PDB_list = ['4v9fFH.pdb']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/2.5A/csv']
-version = "_3.48_2.5"
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.74/4.0A/csv']
-version = "_3.74_4.0"
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.48/3.0A/csv']
-version = "_3.48_3.0"
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/view/NR_4.0_56726.45']
 PDB_list = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
 PDB_list = ['4V51','4V9K']
 PDB_list = ['6WJR']
 PDB_list = ['6TPQ']
 PDB_list = ['4KTG']
-version = "_3.160_2.5"
 PDB_list = ['5KCR']
 PDB_list = ['7ECF']  # DNA quadruplex
 PDB_list = ['4TNA']
@@ -1669,12 +1718,20 @@ PDB_list = ['5J7L']
 PDB_list = ['4V9F','5J7L','4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4ARC']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.201/all/csv']
 PDB_list = ['4V9F','6ZMI','7K00']
-
+PDB_list = ['2N1Q']
 PDB_list = ['4V9F']
+<<<<<<< HEAD
 #PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
 #PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
+=======
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/1.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
+
+>>>>>>> 0f7ea24fe8bc4be1641807f3126b43fa13061e6b
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
@@ -1699,6 +1756,8 @@ unit_data_path = "C:/Users/zirbel/Documents/GitHub/fr3d-python/data/units"
 annotate_entire_PDB_files = True
 
 if __name__=="__main__":
+
+    print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
 
     timerData = myTimer("start")
     lastwritetime = time()
@@ -1746,11 +1805,6 @@ if __name__=="__main__":
                         print("  Could not load structure %s" % PDB)
                         continue
 
-                # Hydrogens are already added when the structure is loaded
-                #timerData = myTimer("Inferring hydrogens",timerData)
-                #print("  Adding hydrogens")
-                #structure.infer_hydrogens()  # add hydrogens to NA bases and amino acids; slow
-
                 # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
                 # need to be able to identify each chain that is available
                 # write_unit_data_file(PDB,unit_data_path,structure)
@@ -1758,7 +1812,7 @@ if __name__=="__main__":
                 interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
 
                 # turn this off during development and testing
-                if False:
+                if True:
                     print("  Annotated these interactions: %s" % interaction_to_triple_list.keys())
                     pickle.dump(interaction_to_triple_list,open(outputDataFilePickle,"wb"),2)
 
