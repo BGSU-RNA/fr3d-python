@@ -17,7 +17,7 @@
     When fr3d is changed, python setup.py install
 """
 
-from urllib import request
+#from urllib import request
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
@@ -342,7 +342,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
                             interaction, datapoint = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
 
-                            check_base_base_stacking(nt1, nt2, pair_data)
+                            check_base_base_stacking(nt1, nt2, parent1, parent2, pair_data, datapoint)
 
                             if False and len(interaction) > 1:
                                 print("  Identified parents as %s and %s" % (parent1,parent2))
@@ -976,199 +976,166 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
 
     return interaction, datapoint, interaction_reversed
 
-def check_base_base_stacking(nt1, nt2, pair_data):
+def check_convex_hull_atoms(x,y,z, parent):
+    """Method to check and see if an atom that has been translated into standard orientation falls within the 
+    convex hull of a nucleotide base based on the type of nucleotide (A,C,G,U,DT). Numbers Generated From generate_location_checks.py and 
+    this method was developed for use in the check_base_base_stacking method.
+    Takes in two nucleotides coordinates alongside the nucleotide type.
+    Returns True if The points fall within the convex hull of the parent1 and returns False Otherwise."""
+    near_z_cutoff = 4.5
+    if abs(z) < near_z_cutoff:
+        if parent == 'G':
+            if -0.097781*x +  4.872516*y +  8.198766 > 0:  # Left of N9-H21
+                if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
+                    if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
+                        if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
+                            if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
+                                if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
+                                    if  0.463584*x +  2.101573*y +  4.272951 > 0:  # Left of H8-N9
+                                        return True
+        elif parent == 'A':
+                if -1.317924*x +  4.271447*y +  6.324636 > 0:  # Left of N9-H2
+                    if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
+                        if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
+                            if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
+                                if  0.447145*x +  2.100463*y +  4.326375 > 0:  # Left of H8-N9
+                                    return True
+        elif parent == 'C':
+            if  0.120783*x +  2.269450*y +  3.415154 > 0:  # Left of N1-O2
+                if -4.722985*x + -2.797420*y +  4.430226 > 0:  # Left of O2-H41
+                    if  0.190206*x +  1.731804*y + -5.226294 > 0:  # Left of H41-H42
+                        if  1.764901*x + -3.240606*y +  8.033629 > 0:  # Left of H42-H5
+                            if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
+                                #if  0.123632*x +  2.082733*y +  3.139042 > 0:  # Left of H6-N1
+                                    return True
+                                    
+        elif parent == 'U':
+            if  0.048394*x +  2.292490*y +  3.487594 > 0:  # Left of N1-O2
+                if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
+                    if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
+                        if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
+                            if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
+                                if  0.111836*x +  2.082780*y +  3.190713 > 0:  # Left of H6-N1
+                                    return True
+        elif parent == 'DT':
+            if -0.181184*x + -1.990901*y + -3.310280 > 0:  # Left of N1-H6
+                if -2.557421*x + -0.969085*y + -6.334958 > 0:  # Left of H6-H72
+                    if -0.871450*x +  0.459475*y + -3.002693 > 0:  # Left of H72-H71
+                        if -0.400402*x +  2.427972*y + -5.680923 > 0:  # Left of H71-O4
+                            if  1.526233*x +  1.897795*y + -4.450270 > 0:  # Left of O4-H3
+                                if  2.368105*x +  0.456021*y + -4.878252 > 0:  # Left of H3-O2
+                                    if  0.116119*x + -2.281277*y + -3.818305 > 0:  # Left of O2-N1
+                                        return True
+        else:
+            print("Unrecognized Base" + parent + "in function check_convex_hull_atoms")
+            return False
+
+def return_overlap(listOfAtoms, nt1, nt2, parent):
+    inside = False
+    min_z = 1000
+    for atom in listOfAtoms:
+        point = nt2.centers[atom]
+        if len(point) == 3: 
+            x,y,z = translate_rotate_point(nt1, point)
+            inside = check_convex_hull_atoms(x,y,z, parent)
+            if z < min_z:
+                min_z = z #returns the z coordinate if it passes its in the plane. Might want to make this return the nt type as well we'll see. 
+    if inside: 
+        #points.append([x,y,z,atom]) #later calculation
+        return True, [x,y,z, min_z]  
+    return False, [-100,-100,-100, -100]
+
+def create_modified_base_atoms_list(nt):
+    atomList = []
+    for atom in nt.atoms:
+        if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:
+            atomList.append(atom)
+    return atomList
+
+def check_base_base_stacking(nt1, nt2, parent1, parent2, pair_data,datapoint):
     """Pass in two nucleotides. Base stacking."""
-    true_z_cutoff = 3.5 #maybe this should be 3.4? 
-    near_z_cutoff = 3.6
+
+    true_z_cutoff = 4 #maybe this should be 3.4? 
     interaction = "" 
+
+    #Outermost Atoms  Of NT Bases Used to find the convex hull
+    convexHullAtoms = {}
+    convexHullAtoms['A'] = ['N9','H2','H61', 'H62','H8','N9'] #Based on Matlab Code
+    convexHullAtoms['C'] = ['N1','O2','H41','H42','H5','H6', 'N1']
+    convexHullAtoms['G'] = ['N9','H21','H22','H1','O6','N7','H8','N9'] 
+    convexHullAtoms['U'] = ['N1','O2','H3','O4','H5','H6','N1']
+    convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6', "C1'"]
+
+    #Create a list in case one of these is nucleotides is a modified nucleotide
+    if nt2.sequence in modified_nucleotides:
+        modifiednt2Atoms = create_modified_base_atoms_list(nt2)
+    if nt1.sequence in modified_nucleotides:
+        modifiednt1Atoms = create_modified_base_atoms_list(nt1)
+
     true_found = False
     near_found = False
-    #Outermost Atoms Of NT Bases
-    convexGAtoms = ['N2','N1','O6','N7','C8','N9','N3']
-    convexCAtoms = ['N4','C5','C6','N1','O2','N3']
-    convexAAtoms = ['N6','N1','C2','N3','N9','C8','N7']
-    convexUAtoms = ['O4','N3','O2','N1','C6','C5']
-    #Add Atoms for DT
 
-    nt1BaseZcenter = nt1.centers["base"][2] #Dont think I need this.
-    nt2BaseZcenter = nt2.centers["base"][2] #z coordinates for center base
-    #print(list(nt1.sequence)) #Sequence holds the nt type A C G or U 
-    x, y, z  = translate_rotate_point(nt1, nt2.centers["base"]) #Puts into standard orientation?
-    #nt1normal = normal_vector_calculation(nt1) #This function takes in an entire residue...Does this normal vector actually represent the normal vector from the base? There might be useful stuff in the check coplanar function
-    #nt2normal = normal_vector_calculation(nt2) #Dont think I actually need these either...
-    #print("Z" + str(z))
-    #draw_base(nt1,2)
-    #draw_base(nt2,2)
-    #print("NT2 Center Contents: ")
-    #print(nt2.centers)
-    #print("NT2 ATOMS:")
-    #print(nt2._atoms)
-    #for atom in nt2.atoms["base"]:
-    #    print(str(atom))
-    #print("PAIR DATA: ")
-    #print(pair_data)
-    #displ12 vector from origin to nt2 when standardized
-    #for atom in nt2.atoms()
-    #Check the pair data to see if nt1 and nt2 are coplanar. If they are not coplanar, they are not stacking. 
-    for atom in convexAAtoms:
-        x, y, z  = translate_rotate_point(nt1, nt2.centers[convexAAtoms]) #Puts into standard orientation?
-        print("I made it into for loop")
-        print(nt2.sequence)
-        print(atom)
-        print(z)
-        if abs(z) < near_z_cutoff:
-            if  nt1.sequence == 'A':
-                if  0.439603*x + -2.409029*y + -3.904243 > 0:  # Left of N3-N9
-                    if -0.833587*x + -1.089911*y + -2.912966 > 0:  # Left of N9-C8
-                            if -1.286593*x +  0.316949*y + -2.517358 > 0:  # Left of C8-N7
-                                    if -2.326854*x +  1.976066*y + -4.969193 > 0:  # Left of N7-N6
-                                            if  1.622643*x +  1.661740*y + -4.510171 > 0:  # Left of N6-N1
-                                                    if  1.308429*x +  0.337740*y + -2.633517 > 0:  # Left of N1-C2
-                                                            if  1.076359*x + -0.793555*y + -2.495722 > 0:  # Left of C2-N3
-                                                                print("INSIDE FOR LOOP IN SIDE END OF A ") 
-    if pair_data["coplanar"] == True:
-        #print("Nt1 and Nt2Are Coplanar")
-        garbage =3
-    else:
-        return None
-    #Checks ti see if the atoms from nt2 are within the convex hull of nt1     
-    if abs(z) < near_z_cutoff:
-        if  nt1.sequence == 'A':
-            if  0.439603*x + -2.409029*y + -3.904243 > 0:  # Left of N3-N9
-                if -0.833587*x + -1.089911*y + -2.912966 > 0:  # Left of N9-C8
-                        if -1.286593*x +  0.316949*y + -2.517358 > 0:  # Left of C8-N7
-                                if -2.326854*x +  1.976066*y + -4.969193 > 0:  # Left of N7-N6
-                                        if  1.622643*x +  1.661740*y + -4.510171 > 0:  # Left of N6-N1
-                                                if  1.308429*x +  0.337740*y + -2.633517 > 0:  # Left of N1-C2
-                                                        if  1.076359*x + -0.793555*y + -2.495722 > 0:  # Left of C2-N3
-                                                            print("A IM HERE") 
-        elif nt1.sequence == 'C':
-            if  2.031427*x +  1.030781*y + -2.400765 > 0:  # Left of N4-N3
-                    if  2.098558*x +  0.957313*y + -2.427068 > 0:  # Left of N3-O2
-                            if -0.120783*x + -2.269450*y + -3.415154 > 0:  # Left of O2-N1
-                                    if -0.698355*x + -1.162053*y + -1.990943 > 0:  # Left of N1-C6
-                                            if -1.359882*x +  0.033090*y + -2.071781 > 0:  # Left of C6-C5
-                                                    if -1.950965*x +  1.410319*y + -3.754099 > 0:  # Left of C5-N4
-                                                        something = 5
-        elif nt1.sequence == 'DT':
-            if  2.031505*x +  1.412190*y +  3.691439 > 0:  # Left of C7-C6
-                    if  0.677551*x +  1.205236*y +  1.959719 > 0:  # Left of C6-N1
-                            if -0.116119*x +  2.281277*y +  3.818305 > 0:  # Left of N1-O2
-                                    if -1.924466*x + -1.192515*y +  2.687361 > 0:  # Left of O2-N3
-                                            if -1.969872*x + -1.161301*y +  2.728760 > 0:  # Left of N3-O4
-                                                    if  1.301401*x + -2.544887*y +  5.949759 > 0:  # Left of O4-C7
-                                                        something = 5
-        elif nt1.sequence == 'G':
-            if  1.736168*x +  1.500421*y + -3.920978 > 0:  # Left of O6-N1
-                    if  1.594663*x +  1.698560*y + -3.904578 > 0:  # Left of N1-N2
-                            if  0.722386*x + -2.192149*y + -3.689399 > 0:  # Left of N2-N3
-                                    if  0.340996*x + -2.403818*y + -3.618345 > 0:  # Left of N3-N9
-                                            if -0.841883*x + -1.088640*y + -3.089984 > 0:  # Left of N9-C8
-                                                    if -1.278249*x +  0.337248*y + -2.960145 > 0:  # Left of C8-N7
-                                                            if -2.274081*x +  2.148378*y + -5.898397 > 0:  # Left of N7-O6
-                                                                something = 5
-        elif nt1.sequence == 'U':
-            if  1.957545*x + -1.373286*y +  3.733149 > 0:  # Left of O4-C5
-                    if  1.352820*x +  0.018369*y +  2.049668 > 0:  # Left of C5-C6
-                            if  0.709695*x +  1.177761*y +  2.015286 > 0:  # Left of C6-N1
-                                    if  0.048394*x +  2.292490*y +  3.487594 > 0:  # Left of N1-O2
-                                            if -2.022286*x + -1.097174*y +  2.261275 > 0:  # Left of O2-N3
-                                                    if -2.046168*x + -1.018160*y +  2.245721 > 0:  # Left of N3-O4"""
-                                                        something = 5
-    """Code to check that an (x,y) point is close to being inside a base ring
-    A
-        if  0.439603*x + -2.409029*y + -2.679838 > 0:  # Within  0.500000 Angstroms of being left of N3-N9
-                if -0.833587*x + -1.089911*y + -2.226895 > 0:  # Within  0.500000 Angstroms of being left of N9-C8
-                        if -1.286593*x +  0.316949*y + -1.854829 > 0:  # Within  0.500000 Angstroms of being left of C8-N7
-                                if -2.326854*x +  1.976066*y + -3.442834 > 0:  # Within  0.500000 Angstroms of being left of N7-N6
-                                        if  1.622643*x +  1.661740*y + -3.348884 > 0:  # Within  0.500000 Angstroms of being left of N6-N1
-                                                if  1.308429*x +  0.337740*y + -1.957859 > 0:  # Within  0.500000 Angstroms of being left of N1-C2
-                                                        if  1.076359*x + -0.793555*y + -1.827089 > 0:  # Within  0.500000 Angstroms of being left of C2-N3
-C
-        if  2.031427*x +  1.030781*y + -1.261774 > 0:  # Within  0.500000 Angstroms of being left of N4-N3
-                if  2.098558*x +  0.957313*y + -1.273769 > 0:  # Within  0.500000 Angstroms of being left of N3-O2
-                        if -0.120783*x + -2.269450*y + -2.278823 > 0:  # Within  0.500000 Angstroms of being left of O2-N1
-                                if -0.698355*x + -1.162053*y + -1.313067 > 0:  # Within  0.500000 Angstroms of being left of N1-C6
-                                        if -1.359882*x +  0.033090*y + -1.391639 > 0:  # Within  0.500000 Angstroms of being left of C6-C5
-                                                if -1.950965*x +  1.410319*y + -2.550431 > 0:  # Within  0.500000 Angstroms of being left of C5-N4
-DT
-        if  2.031505*x +  1.412190*y +  4.928502 > 0:  # Within  0.500000 Angstroms of being left of C7-C6
-                if  0.677551*x +  1.205236*y +  2.651034 > 0:  # Within  0.500000 Angstroms of being left of C6-N1
-                        if -0.116119*x +  2.281277*y +  4.960420 > 0:  # Within  0.500000 Angstroms of being left of N1-O2
-                                if -1.924466*x + -1.192515*y +  3.819357 > 0:  # Within  0.500000 Angstroms of being left of O2-N3
-                                        if -1.969872*x + -1.161301*y +  3.872112 > 0:  # Within  0.500000 Angstroms of being left of N3-O4
-                                                if  1.301401*x + -2.544887*y +  7.378928 > 0:  # Within  0.500000 Angstroms of being left of O4-C7
-G
-        if  1.736168*x +  1.500421*y + -2.773639 > 0:  # Within  0.500000 Angstroms of being left of O6-N1
-                if  1.594663*x +  1.698560*y + -2.739669 > 0:  # Within  0.500000 Angstroms of being left of N1-N2
-                        if  0.722386*x + -2.192149*y + -2.535345 > 0:  # Within  0.500000 Angstroms of being left of N2-N3
-                                if  0.340996*x + -2.403818*y + -2.404403 > 0:  # Within  0.500000 Angstroms of being left of N3-N9
-                                        if -0.841883*x + -1.088640*y + -2.401888 > 0:  # Within  0.500000 Angstroms of being left of N9-C8
-                                                if -1.278249*x +  0.337248*y + -2.299150 > 0:  # Within  0.500000 Angstroms of being left of C8-N7
-                                                        if -2.274081*x +  2.148378*y + -4.334190 > 0:  # Within  0.500000 Angstroms of being left of N7-O6
-U
-        if  1.957545*x + -1.373286*y +  4.928755 > 0:  # Within  0.500000 Angstroms of being left of O4-C5
-                if  1.352820*x +  0.018369*y +  2.726141 > 0:  # Within  0.500000 Angstroms of being left of C5-C6
-                        if  0.709695*x +  1.177761*y +  2.702815 > 0:  # Within  0.500000 Angstroms of being left of C6-N1
-                                if  0.048394*x +  2.292490*y +  4.634094 > 0:  # Within  0.500000 Angstroms of being left of N1-O2
-                                        if -2.022286*x + -1.097174*y +  3.411648 > 0:  # Within  0.500000 Angstroms of being left of O2-N3
-                                                if -2.046168*x + -1.018160*y +  3.388465 > 0:  # Within  0.500000 Angstroms of being left of N3-O4"""
-    #print("Normal Vector: " + str(nt1normal))
-    #print("Normal Vector NT2: " + str(nt2normal))
-    #angle = angle_between_vectors(nt1normal, nt2normal)
-    #print("ANGLE: " + str(angle))
+    #Variables to flag if an atom from nt2 was projected onto nt1 and to check if nt1 atoms project onto nt2
+    nt2on1=False
+    nt1on2=False
+    inside = False
+    inside2 = False
 
-    #Create a screen
+    #Set the list for the for loop to go through the atoms the convex hull of the type of atom. 
+    nt1ConvexHullAtomsList = convexHullAtoms[parent1] 
+    nt2ConvexHullAtomsList = convexHullAtoms[parent2]
 
-    distanceBetweenZs = abs(nt1BaseZcenter-nt2BaseZcenter) #should get distance from the z plane 
-    for atom in nt2._atoms:
-        x = atom.coordinates()[0]
-        y = atom.coordinates()[1]
-        if distanceBetweenZs < near_z_cutoff:
-            if atom == 'A' or atom == 'DA':
-               return 'A'
-            elif atom == 'C' or atom == 'DC':
-                return 'C'
-            elif atom == 'G' or atom == 'DG':
-               return 'U'                   
-            elif atom == 'U':
-                return 'UT'
-            elif atom == 'DT':
-                return 'DT'
+    #Returns true if an atom is projected inside the atom. Also returns the x,y,z coordinates of the nt inside and the minimum z value
+    nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
+    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2)
 
-    if distanceBetweenZs < near_z_cutoff:
-        s = 2 #Garbage. Should be used after logic for if point is in a plane.
-    elif distanceBetweenZs < true_z_cutoff:
-        s = 2 #Garbage. Should be used after logic for if point is in a plane.
-    else:
-        return None
+    #Gets the normal vector For later calculation
+    rotation_1_to_2 = np.matmul(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+    normal_Z = rotation_1_to_2[2,2]
+    datapoint['normal_Z'] = normal_Z
+    #check near stacking
+    if nt2on1 == True and nt1on2 == True:      
+        center_displ = np.subtract(nt1.centers["base"],nt2.centers["base"])
+        center_displ = center_displ / np.linalg.norm(center_displ)
 
-    #print("NT1 CENTER: " + str(nt1BaseZcenter))
-    #print("NT2 CENTER: " + str(nt2BaseZcenter)) #Z coordinate for nucleotide bases
+        #print("CENTER" + str(center_displ))
+        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and datapoint['normal_Z'] > 0.6:       
+            true_found = True
+        elif true_found == False and coords[3] > 1 and datapoint['normal_Z'] > 0.5 : #change to elif
+            near_found = True
 
-    #print("Atoms in nt1 : ")
-    #for atom in nt2._atoms:
-        #print("coordinates: ")
-       # print(atom.coordinates())
-       # print(atom.name)
-
-    """ Not using this yet but annotation for stacking on 3 prime face, stacking on 5 prime face, or near stack on 3, near stack on 5
-        Logic need added for the other one too
-    if true_found:
-        if zmin > 0:
-            interaction = "s3" 
-        else:
-            interaction = "s5" 
-
-    elif near_found:
-        if zmin > 0:
-            interaction = "ns3" 
-        else:
-            interaction = "ns5"
-    """
+        #Annotation generation
+        if true_found:
+            if coords[3] > 0 and coords2[3] > 0:
+                interaction = nt1.sequence + "s53" + nt2.sequence
+            elif coords[3] > 0 and coords2[3] < 0: 
+                interaction =  nt1.sequence + "s35" + nt2.sequence
+            elif coords[3] < 0 and coords2[3] < 0:
+                interaction =  nt1.sequence + "s55" + nt2.sequence
+            else:
+                interaction = nt1.sequence + "s33" + nt2.sequence
+        elif near_found:
+            if coords[3] > 0:
+                interaction = nt2.sequence + "ns35" + nt1.sequence
+            else: 
+                interaction =  nt2.sequence + "ns53" + nt1.sequence
 
 
-    return None
+
+    if len(interaction) > 0:
+        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
+
+    # if get_datapoint and len(interaction) > 0:
+    #     datapoint = {}
+    #     datapoint['x'] = x
+    #     datapoint['y'] = y
+    #     datapoint['z'] = z
+    #     datapoint['nt1_seq'] = nt1.sequence
+    #     datapoint['nt2_seq'] = nt2.sequence
+    #     datapoint['interaction'] = interaction
+    #     datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+    # else:
+    #     datapoint = []
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
@@ -1720,18 +1687,18 @@ PDB_list = ['4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['2N1Q']
-PDB_list = ['4V9F']
-<<<<<<< HEAD
+
+
 #PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
 #PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
-=======
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/1.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
-
->>>>>>> 0f7ea24fe8bc4be1641807f3126b43fa13061e6b
+PDB_list = ['4V9F']
+PDB_list = ['203D']
+PDB_list = ['7k00']
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
