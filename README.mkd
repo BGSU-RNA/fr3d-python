@@ -6,9 +6,9 @@
 ## An implementation of the FR3D program in python. 
 1. [Downloading PDBX](#download-and-install-pdbx)
 2. [Cloning FR3D-Python](#cloning-fr3d-python)
-3. Setup FR3D Python:
-	i. [Setup FR3D Python in Python 2.7](#to-setup-fr3d-using-python-2.7)
-	ii. [Setup FR3D Python in Python 3.x](#to-setup-fr3d-using-python-3.x)
+3. Setup FR3D Python:  
+	  i. [Setup FR3D Python in Python 2.7](#to-setup-fr3d-using-python-27)   
+	  ii. [Setup FR3D Python in Python 3.x](#to-setup-fr3d-using-python-3x)  
 4. [Running FR3D Python](#running-fr3d-python)
 5. [Notes](#notes)
 
