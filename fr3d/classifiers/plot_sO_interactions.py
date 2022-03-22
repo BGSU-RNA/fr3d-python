@@ -63,7 +63,7 @@ if __name__=="__main__":
     true_color = [0,0,0]  # black
     ring5_color = [0,1,1] # cyan
     ring6_color = [0,0,1] # blue
-    ring5_color = [0.2,0.2,0.2] # dark gray
+    ring5_color = [0,0,0] # dark gray
     ring6_color = [0,0,0] # black
     O4_color = [1,0,0]  # red
     O2_color = [0,1,1]  # cyan
@@ -75,10 +75,19 @@ if __name__=="__main__":
     plot_true_in_3D = False
 
     PDB_list = ['4V9F','7K00']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/1.5A/csv']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/1.5A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/2.0A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/2.5A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/3.0A/csv']
+    PDB_list = ['4V9F']
+
+    fields = PDB_list[0].split("/")
+    if len(fields) > 7:
+        release    = PDB_list[0].split("/")[6]
+        resolution = PDB_list[0].split("/")[7]
+    else:
+        release = ""
+        resolution = PDB_list[0]
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -86,6 +95,8 @@ if __name__=="__main__":
     print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
 
     pair_to_data = defaultdict(dict)
+
+    fileset = "_".join([release,resolution,str(len(all_PDB_ids))])
 
     # load output files from NA_pairwise_interactions
     for PDB in all_PDB_ids:
@@ -135,7 +146,7 @@ if __name__=="__main__":
 
                 if datapoint['sOinteraction'] in interaction_list:
 
-
+                    """
                     nearring5 = False
                     nearring6 = False
 
@@ -206,26 +217,23 @@ if __name__=="__main__":
                                                 if  0.709695*x +  1.177761*y +  2.565310 > 0:  # Within  0.400000 Angstroms of being left of C6-N1
                                                     nearring6 = True
 
-                    if nearring5 or nearring6:
+                    #if nearring5 or nearring6:
+                    """
 
-
-
-                    #if True:
+                    if True:
                         xvalues.append(datapoint['sOx'])
                         yvalues.append(datapoint['sOy'])
                         zvalues.append(datapoint['sOz'])
 
                         if datapoint['sOinteraction'].startswith("n"):
+                            colors2d.append(near_color)
                             colors3d.append(near_color)
                         else:
                             colors3d.append(true_color)
-
-                        if 'ring5' in datapoint['sOring']:
-                            colors2d.append(ring5_color)
-                        elif 'ring6' in datapoint['sOring']:
-                            colors2d.append(ring6_color)
-                        else:
-                            colors2d.append(near_color)
+                            if 'ring5' in datapoint['sOring']:
+                                colors2d.append(ring5_color)
+                            elif 'ring6' in datapoint['sOring']:
+                                colors2d.append(ring6_color)
 
                         if datapoint['sOoxygen'] == "O4'":
                             colorsoxy.append(O4_color)
@@ -345,7 +353,6 @@ if __name__=="__main__":
                         y.append(-0.157137 + r*math.sin(t))
                 """
 
-                """
                 # draw ellipses that are 0.3 Angstroms outside the ring
                 x = []
                 y = []
@@ -393,7 +400,6 @@ if __name__=="__main__":
                         x.append(-0.302801 + r*math.cos(t))
                         y.append(-0.157137 + r*math.sin(t))
                 ax.plot(x,y,color="green",zorder=2)
-                """
 
                 ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=markersize,zorder=3)
                 ax.set_title('Base %s with %s near sO interactions' % (nt1_seq,c))
@@ -423,9 +429,9 @@ if __name__=="__main__":
         figManager.full_screen_toggle()
 
         if "n" in interaction_list[0]:
-            figure_save_file = outputNAPairwiseInteractions + "sO_near_%d" % len(all_PDB_ids)
+            figure_save_file = outputNAPairwiseInteractions + "sO_%s_near_ellipse" % fileset
         else:
-            figure_save_file = outputNAPairwiseInteractions + "sO_true_%d" % len(all_PDB_ids)
+            figure_save_file = outputNAPairwiseInteractions + "sO_%s_true" % fileset
         plt.savefig(figure_save_file+".png")
         plt.savefig(figure_save_file+".pdf")
         plt.close()
@@ -471,7 +477,7 @@ if __name__=="__main__":
 
     figManager = plt.get_current_fig_manager()
     figManager.full_screen_toggle()
-    figure_save_file = outputNAPairwiseInteractions + "sO_z_histogram_%d" % len(all_PDB_ids)
+    figure_save_file = outputNAPairwiseInteractions + "sO_%s_z_histogram" % fileset
     plt.savefig(figure_save_file+".png")
     plt.savefig(figure_save_file+".pdf")
     plt.close()
