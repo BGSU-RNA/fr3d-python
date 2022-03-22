@@ -282,9 +282,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if center_center_distance < 2:
                             continue
 
-                        # screen for the same nucleotide with alternate coordinates?
-                        # There are very few of those, and they can be screened out in other places
-
 #                        print("  Checking for an interaction between %-18s and %-18s center-center distance %7.4f" % (nt1.unit_id(),nt2.unit_id(),center_center_distance))
 
                         unit_id_pair = (nt1.unit_id(),nt2.unit_id())  # tuple for these nucleotides in this order
@@ -293,6 +290,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         parent2 = get_parent(nt2.sequence)
                         parent_pair = parent1 + "," + parent2
 
+                        # store data for diagnostics, if requested
                         if get_datapoint:
                             datapoint = {}
                             datapoint['center_center_distance'] = center_center_distance
@@ -350,7 +348,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
 
-                                inter = interaction[0][0]
+                                inter = interaction[0]   # interaction, ignore subcategory
 
                                 # these interactions are currently experimental
                                 # labeling them as such makes it possible to compare to previous ones
@@ -1525,10 +1523,11 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
 
+from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 
-base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
 base_seq_list = ['A','U','C','G']      # for RNA
+base_seq_list = ['DA','DT','DC','DG']  # for DNA
 
 nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
