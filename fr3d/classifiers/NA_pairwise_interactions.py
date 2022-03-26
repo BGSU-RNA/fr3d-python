@@ -241,11 +241,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         print(nt1.centers["base"])
                         continue
 
-                    # test
-                    print(nt1.centers["glycosidic"],nt1.unit_id())
-
-
-
                     parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
                     gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
 
