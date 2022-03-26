@@ -241,6 +241,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         print(nt1.centers["base"])
                         continue
 
+                    # test
+                    print(nt1.centers["glycosidic"],nt1.unit_id())
+
+
+
                     parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
                     gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
 
@@ -1694,7 +1699,6 @@ PDB_list = ['6TPQ']
 PDB_list = ['4KTG']
 PDB_list = ['5KCR']
 PDB_list = ['7ECF']  # DNA quadruplex
-PDB_list = ['4TNA']
 PDB_list = ['5J7L']
 PDB_list = ['4V9F','5J7L','4ARC']
 PDB_list = ['4ARC']
@@ -1720,6 +1724,7 @@ PDB_list = ['7k00']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
 # PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['6CFJ']
+PDB_list = ['4TNA']
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
