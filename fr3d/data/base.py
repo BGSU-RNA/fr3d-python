@@ -3,7 +3,7 @@ on, such as Atoms and Components.
 
 """
 
-import collections as col
+import collections.abc as col
 import sys 
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter    # old name
