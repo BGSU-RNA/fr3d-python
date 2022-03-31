@@ -13,7 +13,7 @@ if sys.version_info[0] < 3:
     
 import numpy as np
 
-from pdbx.reader.PdbxParser import PdbxReader as Reader
+from pdbx import PdbxReader as Reader
 
 from fr3d.data import Atom
 from fr3d.data import Component
@@ -84,7 +84,7 @@ class Cif(object):
 
         if handle is None and data is None:
             raise ValueError("Must give either handle or data")
-        self.pdb = self.data.getName()
+        self.pdb = self.data.name
         self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
@@ -180,7 +180,7 @@ class Cif(object):
         :returns: The first structure in the cif file.
         """
 
-        pdb = self.data.getName()
+        pdb = self.data.name
         residues = self.__residues__(pdb)
         return Structure(list(residues), pdb=pdb)
 
@@ -218,7 +218,7 @@ class Cif(object):
         if isinstance(chain, (list, tuple, set)):
             chain_compare = ft.partial(op.contains, set(chain))
 
-        pdb = self.data.getName()
+        pdb = self.data.name
         mapping = coll.defaultdict(list)
         for residue in self.__residues__(pdb):
             if chain_compare(residue.chain):
@@ -407,7 +407,7 @@ class Cif(object):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
 
         index = atom['label_seq_id']
-        if index != '.':
+        if index and index != '.':
             index = int(index)
         else:
             index = None
@@ -456,7 +456,7 @@ class Cif(object):
 
     def has_table(self, name):
         block_name = re.sub('^_', '', name)
-        block = self.data.getObj(block_name)
+        block = self.data.get_object(block_name)
         return bool(block)
 
     def operators(self, asym_id):
@@ -486,7 +486,7 @@ class Cif(object):
 
     def __block__(self, name):
         block_name = re.sub('^_', '', name)
-        block = self.data.getObj(block_name)
+        block = self.data.get_object(block_name)
         if not block:
             raise MissingBlockException("Unknown block " + name)
         return block
@@ -509,11 +509,11 @@ class Table(object):
         self.block = block
         self.rows = rows
 
-        self.columns = self.block.getItemNameList()
+        self.columns = self.block.item_name_list
         self.columns = [re.sub('_.+\.', '', name) for name in self.columns]
 
         if self.rows is None:
-            length = self.block.getRowCount()
+            length = self.block.row_count
             if sys.version_info[0] < 3:
                 self.rows = [self.__row__(index) for index in xrange(length)]
             else:
@@ -540,7 +540,7 @@ class Table(object):
         to be ordered. The row will be a dict of the form { attribute: value }.
         Each attribute will have the name of the block stripped.
         """
-        return dict(list(zip(self.columns, self.block.getRow(number))))
+        return dict(list(zip(self.columns, self.block.row_list[number])))
 
     def __getattr__(self, name):
         """Get the column with the given name.
