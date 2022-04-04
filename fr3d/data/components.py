@@ -157,21 +157,19 @@ class Component(EntitySelector):
         if self.base_center is not None:
             self.centers.setcenter('base',self.base_center)
 
-        if self.sequence in ['A','G','DA','DG']:
-            self.centers.define('glycosidic',['N9'])
-        elif self.sequence in ['C','U','DC','DT']:
-            self.centers.define('glycosidic',['N1'])
-        elif self.sequence in defs.modified_nucleotides:
-            if defs.modified_nucleotides[self.sequence]['standard'] in ['A','G','DA','DG']:
+            if self.sequence in ['A','G','DA','DG']:
                 self.centers.define('glycosidic',['N9'])
-            elif defs.modified_nucleotides[self.sequence]['standard'] in ['C','U','DC','DT']:
+            elif self.sequence in ['C','U','DC','DT']:
                 self.centers.define('glycosidic',['N1'])
-        elif 'N9' in self.centers:
-            self.centers.define('glycosidic',['N9'])
-        elif 'N1' in self.centers:
-            self.centers.define('glycosidic',['N1'])
-        else:
-            self.centers.setcenter('glycosidic',None)
+            elif self.sequence in defs.modified_nucleotides:
+                if defs.modified_nucleotides[self.sequence]['standard'] in ['A','G','DA','DG']:
+                    self.centers.define('glycosidic',['N9'])
+                elif defs.modified_nucleotides[self.sequence]['standard'] in ['C','U','DC','DT']:
+                    self.centers.define('glycosidic',['N1'])
+            elif 'N9' in self.centers:
+                self.centers.define('glycosidic',['N9'])
+            elif 'N1' in self.centers:
+                self.centers.define('glycosidic',['N1'])
 
         if self.sequence in defs.nt_sugar:
             atoms = defs.nt_sugar[self.sequence]
