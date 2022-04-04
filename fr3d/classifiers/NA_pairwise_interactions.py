@@ -313,6 +313,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         timerData = myTimer("Check base oxygen stack",timerData)
                         interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
 
+                        if len(interaction) > 0:
+                            interaction += "_exp"
+                            interaction_reversed += "_exp"
+                            pair_to_interaction[unit_id_pair].append(interaction)
+                            interaction_to_pair_list[interaction].append(unit_id_pair)
+                            interaction_to_pair_list[interaction_reversed].append(reversed_pair)
+                            max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+
                         timerData = myTimer("Check base base stack", timerData)
                         interaction, datapoint = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint)
 
@@ -345,6 +353,19 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
                             interaction, datapoint = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
 
+                            # acWW?
+                            if len(interaction) > 0 and interaction[0] == 'acWW':
+                                print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
+
+                            # record basepairs made by modified nucleotides
+                            if len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
+                                print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
+                                try:
+                                    with open('C:/Users/zirbel/Documents/FR3D/Modified Nucleotides/list.txt','a') as file:
+                                        file.write('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")\n' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
+                                except:
+                                    pass
+
                             if False and len(interaction) > 1:
                                 print("  Identified parents as %s and %s" % (parent1,parent2))
                                 print("  Found %s interaction between %-18s and %-18s" % (interaction,nt1.unit_id(),nt2.unit_id()))
@@ -358,7 +379,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
 
-                                inter = interaction[0][0]
+                                inter = interaction[0]
 
                                 # these interactions are currently experimental
                                 # labeling them as such makes it possible to compare to previous ones
@@ -369,7 +390,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                                 # record certain interactions in reversed direction as well
 
-                                if inter[0] in ["c","t","s"] or inter[1] in ["c","t","s"]:
+                                if inter[0] in ["c","t","s","a"] or inter[1] in ["c","t","s","a"]:
                                     pair_to_interaction[reversed_pair].append(reverse_edges(inter))
 
                         pair_to_data[unit_id_pair] = datapoint
@@ -1132,7 +1153,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2,datapoint):
             else: 
                 interaction =  "ns33" #nt2.sequence + "ns53" + nt1.sequence
 
-    if len(interaction) > 0:
+    if False and len(interaction) > 0:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
     if datapoint and len(interaction) > 0:
@@ -1427,6 +1448,14 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
     if len(ok_gap) == 0:
         return ok_gap, datapoint
     elif len(ok_gap) > 1:
+        interactions = sorted(list(set([i for i,s in ok_gap])))
+        if len(ok_gap) == 2:
+            i0 = ok_gap[0][0]  # first interaction
+            i1 = ok_gap[1][0]  # second interaction
+            if "a" + i0 == i1:
+                ok_gap = [ok_gap[0]]   # just use the main category
+            elif "a" + i1 == i0:
+                ok_gap = [ok_gap[1]]   # just use the main category
         if len(set([i for i,s in ok_gap])) > 1:
             print("Multiple basepair types for %s, using the first one" % datapoint['url'])
             print(ok_gap)
@@ -1700,10 +1729,6 @@ PDB_list = ['4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['2N1Q']
-
-
-#PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
-#PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/1.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
@@ -1712,18 +1737,19 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
 PDB_list = ['4V9F']
 PDB_list = ['203D']
 PDB_list = ['7k00']
-#PDB_list = ['4V9F']
-#PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
 PDB_list = ['4V9F','6ZMI','7K00']
-PDB_list = ['7k00']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
-# PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['6CFJ']
+PDB_list = ['7K00']
 PDB_list = ['4TNA']
+PDB_list = ['4V9F']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
+
+OverwriteDataFiles = False   #
+OverwriteDataFiles = True    #
 
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
-base_seq_list = []                     # for all nucleic acids, modified or not
 base_seq_list = ['A','U','C','G']      # for RNA
+base_seq_list = []                     # for all nucleic acids, modified or not
 
 nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
@@ -1733,8 +1759,8 @@ PlotPair = False
 PlotPair = True
 AlreadyPlotted = {}
 
-ShowStructureReadingErrors = False
 ShowStructureReadingErrors = True
+ShowStructureReadingErrors = False
 
 # this path should be specified in localpath.py
 # intended for writing out a .pickle file to be used by the FR3D motif search tool
@@ -1745,7 +1771,6 @@ annotate_entire_PDB_files = True
 
 if __name__=="__main__":
 
-    print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
 
     timerData = myTimer("start")
     lastwritetime = time()
@@ -1756,7 +1781,7 @@ if __name__=="__main__":
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
-    print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
+    #print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
 
     counter = 0
     count_pair = 0
@@ -1764,6 +1789,12 @@ if __name__=="__main__":
     # loop through 3D structures and annotate interactions
     PDBs = PDB_IFE_Dict.keys()
     #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
+
+    if len(PDBs) > 1 and not OverwriteDataFiles:
+        print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
+    else:
+        print("Annotating interactions and saving in %s" % outputNAPairwiseInteractions)
+
 
     for PDB in PDBs:
 
@@ -1777,7 +1808,7 @@ if __name__=="__main__":
             pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
             pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
-            if not os.path.exists(pair_to_data_output_file):
+            if not os.path.exists(pair_to_data_output_file) or len(PDBs) == 1 or OverwriteDataFiles:
 
                 print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
                 timerData = myTimer("Reading CIF files",timerData)
