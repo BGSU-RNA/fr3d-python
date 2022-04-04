@@ -2,8 +2,70 @@
 
 [![Build Status](https://api.travis-ci.org/BGSU-RNA/fr3d-python.png?branch=develop)](https://travis-ci.org/BGSU-RNA/fr3d-python)
 
-This is an implementation of the FR3D program in python.
+# FR3D 
+## An implementation of the FR3D program in python. 
+1. [Downloading PDBX](#download-and-install-pdbx)
+2. [Cloning FR3D-Python](#cloning-fr3d-python)
+3. Setup FR3D Python:  
+	  i. [Setup FR3D Python in Python 2.7](#to-setup-fr3d-using-python-27)   
+	  ii. [Setup FR3D Python in Python 3.x](#to-setup-fr3d-using-python-3x)  
+4. [Running FR3D Python](#running-fr3d-python)
+5. [Notes](#notes)
 
-To run the first time, navigate to the fr3d-python folder and run "python setup.py install"
+## Download and Install PDBx
+**FR3D-python requires PDBx to be installed**
+PDBx can be downloaded and installed from PDB [here](https://mmcif.wwpdb.org/docs/sw-examples/python/html/). Follow instructions to get PDBx installed on your local machine and placed in your python path. 
 
-fr3d-python requires pdbx to be installed, which you can get from PDB, for Python 2.7.  To run pdbx in Python 3.x, one can use the 2to3 tool from https://docs.python.org/3.10/library/2to3.html  The main changes are changing iterator.next() to next(iterator), xrange() to (range), print string to print(string), and exec _ to exec()
+## Cloning FR3D Python
+FR3D Python can be cloned to your local machine from our [Github](https://github.com/BGSU-RNA/fr3d-python).  Once the repository is cloned to your machine, to navigate to the fr3d-python folder and run ```python setup.py install```. <br>
+NOTE: Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
+
+## To Set up FR3D using Python 2.7
+Follow the above instructions to install FR3D python and PDBx. This completes the installation process for FR3D using python 2.7. 
+
+## To Set up FR3D using Python 3.x
+In order to use FR3D in Python 3, the python 2to3 module needs to be run on the PDBx files that were stored in your Python-Path as described [here](#download-and-install-pdbx). This changes python 2.7 syntax to python 3 syntax. This includes:
+1.  ```iterator.next()``` to ```next(iterator)```
+2. ```xrange()``` to ```range()```
+3. ```print "string"``` to ```print("string")```
+4. ```exec _``` to ```exec( _ )```
+Documentation for this module can be found [here].(https://docs.python.org/3/library/2to3.html)
+For each file in PDBx, run ```2to3 -w <filename.py>```
+
+In PdbxParser.py:
+	- lines 369 and 382 need changed from ```line = fileIter.next()``` to ```line = next(fileIter)```
+	- line 85 from ```raise PDBXError()``` to ```pass```
+	- lines 217 and 283 needs put in a try except. ```curCatName, curAttName, curQuotedString, curWord = next(tokenizer)``` to 
+```
+		try:
+			curCatName, curAttName, curQuotedString, curWord = next(tokenizer) 
+		except: 
+			return
+```
+In PdbxReader.py:
+	- line 71 from ```except StopIteration``` to ```except Exception```
+	- lines 358 and 371 from ```line = next(fileIter)``` to ```line = next(fileIter.decode)```
+		
+## Windows users
+FR3D Python uses case-sensitive file names because chain identifiers in PDB are case sensitive.
+Windows looks like it uses case sensitive filenames, but if you create a file called Data.txt and then save another file in the same place called data.txt, it will overwrite Data.txt and it will be listed as Data.txt because that was there first.
+Recent versions of Windows allow for case sensitivity.
+For FR3D Python, you need to enable case sensitivity in filenames in the ```units``` folder.
+See https://docs.microsoft.com/en-us/windows/wsl/case-sensitivity to read about how to enable case sensitivity for a specific directory.
+The key steps seem to be:
+	- Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+	- fsutil.exe file setCaseSensitiveInfo <path to folder> enable
+Note that the first step is not actually mentioned in the Microsoft documentation.
+
+## Running FR3D Python
+In order to run FR3D python, navigate to the fr3d folder. 
+The program to annotate basepairs is called NA-pairwise-interactions.py.
+This can be found in fr3d/classifiers.
+To run, navigate to the classifiers folder in your file structure and run ```python NA-pairwise-interactions.py```.
+
+## Notes
+FR3D Python also requires matplotlib to be installed.
+
+FR3D Python is not yet fully compatible with python 3.10.
+
+Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
