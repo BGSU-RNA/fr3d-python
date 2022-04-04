@@ -126,6 +126,7 @@ def get_structure(filename,PDB):
         if sys.version_info[0] < 3:
             urllib.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 2
         else:
+            import urllib.request
             urllib.request.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 3
 
     with open(filename, 'rb') as raw:
