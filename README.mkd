@@ -2,8 +2,33 @@
 
 [![Build Status](https://api.travis-ci.org/BGSU-RNA/fr3d-python.png?branch=develop)](https://travis-ci.org/BGSU-RNA/fr3d-python)
 
-This is an implementation of the FR3D program in python.
+**fr3d-python** is an implementation of the [FR3D](https://www.bgsu.edu/research/rna/software/fr3d.html) software in Python.
 
-To run the first time, navigate to the fr3d-python folder and run "python setup.py install"
+## Installation
 
-fr3d-python requires pdbx to be installed, which you can get from PDB, for Python 2.7.  To run pdbx in Python 3.x, one can use the 2to3 tool from https://docs.python.org/3.10/library/2to3.html  The main changes are changing iterator.next() to next(iterator), xrange() to (range), print string to print(string), and exec _ to exec()
+### With Docker
+
+Clone the repository and navigate to the `fr3d-python`, then run:
+
+```
+docker build -t fr3d .
+docker run -v `pwd`:/rna -it fr3d
+```
+
+### Without Docker
+
+1. Optional: create and activate a new virtual environment
+
+2. Clone the repository and navigate to the `fr3d-python`, then run:
+
+    ```
+    python setup.py install
+    ```
+
+## Usage
+
+To annotate a cif file:
+
+```
+python fr3d/classifiers/NA_pairwise_interactions.py
+```
