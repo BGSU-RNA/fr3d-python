@@ -17,6 +17,4 @@ ADD . /rna
 
 RUN pip install -r requirements-python-2-7.txt
 
-RUN python setup.py install
-
 ENTRYPOINT ["/bin/bash"]
