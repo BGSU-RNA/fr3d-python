@@ -43,7 +43,12 @@ import urllib
 import pickle
 import math
 import sys
-
+if sys.version_info[0] < 3:
+    from urllib import urlopen
+else:
+    from urllib.request import urlopen
+if sys.version_info[0] > 2:
+    from urllib import request
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from mpl_toolkits.mplot3d import Axes3D
@@ -315,6 +320,17 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                             max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
+                        timerData = myTimer("Check base base stack", timerData)
+                        interaction, datapoint = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint)
+
+                        if len(interaction) > 0:
+                            interaction += "_exp"
+                            interaction_reversed += "_exp"
+                            pair_to_interaction[unit_id_pair].append(interaction)
+                            interaction_to_pair_list[interaction].append(unit_id_pair)
+                            interaction_to_pair_list[interaction_reversed].append(reversed_pair)
+                            max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+
                         # check coplanar and basepairing for bases in specific orders
                         # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
                         # need to add T and have a plan for DNA nucleotides as well
@@ -335,6 +351,19 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
                             interaction, datapoint = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
+
+                            # acWW?
+                            if len(interaction) > 0 and interaction[0] == 'acWW':
+                                print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
+
+                            # record basepairs made by modified nucleotides
+                            if len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
+                                print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
+                                try:
+                                    with open('C:/Users/zirbel/Documents/FR3D/Modified Nucleotides/list.txt','a') as file:
+                                        file.write('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")\n' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
+                                except:
+                                    pass
 
                             if False and len(interaction) > 1:
                                 print("  Identified parents as %s and %s" % (parent1,parent2))
@@ -360,7 +389,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                                 # record certain interactions in reversed direction as well
 
-                                if inter[0] in ["c","t","s"] or inter[1] in ["c","t","s"]:
+                                if inter[0] in ["c","t","s","a"] or inter[1] in ["c","t","s","a"]:
                                     pair_to_interaction[reversed_pair].append(reverse_edges(inter))
 
                         pair_to_data[unit_id_pair] = datapoint
@@ -968,6 +997,172 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
 
     return interaction, datapoint, interaction_reversed
 
+def check_convex_hull_atoms(x,y,z, parent):
+    """Method to check and see if an atom that has been translated into standard orientation falls within the
+    convex hull of a nucleotide base based on the type of nucleotide (A,C,G,U,DT). Numbers Generated From generate_location_checks.py and
+    this method was developed for use in the check_base_base_stacking method.
+    Takes in two nucleotides coordinates alongside the nucleotide type.
+    Returns True if The points fall within the convex hull of the parent1 and returns False Otherwise."""
+    near_z_cutoff = 4.5
+    if abs(z) < near_z_cutoff:
+        if parent == 'G':
+            if -0.097781*x +  4.872516*y +  8.198766 > 0:  # Left of N9-H21
+                if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
+                    if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
+                        if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
+                            if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
+                                if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
+                                    if  0.463584*x +  2.101573*y +  4.272951 > 0:  # Left of H8-N9
+                                        return True
+        elif parent == 'A':
+                if -1.317924*x +  4.271447*y +  6.324636 > 0:  # Left of N9-H2
+                    if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
+                        if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
+                            if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
+                                if  0.447145*x +  2.100463*y +  4.326375 > 0:  # Left of H8-N9
+                                    return True
+        elif parent == 'C':
+            if  0.120783*x +  2.269450*y +  3.415154 > 0:  # Left of N1-O2
+                if -2.098558*x + -0.957313*y +  2.427068 > 0:  # Left of O2-N3
+                    if -2.031427*x + -1.030781*y +  2.400765 > 0:  # Left of N3-N4
+                        if  1.362107*x + -2.318128*y +  5.987542 > 0:  # Left of N4-H5
+                            if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
+                                if  0.123632*x +  2.082733*y +  3.139042 > 0:  # Left of H6-N1
+                                    return True
+
+        elif parent == 'U':
+            if  0.048394*x +  2.292490*y +  3.487594 > 0:  # Left of N1-O2
+                if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
+                    if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
+                        if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
+                            if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
+                                if  0.111836*x +  2.082780*y +  3.190713 > 0:  # Left of H6-N1
+                                    return True
+        elif parent == 'DT':
+            if -0.181184*x + -1.990901*y + -3.310280 > 0:  # Left of N1-H6
+                if -2.557421*x + -0.969085*y + -6.334958 > 0:  # Left of H6-H72
+                    if -0.871450*x +  0.459475*y + -3.002693 > 0:  # Left of H72-H71
+                        if -0.400402*x +  2.427972*y + -5.680923 > 0:  # Left of H71-O4
+                            if  1.526233*x +  1.897795*y + -4.450270 > 0:  # Left of O4-H3
+                                if  2.368105*x +  0.456021*y + -4.878252 > 0:  # Left of H3-O2
+                                    if  0.116119*x + -2.281277*y + -3.818305 > 0:  # Left of O2-N1
+                                        return True
+        else:
+            print("Unrecognized Base" + parent + "in function check_convex_hull_atoms")
+            return False
+
+def return_overlap(listOfAtoms, nt1, nt2, parent):
+    inside = False
+    min_z = 1000
+    for atom in listOfAtoms:
+        point = nt2.centers[atom]
+        if len(point) == 3:
+            x,y,z = translate_rotate_point(nt1, point)
+            inside = check_convex_hull_atoms(x,y,z, parent)
+            if z < min_z:
+                min_z_x = x
+                min_z_y = y
+                min_z = z #returns the z coordinate if it passes its in the plane. Might want to make this return the nt type as well we'll see.
+    if inside:
+        #points.append([x,y,z,atom]) #later calculation
+        return True, [x,y,z, min_z]
+    return False, [-100,-100,-100, -100]
+
+# def create_modified_base_atoms_list(nt):
+#     atomList = []
+#     for atom in nt.atoms:
+#         if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:
+#             atomList.append(atom)
+#     return atomList
+
+def check_base_base_stacking(nt1, nt2, parent1, parent2,datapoint):
+    """Pass in two nucleotides. Base stacking."""
+
+    true_z_cutoff = 4 #maybe this should be 3.4?
+    interaction = ""
+
+    #Outermost Atoms  Of NT Bases Used to find the convex hull
+    convexHullAtoms = {}
+    convexHullAtoms['A'] = ['N9','H2','H61', 'H62','H8','N9'] #Based on Matlab Code
+    convexHullAtoms['C'] = ['N1','O2','N3','N4','H5','H6', 'N1']
+    convexHullAtoms['G'] = ['N9','H21','H22','H1','O6','N7','H8','N9']
+    convexHullAtoms['U'] = ['N1','O2','H3','O4','H5','H6','N1']
+    convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6', "C1'"]
+
+    #Create a list in case one of these is nucleotides is a modified nucleotide
+    # if nt2.sequence in modified_nucleotides:
+    #     modifiednt2Atoms = create_modified_base_atoms_list(nt2)
+    # if nt1.sequence in modified_nucleotides:
+    #     modifiednt1Atoms = create_modified_base_atoms_list(nt1)
+
+    true_found = False
+    near_found = False
+
+    #Variables to flag if an atom from nt2 was projected onto nt1 and to check if nt1 atoms project onto nt2
+    nt2on1=False
+    nt1on2=False
+
+
+    #Set the list for the for loop to go through the atoms the convex hull of the type of atom.
+    if parent1 in base_seq_list and parent2 in base_seq_list:
+        nt1ConvexHullAtomsList = convexHullAtoms[parent1]
+        nt2ConvexHullAtomsList = convexHullAtoms[parent2]
+    else:
+        nt1ConvexHullAtomsList = convexHullAtoms['A']
+        nt2ConvexHullAtomsList = convexHullAtoms['C']
+        #THIS IS NOT WHAT SHOULD BE DONE I"M TESTING
+
+    #Returns true if an atom is projected inside the atom. Also returns the x,y,z coordinates of the nt inside and the minimum z value
+    nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
+    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2)
+
+    #Gets the normal vector For later calculation
+    rotation_1_to_2 = np.matmul(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+    normal_Z = rotation_1_to_2[2,2]
+    datapoint['normal_Z'] = normal_Z
+
+    #check near stacking
+    if nt2on1 == True and nt1on2 == True:
+        center_displ = np.subtract(nt1.centers["base"],nt2.centers["base"])
+        center_displ = center_displ / np.linalg.norm(center_displ)
+
+        #print("CENTER" + str(center_displ))
+        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and datapoint['normal_Z'] > 0.6:
+            true_found = True
+        elif true_found == False and abs(coords[3]) > 1 and datapoint['normal_Z'] > 0.5 : #change to elif
+            near_found = True
+
+        #Annotation generation
+        if true_found:
+            if coords[3] > 0 and coords2[3] > 0:
+                interaction = "s53" #nt1.sequence + "s53" + nt2.sequence
+            elif coords[3] > 0 and coords2[3] < 0:
+                interaction =  "s35" #nt1.sequence + "s35" + nt2.sequence
+            elif coords[3] < 0 and coords2[3] < 0:
+                interaction =  "s55" #nt1.sequence + "s55" + nt2.sequence
+            else:
+                interaction = "s33" #nt1.sequence + "s33" + nt2.sequence
+        elif near_found:
+            if coords[3] > 0 and coords2[3] > 0:
+                interaction = "ns53" #nt2.sequence + "ns35" + nt1.sequence
+            elif coords[3] > 0 and coords2[3] < 0:
+                interaction =  "ns35" #nt1.sequence + "s35" + nt2.sequence
+            elif coords[3] < 0 and coords2[3] < 0:
+                interaction =  "ns55" #nt1.sequence + "s55" + nt2.sequence
+            else:
+                interaction =  "ns33" #nt2.sequence + "ns53" + nt1.sequence
+
+    if False and len(interaction) > 0:
+        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
+
+    if datapoint and len(interaction) > 0:
+        datapoint['sInteraction'] = interaction
+        datapoint['xStack'] = coords[0]
+        datapoint['yStack'] = coords[1]
+        datapoint['zStack'] = coords[2]
+        datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+
+    return interaction, datapoint
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
     Calculate data needed for basepair classification.
@@ -1252,6 +1447,14 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
     if len(ok_gap) == 0:
         return ok_gap, datapoint
     elif len(ok_gap) > 1:
+        interactions = sorted(list(set([i for i,s in ok_gap])))
+        if len(ok_gap) == 2:
+            i0 = ok_gap[0][0]  # first interaction
+            i1 = ok_gap[1][0]  # second interaction
+            if "a" + i0 == i1:
+                ok_gap = [ok_gap[0]]   # just use the main category
+            elif "a" + i1 == i0:
+                ok_gap = [ok_gap[1]]   # just use the main category
         if len(set([i for i,s in ok_gap])) > 1:
             print("Multiple basepair types for %s, using the first one" % datapoint['url'])
             print(ok_gap)
@@ -1454,8 +1657,13 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
                                       # download the entire representative set,
                                       # then find the right line for the equivalence class
                                       # then extract the list
-            f = urllib.urlopen(PDB)
-            myfile = f.read()
+            if sys.version_info[0] < 3:
+                f = urllib.urlopen(PDB)
+                myfile = f.read()
+            else:
+                f = urllib.request.urlopen(PDB)
+                myfile = f.read().decode()
+
             alltbody = myfile.split("tbody")
             alllines = alltbody[1].split("<a class='pdb'>")
             del alllines[0]
@@ -1467,8 +1675,12 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
                     PDB_IFE_Dict[newPDB] += "+" + newIFE
 
         elif "nrlist" in PDB:           # referring to a representative set online
-            f = urllib.urlopen(PDB)
-            myfile = f.read()
+            if sys.version_info[0] < 3:
+                f = urllib.urlopen(PDB)
+                myfile = f.read()
+            else:
+                f = urllib.request.urlopen(PDB)
+                myfile = f.read().decode()
             alllines = myfile.split("\n")
             for line in alllines:
                 fields = line.split(",")
@@ -1510,25 +1722,34 @@ PDB_list = ['6TPQ']
 PDB_list = ['4KTG']
 PDB_list = ['5KCR']
 PDB_list = ['7ECF']  # DNA quadruplex
-PDB_list = ['4TNA']
 PDB_list = ['5J7L']
 PDB_list = ['4V9F','5J7L','4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['2N1Q']
-PDB_list = ['4V9F']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/1.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
-
+PDB_list = ['4V9F']
+PDB_list = ['203D']
+PDB_list = ['7k00']
+PDB_list = ['4V9F','6ZMI','7K00']
+PDB_list = ['6CFJ']
+PDB_list = ['7K00']
+PDB_list = ['4TNA']
+PDB_list = ['4V9F']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
 
-base_seq_list = []                     # for all nucleic acids, modified or not
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
+base_seq_list = []                     # for all nucleic acids, modified or not
+
+OverwriteDataFiles = False   #
+OverwriteDataFiles = True    #
 
 nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
@@ -1538,19 +1759,18 @@ PlotPair = False
 PlotPair = True
 AlreadyPlotted = {}
 
-ShowStructureReadingErrors = False
 ShowStructureReadingErrors = True
+ShowStructureReadingErrors = False
 
 # this path should be specified in localpath.py
 # intended for writing out a .pickle file to be used by the FR3D motif search tool
-unit_data_path = "C:/Users/zirbel/Documents/GitHub/fr3d-python/data/units"
+unit_data_path = "C:/Users/jimitch/Documents/GitHub/fr3d-python/data/units"
 
 # annotate all nucleotides in all chains, even when a representative set is used
 annotate_entire_PDB_files = True
 
 if __name__=="__main__":
 
-    print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
 
     timerData = myTimer("start")
     lastwritetime = time()
@@ -1561,7 +1781,7 @@ if __name__=="__main__":
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
-    print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
+    #print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
 
     counter = 0
     count_pair = 0
@@ -1569,6 +1789,12 @@ if __name__=="__main__":
     # loop through 3D structures and annotate interactions
     PDBs = PDB_IFE_Dict.keys()
     #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
+
+    if len(PDBs) > 1 and not OverwriteDataFiles:
+        print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
+    else:
+        print("Annotating interactions and saving in %s" % outputNAPairwiseInteractions)
+
 
     for PDB in PDBs:
 
@@ -1582,7 +1808,7 @@ if __name__=="__main__":
             pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
             pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
-            if not os.path.exists(pair_to_data_output_file):
+            if not os.path.exists(pair_to_data_output_file) or len(PDBs) == 1 or OverwriteDataFiles:
 
                 print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
                 timerData = myTimer("Reading CIF files",timerData)

@@ -157,6 +157,20 @@ class Component(EntitySelector):
         if self.base_center is not None:
             self.centers.setcenter('base',self.base_center)
 
+            if self.sequence in ['A','G','DA','DG']:
+                self.centers.define('glycosidic',['N9'])
+            elif self.sequence in ['C','U','DC','DT']:
+                self.centers.define('glycosidic',['N1'])
+            elif self.sequence in defs.modified_nucleotides:
+                if defs.modified_nucleotides[self.sequence]['standard'] in ['A','G','DA','DG']:
+                    self.centers.define('glycosidic',['N9'])
+                elif defs.modified_nucleotides[self.sequence]['standard'] in ['C','U','DC','DT']:
+                    self.centers.define('glycosidic',['N1'])
+            elif 'N9' in self.centers:
+                self.centers.define('glycosidic',['N9'])
+            elif 'N1' in self.centers:
+                self.centers.define('glycosidic',['N1'])
+
         if self.sequence in defs.nt_sugar:
             atoms = defs.nt_sugar[self.sequence]
             self.centers.define('nt_sugar', atoms)
@@ -268,7 +282,7 @@ class Component(EntitySelector):
                 R.append(atom.coordinates())
                 S.append(defs.NAbasecoordinates[self.sequence][atom.name])
 
-        if self.sequence in defs.modified_nucleotides:
+        elif self.sequence in defs.modified_nucleotides:
             current = defs.modified_nucleotides[self.sequence]
             standard_coords = defs.NAbasecoordinates[current["standard"]]
             for atom in self.atoms(name=current["atoms"].keys()):

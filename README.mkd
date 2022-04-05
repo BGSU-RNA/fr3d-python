@@ -32,3 +32,20 @@ To annotate a cif file:
 ```
 python fr3d/classifiers/NA_pairwise_interactions.py
 ```
+
+## Cloning FR3D Python
+
+FR3D Python can be cloned to your local machine from our [Github](https://github.com/BGSU-RNA/fr3d-python).  Once the repository is cloned to your machine, to navigate to the fr3d-python folder and run ```python setup.py install```. <br>
+NOTE: Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
+		
+## Windows users
+
+FR3D Python uses case-sensitive file names because chain identifiers in PDB are case sensitive.
+Windows looks like it uses case sensitive filenames, but if you create a file called Data.txt and then save another file in the same place called data.txt, it will overwrite Data.txt and it will be listed as Data.txt because that was there first.
+Recent versions of Windows allow for case sensitivity.
+For FR3D Python, you need to enable case sensitivity in filenames in the ```units``` folder.
+See https://docs.microsoft.com/en-us/windows/wsl/case-sensitivity to read about how to enable case sensitivity for a specific directory.
+The key steps seem to be:
+	- Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+	- fsutil.exe file setCaseSensitiveInfo <path to folder> enable
+Note that the first step is not actually mentioned in the Microsoft documentation.
