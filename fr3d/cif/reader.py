@@ -411,7 +411,7 @@ class Cif(object):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
 
         index = atom['label_seq_id'] if 'label_seq_id' in atom else '.'
-        if index != '.':
+        if index and index != '.':
             index = int(index)
         else:
             index = None
