@@ -36,7 +36,7 @@ from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 
-from discrepancy import matrix_discrepancy
+from fr3d.classifiers.discrepancy import matrix_discrepancy
 import numpy as np
 import csv
 import urllib
@@ -71,7 +71,7 @@ from os import path
 
 from time import time
 
-from class_limits import nt_nt_cutoffs
+from fr3d.classifiers.class_limits import nt_nt_cutoffs
 
 nt_nt_screen_distance = 12
 
@@ -1741,7 +1741,7 @@ PDB_list = ['6CFJ']
 PDB_list = ['7K00']
 PDB_list = ['4TNA']
 PDB_list = ['4V9F']
-from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+from fr3d.classifiers.DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
 
 base_seq_list = ['A','U','C','G']      # for RNA
