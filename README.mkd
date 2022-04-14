@@ -25,7 +25,7 @@ PDBx can be downloaded and installed from PDB [here](https://mmcif.wwpdb.org/doc
 ## To Set up FR3D using Python 3.x
 In order to use FR3D in Python 3, you will need to install the mmcif-pdbx package. 
 You can do that by using ``` pip install mmcif-pdbx``` . This package can be found [here](https://pypi.org/project/mmcif-pdbx/).
-This will put the pdbx package in your python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 you can add a line ``` line = line.decode() ``` after the for loop for the file iterator. 
+This will put the pdbx package in your python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 (in C:\python-path\padbx\reader.py) you can add a line ``` line = line.decode() ``` after the for loop for the file iterator. 
 
 ## Running FR3D Python
 In order to run FR3D python, navigate to the fr3d folder. 
