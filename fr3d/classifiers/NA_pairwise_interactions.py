@@ -1797,7 +1797,24 @@ if __name__=="__main__":
                 cifName += entry[len(entry)-x]
         cif = cifName[::-1]
         PDB_list = [cif]
-
+        if "/" in entry or "\\" in entry:
+            inputPath = ""
+            if sys.version_info[0] < 3:
+                for x in xrange(0, len(entry)-8):
+                    inputPath += entry[x]
+            else:
+                for x in range(0, len(entry)-8):
+                    inputPath += entry[x]
+            inputPath += "%s.cif"
+        else:
+            print("  Downloading %s from https://files.rcsb.org/download/%s.cif" % (cif,cif))
+            if sys.version_info[0] < 3:
+                urllib.urlretrieve("http://files.rcsb.org/download/%s.cif" % cif, cif)  # python 2
+            else:
+                urllib.request.urlretrieve("http://files.rcsb.org/download/%s.cif" % cif, cif)  # python 3
+            with open(cif, 'rb') as raw:
+                print("  Loading " + cif)
+                structure = Cif(raw).structure()
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
     #print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
@@ -1831,7 +1848,6 @@ if __name__=="__main__":
 
                 print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
                 timerData = myTimer("Reading CIF files",timerData)
-
                 if ShowStructureReadingErrors:
                     # do this to make sure to see any error messages
                     structure = get_structure(inputPath % PDB,PDB)
