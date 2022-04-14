@@ -70,7 +70,7 @@ import os
 from os import path
 
 from time import time
-
+import argparse
 from class_limits import nt_nt_cutoffs
 
 nt_nt_screen_distance = 12
@@ -1777,6 +1777,26 @@ if __name__=="__main__":
     allInteractionDictionary = defaultdict(list)
 
     timerData = myTimer("Making PDB list",timerData)
+
+    #ALLOW USER TO SPECIFY INPUT AND OUTPUT LOCATIONS 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
+    parser.add_argument('-i', "--input", help='Input Path + Name of Cif File')
+
+    args = parser.parse_args()
+    if args.output:
+        outputNAPairwiseInteractions = args.output
+    if args.input:
+        entry = str(args.input) 
+        cifName = ""
+        if sys.version_info[0] < 3:
+            for x in xrange(5,9):
+                cifName += entry[len(entry)-x]
+        else:
+            for x in range(5,9):
+                cifName += entry[len(entry)-x]
+        cif = cifName[::-1]
+        PDB_list = [cif]
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
