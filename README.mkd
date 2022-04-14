@@ -33,7 +33,8 @@ The program to annotate basepairs is called NA_pairwise_interactions.py.
 This can be found in fr3d/classifiers.
 To run, navigate to the classifiers folder in your file structure and run ```python NA_pairwise_interactions.py```.
 If you would like to specify the Cif file to be read, you can use the -i or --input flags to specify which file in your local path you would like to annotate.
-This can be done in the form of ``` python NA_pairwise_interactions.py --input C:\Path\To\Your\File\[filename].cif ``` where [filename] is the name of your cif file (ie. '4V9F')
+This can be done in the form of ``` python NA_pairwise_interactions.py --input C:\Path\To\Your\File\[filename].cif ``` where [filename] is the name of your cif file (ie. '4V9F'). Additionally, if you don't have the cif file in your localpath, you can run ``` python NA_pairwise_interactions.py --input [filename].cif ``` , and this will download the file for processing and run the program. 
+
 Output can be specified using the -o or --output tags. This can be done in the form of ``` python NA_pairwise_interactions.py --output C:\Where\You\Want|Annotations\Output\ ```. This will write where you wish to output your annotations. 
 
 ## Windows users
