@@ -48,11 +48,3 @@ The key steps seem to be:
 	- fsutil.exe file setCaseSensitiveInfo <path to folder> enable
 Note that the first step is not actually mentioned in the Microsoft documentation.
 
-
-
-## Notes
-FR3D Python also requires matplotlib to be installed.
-
-FR3D Python is not yet fully compatible with python 3.10.
-
-Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
