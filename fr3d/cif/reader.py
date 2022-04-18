@@ -158,8 +158,10 @@ class Cif(object):
 
                 for asym_id in assembly['asym_id_list'].split(','):
                     for operator in operators:
+                        print(operator)
+                        listOfNumbers = []
                         #Some Cif files such as 5MSF use a whole list of operators, a hyphen should do an adequte job of flagging these situations
-                        if '-' in operator and 'X' not in operator:# or '(' in operator or ')' in operator:
+                        if '-' in operator and 'X' not in operator and 'P' not in operator:# list of operators, but not crystallographic operators
                             op1 = operator.replace("(", "")
                             op1 = op1.replace(")", "") 
                             startEnd = op1.split('-')
@@ -169,25 +171,27 @@ class Cif(object):
                             else:
                                 for number in range(int(startEnd[0]), int(startEnd[1])+1):
                                     listOfNumbers.append(number)
-                            for symmetry in listOfNumbers:
-                                op = self._operators[str(symmetry)]     
+                            for symmetry in listOfNumbers: #Add all of these symmetry operators and then go to the next operator
+                                print(symmetry)
+                                op = self._operators[str(symmetry)]    
                                 previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                                 if not op['id'] in previous_id:
                                     assemblies[asym_id].append(op)
+                            continue
                         #Others have a crystal frame transformation
-                        elif 'X' in operator:
-                            op = self._operators['X0'] #This may need to be a dot product of X0 with (n,....,m)
-                        else:
+                        elif 'X' in operator or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
+                            #X# moves x,y,z into crystallographic positions.
+                            #op = self._operators['I'] #Just apply Identity
+                            pass # I don't think we need to apply anything.
+                        else: #Normal case
                             if '(' in operator or ')' in operator:
                                 operator = operator.replace("(","")
                                 operator = operator.replace(")","")
                             op = self._operators[operator]
 
-
                         previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                         if not op['id'] in previous_id:
                             assemblies[asym_id].append(op)
-
         return assemblies
 
     def __load_entities__(self):
@@ -370,7 +374,6 @@ class Cif(object):
                 'component_id',
                 'component_number',
                 #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
-                # Maybe we can see if we can find a better work around, setting the initialization of this in Atoms to "" did not seem to work.
                 'symmetry',
             )
 
@@ -458,7 +461,7 @@ class Cif(object):
             index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
-
+        print(symmetry_name)
         ins_code = atom['pdbx_PDB_ins_code'] if 'pdbx_PDB_ins_code' in atom else '?'
         if ins_code == '?':
             ins_code = None
@@ -497,7 +500,7 @@ class Cif(object):
     def __symmetry_name__(self, symmetry):
         symmetry_name = symmetry.get('name')
         if not symmetry_name or symmetry_name == '?':
-            symmetry_name = 'P_%s' % symmetry['id']
+            symmetry_name = 'ASM_%s' % symmetry['id']
         return symmetry_name
 
     def table(self, name):
