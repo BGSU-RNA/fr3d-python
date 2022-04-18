@@ -25,13 +25,14 @@ PDBx can be downloaded and installed from PDB [here](https://mmcif.wwpdb.org/doc
 ## To Set up FR3D using Python 3.x
 In order to use FR3D in Python 3, you will need to install the mmcif-pdbx package. 
 You can do that by using ``` pip install mmcif-pdbx``` . This package can be found [here](https://pypi.org/project/mmcif-pdbx/).
-This will put the pdbx package in your python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 you can add a line ``` line = line.decode() ``` after the for loop for the file iterator. 
+This will put the pdbx package in your python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 (in C:\python-path\padbx\reader.py) you can add a line ``` line = line.decode() ``` after the for loop for the file iterator. 
 
 ## Running FR3D Python
 In order to run FR3D python, navigate to the fr3d folder. 
 The program to annotate basepairs is called NA_pairwise_interactions.py.
 This can be found in fr3d/classifiers.
-To run, navigate to the classifiers folder in your file structure and run ```python NA_pairwise_interactions.py```.
+To run, navigate to the classifiers folder in your file structure and run ```python NA_pairwise_interactions.py```. 
+Note: If you have not set up a localpath file, the --input and --output flags are required for the program to run. 
 If you would like to specify the Cif file to be read, you can use the -i or --input flags to specify which file in your local path you would like to annotate.
 This can be done in the form of ``` python NA_pairwise_interactions.py --input C:\Path\To\Your\File\[filename].cif ``` where [filename] is the name of your cif file (ie. '4V9F'). Additionally, if you don't have the cif file in your localpath, you can run ``` python NA_pairwise_interactions.py --input [filename].cif ``` , and this will download the file for processing and run the program. 
 
@@ -48,11 +49,3 @@ The key steps seem to be:
 	- fsutil.exe file setCaseSensitiveInfo <path to folder> enable
 Note that the first step is not actually mentioned in the Microsoft documentation.
 
-
-
-## Notes
-FR3D Python also requires matplotlib to be installed.
-
-FR3D Python is not yet fully compatible with python 3.10.
-
-Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
