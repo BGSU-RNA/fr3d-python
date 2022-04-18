@@ -158,7 +158,6 @@ class Cif(object):
 
                 for asym_id in assembly['asym_id_list'].split(','):
                     for operator in operators:
-                        print(operator)
                         listOfNumbers = []
                         #Some Cif files such as 5MSF use a whole list of operators, a hyphen should do an adequte job of flagging these situations
                         if '-' in operator and 'X' not in operator and 'P' not in operator:# list of operators, but not crystallographic operators
@@ -172,7 +171,6 @@ class Cif(object):
                                 for number in range(int(startEnd[0]), int(startEnd[1])+1):
                                     listOfNumbers.append(number)
                             for symmetry in listOfNumbers: #Add all of these symmetry operators and then go to the next operator
-                                print(symmetry)
                                 op = self._operators[str(symmetry)]    
                                 previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                                 if not op['id'] in previous_id:
@@ -461,7 +459,6 @@ class Cif(object):
             index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
-        print(symmetry_name)
         ins_code = atom['pdbx_PDB_ins_code'] if 'pdbx_PDB_ins_code' in atom else '?'
         if ins_code == '?':
             ins_code = None
