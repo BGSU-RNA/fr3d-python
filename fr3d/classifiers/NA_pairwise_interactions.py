@@ -70,7 +70,7 @@ import os
 from os import path
 
 from time import time
-
+import argparse
 from class_limits import nt_nt_cutoffs
 
 nt_nt_screen_distance = 12
@@ -1731,13 +1731,7 @@ def write_txt_output_file(output_path,PDB,interaction_to_triple_list,categories)
 
 if __name__=="__main__":
 
-
-    PDBs = ['4TNA','7RBG','XXXX']
     PDBs = ['4V9F']
-
-    from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-
-    PDBs = PDB_list
 
     # dictionary to control what specific annotations are output, in a file named for the key
     categories = {}
@@ -1746,7 +1740,28 @@ if __name__=="__main__":
     #categories['base-ribose'] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
     #categories['base-phosphate'] = ['0BPh', '1BPh', '2BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
 
+    #ALLOW USER TO SPECIFY INPUT AND OUTPUT LOCATIONS
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
+    parser.add_argument('-i', "--input", help='Input Path + Name of Cif File')
+
     # process command line arguments here
+    args = parser.parse_args()
+    if args.output:
+        outputNAPairwiseInteractions = args.output     # set output path
+    if args.input:
+        entry = str(args.input)
+        entries = entry.split(" ")
+        cifName = ""
+        for x in range(5,9):
+            cifName += entry[len(entry)-x]
+        cif = cifName[::-1]
+        PDBs = [cif]
+        if "/" in entry or "\\" in entry:
+            inputPath = ""
+            for x in range(0, len(entry)-8):
+                inputPath += entry[x]
+            inputPath += "%s.cif"
 
     timerData = myTimer("start")
     failed_structures = []

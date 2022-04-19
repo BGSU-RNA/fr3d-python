@@ -7,20 +7,18 @@ import operator as op
 import functools as ft
 import copy
 import sys
+import numpy as np
 
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter # old name
-    
-import numpy as np
+    from pdbx.reader.PdbxReader import PdbxReader as Reader #If running python 2.7, use pdbx reader 
+else:
+    from pdbx import PdbxReader as Reader #if running in python 3, install mmcif package to deal with reading. ([mmcif_pdbx] will need added to setup.py for this)
 
-#Parser was deemed Obsolete by the PDB, instructs to use Reader instead. 
-#from pdbx.reader.PdbxParser import PdbxReader as Reader
-from pdbx.reader.PdbxReader import PdbxReader as Reader
 
 from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
-
 
 """ The set of symbols that mark an operator expression as complex """
 COMPLEX_SYMBOLS = set('()-')
@@ -86,7 +84,10 @@ class Cif(object):
 
         if handle is None and data is None:
             raise ValueError("Must give either handle or data")
-        self.pdb = self.data.getName()
+        if sys.version_info[0] < 3:
+            self.pdb = self.data.getName()
+        else: 
+            self.pdb = self.data.name
         self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
@@ -140,6 +141,7 @@ class Cif(object):
         }
 
     def __load_assemblies__(self):
+        listOfNumbers = []
         assemblies = coll.defaultdict(list)
         if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
             for assembly in self.pdbx_struct_assembly_gen:
@@ -156,11 +158,38 @@ class Cif(object):
 
                 for asym_id in assembly['asym_id_list'].split(','):
                     for operator in operators:
-                        op = self._operators[operator]
+                        listOfNumbers = []
+                        #Some Cif files such as 5MSF use a whole list of operators, a hyphen should do an adequte job of flagging these situations
+                        if '-' in operator and 'X' not in operator and 'P' not in operator:# list of operators, but not crystallographic operators
+                            op1 = operator.replace("(", "")
+                            op1 = op1.replace(")", "") 
+                            startEnd = op1.split('-')
+                            if sys.version_info[0] < 3:
+                                for number in xrange(int(startEnd[0]), int(startEnd[1])+1):
+                                    listOfNumbers.append(number)                                
+                            else:
+                                for number in range(int(startEnd[0]), int(startEnd[1])+1):
+                                    listOfNumbers.append(number)
+                            for symmetry in listOfNumbers: #Add all of these symmetry operators and then go to the next operator
+                                op = self._operators[str(symmetry)]    
+                                previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
+                                if not op['id'] in previous_id:
+                                    assemblies[asym_id].append(op)
+                            continue
+                        #Others have a crystal frame transformation
+                        elif 'X' in operator or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
+                            #X# moves x,y,z into crystallographic positions.
+                            #op = self._operators['I'] #Just apply Identity
+                            pass # I don't think we need to apply anything.
+                        else: #Normal case
+                            if '(' in operator or ')' in operator:
+                                operator = operator.replace("(","")
+                                operator = operator.replace(")","")
+                            op = self._operators[operator]
+
                         previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                         if not op['id'] in previous_id:
                             assemblies[asym_id].append(op)
-
         return assemblies
 
     def __load_entities__(self):
@@ -179,17 +208,17 @@ class Cif(object):
 
     def structure(self):
         """Get the structure from the Cif file.
-
         :returns: The first structure in the cif file.
         """
-
-        pdb = self.data.getName()
+        if sys.version_info[0] < 3:
+            pdb = self.data.getName()
+        else: 
+            pdb = self.data.name
         residues = self.__residues__(pdb)
         return Structure(list(residues), pdb=pdb)
 
     def experimental_sequence(self, chain):
         """Get the experimental sequence for a given chain.
-
         :chain: The chain name to use, should be the pdb_strand_id in the cif
         file.
         :returns: A list of the sequence. The entries in the list may be 1, 2
@@ -211,7 +240,6 @@ class Cif(object):
         structure are. This will prevent duplicate mappings from being created.
         In some cases, like 4X4N, there are duplicate entries for a single unit
         id like position.
-
         :chain: Name of the chain to use.
         :returns: An iterable that produces the sequence, the sequence unit id,
         the unit id.
@@ -247,7 +275,7 @@ class Cif(object):
             current_chain = row['pdb_strand_id']
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
-                insertion_code = None
+                insertion_code = "" #Should this be empty string or none
 
             number = row['pdb_seq_num']
             if number == '?':
@@ -326,22 +354,35 @@ class Cif(object):
         return sorted(list(alt_ids.values()), key=ordering_key)
 
     def __residues__(self, pdb):
-        key = op.attrgetter(
-            'pdb',
-            'model',
-            'chain',
-            'component_id',
-            'component_number',
-            'insertion_code',
-            'symmetry',
+        if sys.version_info[0] < 3:
+            key = op.attrgetter(
+                'pdb',
+                'model',
+                'chain',
+                'component_id',
+                'component_number',
+                'insertion_code',
+                'symmetry',
         )
+        else:
+            key = op.attrgetter(
+                'pdb',
+                'model',
+                'chain',
+                'component_id',
+                'component_number',
+                #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
+                'symmetry',
+            )
+
         mapping = it.groupby(sorted(self.__atoms__(pdb), key=key), key)
+
 
         for comp_id, all_atoms in mapping:
             for atoms in self.__group_alt_atoms__(list(all_atoms)):
                 first = atoms[0]
-                type = self._chem.get(first.component_id, {})
-                type = type.get('type', None)
+                atom_type = self._chem.get(first.component_id, {})
+                atom_type = atom_type.get('type', None)
                 alt_id = first.alt_id
                 if alt_id == '.':
                     alt_id = None
@@ -350,7 +391,7 @@ class Cif(object):
                     atoms,
                     pdb=first.pdb,
                     model=first.model,
-                    type=type,
+                    type=atom_type,
                     alt_id=alt_id,
                     chain=first.chain,
                     symmetry=first.symmetry,
@@ -402,24 +443,22 @@ class Cif(object):
             for index in range(max_operators):
                 indexes = it.repeat(index, len(self.atom_site))
                 pdbs = it.repeat(pdb, len(self.atom_site))
-                zipped = list(zip(pdbs, self.atom_site, indexes))
+                zipped = (zip(pdbs, self.atom_site, indexes))
                 with_operators = list(map(operator, zipped))
                 filtered = filter(None, with_operators)
                 atoms.append(map(lambda a: self.__atom__(*a), filtered))
-                
         return it.chain.from_iterable(atoms)
 
     def __atom__(self, pdb, atom, symmetry):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
 
         index = atom['label_seq_id'] if 'label_seq_id' in atom else '.'
-        if index != '.':
+        if index != '.' and index != '':
             index = int(index)
         else:
             index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
-
         ins_code = atom['pdbx_PDB_ins_code'] if 'pdbx_PDB_ins_code' in atom else '?'
         if ins_code == '?':
             ins_code = None
@@ -458,7 +497,7 @@ class Cif(object):
     def __symmetry_name__(self, symmetry):
         symmetry_name = symmetry.get('name')
         if not symmetry_name or symmetry_name == '?':
-            symmetry_name = 'P_%s' % symmetry['id']
+            symmetry_name = 'ASM_%s' % symmetry['id']
         return symmetry_name
 
     def table(self, name):
@@ -499,7 +538,10 @@ class Cif(object):
 
     def __block__(self, name):
         block_name = re.sub('^_', '', name)
-        block = self.data.getObj(block_name)
+        if sys.version_info[0] < 3:
+            block = self.data.getObj(block_name)
+        else: 
+            block = self.data.get_object(block_name)
         if not block:
             raise MissingBlockException("Unknown block " + name)
         return block
@@ -521,15 +563,19 @@ class Table(object):
         self._cif = cif
         self.block = block
         self.rows = rows
-
-        self.columns = self.block.getItemNameList()
+        
+        if sys.version_info[0] < 3:
+            self.columns = self.block.getItemNameList()
+        else:
+            self.columns = self.block.item_name_list
         self.columns = [re.sub('_.+\.', '', name) for name in self.columns]
 
         if self.rows is None:
-            length = self.block.getRowCount()
             if sys.version_info[0] < 3:
+                length = self.block.getRowCount()
                 self.rows = [self.__row__(index) for index in xrange(length)]
             else:
+                length = self.block.row_count
                 self.rows = [self.__row__(index) for index in range(length)]
 
     def column(self, name):
@@ -553,7 +599,10 @@ class Table(object):
         to be ordered. The row will be a dict of the form { attribute: value }.
         Each attribute will have the name of the block stripped.
         """
-        return dict(list(zip(self.columns, self.block.getRow(number))))
+        if sys.version_info[0] < 3:
+            return dict(list(zip(self.columns, self.block.getRow(number))))
+        else:
+            return dict(list(zip(self.columns, self.block.row_list[number])))
 
     def __getattr__(self, name):
         """Get the column with the given name.
