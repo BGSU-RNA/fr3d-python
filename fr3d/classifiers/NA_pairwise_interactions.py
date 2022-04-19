@@ -148,19 +148,14 @@ def get_structure(filename,PDB):
 
 def load_structure(filename):
 
-    print("Thinking about %s" % filename)
-
-    # if not available locally, download from PDB and save locally
+    # if not available in inputPath, download from PDB and save locally
     if not os.path.exists(filename):
         PDB = filename[-8:-4]
-        print("Extracting characters %s" % PDB)
         print("  Downloading %s from https://files.rcsb.org/download/%s.cif" % (PDB,PDB))
         if sys.version_info[0] < 3:
             status = urllib.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 2
         else:
             status = urllib.request.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 3
-
-        print(status)
 
     with open(filename, 'rb') as raw:
         print("  Loading " + filename)
@@ -1793,8 +1788,6 @@ if __name__=="__main__":
         else:
             PDBs.append(inputPath + x)
 
-    print(PDBs)
-
     # process PDBs
 
     timerData = myTimer("start")
@@ -1802,7 +1795,6 @@ if __name__=="__main__":
     counter = 0
 
     for PDB in PDBs:
-
         counter += 1
 
         PDBid = PDB[-8:-4]
