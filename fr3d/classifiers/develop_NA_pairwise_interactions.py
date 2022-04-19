@@ -3,6 +3,16 @@
 
 from NA_pairwise_interactions import *
 
+
+from fr3d.localpath import outputText
+from fr3d.localpath import outputNAPairwiseInteractions
+from fr3d.localpath import outputNAPickleInteractions
+from fr3d.localpath import contact_list_file
+from fr3d.localpath import inputPath
+from fr3d.localpath import outputHTML
+from fr3d.data.base import EntitySelector
+
+
 PDB_list = ['5AJ3']
 PDB_list = ['6hiv']
 PDB_list = ['3QRQ','5J7L']

@@ -52,14 +52,14 @@ if sys.version_info[0] > 2:
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from mpl_toolkits.mplot3d import Axes3D
+
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-from fr3d.localpath import outputText
-from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import outputNAPickleInteractions
-from fr3d.localpath import contact_list_file
-from fr3d.localpath import inputPath
-from fr3d.localpath import outputHTML
-from fr3d.data.base import EntitySelector
+try:
+    from fr3d.localpath import outputNAPairwiseInteractions
+    from fr3d.localpath import inputPath
+except:
+    inputPath = ""
+    outputNAPairwiseInteractions = ""
 
 from fr3d.ordering.greedyInsertion import orderWithPathLengthFromDistanceMatrix
 
@@ -145,6 +145,32 @@ def get_structure(filename,PDB):
         """
 
         return structure
+
+def load_structure(filename):
+
+    print("Thinking about %s" % filename)
+
+    # if not available locally, download from PDB and save locally
+    if not os.path.exists(filename):
+        PDB = filename[-8:-4]
+        print("Extracting characters %s" % PDB)
+        print("  Downloading %s from https://files.rcsb.org/download/%s.cif" % (PDB,PDB))
+        if sys.version_info[0] < 3:
+            status = urllib.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 2
+        else:
+            status = urllib.request.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 3
+
+        print(status)
+
+    with open(filename, 'rb') as raw:
+        print("  Loading " + filename)
+        structure = Cif(raw).structure()
+        """
+        Rotation matrix is calculated for each base.
+        Hydrogens are not added automatically.
+        """
+
+    return structure
 
 def build_atom_to_unit_part_list():
 
@@ -1742,6 +1768,7 @@ if __name__=="__main__":
 
     #ALLOW USER TO SPECIFY INPUT AND OUTPUT LOCATIONS
     parser = argparse.ArgumentParser()
+    parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path + Name of Cif File')
 
@@ -1749,19 +1776,26 @@ if __name__=="__main__":
     args = parser.parse_args()
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
+    elif not outputNAPairwiseInteractions:
+        outputNAPairwiseInteractions = ""
     if args.input:
-        entry = str(args.input)
-        entries = entry.split(" ")
-        cifName = ""
-        for x in range(5,9):
-            cifName += entry[len(entry)-x]
-        cif = cifName[::-1]
-        PDBs = [cif]
+        inputPath = args.input
+    elif not inputPath:
+        inputPath = ""
+
+    # process additional arguments as PDB files
+    PDBs = []
+    entries = args.PDBfiles
+    for entry in entries:
+        x = entry.replace(".cif","") + ".cif"
         if "/" in entry or "\\" in entry:
-            inputPath = ""
-            for x in range(0, len(entry)-8):
-                inputPath += entry[x]
-            inputPath += "%s.cif"
+            PDBs.append(x)
+        else:
+            PDBs.append(inputPath + x)
+
+    print(PDBs)
+
+    # process PDBs
 
     timerData = myTimer("start")
     failed_structures = []
@@ -1771,21 +1805,23 @@ if __name__=="__main__":
 
         counter += 1
 
+        PDBid = PDB[-8:-4]
+
         print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDBs)))
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
         try:
-            structure = get_structure(inputPath % PDB,PDB)
+            structure = load_structure(PDB)
         except:
-            print("  Could not load structure %s from %s" % (PDB,inputPath))
+            print("  Could not load structure %s" % (PDB))
             failed_structures.append(PDB)
             continue
 
         interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
-        write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_triple_list,categories)
+        write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories)
 
     myTimer("summary",timerData)
 
