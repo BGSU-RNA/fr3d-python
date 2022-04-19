@@ -1736,11 +1736,11 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
 
     return PDB_IFE_Dict
 
-def write_txt_output_file(output_path,PDB,interaction_to_triple_list,categories):
+def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories):
 
     for category in categories.keys():
-        output_filename = output_path + PDB + "_" + category + ".txt"
-        with open(output_filename,'w') as f:
+        filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + category + ".txt")
+        with open(filename,'w') as f:
             for interaction in interaction_to_triple_list.keys():
                 if interaction in categories[category]:
                     for a,b,c in interaction_to_triple_list[interaction]:
@@ -1751,8 +1751,6 @@ def write_txt_output_file(output_path,PDB,interaction_to_triple_list,categories)
 
 
 if __name__=="__main__":
-
-    PDBs = ['4V9F']
 
     # dictionary to control what specific annotations are output, in a file named for the key
     categories = {}
@@ -1786,7 +1784,7 @@ if __name__=="__main__":
         if "/" in entry or "\\" in entry:
             PDBs.append(x)
         else:
-            PDBs.append(inputPath + x)
+            PDBs.append(os.path.join(inputPath,x))
 
     # process PDBs
 
@@ -1807,6 +1805,9 @@ if __name__=="__main__":
             structure = load_structure(PDB)
         except:
             print("  Could not load structure %s" % (PDB))
+            if os.path.exists(PDB):
+                print("  Removing %s" % PDB)
+                os.remove(PDB)
             failed_structures.append(PDB)
             continue
 
