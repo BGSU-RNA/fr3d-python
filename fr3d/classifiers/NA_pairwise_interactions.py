@@ -1769,6 +1769,8 @@ if __name__=="__main__":
     args = parser.parse_args()
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
+        if outputNAPairwiseInteractions[-1] != "/" or outputNAPairwiseInteractions[-1] != "\\":
+            outputNAPairwiseInteractions += "/"
     elif not outputNAPairwiseInteractions:
         outputNAPairwiseInteractions = ""
     if args.input:
@@ -1814,6 +1816,7 @@ if __name__=="__main__":
         interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
+        print(outputNAPairwiseInteractions)
         write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories)
 
     myTimer("summary",timerData)
