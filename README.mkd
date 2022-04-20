@@ -50,7 +50,7 @@ Output can be specified using the -o or --output tags. This can be done in the f
 
 ``` python NA_pairwise_interactions.py --output C:\Where\You\Want|Annotations\Output\ ```
 
-This will write where you wish to output your annotations. The output flag must be a preexisting directory. 
+This will write where you wish to output your annotations. If the specified directory doesn't exist, one will be made. 
 
 ## Windows users
 FR3D Python uses case-sensitive file names because chain identifiers in PDB are case sensitive.
