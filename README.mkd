@@ -1,21 +1,12 @@
-# FR3D #
+# FR3D Python
 
-[![Build Status](https://api.travis-ci.org/BGSU-RNA/fr3d-python.png?branch=develop)](https://travis-ci.org/BGSU-RNA/fr3d-python)
+[FR3D](https://www.bgsu.edu/research/rna/software/fr3d.html) stands for "Find RNA 3D" and is commonly pronounced "Fred". FR3D enables searching and annotating RNA 3D structures and supports the [mmCIF](https://mmcif.wwpdb.org) format.
 
-# FR3D 
-## An implementation of the FR3D program in python. 
-1. [Downloading PDBX](#download-and-install-pdbx)
-2. [Cloning FR3D-Python](#cloning-fr3d-python)
-3. Setup FR3D Python:  
-	  i. [Setup FR3D Python in Python 2.7](#to-setup-fr3d-using-python-27)   
-	  ii. [Setup FR3D Python in Python 3.x](#to-setup-fr3d-using-python-3x)  
-4. [Running FR3D Python](#running-fr3d-python)
-5. [Notes](#notes)
-
+Originally [written in Matlab](https://github.com/BGSU-RNA/FR3D), this repository is a re-implementation of FR3D in Python. FR3D and FR3D Python are developed by the [BGSU RNA Bioinformatics group](http://rna.bgsu.edu).
 
 ## Quick start using Docker
 
-Get started with fr3d-python using containers with [Docker](https://www.docker.com), [Podman](https://podman.io), or [Singularity](https://sylabs.io/guides/latest/user-guide/introduction.html).
+Get started with FR3D using containers with [Docker](https://www.docker.com), [Podman](https://podman.io), or [Singularity](https://sylabs.io/guides/latest/user-guide/introduction.html).
 
 1. Get a Docker image
 
@@ -42,6 +33,23 @@ Get started with fr3d-python using containers with [Docker](https://www.docker.c
     - `path_to_output` is the folder where the results will be generated (for example, `` `pwd` `` to use current working directory)
     - `pdb_id` is the PDB identifier of the structure to be annotated (for example, `1S72`). Multiple PDB identifiers can be specified.
 
+<details>
+  <summary>Notes on updating Docker image in Container registry</summary>
+
+  The Docker images are hosted on the GitHub Container registry. Currently the images need to be updated manually as follows:
+
+  1. [Authenticate](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry) using Personal Access Token (required only once)
+
+  2. Create and push a new image
+
+      ```
+      docker build -t ghcr.io/bgsu-rna/fr3d-python .
+      docker push ghcr.io/bgsu-rna/fr3d-python
+      ```
+
+  In the future this should be done automatically with GitHub Actions.
+</details>
+
 ### Understanding the output
 
 The program `NA_pairwise_interactions.py` generates tab-separated files called `<pdb_id>_basepairs.txt` that contain the following fields:
@@ -58,63 +66,78 @@ For example:
 1S72|1|0|A|631	tSH	1S72|1|0|U|2607	25
 ```
 
-## Cloning FR3D Python
-FR3D Python can be cloned to your local machine from our [Github](https://github.com/BGSU-RNA/fr3d-python).  Once the repository is cloned to your machine, to navigate to the fr3d-python folder and run ```python setup.py install```. <br>
-NOTE: Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
+## Installation without Docker
 
-## To Set up FR3D using Python 2.7
-### Download and Install PDBx
-**FR3D-python requires PDBx to be installed**
-PDBx can be downloaded and installed from PDB [here](https://mmcif.wwpdb.org/docs/sw-examples/python/html/). Follow instructions to get PDBx installed on your local machine and placed in your python path. This completes the installation process for FR3D using python 2.7. 
+### Clone FR3D Python
 
-## To Set up FR3D using Python 3.x
-In order to use FR3D in Python 3, you will need to install the mmcif-pdbx package. 
-You can do that by using ``` pip install mmcif-pdbx``` . This package can be found [here](https://pypi.org/project/mmcif-pdbx/).
-This will put the pdbx package in your python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 (in C:\python-path\padbx\reader.py) you can add a line ``` line = line.decode() ``` after the for loop for the file iterator. 
+```
+git clone https://github.com/BGSU-RNA/fr3d-python
+cd fr3d-python
+python setup.py install
+```
+
+:warning: Any time files such as `fr3d/cif/reader.py` get edited, you need to rerun the `python setup.py install` command.
+
+### Set up on Python 2.7
+
+**fr3d-python requires PDBx**. Follow [instructions at wwPDB](https://mmcif.wwpdb.org/docs/sw-examples/python/html/) to install PDBx on your local machine and place in your Python path.
+
+### Set up on Python 3.x
+
+In order to use FR3D in Python 3, you will need to install the [mmcif-pdbx](https://pypi.org/project/mmcif-pdbx/) package:
+
+```
+pip install mmcif-pdbx
+```
+
+This will put the PDBx package in your Python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 (in C:\python-path\pdbx\reader.py) you can add a line ``` line = line.decode() ``` after the for loop for the file iterator.
+
+<details>
+  <summary>Notes for Windows users</summary>
+
+FR3D Python uses case-sensitive file names because chain identifiers in PDB are case sensitive. Windows looks like it uses case sensitive filenames, but if you create a file called `Data.txt` and then save another file in the same place called `data.txt`, it will overwrite `Data.txt` and it will be listed as `Data.txt` because that was there first. Recent versions of Windows allow for case sensitivity.
+
+For FR3D Python, you need to enable case sensitivity in filenames in the ```units``` folder. See https://docs.microsoft.com/en-us/windows/wsl/case-sensitivity to read about how to enable case sensitivity for a specific directory.
+
+The key steps seem to be:
+	- `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux`
+	- `fsutil.exe file setCaseSensitiveInfo <path to folder> enable`
+
+Note that the first step is not mentioned in the Microsoft documentation.
+</details>
 
 ## Running FR3D Python
-In order to run FR3D python, navigate to the fr3d folder. 
-The program to annotate basepairs is called NA_pairwise_interactions.py.
-This can be found in fr3d/classifiers.
 
-To run, if you have filled out localpath.py to represent your file structue, navigate to the classifiers folder in your file structure and run ```python NA_pairwise_interactions.py```. 
+Navigate to the [classifiers](https://github.com/BGSU-RNA/fr3d-python/tree/master/fr3d/classifiers) folder and run the following command to ensure that the installation was successful:
 
-If you have not set up a localpath file, the --input (-i) and --output (-o) flags are required for the program to run. 
+```
+python NA_pairwise_interactions.py --help
+```
 
-If you already have the .cif file downloaded, you can use the -i flad to specify the directory your cif file is in. This can be done in the form of
+You can update [localpath.py](https://github.com/BGSU-RNA/fr3d-python/blob/master/fr3d/localpath.py) to represent your file structure. Alternatively, use the `--input` (`-i`) and `--output` (`-o`) flags to specify the location of your input cif files and the output text files.
 
-``` python NA_pairwise_interactions.py --input C:\Path\To\Your\File\ ``` . 
+For example, if you already have the .cif file downloaded, use the `--input` flag to specify the directory your cif file is in:
 
-Additionally, if you don't have the cif file in your localpath, you can run 
+```
+python NA_pairwise_interactions.py --input <path_to_input> <pdb_id>
+```
 
-``` python NA_pairwise_interactions.py [FILE].cif ``` 
+Additionally, if you don't have the cif file in your localpath, you can run
 
-and this will download the file for processing and run the program. 
+```
+python NA_pairwise_interactions.py <pdb_id>.cif
+```
 
-Output can be specified using the -o or --output tags. This can be done in the form of 
+and this will download the file for processing and run the program.
 
-``` python NA_pairwise_interactions.py --output C:\Where\You\Want|Annotations\Output\ ```
+Output can be specified using the `-o` or `--output` tags, for example:
 
-This will write where you wish to output your annotations. If the specified directory doesn't exist, one will be made. 
+```
+python NA_pairwise_interactions.py --output <path_to_output> <pdb_id>
+```
 
-## Windows users
-FR3D Python uses case-sensitive file names because chain identifiers in PDB are case sensitive.
-Windows looks like it uses case sensitive filenames, but if you create a file called Data.txt and then save another file in the same place called data.txt, it will overwrite Data.txt and it will be listed as Data.txt because that was there first.
-Recent versions of Windows allow for case sensitivity.
-For FR3D Python, you need to enable case sensitivity in filenames in the ```units``` folder.
-See https://docs.microsoft.com/en-us/windows/wsl/case-sensitivity to read about how to enable case sensitivity for a specific directory.
-The key steps seem to be:
-	- Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-	- fsutil.exe file setCaseSensitiveInfo <path to folder> enable
-Note that the first step is not actually mentioned in the Microsoft documentation.
+This will write where you wish to output your annotations. If the specified directory doesn't exist, one will be made.
 
-## Deploying on GitHub Container registry
+## Get in touch
 
-1. [Authenticate](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry) using Personal Access Token (required only once)
-
-2. Create and push a new image
-
-    ```
-    docker build -t ghcr.io/bgsu-rna/fr3d-python .
-    docker push ghcr.io/bgsu-rna/fr3d-python
-    ```
+If you have any questions or feature requests, feel free to [submit an issue](https://github.com/BGSU-RNA/fr3d-python/issues) or get in touch via a [contact form](https://www.bgsu.edu/research/rna/contact-us.html) on the website of the BGSU RNA Bioinformatics group.
