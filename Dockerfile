@@ -17,4 +17,4 @@ ADD . /rna
 
 RUN pip install -r requirements-python-2-7.txt
 
-ENTRYPOINT ["/bin/bash"]
+CMD ["/bin/bash"]
