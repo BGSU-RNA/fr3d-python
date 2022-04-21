@@ -108,3 +108,13 @@ The key steps seem to be:
 	- fsutil.exe file setCaseSensitiveInfo <path to folder> enable
 Note that the first step is not actually mentioned in the Microsoft documentation.
 
+## Deploying on GitHub Container registry
+
+1. [Authenticate](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry) using Personal Access Token (required only once)
+
+2. Create and push a new image
+
+    ```
+    docker build -t ghcr.io/bgsu-rna/fr3d-python .
+    docker push ghcr.io/bgsu-rna/fr3d-python
+    ```
