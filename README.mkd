@@ -13,6 +13,51 @@
 5. [Notes](#notes)
 
 
+## Quick start using Docker
+
+Get started with fr3d-python using containers with [Docker](https://www.docker.com), [Podman](https://podman.io), or [Singularity](https://sylabs.io/guides/latest/user-guide/introduction.html).
+
+1. Get a Docker image
+
+    ```
+    docker pull ghcr.io/bgsu-rna/fr3d-python
+    ```
+
+    Alternatively, clone the repo and build locally:
+
+    ```
+    git clone https://github.com/BGSU-RNA/fr3d-python
+    docker build -t fr3d-python .
+    ```
+
+2. Annotate RNA 3D structures with basepair interactions
+
+    ```
+    docker run -v <path_to_input>:/rna/input -v <path_to_output>:/rna/output fr3d-python python fr3d/classifiers/NA_pairwise_interactions.py -i /rna/input -o /rna/output <pdb_id>
+    ```
+
+    where
+
+    - `path_to_input` is the folder where cif files are stored (if a file does not exist already it will downloaded)
+    - `path_to_output` is the folder where the results will be generated (for example, `` `pwd` `` to use current working directory)
+    - `pdb_id` is the PDB identifier of the structure to be annotated (for example, `1S72`). Multiple PDB identifiers can be specified.
+
+### Understanding the output
+
+The program `NA_pairwise_interactions.py` generates tab-separated files called `<pdb_id>_basepairs.txt` that contain the following fields:
+
+- Unit ID of the first nucleotide in the [Unit ID format](https://www.bgsu.edu/research/rna/help/rna-3d-hub-help/unit-ids.html)
+- basepair interaction between the first and second nucleotides, defined according to the [Leontis-Westhof nomenclature](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1370104/)
+- Unit ID of the second nucleotide
+- number of interactions crossed by the basepair (0 for nested basepairs or an integer for non-nested basepairs)
+
+For example:
+
+```
+1S72|1|0|A|1193	tSH	1S72|1|0|U|1205	0
+1S72|1|0|A|631	tSH	1S72|1|0|U|2607	25
+```
+
 ## Cloning FR3D Python
 FR3D Python can be cloned to your local machine from our [Github](https://github.com/BGSU-RNA/fr3d-python).  Once the repository is cloned to your machine, to navigate to the fr3d-python folder and run ```python setup.py install```. <br>
 NOTE: Any time functionality in files such as fr3d/cif/reader.py get edited, you will need to rerun the ```python setup.py install``` command.
