@@ -12,6 +12,8 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
 
     ```
     docker pull ghcr.io/bgsu-rna/fr3d-python
+    # tag the image with a shorter name for convenience
+    docker tag ghcr.io/bgsu-rna/fr3d-python fr3d-python
     ```
 
     Alternatively, clone the repo and build locally:
@@ -20,6 +22,17 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
     git clone https://github.com/BGSU-RNA/fr3d-python
     docker build -t fr3d-python .
     ```
+
+    <details>
+      <summary>Notes for M1 Mac users</summary>      
+
+      To build a Docker image on M1 Macs use [docker buildx](https://docs.docker.com/buildx/working-with-buildx/) to specify the target platform in order to be able to install all the dependencies:
+
+      ```bash
+      docker buildx install
+      docker buildx build -t fr3d-python --platform linux/amd64 .
+      ```
+    </details>
 
 2. Annotate RNA 3D structures with basepair interactions
 
@@ -52,7 +65,7 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
 
 ### Understanding the output
 
-The program `NA_pairwise_interactions.py` generates tab-separated files called `<pdb_id>_basepairs.txt` that contain the following fields:
+The program `NA_pairwise_interactions.py` generates tab-separated files called `<pdb_id>_basepairs.txt` that list basepair interactions between pairs of nucleotides (an RNA 3D structure can contain 0 or more basepairs). The files contain the following fields:
 
 - Unit ID of the first nucleotide in the [Unit ID format](https://www.bgsu.edu/research/rna/help/rna-3d-hub-help/unit-ids.html)
 - basepair interaction between the first and second nucleotides, defined according to the [Leontis-Westhof nomenclature](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1370104/)
