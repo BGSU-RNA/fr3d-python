@@ -17,6 +17,27 @@
     When fr3d is changed, python setup.py install
 """
 
+import numpy as np
+import csv
+import urllib
+import pickle
+import math
+import sys
+from datetime import datetime
+from math import floor
+import os
+from os import path
+from collections import defaultdict
+
+from time import time
+import argparse
+if sys.version_info[0] < 3:
+    from urllib import urlopen
+else:
+    from urllib.request import urlopen
+if sys.version_info[0] > 2:
+    from urllib import request
+
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
@@ -37,22 +58,8 @@ from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 
 from discrepancy import matrix_discrepancy
-import numpy as np
-import csv
-import urllib
-import pickle
-import math
-import sys
-if sys.version_info[0] < 3:
-    from urllib import urlopen
-else:
-    from urllib.request import urlopen
-if sys.version_info[0] > 2:
-    from urllib import request
-import matplotlib.pyplot as plt
-from collections import defaultdict
-from mpl_toolkits.mplot3d import Axes3D
 
+# read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
 try:
     from fr3d.localpath import outputNAPairwiseInteractions
@@ -61,16 +68,6 @@ except:
     inputPath = ""
     outputNAPairwiseInteractions = ""
 
-from fr3d.ordering.greedyInsertion import orderWithPathLengthFromDistanceMatrix
-
-#from fr3d.classifiers.base_aafg import distance_metrics
-from datetime import datetime
-from math import floor
-import os
-from os import path
-
-from time import time
-import argparse
 from class_limits import nt_nt_cutoffs
 
 nt_nt_screen_distance = 12
@@ -151,11 +148,22 @@ def load_structure(filename):
     # if not available in inputPath, download from PDB and save locally
     if not os.path.exists(filename):
         PDB = filename[-8:-4]
-        print("  Downloading %s from https://files.rcsb.org/download/%s.cif" % (PDB,PDB))
+        url = "http://files.rcsb.org/download/%s.cif" % PDB
+        print("  Downloading %s from %s" % (PDB,url))
         if sys.version_info[0] < 3:
-            status = urllib.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 2
+            status = urllib.urlretrieve(url, filename)  # python 2
+
+            # TODO: detect when this is not successful and downloads an error file instead
+            # current code is clumsy
+            with open(filename,"r") as f:
+                lines = f.read()
+            if "<title>404 Not Found</title>" in lines:
+                print("  Not able to download %s from PDB" % PDB)
+                if os.path.exists(filename):
+                    os.remove(filename)
+
         else:
-            status = urllib.request.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 3
+            status = urllib.request.urlretrieve(url, filename)  # python 3
 
     with open(filename, 'rb') as raw:
         print("  Loading " + filename)
@@ -1782,7 +1790,11 @@ if __name__=="__main__":
     PDBs = []
     entries = args.PDBfiles
     for entry in entries:
-        x = entry.replace(".cif","") + ".cif"
+        if '.pdb' in entry.lower():
+            x = entry
+        else:
+            x = entry.replace(".cif","") + ".cif"
+
         if "/" in entry or "\\" in entry:
             PDBs.append(x)
         else:
@@ -1807,9 +1819,6 @@ if __name__=="__main__":
             structure = load_structure(PDB)
         except:
             print("  Could not load structure %s" % (PDB))
-            if os.path.exists(PDB):
-                print("  Removing %s" % PDB)
-                os.remove(PDB)
             failed_structures.append(PDB)
             continue
 
