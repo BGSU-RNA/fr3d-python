@@ -103,10 +103,16 @@ In order to use FR3D in Python 3, you will need to install the [mmcif-pdbx](http
 pip install mmcif-pdbx
 ```
 
-This will put the PDBx package in your Python path. If for some reason your machine expects the iterator loop to deal with bytes, at lines 387 and 397 (in C:\python-path\pdbx\reader.py) you can add a line ``` line = line.decode() ``` after the for loop for the file iterator.
+This will put the PDBx package in your Python path.
 
 <details>
-  <summary>Notes for Windows users</summary>
+  <summary>Solving TypeError when reading .cif files</summary>
+
+On Windows, mmcif-pdbx can experience a TypeError when loading .cif files.  This is apparently because your machine expects the iterator loop to deal with bytes.  Try this: find where mmcif-pdbx is installed using ```pip show mmcif-pdbx```.  Edit C:\[python-path]\Lib\site-packages\pdbx\reader.py  At lines 387 and 397, after ```for line in file_iterator:``` add a line ``` line = line.decode() ```.
+</details>
+
+<details>
+  <summary>Note for Windows users about case-sensitive filenames</summary>
 
 FR3D Python uses case-sensitive file names because chain identifiers in PDB are case sensitive. Windows looks like it uses case sensitive filenames, but if you create a file called `Data.txt` and then save another file in the same place called `data.txt`, it will overwrite `Data.txt` and it will be listed as `Data.txt` because that was there first. Recent versions of Windows allow for case sensitivity.
 
