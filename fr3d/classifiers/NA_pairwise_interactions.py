@@ -1817,9 +1817,11 @@ if __name__=="__main__":
         # suppress error messages, but report failures at the end
         try:
             structure = load_structure(PDB)
-        except:
-            print("  Could not load structure %s" % (PDB))
-            failed_structures.append(PDB)
+        except Exception as ex:
+            print("  Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex))
+            if type(ex).__name__ == "TypeError":
+                print("  See suggestions in the fr3d-python Readme file")
+            failed_structures.append((PDB,type(ex).__name__,ex))
             continue
 
         interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
