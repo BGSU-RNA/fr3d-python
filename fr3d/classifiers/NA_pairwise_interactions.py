@@ -1745,6 +1745,11 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
     return PDB_IFE_Dict
 
 def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories):
+    """
+    Write interactions according to category, and within each
+    category, write by annotation.
+    Other than that, the interactions are listed in no particular order.
+    """
 
     for category in categories.keys():
         filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + category + ".txt")
