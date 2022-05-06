@@ -1175,7 +1175,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
     nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2)
 
-    #Gets the normal vector For later calculation
+    #Gets the normal vector for later calculation
     rotation_1_to_2 = np.matmul(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
     normal_Z = rotation_1_to_2[2,2]
     if datapoint:
@@ -1902,3 +1902,7 @@ if __name__=="__main__":
         print("Not able to read these files: %s" % failed_structures)
     else:
         print("All files read successfully")
+
+    # note status of stacking annotations
+    if 'stacking' in categories:
+        print("Stacking annotations are not yet finalized and are known to miss interactions")
