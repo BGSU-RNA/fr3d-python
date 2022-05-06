@@ -70,7 +70,7 @@ except:
 
 from class_limits import nt_nt_cutoffs
 
-nt_nt_screen_distance = 12
+nt_nt_screen_distance = 12  # maximum center-center distance to check
 
 HB_donor_hydrogens = {}
 HB_donor_hydrogens['A'] = {"N6":["1H6","2H6"], "C2":["H2"], "C8":["H8"], "O2'":[]}
@@ -247,19 +247,20 @@ def reverse_edges(inter):
     return rev
 
 
-def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData):
+def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint = False):
     """
     loop through nt cubes, loop through neighboring nt cubes,
     then loop through bases in the two cubes,
     screening distances between them, then annotating interactions
+    When get_datapoint is True, collect data about each pair to pass back
     """
 
     count_pair = 0
 
     pair_to_interaction = defaultdict(list)      # each pair can make more than one interaction
     interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
+    interaction_category = {}                    # map observed interactions to category
 
-    get_datapoint = True                         # collect data about each pair to pass back
     pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
@@ -349,6 +350,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
                                 interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+                                interaction_category[interaction] = 'sO'
+                                interaction_category[interaction_reversed] = 'sO'
 
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
@@ -359,7 +362,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
                                 interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+                                interaction_category[interaction] = 'stacking'
+                                interaction_category[interaction_reversed] = 'stacking'
 
+                        # always annotate basepairs in order to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
                         # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
                         # need to add T and have a plan for DNA nucleotides as well
@@ -409,13 +415,17 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                                 pair_to_interaction[unit_id_pair].append(interaction)
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
+                                interaction_category[interaction] = 'basepair'
 
                                 # record certain interactions in reversed direction as well
 
                                 if interaction[0] in ["c","t","s","a"] or interaction[1] in ["c","t","s","a"]:
-                                    pair_to_interaction[reversed_pair].append(reverse_edges(interaction))
+                                    interaction_reversed = reverse_edges(interaction)
+                                    pair_to_interaction[reversed_pair].append(interaction_reversed)
+                                    interaction_category[interaction_reversed] = 'basepair'
 
-                        pair_to_data[unit_id_pair] = datapoint
+                        if get_datapoint:
+                            pair_to_data[unit_id_pair] = datapoint
 
     print("  Found %d nucleotide-nucleotide pairs" % count_pair)
 
@@ -544,7 +554,7 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
 
     return interaction_to_triple_list
 
-def annotate_nt_nt_in_structure(structure,categories,timerData):
+def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoint=False):
     """
     This function can be called from the pipeline to annotate a structure
     structure is an output from
@@ -552,13 +562,17 @@ def annotate_nt_nt_in_structure(structure,categories,timerData):
 
     bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
     #print("  Building nucleotide cubes in " + PDB)
+
+    if not timerData:
+        timerData = myTimer("start")
+
     timerData = myTimer("Building cubes",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes(bases, nt_nt_screen_distance, nt_reference_point)
 
     # annotate nt-nt interactions
     print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
-    interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData)
+    interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
 
     return interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData
 
@@ -1767,29 +1781,39 @@ if __name__=="__main__":
 
     # dictionary to control what specific annotations are output, in a file named for the key
     categories = {}
-    categories['basepair'] = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+    #categories['basepair'] = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+    categories['sO'] = ['']
     #categories['stacking'] = ['s35','s53','s33','s55']
     #categories['base-ribose'] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
     #categories['base-phosphate'] = ['0BPh', '1BPh', '2BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
 
-    #ALLOW USER TO SPECIFY INPUT AND OUTPUT LOCATIONS
+    # allow user to specify input and output paths
     parser = argparse.ArgumentParser()
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
-    parser.add_argument('-i', "--input", help='Input Path + Name of Cif File')
+    parser.add_argument('-i', "--input", help='Input Path')
+    parser.add_argument('-c', "--category", help='Interaction category or categories')
 
-    # process command line arguments here
+    # process command line arguments
     args = parser.parse_args()
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
-        if outputNAPairwiseInteractions[-1] != "/" or outputNAPairwiseInteractions[-1] != "\\":
-            outputNAPairwiseInteractions += "/"
     elif not outputNAPairwiseInteractions:
         outputNAPairwiseInteractions = ""
     if args.input:
         inputPath = args.input
     elif not inputPath:
         inputPath = ""
+
+    # check existence of input path
+    if len(inputPath) > 0 and not os.path.exists(inputPath):
+        print("Attempting to create input path %s" % inputPath)
+        os.mkdir(inputPath)
+
+    # check existence of output path
+    if len(outputNAPairwiseInteractions) > 0 and not os.path.exists(outputNAPairwiseInteractions):
+        print("Attempting to create output path %s" % outputNAPairwiseInteractions)
+        os.mkdir(outputNAPairwiseInteractions)
 
     # process additional arguments as PDB files
     PDBs = []
@@ -1832,11 +1856,12 @@ if __name__=="__main__":
         interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
-        print(outputNAPairwiseInteractions)
+        print("  Recording interactions in %s" % outputNAPairwiseInteractions)
         write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories)
 
     myTimer("summary",timerData)
 
-    print('Wrote data to path %s' % outputNAPairwiseInteractions)
-    print("Not able to read these files: %s" % failed_structures)
-
+    if len(failed_structures) > 0:
+        print("Not able to read these files: %s" % failed_structures)
+    else:
+        print("All files read successfully")
