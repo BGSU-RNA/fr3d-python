@@ -57,6 +57,9 @@ from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 
+# some modified nucleotides have faces flipped compared to parent nt
+flipped_nts = ['PSU']
+
 from discrepancy import matrix_discrepancy
 
 # read input and output paths from localpath.py
@@ -257,7 +260,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     count_pair = 0
 
-    pair_to_interaction = defaultdict(list)      # each pair can make more than one interaction
     interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
     interaction_category = {}                    # map observed interactions to category
 
@@ -346,7 +348,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
 
                             if len(interaction) > 0:
-                                pair_to_interaction[unit_id_pair].append(interaction)
+                                count_pair += 1
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
                                 interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
@@ -358,12 +360,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             interaction, datapoint, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint)
 
                             if len(interaction) > 0:
-                                pair_to_interaction[unit_id_pair].append(interaction)
+                                count_pair += 1
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
-                                interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
                                 interaction_category[interaction] = 'stacking'
                                 interaction_category[interaction_reversed] = 'stacking'
+                                # reversed interaction will be stored after crossing #
 
                         # always annotate basepairs in order to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
@@ -413,15 +415,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
 
-                                pair_to_interaction[unit_id_pair].append(interaction)
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
                                 interaction_category[interaction] = 'basepair'
 
                                 # record certain interactions in reversed direction as well
 
-                                if interaction[0] in ["c","t","s","a"] or interaction[1] in ["c","t","s","a"]:
+                                if interaction[0] in ["c","t","a"] or interaction[1] in ["c","t","a"]:
                                     interaction_reversed = reverse_edges(interaction)
-                                    pair_to_interaction[reversed_pair].append(interaction_reversed)
                                     interaction_category[interaction_reversed] = 'basepair'
 
                         if get_datapoint:
@@ -434,9 +434,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     # calculate and save crossing numbers for each annoated interaction
     timerData = myTimer("Calculate crossing",timerData)
-    interaction_to_triple_list = calculate_crossing_numbers(bases,interaction_to_pair_list)
+    interaction_to_list_of_tuples = calculate_crossing_numbers(bases,interaction_to_pair_list)
 
-    return interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData
+    return interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData
 
 def calculate_crossing_numbers(bases,interaction_to_pair_list):
     # Identify which cWW pairs are nested
@@ -511,7 +511,7 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
     #print('chain_to_max_index.keys()',chain_to_max_index.keys())
     #print('chain_to_cWW_pairs.keys()',chain_to_cWW_pairs.keys())
     #print('chain_nested_cWW_endpoints.keys()',chain_nested_cWW_endpoints.keys())
-    interaction_to_triple_list = defaultdict(list)
+    interaction_to_list_of_tuples = defaultdict(list)
 
     # loop over pairs, calculate crossing number
     # record interacting pairs and their crossing number as triples
@@ -544,15 +544,15 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
                 if False and crossing > 0:
                     print("%-20s and %-20s make %s and have crossing number %d" % (u1,u2,interaction,crossing))
 
-            interaction_to_triple_list[interaction].append((u1,u2,crossing))
+            interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
 
             # duplicate certain pairs in reversed order
             if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
-                interaction_to_triple_list[reverse_edges(interaction)].append((u2,u1,crossing))
+                interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
             elif interaction[0:2] in ["nc","nt"] or interaction in ["ns33","ns35","ns53","ns55"]:
-                interaction_to_triple_list[reverse_edges(interaction)].append((u2,u1,crossing))
+                interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
 
-    return interaction_to_triple_list
+    return interaction_to_list_of_tuples
 
 def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoint=False):
     """
@@ -572,9 +572,9 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     # annotate nt-nt interactions
     print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
-    interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
+    interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
 
-    return interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData
+    return interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData
 
 
 def get_parent(sequence):
@@ -778,6 +778,10 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                         ringmin = "ring6"
 
     if true_found:  # over base ring and z value is OK
+        # special treatment of faces for some modified nts
+        if nt1.sequence in flipped_nts:
+            zmin = -zmin
+
         if zmin > 0:
             interaction = "s3" + oxygenmin
             interaction_reversed = "s" + oxygenmin + "3"
@@ -786,6 +790,10 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
             interaction_reversed = "s" + oxygenmin + "5"
 
     elif near_found:  # over a base ring, but z value too large for true
+        # special treatment of faces for some modified nts
+        if nt1.sequence in flipped_nts:
+            zmin = -zmin
+
         if zmin > 0:
             interaction = "ns3" + oxygenmin
             interaction_reversed = "ns" + oxygenmin + "3"
@@ -1021,6 +1029,10 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                         ringmin = "near_ring6"
 
         if near_found:
+            # special treatment of faces for some modified nts
+            if nt1.sequence in flipped_nts:
+                zmin = -zmin
+
             if zmin > 0:
                 interaction = "ns3" + oxygenmin
                 interaction_reversed = "ns" + oxygenmin + "3"
@@ -1148,12 +1160,13 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     nt2on1=False
     nt1on2=False
 
-
     #Set the list for the for loop to go through the atoms the convex hull of the type of atom.
-    if parent1 in base_seq_list and parent2 in base_seq_list:
+    if parent1 in convexHullAtoms and parent2 in convexHullAtoms:
         nt1ConvexHullAtomsList = convexHullAtoms[parent1]
         nt2ConvexHullAtomsList = convexHullAtoms[parent2]
     else:
+        print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
+        return "", datapoint, ""
         nt1ConvexHullAtomsList = convexHullAtoms['A']
         nt2ConvexHullAtomsList = convexHullAtoms['C']
         #THIS IS NOT WHAT SHOULD BE DONE I"M TESTING
@@ -1165,7 +1178,8 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Gets the normal vector For later calculation
     rotation_1_to_2 = np.matmul(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
     normal_Z = rotation_1_to_2[2,2]
-    datapoint['normal_Z'] = normal_Z
+    if datapoint:
+        datapoint['normal_Z'] = normal_Z
 
     #check near stacking
     if nt2on1 == True and nt1on2 == True:
@@ -1173,13 +1187,21 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         center_displ = center_displ / np.linalg.norm(center_displ)
 
         #print("CENTER" + str(center_displ))
-        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and datapoint['normal_Z'] > 0.6:
+        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and normal_Z > 0.6:
             true_found = True
-        elif true_found == False and abs(coords[3]) > 1 and datapoint['normal_Z'] > 0.5 : #change to elif
+        elif true_found == False and abs(coords[3]) > 1 and normal_Z > 0.5 : #change to elif
             near_found = True
 
         #Annotation generation
         if true_found:
+            # special treatment of faces for some modified nts
+            if nt1.sequence in flipped_nts:
+                coords[2] = -coords[2]
+                coords[3] = -coords[3]
+            if nt2.sequence in flipped_nts:
+                coords2[2] = -coords2[2]
+                coords2[3] = -coords2[3]
+
             if coords[3] > 0 and coords2[3] > 0:
                 interaction = "s53" #nt1.sequence + "s53" + nt2.sequence
                 interaction_reversed = "s35"
@@ -1193,6 +1215,14 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
                 interaction = "s33" #nt1.sequence + "s33" + nt2.sequence
                 interaction_reversed = "s33"
         elif near_found:
+            # special treatment of faces for some modified nts
+            if nt1.sequence in flipped_nts:
+                coords[2] = -coords[2]
+                coords[3] = -coords[3]
+            if nt2.sequence in flipped_nts:
+                coords2[2] = -coords2[2]
+                coords2[3] = -coords2[3]
+
             if coords[3] > 0 and coords2[3] > 0:
                 interaction = "ns53" #nt2.sequence + "ns35" + nt1.sequence
                 interaction_reversed = "ns35"
@@ -1758,7 +1788,7 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
 
     return PDB_IFE_Dict
 
-def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories):
+def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,interaction_category):
     """
     Write interactions according to category, and within each
     category, write by annotation.
@@ -1768,9 +1798,9 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_trip
     for category in categories.keys():
         filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + category + ".txt")
         with open(filename,'w') as f:
-            for interaction in interaction_to_triple_list.keys():
-                if interaction in categories[category]:
-                    for a,b,c in interaction_to_triple_list[interaction]:
+            for interaction in interaction_to_list_of_tuples.keys():
+                if category in interaction_category[interaction] and (len(categories[category]) == 0 or interaction in categories[category]):
+                    for a,b,c in interaction_to_list_of_tuples[interaction]:
                         f.write("%s\t%s\t%s\t%s\n" % (a,interaction,b,c))
 
 #=======================================================================
@@ -1780,30 +1810,37 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_trip
 if __name__=="__main__":
 
     # dictionary to control what specific annotations are output, in a file named for the key
+    # empty list means to output all interactions in that category
+    # non-empty list specifies which interactions to output in that category
     categories = {}
-    #categories['basepair'] = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
-    categories['sO'] = ['']
-    #categories['stacking'] = ['s35','s53','s33','s55']
-    #categories['base-ribose'] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
-    #categories['base-phosphate'] = ['0BPh', '1BPh', '2BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
 
     # allow user to specify input and output paths
     parser = argparse.ArgumentParser()
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO)')
 
     # process command line arguments
     args = parser.parse_args()
-    if args.output:
-        outputNAPairwiseInteractions = args.output     # set output path
-    elif not outputNAPairwiseInteractions:
-        outputNAPairwiseInteractions = ""
     if args.input:
         inputPath = args.input
     elif not inputPath:
         inputPath = ""
+    if args.output:
+        outputNAPairwiseInteractions = args.output     # set output path
+    elif not outputNAPairwiseInteractions:
+        outputNAPairwiseInteractions = ""
+    if args.category:
+        for category in args.category.split(","):
+            categories[category] = []
+    else:
+        # default is to annotate and write just "true" basepairs
+        categories['basepair'] = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+        #categories['stacking'] = []
+        #categories['sO'] = []
+        #categories['base-ribose'] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
+        #categories['base-phosphate'] = ['0BPh', '1BPh', '2BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
@@ -1853,11 +1890,11 @@ if __name__=="__main__":
             failed_structures.append((PDB,type(ex).__name__,ex))
             continue
 
-        interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
+        interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
-        write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_triple_list,categories)
+        write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, interaction_category)
 
     myTimer("summary",timerData)
 
