@@ -456,23 +456,29 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
 
     chain_to_cWW_pairs = defaultdict(list)   # separate list for each chain
 
-    # find cWW basepairs within each chain
-    for cWW in ['cWW','cWw','cwW','acWW','acWw','acwW']:
-        for u1,u2 in interaction_to_pair_list[cWW]:
+    # find AU, GC, GU cWW basepairs within each chain
+    for interaction in ['cWW','cWw','cwW','acWW','acWw','acwW']:
+        for u1,u2 in interaction_to_pair_list[interaction]:
             chain1, index1 = unit_id_to_index[u1]
             chain2, index2 = unit_id_to_index[u2]
 
-            # record cWW pairs within each chain
+            # record AU, GC, GU cWW pairs by index within each chain
             if chain1 == chain2:
-                if index1 < index2:
-                    chain_to_cWW_pairs[chain1].append((index1,index2))
-                else:
-                    chain_to_cWW_pairs[chain1].append((index2,index1))
+                fields = u1.split('|')
+                parent1 = get_parent(fields[3])
+                fields = u2.split('|')
+                parent2 = get_parent(fields[3])
+
+                if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
+                    if index1 < index2:
+                        chain_to_cWW_pairs[chain1].append((index1,index2))
+                    else:
+                        chain_to_cWW_pairs[chain1].append((index2,index1))
 
     chain_nested_cWW_endpoints = {}
 
     # within each chain, sort nested cWW by distance between them
-    # started with the shortest-range pairs, record nested cWW pairs
+    # starting with the shortest-range pairs, record nested cWW pairs
     # by mapping one index to the other in chain_nested_cWW_endpoints
     for chain in chain_to_cWW_pairs.keys():
         cWW_pairs = sorted(chain_to_cWW_pairs[chain], key=lambda p: (p[1]-p[0],p[0]))
@@ -518,7 +524,6 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
     for interaction in interaction_to_pair_list.keys():
 
         if interaction == "":
-            print("Empty interaction")
             continue
 
         for u1,u2 in interaction_to_pair_list[interaction]:
