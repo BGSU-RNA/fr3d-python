@@ -261,7 +261,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     count_pair = 0
 
     interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
-    interaction_category = {}                    # map observed interactions to category
+    category_to_interactions = defaultdict(set)  # map category to list of observed interactions
 
     pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
@@ -352,8 +352,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
                                 interaction_to_pair_list[interaction_reversed].append(reversed_pair)
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
-                                interaction_category[interaction] = 'sO'
-                                interaction_category[interaction_reversed] = 'sO'
+                                category_to_interactions['sO'].add(interaction)
+                                category_to_interactions['sO'].add(interaction_reversed)
 
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
@@ -363,9 +363,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 count_pair += 1
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
-                                interaction_category[interaction] = 'stacking'
-                                interaction_category[interaction_reversed] = 'stacking'
-                                # reversed interaction will be stored after crossing #
+                                category_to_interactions['stacking'].add(interaction)
+                                category_to_interactions['stacking'].add(interaction_reversed)
 
                         # always annotate basepairs in order to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
@@ -416,13 +415,16 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
 
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
-                                interaction_category[interaction] = 'basepair'
 
-                                # record certain interactions in reversed direction as well
+                                if not interaction in category_to_interactions['basepair']:
+                                    category_to_interactions['basepair'].add(interaction)
+                                    category_to_interactions['basepair_detail'].add(interaction)
 
-                                if interaction[0] in ["c","t","a"] or interaction[1] in ["c","t","a"]:
-                                    interaction_reversed = reverse_edges(interaction)
-                                    interaction_category[interaction_reversed] = 'basepair'
+                                    # record certain interactions in reversed direction as well
+                                    if interaction[0] in ["c","t","a"] or interaction[1] in ["c","t","a"]:
+                                        interaction_reversed = reverse_edges(interaction)
+                                        category_to_interactions['basepair'].add(interaction_reversed)
+                                        category_to_interactions['basepair_detail'].add(interaction_reversed)
 
                         if get_datapoint:
                             pair_to_data[unit_id_pair] = datapoint
@@ -436,7 +438,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     timerData = myTimer("Calculate crossing",timerData)
     interaction_to_list_of_tuples = calculate_crossing_numbers(bases,interaction_to_pair_list)
 
-    return interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData
+    return interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData
 
 def calculate_crossing_numbers(bases,interaction_to_pair_list):
     # Identify which cWW pairs are nested
@@ -577,9 +579,9 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     # annotate nt-nt interactions
     print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
-    interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
+    interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
 
-    return interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData
+    return interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData
 
 
 def get_parent(sequence):
@@ -1793,20 +1795,37 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
 
     return PDB_IFE_Dict
 
-def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,interaction_category):
+def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions):
     """
     Write interactions according to category, and within each
     category, write by annotation.
     Other than that, the interactions are listed in no particular order.
     """
 
+    # loop over types of output files requested
     for category in categories.keys():
         filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + category + ".txt")
         with open(filename,'w') as f:
-            for interaction in interaction_to_list_of_tuples.keys():
-                if category in interaction_category[interaction] and (len(categories[category]) == 0 or interaction in categories[category]):
+            # loop over all interactions found in this category
+            for interaction in category_to_interactions[category]:
+                inter = interaction
+                if category == 'basepair':
+                    inter = simplify_basepair(interaction)
+                # if this category has a restricted list of interactions to output
+                if len(categories[category]) == 0 or inter in categories[category]:
                     for a,b,c in interaction_to_list_of_tuples[interaction]:
-                        f.write("%s\t%s\t%s\t%s\n" % (a,interaction,b,c))
+                        f.write("%s\t%s\t%s\t%s\n" % (a,inter,b,c))
+
+def simplify_basepair(interaction):
+
+    if len(interaction) == 3:
+        inter = interaction[0] + interaction[1:3].upper()
+    elif len(interaction) == 4:
+        inter = interaction[0:2] + interaction[2:4].upper()
+    else:
+        inter = interaction
+
+    return inter
 
 #=======================================================================
 
@@ -1814,17 +1833,12 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list
 
 if __name__=="__main__":
 
-    # dictionary to control what specific annotations are output, in a file named for the key
-    # empty list means to output all interactions in that category
-    # non-empty list specifies which interactions to output in that category
-    categories = {}
-
     # allow user to specify input and output paths
     parser = argparse.ArgumentParser()
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail)')
 
     # process command line arguments
     args = parser.parse_args()
@@ -1836,16 +1850,24 @@ if __name__=="__main__":
         outputNAPairwiseInteractions = args.output     # set output path
     elif not outputNAPairwiseInteractions:
         outputNAPairwiseInteractions = ""
+
+    # dictionary to control what specific annotations are output, in a file named for the key
+    # empty list means to output all interactions in that category
+    # non-empty list specifies which interactions to output in that category
+    categories = {}
+
+    Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+
     if args.category:
         for category in args.category.split(","):
             categories[category] = []
     else:
         # default is to annotate and write just "true" basepairs
-        categories['basepair'] = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
-        #categories['stacking'] = []
-        #categories['sO'] = []
-        #categories['base-ribose'] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
-        #categories['base-phosphate'] = ['0BPh', '1BPh', '2BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
+        categories['basepair'] = Leontis_Westhof_basepairs
+
+    # only output true basepairs in these main categories
+    if 'basepair' in categories:
+        categories['basepair'] = Leontis_Westhof_basepairs
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
@@ -1895,11 +1917,11 @@ if __name__=="__main__":
             failed_structures.append((PDB,type(ex).__name__,ex))
             continue
 
-        interaction_to_list_of_tuples, interaction_category, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
+        interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
-        write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, interaction_category)
+        write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions)
 
     myTimer("summary",timerData)
 
