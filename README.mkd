@@ -49,7 +49,7 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
       - `-c basepair` outputs a file listing basepairs in the 12 Leontis-Westhof families
       - `-c basepair_detail` outputs Leontis-Westhof pairs with more detail about asymmetric pairs and with bifurcated and alternative pairs
       - `-c sO` outputs a file with base-oxygen stacking annotations
-      - `-c basepair,cO` outputs both basepair and sO annotation files
+      - `-c basepair,cO` outputs both basepair and sO annotation files; don't put spaces between the category types
 
 <details>
   <summary>Notes on updating Docker image in Container registry</summary>
