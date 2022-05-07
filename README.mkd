@@ -46,8 +46,10 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
     - `path_to_output` is the folder where the results will be generated
     - `pdb_id` is the PDB identifier of the structure to be annotated (for example, `1S72`). Multiple PDB identifiers can be specified
     - Optional flag determines which output files are generated
-    -- `-c basepair` outputs basepairs in the 12 Leontis-Westhof families
-    -- `-c basepair_detail` outputs Leontis-Westhof pairs with more detail about asymmetric pairs and with bifurcated and alternative pairs
+      - `-c basepair` outputs a file listing basepairs in the 12 Leontis-Westhof families
+      - `-c basepair_detail` outputs Leontis-Westhof pairs with more detail about asymmetric pairs and with bifurcated and alternative pairs
+      - `-c sO` outputs a file with base-oxygen stacking annotations
+      - `-c basepair,cO` outputs both basepair and sO annotation files
 
 <details>
   <summary>Notes on updating Docker image in Container registry</summary>
