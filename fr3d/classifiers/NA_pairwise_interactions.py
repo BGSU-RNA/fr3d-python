@@ -60,8 +60,6 @@ from fr3d.modified_parent_mapping import modified_nucleotides
 # some modified nucleotides have faces flipped compared to parent nt
 flipped_nts = ['PSU']
 
-from discrepancy import matrix_discrepancy
-
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
 try:
@@ -429,7 +427,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if get_datapoint:
                             pair_to_data[unit_id_pair] = datapoint
 
-    print("  Found %d nucleotide-nucleotide pairs" % count_pair)
+    print("  Found %d nucleotide-nucleotide interactions" % count_pair)
 
     if False:
         print("  Maximum screen distance for actual contacts is %8.4f" % max_center_center_distance)
@@ -438,7 +436,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     timerData = myTimer("Calculate crossing",timerData)
     interaction_to_list_of_tuples = calculate_crossing_numbers(bases,interaction_to_pair_list)
 
-    return interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData
+    return interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data
 
 def calculate_crossing_numbers(bases,interaction_to_pair_list):
     # Identify which cWW pairs are nested
@@ -579,9 +577,9 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     # annotate nt-nt interactions
     print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
-    interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
+    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
 
-    return interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData
+    return interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data
 
 
 def get_parent(sequence):
@@ -1183,7 +1181,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2)
 
     #Gets the normal vector for later calculation
-    rotation_1_to_2 = np.matmul(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
     normal_Z = rotation_1_to_2[2,2]
     if datapoint:
         datapoint['normal_Z'] = normal_Z
@@ -1275,7 +1273,7 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     pair_data["coplanar_value"] = -1         # 0 to 1 is coplanar, 1 is the best
 
     # vector from origin to nt2 when standardized
-    displ12 = np.matmul(glycosidic_displacement,nt1.rotation_matrix)
+    displ12 = np.dot(glycosidic_displacement,nt1.rotation_matrix)
 
     pair_data["displ12"] = displ12
 
@@ -1321,16 +1319,16 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     center_displ = center_displ / np.linalg.norm(center_displ) # normalize
 
     # calculate angle between center_displ and normal vectors to bases
-    dot1 = abs(np.matmul(center_displ,nt1.rotation_matrix[:,2]))[0,0]
+    dot1 = abs(np.dot(center_displ,nt1.rotation_matrix[:,2]))[0,0]
     if dot1 >= 0.3381:
         return pair_data, datapoint
 
-    dot2 = abs(np.matmul(center_displ,nt2.rotation_matrix[:,2]))[0,0]
+    dot2 = abs(np.dot(center_displ,nt2.rotation_matrix[:,2]))[0,0]
     if dot2 >= 0.3381:
         return pair_data, datapoint
 
     # calculate angle between normal vectors to the bases
-    dot3 = abs(np.matmul(nt1.rotation_matrix[:,2].T,nt2.rotation_matrix[:,2]))
+    dot3 = abs(np.dot(nt1.rotation_matrix[:,2].T,nt2.rotation_matrix[:,2]))
     if dot3 <= 0.7757:
         return pair_data, datapoint
 
@@ -1435,7 +1433,7 @@ def calculate_basepair_gap(nt1,nt2,points2=None):
     gap12 = 100
     for k in range(0,3):              # 3 nearest points
         p = displacements[indices[k]]
-        z = abs(np.matmul(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
+        z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
             gap12 = z                 # gap is smallest z value
 
@@ -1477,7 +1475,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
 
 #    return ok_displacement_screen
 
-    rotation_1_to_2 = np.matmul(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
 
     normal_Z = rotation_1_to_2[2,2]   # z component of normal vector to second base
 
@@ -1626,12 +1624,12 @@ def get_axis_angle_from_rotation_matrix(rotation):
     print((b.T * rotation * b)[0,0])
     print(b.T.dot(b))
 
-    print(np.matmul(np.matmul(b.T,rotation),b)[0,0])
-    print(np.matmul(b.T,b)[0,0])
+    print(np.dot(np.dot(b.T,rotation),b)[0,0])
+    print(np.dot(b.T,b)[0,0])
     """
 
-    angle = math.acos(np.matmul(np.matmul(b.T,rotation),b)[0,0] / np.matmul(b.T,b)[0,0]).real
-    angle = angle * np.sign(np.linalg.det(np.concatenate((b,np.matmul(rotation,b),axis),axis=1)))
+    angle = math.acos(np.dot(np.dot(b.T,rotation),b)[0,0] / np.dot(b.T,b)[0,0]).real
+    angle = angle * np.sign(np.linalg.det(np.concatenate((b,np.dot(rotation,b),axis),axis=1)))
     angle = angle * 57.29577951308232
 
     if angle <= -90:
@@ -1893,8 +1891,7 @@ if __name__=="__main__":
         else:
             PDBs.append(os.path.join(inputPath,x))
 
-    # process PDBs
-
+    # annotate each PDB file
     timerData = myTimer("start")
     failed_structures = []
     counter = 0
@@ -1917,7 +1914,7 @@ if __name__=="__main__":
             failed_structures.append((PDB,type(ex).__name__,ex))
             continue
 
-        interaction_to_list_of_tuples, category_to_interactions, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
