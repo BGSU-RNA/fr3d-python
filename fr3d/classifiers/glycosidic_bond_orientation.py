@@ -1,20 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     This program reads one or more CIF files and produces annotations
-    of nucleotide-nucleotide interactions.
-    Basepairs are annotated with Leontis-Westhof annotations like cWW, tHS.
-    Basepairs might also be annotated as "near" with ncWW, ntHS.
-    A few basepair categories have "alternative" geometries like acWW, ctWW.
-    Alternative geometries are not checked for hydrogen bonds.
-
-
-"""
-
-"""
-    Developer notes:
-        CC acHS needs a tighter gap requirement, avoid http://rna.bgsu.edu/rna3dhub/display3D/unitid/4V9F|1|0|C|2309,4V9F|1|0|C|2281
-        AC cWW needs tigher requirements, avoid http://rna.bgsu.edu/rna3dhub/display3D/unitid/4V9F|1|0|A|2465,4V9F|1|0|C|2396
-        AG cWS has near that should be true, see big cluster at http://rna.bgsu.edu/webfr3d/Results/60ca1ea55ae61/60ca1ea55ae61.html
+    the glycosidic bond orientation.
 
 """
 
