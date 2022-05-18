@@ -218,13 +218,12 @@ Sugar_2['DT']= ["C2", "O2"]
 
 # This "RNA" variable is here for backward compatibility
 RNAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
-RNAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
-RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
-
 RNAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
+RNAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
 RNAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
+RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
 RNAbasehydrogens['G'] = ['H1','H8','H9','H22','H22']
+RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
 RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
 
 # This should be the new standard, for all nucleic acids
@@ -232,19 +231,6 @@ NAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
 NAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
 NAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
 NAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
-NAbaseheavyatoms['DA'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
-NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
-NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
-
-NAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
-NAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
-NAbasehydrogens['G'] = ['H1','H8','H9','H21','H22']
-NAbasehydrogens['U'] = ['H5','H1','H3','H6']
-NAbasehydrogens['DA'] = ['H2','H8','H9','H61','H62']
-NAbasehydrogens['DC'] = ['H1','H6','H5','H41','H42']
-NAbasehydrogens['DG'] = ['H1','H8','H9','H21','H22']
-NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 # RNA backbone
 ribose = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'"]
@@ -265,6 +251,10 @@ nt_backbone['C'] = ribose + phosphate
 nt_backbone['G'] = ribose + phosphate
 nt_backbone['U'] = ribose + phosphate
 
+NAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
+NAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
+NAbasehydrogens['G'] = ['H1','H8','H9','H21','H22']
+NAbasehydrogens['U'] = ['H5','H1','H3','H6']
 
 """Defining the parts of DNA nucleotides"""
 
@@ -284,6 +274,16 @@ nt_backbone['DA'] = DNAribose + phosphate
 nt_backbone['DC'] = DNAribose + phosphate
 nt_backbone['DG'] = DNAribose + phosphate
 nt_backbone['DT'] = DNAribose + phosphate
+
+NAbaseheavyatoms['DA'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
+NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
+NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
+NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
+
+NAbasehydrogens['DA'] = ['H2','H8','H9','H61','H62']
+NAbasehydrogens['DC'] = ['H1','H6','H5','H41','H42']
+NAbasehydrogens['DG'] = ['H1','H8','H9','H21','H22']
+NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 #Amino acid computation definitions
 
@@ -451,6 +451,7 @@ RNAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 NAbasecoordinates = {}
 NAbasecoordinates['A'] = {}
 NAbasecoordinates['A'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
+NAbasecoordinates['A'][ "C1'"] = [ -1.110515,  (-1.823319 - 1),   0.000000] #should be roughly one unit lower than N9 
 NAbasecoordinates['A'][ 'C4'] = [  0.007975,  -1.020192,   0.000000]
 NAbasecoordinates['A'][ 'N3'] = [  1.298514,  -1.383716,   0.000000]
 NAbasecoordinates['A'][ 'N1'] = [  1.754329,   1.001072,   0.000000]
@@ -467,6 +468,7 @@ NAbasecoordinates['A']['H61'] = [  0.810429,   3.327414,   0.000000]
 NAbasecoordinates['A']['H62'] = [ -0.880080,   2.876400,   0.000000]
 NAbasecoordinates['C'] = {}
 NAbasecoordinates['C'][ 'N1'] = [ -0.380579,  -1.484583,   0.000000]
+NAbasecoordinates['C'][ "C1'"] = [ -0.380579,  (-1.484583-1),   0.000000] #should be roughly one unit lower than N1 
 NAbasecoordinates['C'][ 'C2'] = [  0.908756,  -0.885330,   0.000000]
 NAbasecoordinates['C'][ 'O2'] = [  1.888871,  -1.605366,   0.000000]
 NAbasecoordinates['C'][ 'N3'] = [  0.931558,   0.493192,   0.000000]
@@ -481,6 +483,7 @@ NAbasecoordinates['C']['H41'] = [ -0.908549,   3.117619,   0.000000]
 NAbasecoordinates['C']['H42'] = [  0.823255,   2.927413,   0.000000]
 NAbasecoordinates['G'] = {}
 NAbasecoordinates['G'][ 'N9'] = [ -1.456680,  -1.711888,   0.000000]
+NAbasecoordinates['G'][ "C1'"] = [ -1.456680,  (-1.711888-1),   0.000000] #should be roughly one unit lower than N9 
 NAbasecoordinates['G'][ 'C4'] = [ -0.339093,  -0.921183,   0.000000]
 NAbasecoordinates['G'][ 'N3'] = [  0.947138,  -1.370892,   0.000000]
 NAbasecoordinates['G'][ 'N1'] = [  1.440727,   0.946157,   0.000000]
@@ -498,6 +501,7 @@ NAbasecoordinates['G']['H21'] = [  3.415836,  -1.614107,   0.000000]
 NAbasecoordinates['G']['H22'] = [  3.838495,   0.070395,   0.000000]
 NAbasecoordinates['U'] = {}
 NAbasecoordinates['U'][ 'N1'] = [ -0.326420,  -1.514422,   0.000000]
+NAbasecoordinates['U'][ "C1'"] = [ -0.326420,  (-1.514422-1),   0.000000] #should be roughly one unit lower than N1
 NAbasecoordinates['U'][ 'C2'] = [  0.933866,  -0.925171,   0.000000]
 NAbasecoordinates['U'][ 'O2'] = [  1.966070,  -1.562816,   0.000000]
 NAbasecoordinates['U'][ 'N3'] = [  0.868896,   0.459470,   0.000000]
@@ -512,6 +516,7 @@ NAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 
 NAbasecoordinates['DA'] = {}
 NAbasecoordinates['DA'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
+NAbasecoordinates['DA'][ "C1'"] = [ -1.110515,  (-1.823319-1),   0.000000] #should be roughly one unit lower than N9
 NAbasecoordinates['DA'][ 'C4'] = [  0.007975,  -1.020192,   0.000000]
 NAbasecoordinates['DA'][ 'N3'] = [  1.298514,  -1.383716,   0.000000]
 NAbasecoordinates['DA'][ 'N1'] = [  1.754329,   1.001072,   0.000000]
@@ -528,6 +533,7 @@ NAbasecoordinates['DA']['H61'] = [  0.810429,   3.327414,   0.000000]
 NAbasecoordinates['DA']['H62'] = [ -0.880080,   2.876400,   0.000000]
 NAbasecoordinates['DC'] = {}
 NAbasecoordinates['DC'][ 'N1'] = [ -0.380579,  -1.484583,   0.000000]
+NAbasecoordinates['DC'][ "C1'"] = [ -0.380579,  (-1.484583-1),   0.000000] #should be roughly one unit lower than N1
 NAbasecoordinates['DC'][ 'C2'] = [  0.908756,  -0.885330,   0.000000]
 NAbasecoordinates['DC'][ 'O2'] = [  1.888871,  -1.605366,   0.000000]
 NAbasecoordinates['DC'][ 'N3'] = [  0.931558,   0.493192,   0.000000]
@@ -542,6 +548,7 @@ NAbasecoordinates['DC']['H41'] = [ -0.908549,   3.117619,   0.000000]
 NAbasecoordinates['DC']['H42'] = [  0.823255,   2.927413,   0.000000]
 NAbasecoordinates['DG'] = {}
 NAbasecoordinates['DG'][ 'N9'] = [ -1.456680,  -1.711888,   0.000000]
+NAbasecoordinates['DG'][ "C1'"] = [ -1.456680,  (-1.711888-1),   0.000000] #should be roughly one unit lower than N9
 NAbasecoordinates['DG'][ 'C4'] = [ -0.339093,  -0.921183,   0.000000]
 NAbasecoordinates['DG'][ 'N3'] = [  0.947138,  -1.370892,   0.000000]
 NAbasecoordinates['DG'][ 'N1'] = [  1.440727,   0.946157,   0.000000]
@@ -561,6 +568,7 @@ NAbasecoordinates['DG']['H22'] = [  3.838495,   0.070395,   0.000000]
 # improvised in fall 2020, should be improved in the near future
 NAbasecoordinates['DT'] = {}
 NAbasecoordinates['DT']['N1'] = [ 0.077892,-1.669793, 0.000000]
+NAbasecoordinates['DT']["C1'"] = [ 0.077892,(-1.669793-1), 0.000000] #should be roughly one unit lower than N1
 NAbasecoordinates['DT']['C2'] = [ 1.276471,-0.994656, 0.000000]
 NAbasecoordinates['DT']['O2'] = [ 2.359169,-1.553674, 0.000000]
 NAbasecoordinates['DT']['N3'] = [ 1.166654, 0.370792, 0.000000]
