@@ -1068,47 +1068,70 @@ def check_convex_hull_atoms(x,y,z, parent):
     near_z_cutoff = 4.5
     if abs(z) < near_z_cutoff:
         if parent == 'G':
-            if -0.097781*x +  4.872516*y +  8.198766 > 0:  # Left of N9-H21
+            if -1.097781*x +  4.872516*y + 11.614602 > 0:  # Left of C1'-H21
                 if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
                     if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
                         if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
                             if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
                                 if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
-                                    if  0.463584*x +  2.101573*y +  4.272951 > 0:  # Left of H8-N9
+                                    if  1.463584*x +  2.101573*y +  7.831204 > 0:  # Left of H8-C1'
+                                        return True
+        elif parent == 'DG':
+            if -1.097781*x +  4.872516*y + 11.614602 > 0:  # Left of C1'-H21
+                if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
+                    if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
+                        if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
+                            if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
+                                if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
+                                    if  1.463584*x +  2.101573*y +  7.831204 > 0:  # Left of H8-C1'
                                         return True
         elif parent == 'A':
-                if -1.317924*x +  4.271447*y +  6.324636 > 0:  # Left of N9-H2
-                    if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
-                        if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
-                            if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
-                                if  0.447145*x +  2.100463*y +  4.326375 > 0:  # Left of H8-N9
-                                    return True
+            if -2.317924*x +  4.271447*y +  9.485568 > 0:  # Left of C1'-H2
+                if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
+                    if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
+                        if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
+                            if  1.447145*x +  2.100463*y +  7.537353 > 0:  # Left of H8-C1'
+                                return True
+        elif parent == 'DA':
+            if -2.317924*x +  4.271447*y +  9.485568 > 0:  # Left of C1'-H2
+                if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
+                    if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
+                        if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
+                           if  1.447145*x +  2.100463*y +  7.537353 > 0:  # Left of H8-C1'
+                                return True
         elif parent == 'C':
-            if  0.120783*x +  2.269450*y +  3.415154 > 0:  # Left of N1-O2
+            if -0.879217*x +  2.269450*y +  5.304025 > 0:  # Left of C1'-O2
                 if -2.098558*x + -0.957313*y +  2.427068 > 0:  # Left of O2-N3
                     if -2.031427*x + -1.030781*y +  2.400765 > 0:  # Left of N3-N4
                         if  1.362107*x + -2.318128*y +  5.987542 > 0:  # Left of N4-H5
                             if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
-                                if  0.123632*x +  2.082733*y +  3.139042 > 0:  # Left of H6-N1
+                                if  1.123632*x +  2.082733*y +  5.602354 > 0:  # Left of H6-C1'
+                                    return True
+        elif parent == 'DC':
+            if -0.879217*x +  2.269450*y +  5.304025 > 0:  # Left of C1'-O2
+                if -2.098558*x + -0.957313*y +  2.427068 > 0:  # Left of O2-N3
+                    if -2.031427*x + -1.030781*y +  2.400765 > 0:  # Left of N3-N4
+                        if  1.362107*x + -2.318128*y +  5.987542 > 0:  # Left of N4-H5
+                            if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
+                                if  1.123632*x +  2.082733*y +  5.602354 > 0:  # Left of H6-C1'
                                     return True
 
         elif parent == 'U':
-            if  0.048394*x +  2.292490*y +  3.487594 > 0:  # Left of N1-O2
+            if -0.951606*x +  2.292490*y +  5.453664 > 0:  # Left of C1'-O2
                 if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
                     if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
                         if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
                             if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
-                                if  0.111836*x +  2.082780*y +  3.190713 > 0:  # Left of H6-N1
+                                if  1.111836*x +  2.082780*y +  5.599913 > 0:  # Left of H6-C1'
                                     return True
         elif parent == 'DT':
-            if -0.181184*x + -1.990901*y + -3.310280 > 0:  # Left of N1-H6
-                if -2.557421*x + -0.969085*y + -6.334958 > 0:  # Left of H6-H72
-                    if -0.871450*x +  0.459475*y + -3.002693 > 0:  # Left of H72-H71
-                        if -0.400402*x +  2.427972*y + -5.680923 > 0:  # Left of H71-O4
-                            if  1.526233*x +  1.897795*y + -4.450270 > 0:  # Left of O4-H3
-                                if  2.368105*x +  0.456021*y + -4.878252 > 0:  # Left of H3-O2
-                                    if  0.116119*x + -2.281277*y + -3.818305 > 0:  # Left of O2-N1
-                                        return True
+            if -1.116119*x +  2.281277*y +  6.177474 > 0:  # Left of C1'-O2
+                if -2.368105*x + -0.456021*y +  4.878252 > 0:  # Left of O2-H3
+                    if -1.526233*x + -1.897795*y +  4.450270 > 0:  # Left of H3-O4
+                        if  1.301401*x + -2.544887*y +  5.949759 > 0:  # Left of O4-C7
+                            if  2.031505*x +  1.412190*y +  3.691439 > 0:  # Left of C7-C6
+                                if  1.677551*x +  1.205236*y +  3.087063 > 0:  # Left of C6-C1'
+                                    return True
         else:
             print("Unrecognized parent " + parent + " in function check_convex_hull_atoms")
             return False
@@ -1121,7 +1144,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
         if len(point) == 3:
             x,y,z = translate_rotate_point(nt1, point)
             inside = check_convex_hull_atoms(x,y,z, parent)
-            if z < min_z:
+            if abs(z) < abs(min_z):
                 min_z_x = x
                 min_z_y = y
                 min_z = z #returns the z coordinate if it passes its in the plane. Might want to make this return the nt type as well we'll see.
@@ -1138,18 +1161,23 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
 #     return atomList
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
+    aa = 0
     """Pass in two nucleotides. Base stacking."""
-
     true_z_cutoff = 4 #maybe this should be 3.4?
+    near_z_cutoff = 4.5
+
     interaction = ""
     interaction_reversed = ""
 
     #Outermost Atoms  Of NT Bases Used to find the convex hull
     convexHullAtoms = {}
-    convexHullAtoms['A'] = ['N9','H2','H61', 'H62','H8','N9'] #Based on Matlab Code
-    convexHullAtoms['C'] = ['N1','O2','N3','N4','H5','H6', 'N1']
-    convexHullAtoms['G'] = ['N9','H21','H22','H1','O6','N7','H8','N9']
-    convexHullAtoms['U'] = ['N1','O2','H3','O4','H5','H6','N1']
+    convexHullAtoms['A'] = ["N9",'H2','H61', 'H62','H8',"N9"] #Based on Matlab Code
+    convexHullAtoms['DA'] = ["N1",'H2','H61', 'H62','H8',"N1"] 
+    convexHullAtoms['C'] = ["N1",'O2','N3','N4','H5','H6', "N1"]
+    convexHullAtoms['DC'] = ["C1'",'O2','N3','N4','H5','H6', "C1'"]
+    convexHullAtoms['G'] = ["N9",'H21','H22','H1','O6','N7','H8',"N9"]
+    convexHullAtoms['DG'] = ["C1'",'H21','H22','H1','O6','N7','H8',"C1'"]
+    convexHullAtoms['U'] = ["N1",'O2','H3','O4','H5','H6',"N1"]
     convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6', "C1'"]
 
     #Create a list in case one of these is nucleotides is a modified nucleotide
@@ -1157,9 +1185,6 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #     modifiednt2Atoms = create_modified_base_atoms_list(nt2)
     # if nt1.sequence in modified_nucleotides:
     #     modifiednt1Atoms = create_modified_base_atoms_list(nt1)
-
-    true_found = False
-    near_found = False
 
     #Variables to flag if an atom from nt2 was projected onto nt1 and to check if nt1 atoms project onto nt2
     nt2on1=False
@@ -1178,68 +1203,43 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
 
     #Returns true if an atom is projected inside the atom. Also returns the x,y,z coordinates of the nt inside and the minimum z value
     nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
-    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2)
-
-    #Gets the normal vector for later calculation
-    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
-    normal_Z = rotation_1_to_2[2,2]
-    if datapoint:
-        datapoint['normal_Z'] = normal_Z
+    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2) 
 
     #check near stacking
-    if nt2on1 == True and nt1on2 == True:
-        center_displ = np.subtract(nt1.centers["base"],nt2.centers["base"])
-        center_displ = center_displ / np.linalg.norm(center_displ)
+    if nt2on1 or nt1on2:
+        #Gets the normal vector for later calculation
+        rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+        normal_Z = rotation_1_to_2[2,2]
+        if datapoint:
+            datapoint['normal_Z'] = normal_Z
 
-        #print("CENTER" + str(center_displ))
-        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and normal_Z > 0.6:
-            true_found = True
-        elif true_found == False and abs(coords[3]) > 1 and normal_Z > 0.5 : #change to elif
-            near_found = True
-
-        #Annotation generation
-        if true_found:
-            # special treatment of faces for some modified nts
-            if nt1.sequence in flipped_nts:
-                coords[2] = -coords[2]
-                coords[3] = -coords[3]
-            if nt2.sequence in flipped_nts:
-                coords2[2] = -coords2[2]
-                coords2[3] = -coords2[3]
-
-            if coords[3] > 0 and coords2[3] > 0:
-                interaction = "s53" #nt1.sequence + "s53" + nt2.sequence
-                interaction_reversed = "s35"
-            elif coords[3] > 0 and coords2[3] < 0:
-                interaction =  "s35" #nt1.sequence + "s35" + nt2.sequence
-                interaction_reversed = "s53"
-            elif coords[3] < 0 and coords2[3] < 0:
-                interaction =  "s55" #nt1.sequence + "s55" + nt2.sequence
-                interaction_reversed = "s55"
-            else:
-                interaction = "s33" #nt1.sequence + "s33" + nt2.sequence
-                interaction_reversed = "s33"
-        elif near_found:
-            # special treatment of faces for some modified nts
-            if nt1.sequence in flipped_nts:
-                coords[2] = -coords[2]
-                coords[3] = -coords[3]
-            if nt2.sequence in flipped_nts:
-                coords2[2] = -coords2[2]
-                coords2[3] = -coords2[3]
-
-            if coords[3] > 0 and coords2[3] > 0:
-                interaction = "ns53" #nt2.sequence + "ns35" + nt1.sequence
-                interaction_reversed = "ns35"
-            elif coords[3] > 0 and coords2[3] < 0:
-                interaction =  "ns35" #nt1.sequence + "s35" + nt2.sequence
+        # special treatment of faces for some modified nts
+        if nt1.sequence in flipped_nts:
+            coords[2] = -coords[2]
+            coords[3] = -coords[3]
+        if nt2.sequence in flipped_nts:
+            coords2[2] = -coords2[2]
+            coords2[3] = -coords2[3]
+        if coords[3] > 0: # coords[3] holds min_z
+            if normal_Z > 0:
+                interaction = "ns35" # second base above, pointing up 
                 interaction_reversed = "ns53"
-            elif coords[3] < 0 and coords2[3] < 0:
-                interaction =  "ns55" #nt1.sequence + "s55" + nt2.sequence
-                interaction_reversed = "ns55"
             else:
-                interaction =  "ns33" #nt2.sequence + "ns53" + nt1.sequence
-                interaction_reversed = "ns33"
+                interaction = "ns53" #second base above, pointing down
+                interaction_reversed = "ns35"
+        else:
+            if normal_Z > 0: 
+                interaction = "ns33" 
+                interaction_reversed = "ns33" #second base below, pointing up
+            else: 
+                interaction =  "ns55" 
+                interaction_reversed = "ns55" #second base below, pointing down
+        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
+            interaction = interaction.replace("n","")
+        elif abs(coords[3]) > 1 and abs(normal_Z) > 0.5: 
+            interaction = interaction
+        else:
+            interaction = ""
 
     if False and len(interaction) > 0:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))

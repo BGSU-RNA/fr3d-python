@@ -112,8 +112,21 @@ ring_lists['G5'] = ['C4','C5','N7','C8','N9']
 ring_lists['DT'] = ['N1','C2','N3','C4','C5','C6']
 ring_lists['U'] = ['N1','C2','N3','C4','C5','C6']
 
+convexHullAtoms = {}
+convexHullAtoms['A'] = ["C1'",'N3','H2','H61','H62','H8',"C1'"] #Based on Matlab Code
+convexHullAtoms['DA'] = ["C1'",'H2','N6','H8',"C1'"]
+convexHullAtoms['C'] = ["C1'",'O2','N3','N4','H5','H6', "C1'"]
+convexHullAtoms['DC'] = ["C1'",'O2','N3','N4','H5','H6', "C1'"]
+convexHullAtoms['G'] = ["C1'",'H21','H22','H1','O6','N7','H8',"C1'"]
+convexHullAtoms['DG'] = ["C1'",'H21','H22','H1','O6','N7','H8',"C1'"]
+convexHullAtoms['U'] = ["C1'",'O2','H3','O4','H5','H6',"C1'"]
+convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6', "C1'"] 
+
 print('Code to check that an (x,y) point is inside a base ring')
 iterate_over_atom_lists(ring_atom_lists,0)
+
+print('Code to check that an (x,y) point is inside the convex hull of a base')
+iterate_over_atom_lists(convexHullAtoms,0)
 
 print('Code to check that an (x,y) point is close to being inside a base ring')
 iterate_over_atom_lists(ring_atom_lists,0.4)
