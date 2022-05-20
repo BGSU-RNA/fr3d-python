@@ -1123,6 +1123,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
         overlap is returned as False, and coordinates are filled with dummy lists filled with -100 (which are not coordinates that would be seen otherwise)"""
     inside = False
     min_z = 1000
+
     for atom in listOfAtoms:
         point = nt2.centers[atom]
         if len(point) == 3:
@@ -1144,7 +1145,7 @@ def create_modified_base_atoms_list(nt):
     atomList = []
     for atom in nt.atoms():
         if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:
-            atomList.append(atom)
+            atomList.append(atom.name)
     return atomList
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
@@ -1169,7 +1170,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
     convexHullAtoms = {}
     convexHullAtoms['A'] = ["C1'",'N3','H2','N1','N6','H8'] #Based on Matlab Code
-    convexHullAtoms['DA'] = ["C1'",'H2','N6','H8'] 
+    convexHullAtoms['DA'] = ["C1'",'N3','H2','N1','N6','H8'] 
     convexHullAtoms['C'] = ["C1'",'O2','N4','H5','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
     convexHullAtoms['DC'] = ["C1'",'O2','N4','H5','H6']
     convexHullAtoms['G'] = ["C1'",'H21','H22','H1','O6','N7','H8']
