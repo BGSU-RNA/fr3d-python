@@ -1066,50 +1066,52 @@ def check_convex_hull_atoms(x,y,z, parent):
     Takes in two nucleotides coordinates alongside the nucleotide type.
     Returns True if The points fall within the convex hull of the parent1 and returns False Otherwise."""
     near_z_cutoff = 4.5
+    inside = False
     if abs(z) < near_z_cutoff:
         if parent == 'G' or parent == 'DG':
-            if -1.597781*x +  4.872516*y + 13.322520 > 0:  # Left of C1'-H21
+            if -1.577781*x +  4.872516*y + 13.254203 > 0:  # Left of C1'-H21
                 if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
                     if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
-                        if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
-                            if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
-                                if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
-                                    if  1.963584*x +  2.101573*y +  9.610331 > 0:  # Left of H8-C1'
-                                        return True
+                            if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
+                                if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
+                                    if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
+                                        if  1.943584*x +  2.101573*y +  9.539166 > 0:  # Left of H8-C1'
+                                            inside = True
         elif parent == 'A' or parent == 'DA':
-            if -1.939603*x +  2.409029*y +  5.852014 > 0:  # Left of C1'-N3
+            if -1.919603*x +  2.409029*y +  5.826043 > 0:  # Left of C1'-N3
                 if -0.878321*x +  1.862418*y +  3.717570 > 0:  # Left of N3-H2
                     if -1.506467*x + -1.406603*y +  4.050950 > 0:  # Left of H2-N1
                         if -1.622643*x + -1.661740*y +  4.510171 > 0:  # Left of N1-N6
                             if  3.999889*x + -3.303567*y +  8.297273 > 0:  # Left of N6-H8
-                                if  1.947145*x +  2.100463*y +  9.142842 > 0:  # Left of H8-C1'
-                                    return True
+                                if  1.927145*x +  2.100463*y +  9.078623 > 0:  # Left of H8-C1'
+                                    inside = True
         elif parent == 'C' or parent == 'DC':
-            if -1.379217*x +  2.269450*y +  6.248461 > 0:  # Left of C1'-O2
+            if -1.359217*x +  2.269450*y +  6.210683 > 0:  # Left of C1'-O2
                 if -4.129985*x + -1.988094*y +  4.609390 > 0:  # Left of O2-N4
                     if  1.362107*x + -2.318128*y +  5.987542 > 0:  # Left of N4-H5
                         if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
-                            if  1.623632*x +  2.082733*y +  6.834010 > 0:  # Left of H6-C1'
-                                return True
+                            if  1.603632*x +  2.082733*y +  6.784744 > 0:  # Left of H6-C1'
+                                inside = True
         elif parent == 'U':
-            if -1.451606*x +  2.292490*y +  6.436699 > 0:  # Left of C1'-O2
+            if -1.431606*x +  2.292490*y +  6.397378 > 0:  # Left of C1'-O2
                 if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
                     if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
                         if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
                             if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
-                                if  1.611836*x +  2.082780*y +  6.804513 > 0:  # Left of H6-C1'
-                                    return True
+                                if  1.591836*x +  2.082780*y +  6.756329 > 0:  # Left of H6-C1'
+                                    inside = True
         elif parent == 'DT':
-            if -1.116119*x +  2.281277*y +  6.177474 > 0:  # Left of C1'-O2
+            if -1.596119*x +  2.281277*y +  7.309875 > 0:  # Left of C1'-O2
                 if -2.368105*x + -0.456021*y +  4.878252 > 0:  # Left of O2-H3
                     if -1.526233*x + -1.897795*y +  4.450270 > 0:  # Left of H3-O4
                         if  1.301401*x + -2.544887*y +  5.949759 > 0:  # Left of O4-C7
                             if  2.031505*x +  1.412190*y +  3.691439 > 0:  # Left of C7-C6
-                                if  1.677551*x +  1.205236*y +  3.087063 > 0:  # Left of C6-C1'
-                                    return True
+                                if  2.157551*x +  1.205236*y +  3.628188 > 0:  # Left of C6-C1'
+                                    inside = True
         else:
             print("Unrecognized parent " + parent + " in function check_convex_hull_atoms. FR3D is currently unable to recognize this modified base.")
             return False
+    return inside
 
 def return_overlap(listOfAtoms, nt1, nt2, parent):
     """Function to check if there's overlap between a list of atoms from one nucleotide and the atoms of the base of another
@@ -1121,9 +1123,9 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
          a list of the x,y,z coordinates of a point with overlap and the minimum z value are t returned as well as a true flag to show there is overlap
     Otherwise:
         overlap is returned as False, and coordinates are filled with dummy lists filled with -100 (which are not coordinates that would be seen otherwise)"""
-    inside = False
     min_z = 1000
-
+    inside = False 
+    overlap = False
     for atom in listOfAtoms:
         point = nt2.centers[atom]
         if len(point) == 3:
@@ -1132,9 +1134,10 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
             if abs(z) < abs(min_z):
                 min_z_x = x
                 min_z_y = y
-                min_z = z #returns the z coordinate if it passes its in the plane. Might want to make this return the nt type as well we'll see.
-    if inside:
-        #points.append([x,y,z,atom]) #later calculation
+                min_z = z 
+            if inside:
+                overlap = True #since we're iterating over the whole list of atoms, inside will be set over and over so a second flag overlap will be set that won't be reset if inside is true at least once
+    if overlap:
         return True, [x,y,z, min_z]
     return False, [-100,-100,-100, -100]
 
@@ -1204,7 +1207,8 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Returns true if an atom is projected inside the atom (overlap). Also returns the x,y,z coordinates of the nt inside and the minimum z value
     nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
     nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2) 
-
+    #print("NT 2 On 1: " + str(nt2on1) + " and NT 1 on 2: " + str(nt1on2))
+    
     #check near stacking
     if nt2on1 or nt1on2:
         #Gets the normal vector for later calculation
