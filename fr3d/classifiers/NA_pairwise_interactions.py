@@ -17,7 +17,6 @@
     When fr3d is changed, python setup.py install
 """
 
-from code import interact
 import numpy as np
 import csv
 import urllib
