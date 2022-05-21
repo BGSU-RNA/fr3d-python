@@ -17,6 +17,7 @@
     When fr3d is changed, python setup.py install
 """
 
+from code import interact
 import numpy as np
 import csv
 import urllib
@@ -552,11 +553,10 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
             interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
 
             # duplicate certain pairs in reversed order
-            if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
+            if interaction[0] in ["c","t"]:# or interaction in ["s33","s35","s53","s55"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-            elif interaction[0:2] in ["nc","nt"] or interaction in ["ns33","ns35","ns53","ns55"]:
+            elif interaction[0:2] in ["nc","nt"]:# or interaction in ["ns33","ns35","ns53","ns55"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-
     return interaction_to_list_of_tuples
 
 def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoint=False):
@@ -1214,9 +1214,11 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         #Gets the normal vector for later calculation
         rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
         normal_Z = rotation_1_to_2[2,2]
+
         if datapoint:
             datapoint['normal_Z'] = normal_Z
-
+        if coords[3] == -100:
+            coords[3] = -coords2[3] #If overlap isnt found one way, sometimes the return value will be -100 when it's not supposed to be. This will use the min z the other way instead. Sets negative since direction is different but z should be similar
         # special treatment of faces for some modified nts
         if nt1.sequence in flipped_nts:
             coords[2] = -coords[2]
@@ -1229,15 +1231,15 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
                 interaction = "ns35" # second base above, pointing up 
                 interaction_reversed = "ns53"
             else:
-                interaction = "ns53" #second base above, pointing down
-                interaction_reversed = "ns35"
+                interaction = "ns33" #second base above, pointing down
+                interaction_reversed = "ns33"
         else:
             if normal_Z > 0: 
-                interaction = "ns33" 
-                interaction_reversed = "ns33" #second base below, pointing up
+                interaction = "ns53"  #second base below, pointing up
+                interaction_reversed = "ns35"
             else: 
-                interaction =  "ns55" 
-                interaction_reversed = "ns55" #second base below, pointing down
+                interaction =  "ns55" #second base below, pointing down
+                interaction_reversed = "ns55" 
         #checks for true stacking. If it meets criteria, strip the n from the annotation
         if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
             interaction = interaction.replace("n","")
@@ -1245,9 +1247,12 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         #checks the last of the criteria to make sure its near stacking. All others get no annotation
         #Min z must be greater than 1 and the normal z should be greater than 0.5 to be considered near
         elif abs(coords[3]) < 1 or abs(normal_Z) < 0.5: 
-            interaction = ""
+            return "", datapoint, ""
+        # print(nt1.unit_id() + " " + nt2.unit_id())
+        # print("coords: " +str(coords[3]) + "normZ: " + str(normal_Z) + " normZ2 " + str(normZ2))
+        # print(interaction)
 
-    if False and len(interaction) > 0:
+    if len(interaction) > 0 and False:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
     if datapoint and len(interaction) > 0:
