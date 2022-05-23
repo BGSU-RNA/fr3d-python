@@ -203,11 +203,12 @@ def build_atom_to_unit_part_list():
     return atom_to_part_list
 
 
-def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
+def make_nt_cubes_full(bases, screen_distance_cutoff, nt_reference="base"):
     """
     Builds cubes with side length screen_distance_cutoff
     using nt_reference as the point for each nucleotide.
     Cubes are named by a rounded value of x,y,z and by model.
+    All 26 neighboring cubes are generated.
     """
 
     # build a set of cubes and record which bases are in which cube
@@ -234,6 +235,43 @@ def make_nt_cubes(bases, screen_distance_cutoff, nt_reference="base"):
                         for c in [-1,0,1]:
                             k = "%d,%d,%d,%s" % (x+a,y+b,z+c,model)
                             baseCubeNeighbors[key].append(k)
+
+    return baseCubeList, baseCubeNeighbors
+
+
+def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
+    """
+    Builds cubes with side length screen_distance_cutoff
+    using nt_reference as the point for each nucleotide.
+    Cubes are named by a rounded value of x,y,z and by model.
+    Only 13 neighboring cubes are generated, so each pair
+    of nucleotides will only be generated once.
+    """
+
+    # build a set of cubes and record which bases are in which cube
+    # also record which other cubes are neighbors of each cube
+    baseCubeList = {}
+    baseCubeNeighbors = {}
+
+    # build a set of cubes and record which bases are in which cube
+    for base in bases:
+        center = base.centers[nt_reference]  # chosen reference point
+        if len(center) == 3:
+            x = floor(center[0]/screen_distance_cutoff)
+            y = floor(center[1]/screen_distance_cutoff)
+            z = floor(center[2]/screen_distance_cutoff)
+            model = base.model
+            key = "%d,%d,%d,%s" % (x,y,z,model)
+            if key in baseCubeList:
+                baseCubeList[key].append(base)
+            else:
+                baseCubeList[key] = [base]
+                baseCubeNeighbors[key] = []
+                # same cube and 13 neighbors, no two in opposite directions
+                cubes = [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [0, 1, -1], [1, 0, 0], [1, 0, 1], [1, 0, -1], [1, 1, 0], [1, 1, 1], [1, 1, -1], [1, -1, 0], [1, -1, 1], [1, -1, -1]]
+                for a,b,c in cubes:
+                    k = "%d,%d,%d,%s" % (x+a,y+b,z+c,model)
+                    baseCubeNeighbors[key].append(k)
 
     return baseCubeList, baseCubeNeighbors
 
@@ -269,6 +307,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
                 for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
+
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
@@ -284,6 +323,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     number1 = nt1.number                 # nucleotide number
 
                     for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
+
+                        # only consider each nt1, nt2 pair in one direction
+                        # Those in different cubes only occur once
+                        # Those from the same cube need a way to select just one pair
+                        if nt1key == nt2key and nt1.index > nt2.index:
+                            continue
+
                         if len(nt2.centers["base"]) < 3:
                             print("  Missing base center for %s" % nt2.unit_id())
                             print(nt2.centers["base"])
@@ -353,6 +399,16 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['sO'].add(interaction)
                                 category_to_interactions['sO'].add(interaction_reversed)
 
+                            interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt2,nt1,parent2,datapoint)
+
+                            if len(interaction) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interaction].append(reversed_pair)
+                                interaction_to_pair_list[interaction_reversed].append(unit_id_pair)
+                                max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+                                category_to_interactions['sO'].add(interaction)
+                                category_to_interactions['sO'].add(interaction_reversed)
+
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
                             interaction, datapoint, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint)
@@ -364,27 +420,26 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction)
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
-                        # always annotate basepairs in order to calculate crossing numbers
+
+                        gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
+                        if len(gly2) < 3:
+                            print("  Missing glycosidic atom for %s" % nt2.unit_id())
+                            continue
+
+                        # always annotate basepairs to be able to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
                         # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
                         # need to add T and have a plan for DNA nucleotides as well
                         if parent_pair in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
-                            gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
-
-                            if len(gly2) < 3:
-                                print("  Missing glycosidic atom for %s" % nt2.unit_id())
-                                continue
 
                             glycosidic_displacement = np.subtract(gly2,gly1)
 
                             timerData = myTimer("Get basepair parameters",timerData)
-
                             pair_data, datapoint = get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint)
 
                             timerData = myTimer("Check basepairing",timerData)
-
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
-                            interaction, subcategory, datapoint = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
+                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
 
                             # acWW?
                             if False and len(interaction) > 0 and interaction[0] == 'acWW':
@@ -408,24 +463,68 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
                                 print("")
 
-                            if len(interaction) > 0:
+                            if len(interaction12) > 0:
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
 
-                                interaction_to_pair_list[interaction].append(unit_id_pair)
+                                interaction_to_pair_list[interaction12].append(unit_id_pair)
 
-                                if not interaction in category_to_interactions['basepair']:
-                                    category_to_interactions['basepair'].add(interaction)
-                                    category_to_interactions['basepair_detail'].add(interaction)
+                                if not interaction12 in category_to_interactions['basepair']:
+                                    category_to_interactions['basepair'].add(interaction12)
+                                    category_to_interactions['basepair_detail'].add(interaction12)
 
                                     # record certain interactions in reversed direction as well
-                                    if interaction[0] in ["c","t","a"] or interaction[1] in ["c","t","a"]:
-                                        interaction_reversed = reverse_edges(interaction)
-                                        category_to_interactions['basepair'].add(interaction_reversed)
-                                        category_to_interactions['basepair_detail'].add(interaction_reversed)
+                                    if interaction12[0] in ["c","t","a"] or interaction12[1] in ["c","t","a"]:
+                                        interaction12_reversed = reverse_edges(interaction12)
+                                        category_to_interactions['basepair'].add(interaction12_reversed)
+                                        category_to_interactions['basepair_detail'].add(interaction12_reversed)
 
-                        if get_datapoint:
-                            pair_to_data[unit_id_pair] = datapoint
+                        else:
+                            interaction12 = ""
+                            interaction12_reversed = ""
+
+                        if get_datapoint and datapoint12:
+                            pair_to_data[unit_id_pair] = datapoint12
+
+                        # check pair in the other order
+                        if parent_pair in ['A,A','C,A','G,A','U,A','C,C','C,G','U,C','G,G','U,G','U,U']:
+
+                            glycosidic_displacement = np.subtract(gly1,gly2)
+
+                            timerData = myTimer("Get basepair parameters",timerData)
+                            pair_data, datapoint21 = get_basepair_parameters(nt2,nt1,glycosidic_displacement,datapoint)
+
+                            timerData = myTimer("Check basepairing",timerData)
+                            cutoffs = nt_nt_cutoffs[parent2+","+parent1]
+                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint)
+
+                            new_annotation = False
+                            if len(interaction21) == 0:
+                                new_annotation = False
+                            elif len(interaction12) == 0:
+                                new_annotation = True
+                            elif interaction21.lower() == interaction12_reversed.lower():
+                                new_annotation = False
+                            else:
+                                new_annotation = True
+                                print("  Double annotation: %s and %s for %s and %s" % (interaction12,interaction21,nt1.unit_id(),nt2.unit_id()))
+
+                            if new_annotation:
+                                count_pair += 1
+                                max_center_center_distance = max(max_center_center_distance,center_center_distance)
+
+                                interaction_to_pair_list[interaction21].append(reversed_pair)
+
+                                if not interaction21 in category_to_interactions['basepair']:
+                                    category_to_interactions['basepair'].add(interaction21)
+                                    category_to_interactions['basepair_detail'].add(interaction21)
+
+                                    # record certain interactions in reversed direction as well
+                                    if interaction21[0] in ["c","t","a"] or interaction21[1] in ["c","t","a"]:
+                                        interaction21_reversed = reverse_edges(interaction21)
+                                        category_to_interactions['basepair'].add(interaction21_reversed)
+                                        category_to_interactions['basepair_detail'].add(interaction21_reversed)
+
 
     print("  Found %d nucleotide-nucleotide interactions" % count_pair)
 
@@ -571,7 +670,7 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
         timerData = myTimer("start")
 
     timerData = myTimer("Building cubes",timerData)
-    baseCubeList, baseCubeNeighbors = make_nt_cubes(bases, nt_nt_screen_distance, nt_reference_point)
+    baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
 
     # annotate nt-nt interactions
     print("  Annotating interactions")
