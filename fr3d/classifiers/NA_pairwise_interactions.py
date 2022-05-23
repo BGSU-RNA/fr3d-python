@@ -278,10 +278,14 @@ def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
 
 def reverse_edges(inter):
 
-    if inter[0] == "n":
-        rev = inter[0] + inter[1] + inter[3] + inter[2] + inter[4:]
+    if len(inter) == 3:
+        rev = inter[0] + inter[2] + inter[1]
+    elif len(inter) == 4:
+        rev = inter[0] + inter[1] + inter[3] + inter[2]
+    elif len(inter) == 5:
+        rev = inter[0] + inter[1] + inter[2] + inter[4] + inter[3]
     else:
-        rev = inter[0] + inter[2] + inter[1] + inter[3:]
+        rev = inter[0:(len(inter)-2)] + inter[len(inter)-1] + inter[len(inter)-2]
 
     return rev
 
@@ -469,13 +473,17 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                                 interaction_to_pair_list[interaction12].append(unit_id_pair)
 
+                                if interaction12[0] in ["c","t","a"] or interaction12[1] in ["c","t","a"]:
+                                    interaction12_reversed = reverse_edges(interaction12)
+                                else:
+                                    interaction12_reversed = ""
+
                                 if not interaction12 in category_to_interactions['basepair']:
                                     category_to_interactions['basepair'].add(interaction12)
                                     category_to_interactions['basepair_detail'].add(interaction12)
 
                                     # record certain interactions in reversed direction as well
                                     if interaction12[0] in ["c","t","a"] or interaction12[1] in ["c","t","a"]:
-                                        interaction12_reversed = reverse_edges(interaction12)
                                         category_to_interactions['basepair'].add(interaction12_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction12_reversed)
 
@@ -498,17 +506,16 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             cutoffs = nt_nt_cutoffs[parent2+","+parent1]
                             interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint)
 
-                            new_annotation = False
                             if len(interaction21) == 0:
                                 new_annotation = False
                             elif len(interaction12) == 0:
                                 new_annotation = True
-                            elif interaction21.lower() == interaction12_reversed.lower():
+                            elif interaction21 == interaction12_reversed:
                                 new_annotation = False
+                                #print("  Matching annotation: %4s and %4s for %s and %s" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id()))
                             else:
                                 new_annotation = True
-                                print("  Double annotation: %s and %s for %s and %s" % (interaction12,interaction21,nt1.unit_id(),nt2.unit_id()))
-
+                                print("  Conflicting annotation: %4s and %4s for %s and %s" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id()))
                             if new_annotation:
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
@@ -524,6 +531,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                         interaction21_reversed = reverse_edges(interaction21)
                                         category_to_interactions['basepair'].add(interaction21_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction21_reversed)
+
+                                if get_datapoint and datapoint21:
+                                    pair_to_data[unit_id_pair] = datapoint12
+
 
 
     print("  Found %d nucleotide-nucleotide interactions" % count_pair)
@@ -1550,7 +1561,8 @@ def calculate_basepair_gap(nt1,nt2,points2=None):
 
 
 def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
-    """ Given nt1 and nt2 and the dictionary of cutoffs
+    """
+    Given nt1 and nt2 and the dictionary of cutoffs
     for that pair of nucleotides, check cutoffs for each
     basepair interaction type
     """
@@ -1558,7 +1570,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
     if abs(displ[0,2]) > 3.6:                            # too far out of plane
-        return [], [], datapoint
+        return "", "", datapoint
 
     ok_displacement_screen = []
 
@@ -1580,7 +1592,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
             ok_displacement_screen.append((interaction,subcategory)) # ("cWW",0), etc.
 
     if len(ok_displacement_screen) == 0:
-        return [], [], datapoint
+        return "", "", datapoint
 
 #    return ok_displacement_screen
 
@@ -1604,7 +1616,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
         ok_normal.append((interaction,subcategory))
 
     if len(ok_normal) == 0:
-        return [], [], datapoint
+        return "", "", datapoint
 
     angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
 
@@ -1630,7 +1642,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
         ok_angle_in_plane.append((interaction,subcategory))
 
     if len(ok_angle_in_plane) == 0:
-        return [], [], datapoint
+        return "", "", datapoint
 
     # (interaction,subcategory) pairs that meet all requirements so far
     ok_gap = []
@@ -1645,7 +1657,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
 
     # deal with the possibility of multiple matching interactions
     if len(ok_gap) == 0:
-        return [], [], datapoint
+        return "", "", datapoint
     elif len(ok_gap) > 1:
         interactions = sorted(list(set([i for i,s in ok_gap])))
         if len(ok_gap) == 2:
