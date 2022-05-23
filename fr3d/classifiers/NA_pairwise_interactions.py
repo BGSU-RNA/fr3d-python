@@ -2050,4 +2050,7 @@ if __name__=="__main__":
 
     # note status of stacking annotations
     if 'stacking' in categories:
-        print("Stacking annotations are not yet finalized and are known to miss interactions")
+        print("Stacking annotations are not yet finalized")
+
+    if 'basepair' in categories:
+        print("Basepair annotations are not yet finalized")
