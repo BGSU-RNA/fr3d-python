@@ -331,8 +331,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         # only consider each nt1, nt2 pair in one direction
                         # Those in different cubes only occur once
                         # Those from the same cube need a way to select just one pair
-                        if nt1key == nt2key and nt1.index > nt2.index:
-                            continue
+                        if nt1key == nt2key:
+                            if nt1.chain > nt2.chain:
+                                continue
+                            elif nt1.chain == nt2.chain and nt1.index > nt2.index:
+                                continue
 
                         if len(nt2.centers["base"]) < 3:
                             print("  Missing base center for %s" % nt2.unit_id())
@@ -377,6 +380,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         parent2 = get_parent(nt2.sequence)
                         parent_pair = parent1 + "," + parent2
+                        parent_pair_reversed = parent2 + "," + parent1
 
                         # store data for diagnostics, if requested
                         if get_datapoint:
@@ -445,10 +449,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
                             interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
 
-                            # acWW?
-                            if False and len(interaction) > 0 and interaction[0] == 'acWW':
-                                print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
-
                             # record basepairs made by modified nucleotides
                             if False and len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
                                 print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
@@ -463,7 +463,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 print("  Found %s interaction between %-18s and %-18s" % (interaction,nt1.unit_id(),nt2.unit_id()))
                                 print("  Gap value %0.8f" % pair_data["gap12"])
                                 print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
-                                #print(pair_data)
                                 print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
                                 print("")
 
@@ -495,7 +494,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             pair_to_data[unit_id_pair] = datapoint12
 
                         # check pair in the other order
-                        if parent_pair in ['A,A','C,A','G,A','U,A','C,C','C,G','U,C','G,G','U,G','U,U']:
+                        if parent_pair_reversed in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
 
                             glycosidic_displacement = np.subtract(gly1,gly2)
 
