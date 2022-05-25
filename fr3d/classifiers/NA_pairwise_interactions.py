@@ -373,8 +373,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if center_center_distance < 2:
                             continue
 
-#                        print("  Checking for an interaction between %-18s and %-18s center-center distance %7.4f" % (nt1.unit_id(),nt2.unit_id(),center_center_distance))
-
                         unit_id_pair = (nt1.unit_id(),nt2.unit_id())  # tuple for these nucleotides in this order
                         reversed_pair = (nt2.unit_id(),nt1.unit_id())
 
@@ -384,20 +382,30 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         # store data for diagnostics, if requested
                         if get_datapoint:
-                            datapoint = {}
-                            datapoint['center_center_distance'] = center_center_distance
-                            datapoint['nt1_seq'] = nt1.sequence
-                            datapoint['nt2_seq'] = nt2.sequence
-                            datapoint['nt1_parent'] = parent1
-                            datapoint['nt2_parent'] = parent2
-                            datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
-                        else:
-                            datapoint = None
+                            datapoint12 = {}
+                            datapoint12['center_center_distance'] = center_center_distance
+                            datapoint12['nt1_seq'] = nt1.sequence
+                            datapoint12['nt2_seq'] = nt2.sequence
+                            datapoint12['nt1_parent'] = parent1
+                            datapoint12['nt2_parent'] = parent2
+                            datapoint12['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
 
-                        # check base-oxygen stack
+                            datapoint21 = {}
+                            datapoint21['center_center_distance'] = center_center_distance
+                            datapoint21['nt1_seq'] = nt2.sequence
+                            datapoint21['nt2_seq'] = nt1.sequence
+                            datapoint21['nt1_parent'] = parent2
+                            datapoint21['nt2_parent'] = parent1
+                            datapoint21['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt2.unit_id(),nt1.unit_id())
+
+                        else:
+                            datapoint12 = None
+                            datapoint21 = None
+
+                        # check base to oxygen stack; always base first, oxygen second
                         if 'sO' in categories.keys():
                             timerData = myTimer("Check base oxygen stack",timerData)
-                            interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint)
+                            interaction, datapoint12, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint12)
 
                             if len(interaction) > 0:
                                 count_pair += 1
@@ -407,7 +415,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['sO'].add(interaction)
                                 category_to_interactions['sO'].add(interaction_reversed)
 
-                            interaction, datapoint, interaction_reversed = check_base_oxygen_stack_rings(nt2,nt1,parent2,datapoint)
+                            interaction, datapoint21, interaction_reversed = check_base_oxygen_stack_rings(nt2,nt1,parent2,datapoint21)
 
                             if len(interaction) > 0:
                                 count_pair += 1
@@ -419,7 +427,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
-                            interaction, datapoint, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint)
+                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint12)
 
                             if len(interaction) > 0:
                                 count_pair += 1
@@ -443,11 +451,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             glycosidic_displacement = np.subtract(gly2,gly1)
 
                             timerData = myTimer("Get basepair parameters",timerData)
-                            pair_data, datapoint = get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint)
+                            pair_data, datapoint12 = get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint12)
 
                             timerData = myTimer("Check basepairing",timerData)
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
-                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint)
+                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint12)
 
                             # record basepairs made by modified nucleotides
                             if False and len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
@@ -486,9 +494,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                         category_to_interactions['basepair'].add(interaction12_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction12_reversed)
 
-                            if get_datapoint and datapoint12:
-                                pair_to_data[unit_id_pair] = datapoint12
-
                         else:
                             interaction12 = ""
                             interaction12_reversed = ""
@@ -499,11 +504,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             glycosidic_displacement = np.subtract(gly1,gly2)
 
                             timerData = myTimer("Get basepair parameters",timerData)
-                            pair_data, datapoint21 = get_basepair_parameters(nt2,nt1,glycosidic_displacement,datapoint)
+                            pair_data, datapoint21 = get_basepair_parameters(nt2,nt1,glycosidic_displacement,datapoint21)
 
                             timerData = myTimer("Check basepairing",timerData)
                             cutoffs = nt_nt_cutoffs[parent2+","+parent1]
-                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint)
+                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint21)
 
                             if len(interaction21) == 0:
                                 new_annotation = False
@@ -531,10 +536,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                         category_to_interactions['basepair'].add(interaction21_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction21_reversed)
 
-                            if get_datapoint and datapoint21:
-                                pair_to_data[unit_id_pair] = datapoint21
+                        if get_datapoint and datapoint12:
+                            pair_to_data[unit_id_pair] = datapoint12
 
-
+                        if get_datapoint and datapoint21:
+                            pair_to_data[reversed_pair] = datapoint21
 
     print("  Found %d nucleotide-nucleotide interactions" % count_pair)
 
