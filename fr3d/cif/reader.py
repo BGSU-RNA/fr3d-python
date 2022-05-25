@@ -497,7 +497,10 @@ class Cif(object):
     def __symmetry_name__(self, symmetry):
         symmetry_name = symmetry.get('name')
         if not symmetry_name or symmetry_name == '?':
-            symmetry_name = 'ASM_%s' % symmetry['id']
+            if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
+                symmetry_name = '1_555'
+            else:
+                symmetry_name = 'ASM_%s' % symmetry['id'] #Some viruses and viral capsids don't have named symmetries so use this naming convention derived from the symmetry id.
         return symmetry_name
 
     def table(self, name):
