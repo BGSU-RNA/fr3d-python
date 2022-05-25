@@ -428,7 +428,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction)
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
-
+                        if 'bphosphate' in categories.keys():
+                            timerData = myTimer("Check base phosphate interactions", timerData)
+                            check_base_phosphate_interactions(nt1, nt2, parent1, parent2, datapoint)
+                            
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
                         if len(gly2) < 3:
                             print("  Missing glycosidic atom for %s" % nt2.unit_id())
@@ -1372,6 +1375,34 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
 
     return interaction, datapoint, interaction_reversed
 
+def check_base_phosphate_interactions(nt1,nt2,parent1,parent2,datapoint):
+    """Function to check base phosphate interactions"""
+
+    # specify cutoffs for interactions ##########################
+    carbonCutoff = 4.0          # max massive - oxygen distance
+    nCarbonCutoff = 4.5         # near
+
+    nitrogenCutoff = 3.5        # max massive - oxygen distance
+    nNitrogenCutoff = 4.0       # near
+
+    angleLimit = 130            # angle limit for BPh
+    nAngleLimit = 110           # near
+
+    # Define Basic Data #########################################
+    sugar = ['C1*','C2*','O2*','C3*','O3*','C4*','O4*','C5*','O5*','P','O1P','O2P','O3 of next']
+    phosphateOxygens = {'O5*':9, 'O3*': 13, 'O1P':11, 'O2P':12}
+
+    baseInfo = {}
+    baseInfo['A'] = {'H2':11, 'H8':12,'1H6':14,'2H6':15} #Based on Matlab Code
+    baseInfo['DA'] = ["C1'",'N3','H2','N1','N6','H8'] 
+    baseInfo['C'] = ["C1'",'O2','N4','H5','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
+    baseInfo['DC'] = ["C1'",'O2','N4','H5','H6']
+    baseInfo['G'] = ["C1'",'H21','H22','H1','O6','N7','H8']
+    baseInfo['DG'] = ["C1'",'H21','H22','H1','O6','N7','H8']
+    baseInfo['U'] = ["C1'",'O2','H3','O4','H5','H6']
+    baseInfo['DT'] = ["C1'",'O2','H3','O4','C7', 'C6']
+
+    print(nt2.centers['nt_sugar'])
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
@@ -1956,7 +1987,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
 
     # process command line arguments
     args = parser.parse_args()
