@@ -12,6 +12,19 @@ from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 from fr3d.data.base import EntitySelector
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
+args = parser.parse_args()
+categories = {}
+
+Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+
+if args.category:
+    for category in args.category.split(","):
+        categories[category] = []
+else:
+    # default is to annotate and write just "true" basepairs
+    categories['basepair'] = Leontis_Westhof_basepairs
 
 PDB_list = ['5AJ3']
 PDB_list = ['6hiv']
@@ -51,6 +64,7 @@ PDB_list = ['4TNA']
 PDB_list = ['4V9F']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
+PDB_list = ['4TNA']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -131,7 +145,7 @@ for PDB in PDBs:
             # need to be able to identify each chain that is available
             # write_unit_data_file(PDB,unit_data_path,structure)
 
-            interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
+            interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
 
             # turn this off during development and testing
             if True:
