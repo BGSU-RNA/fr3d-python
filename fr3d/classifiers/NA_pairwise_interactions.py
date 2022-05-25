@@ -486,12 +486,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                         category_to_interactions['basepair'].add(interaction12_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction12_reversed)
 
+                            if get_datapoint and datapoint12:
+                                pair_to_data[unit_id_pair] = datapoint12
+
                         else:
                             interaction12 = ""
                             interaction12_reversed = ""
-
-                        if get_datapoint and datapoint12:
-                            pair_to_data[unit_id_pair] = datapoint12
 
                         # check pair in the other order
                         if parent_pair_reversed in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
@@ -531,8 +531,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                         category_to_interactions['basepair'].add(interaction21_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction21_reversed)
 
-                                if get_datapoint and datapoint21:
-                                    pair_to_data[unit_id_pair] = datapoint12
+                            if get_datapoint and datapoint21:
+                                pair_to_data[unit_id_pair] = datapoint21
 
 
 
