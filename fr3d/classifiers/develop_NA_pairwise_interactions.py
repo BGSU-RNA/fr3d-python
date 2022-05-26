@@ -51,18 +51,23 @@ PDB_list = ['4TNA']
 PDB_list = ['4V9F']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
+# list needed for a WebFR3D query
+PDB_list = ['7MKY', '4JF2', '5VGW', '4ENC', '5XTM', '2R8S', '4PQV', '3RW6', '4BW0', '6CB3', '4K27', '5U3G', '7OF0', '4LVW', '5D5L', '2NZ4', '3NKB', '6TFG', '2Z75', '4YAZ', '5X2G', '4V9F', '7OZQ', '4Y4O', '4WFL', '1M5K', '7K16', '5FJC', '7O7Y', '6JQ5', '6S0Z', '3P22', '7OX9', '1Q96', '6KWQ', '3LQX', '6U8D', '6SVS', '3E5C', '7RQB', '2EZ6', '6DMC', '2V3C', '5M0I', '3MXH', '4YBB', '5B2P', '4P95', '7KKV', '3NPQ', '5DDP', '4NLF', '7P7Q', '6AZ3', '7D7W', '6S0X', '7RYG', '3AM1', '4PCJ', '5UZ6', '5B2T']
+PDB_list += ['5AH5', '4ENC', '7EOG', '1QU2', '2ZUE', '2QUW', '2QUS', '5KPY', '7OF0', '7EQJ', '1U0B', '5AOX', '3FOZ', '2DRA', '4YCO', '7C79', '4V9F', '4Y4O', '4WFL', '3RG5', '5UD5', '7K16', '7O7Y', '6S0Z', '4JXZ', '4J50', '3B31', '3ADD', '7RQB', '3OVB', '6UGG', '4PRF', '4YBB', '3VJR', '1QTQ', '7K98', '4P95', '2GDI', '7DCO', '7P7Q', '6AZ3', '4YYE', '6S0X', '5HR7', '7RYG', '3AM1', '2OEU', '3D2V', '1J1U']
+PDB_list = list(set(PDB_list))
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
 
-OverwriteDataFiles = False   #
-OverwriteDataFiles = True    #
+# tell which types of interactions to annotate
+categories = {}
+categories['sO'] = []        # annotate all sO interactions
+categories['basepair'] = []
+categories['stacking'] = []
 
-# plot one instance of each of the pairwise interactions
-PlotPair = False
-PlotPair = True
-AlreadyPlotted = {}
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
@@ -73,7 +78,6 @@ unit_data_path = "C:/Users/jimitch/Documents/GitHub/fr3d-python/data/units"
 
 # annotate all nucleotides in all chains, even when a representative set is used
 annotate_entire_PDB_files = True
-
 
 timerData = myTimer("start")
 lastwritetime = time()
@@ -118,25 +122,29 @@ for PDB in PDBs:
 
             if ShowStructureReadingErrors:
                 # do this to make sure to see any error messages
-                structure = get_structure(inputPath % PDB,PDB)
+                structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
             else:
                 # do it this way to suppress error messages
                 try:
-                    structure = get_structure(inputPath % PDB,PDB)
+                    structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
                 except:
                     print("  Could not load structure %s" % PDB)
+                    print(inputPath)
+
                     continue
 
             # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
             # need to be able to identify each chain that is available
             # write_unit_data_file(PDB,unit_data_path,structure)
 
-            interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
+            #interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
+            # annotate interactions and return pair_to_data
+            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
 
             # turn this off during development and testing
             if True:
-                print("  Annotated these interactions: %s" % interaction_to_triple_list.keys())
-                pickle.dump(interaction_to_triple_list,open(outputDataFilePickle,"wb"),2)
+                print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
+                pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
 
             timerData = myTimer("Recording interactions",timerData)
             print('Writing data file %s' % pair_to_data_output_file)
@@ -155,11 +163,11 @@ for PDB in PDBs:
 
         if ShowStructureReadingErrors:
             # do this to make sure to see any error messages
-            structure = get_structure(inputPath % PDB,PDB)
+            structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
         else:
             # do it this way to suppress error messages
             try:
-                structure = get_structure(inputPath % PDB,PDB)
+                structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
             except:
                 print("Could not load structure %s" % PDB)
                 continue
@@ -197,7 +205,9 @@ for PDB in PDBs:
 
         # annotate nt-nt interactions
         timerData = myTimer("Annotating interactions",timerData)
-        interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, timerData)
+
+        # annotate interactions and return pair_to_data
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
 
         # used to return Python_pairs, pair_to_data, timerData
 

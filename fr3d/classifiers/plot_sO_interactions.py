@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import pickle
 import math
 from collections import defaultdict
+import requests
 
 
 from fr3d.localpath import outputText
@@ -81,6 +82,47 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/3.0A/csv']
     PDB_list = ['4V9F']
 
+    # optionally use the results of a WebFR3D query to set the instances to graph
+    analyze_query = True
+    if analyze_query:
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f9eef2dd0/6289f9eef2dd0.html'
+        query_nt_1 = 'Position 1'      # nucleotide using the O
+        query_nt_2 = 'Position 2'      # nucleotide using the base
+        query_csv = query_html.replace('.html','.csv')
+        data = requests.get(query_csv)
+        lines = data.content.split("\n")
+
+        for i,header in enumerate(lines[0].split(',')):
+            if header == query_nt_1:
+                query_nt_1_col = i
+            if header == query_nt_2:
+                query_nt_2_col = i
+
+        print('Using columns %d and %d for query nucleotides' % (query_nt_1_col,query_nt_2_col))
+
+        PDB_list = []
+        pair_dict = {}
+
+        for line_num in range(1,len(lines)):
+            line = lines[line_num].split(',')
+            if len(line) > 2:
+                unit_id_1 = line[query_nt_1_col]
+                unit_id_2 = line[query_nt_2_col]
+                pair_dict[(unit_id_1,unit_id_2)] = 1
+                fields = unit_id_1.split('|')
+                if len(fields) >= 5:
+                    PDB_list.append(fields[0])
+
+        PDB_list = list(set(PDB_list))
+
+        print(pair_dict.keys())
+
+        print(PDB_list)
+
+        print('Shortening PDB_list for speed')
+        PDB_list = PDB_list[0:10]
+
+
     fields = PDB_list[0].split("/")
     if len(fields) > 7:
         release    = PDB_list[0].split("/")[6]
@@ -137,6 +179,14 @@ if __name__=="__main__":
 
             # loop over pairs, finding those with the desired base and interaction
             for pair,datapoint in pair_to_data.items():
+
+                if analyze_query:
+                    if pair in pair_dict.keys():
+                        pair_dict[pair] = 2          # indicate that it was observed
+                        print('Pair %15s,%15s matches' % pair)
+                        print(datapoint)
+                    else:
+                        continue                     # skip this pair
 
                 if not datapoint['nt1_seq'] == nt1_seq:
                     continue
