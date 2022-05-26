@@ -403,7 +403,7 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        if hasattr(self, '_assemblies.values()'):
+        if hasattr(self, '_assemblies'):
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         else:
             max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
@@ -475,7 +475,7 @@ class Cif(object):
                     model=model,
                     chain=atom['auth_asym_id'],
                     component_id=component_id,
-                    component_number = int(atom['auth_seq_id']),
+                    component_number = atom['auth_seq_id'], #Used to be casted to be an int. Notify if changing to be a string causes any issues anywhere. 
                     component_index=index,
                     insertion_code=ins_code,
                     alt_id=alt_id,
