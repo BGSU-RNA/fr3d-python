@@ -403,9 +403,9 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        if hasattr(self, '_assemblies'):
+        try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
-        else:
+        except:
             max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
 
         if not self._assemblies:
@@ -471,11 +471,18 @@ class Cif(object):
         component_id = atom['label_comp_id'] if 'label_comp_id' in atom else atom['auth_comp_id']
         atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
 
+        #Some authors leave letters or non numerical digits in their seq_id. That letter should be found in pdbx_PDB_ins_code if needed
+        try:
+            atom_auth_seq_id = int(atom['auth_seq_id'])
+        except:
+            atom_auth_seq_id = int(re.sub('\D','',atom['auth_seq_id']))
+
         return Atom(pdb=pdb,
                     model=model,
                     chain=atom['auth_asym_id'],
                     component_id=component_id,
-                    component_number = atom['auth_seq_id'], #Used to be casted to be an int. Notify if changing to be a string causes any issues anywhere. 
+                    component_number = atom_auth_seq_id, 
+                    #component_number = atom['auth_seq_id'], #Used to be casted to be an int. Notify if changing to be a string causes any issues anywhere. 
                     component_index=index,
                     insertion_code=ins_code,
                     alt_id=alt_id,
