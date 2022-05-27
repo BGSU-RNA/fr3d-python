@@ -289,6 +289,17 @@ def reverse_edges(inter):
 
     return rev
 
+def makeListOfNtIndices(baseCubeList, baseCubeNeighbors):
+    """This function returns a sorted list of all the nts indices in ascending order.
+    It was added as a method to be able to extract information about the O3' atom of the previous nucleotide"""
+    lastNT = {}
+    for nt1key in baseCubeList:                         # key to first cube
+        for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
+            if nt2key in baseCubeList:                  # if this cube was actually made
+                for nt1 in baseCubeList[nt1key]:
+                    if nt1.index not in lastNT:
+                        lastNT[nt1.index] = nt1
+    return(lastNT)
 
 def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint = False):
     """
@@ -299,6 +310,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     """
 
     count_pair = 0
+    ntDict = []
 
     interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
     category_to_interactions = defaultdict(set)  # map category to list of observed interactions
@@ -430,8 +442,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'bphosphate' in categories.keys():
                             timerData = myTimer("Check base phosphate interactions", timerData)
-                            check_base_phosphate_interactions(nt1, nt2, parent1, parent2, datapoint)
-                            
+                            ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
+                            lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
+                            check_base_phosphate_interactions(nt1, nt2, lastNT, parent1, parent2, datapoint)
+
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
                         if len(gly2) < 3:
                             print("  Missing glycosidic atom for %s" % nt2.unit_id())
@@ -1375,7 +1389,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
 
     return interaction, datapoint, interaction_reversed
 
-def check_base_phosphate_interactions(nt1,nt2,parent1,parent2,datapoint):
+def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
 
     # specify cutoffs for interactions ##########################
@@ -1389,7 +1403,19 @@ def check_base_phosphate_interactions(nt1,nt2,parent1,parent2,datapoint):
     nAngleLimit = 110           # near
 
     # Define Basic Data #########################################
-    sugar = ['C1*','C2*','O2*','C3*','O3*','C4*','O4*','C5*','O5*','P','O1P','O2P','O3 of next']
+    for atom in lastNT.atoms():
+        if atom.name == "O3'":
+            lastO3 = atom
+    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','O1P','O2P','O3 of next']
+    sugars = {}
+
+    for atom in sugarAtoms:
+        for atoms in nt1.atoms():
+            if atom == atoms.name:
+                sugars[atom] = atoms
+            elif atom == 'O3 of next':
+                sugars[atom] = lastO3
+    print(vars(sugars['O3 of next']))
     phosphateOxygens = {'O5*':9, 'O3*': 13, 'O1P':11, 'O2P':12}
 
     baseInfo = {}
@@ -1402,7 +1428,7 @@ def check_base_phosphate_interactions(nt1,nt2,parent1,parent2,datapoint):
     baseInfo['U'] = ["C1'",'O2','H3','O4','H5','H6']
     baseInfo['DT'] = ["C1'",'O2','H3','O4','C7', 'C6']
 
-    print(nt2.centers['nt_sugar'])
+    #print(nt2.centers['nt_sugar'])
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
