@@ -443,7 +443,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if 'bphosphate' in categories.keys():
                             timerData = myTimer("Check base phosphate interactions", timerData)
                             ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
-                            lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
+                            if nt1.index -1 > 0:
+                                lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
+                            else:
+                                lastNT = ntDict[nt1.index] # doesn't have one. Will need adjusted
                             check_base_phosphate_interactions(nt1, nt2, lastNT, parent1, parent2, datapoint)
 
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
@@ -1403,30 +1406,68 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
     nAngleLimit = 110           # near
 
     # Define Basic Data #########################################
+    #isolates the O3' atom of the last nucleotide
     for atom in lastNT.atoms():
         if atom.name == "O3'":
             lastO3 = atom
+
     sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','O1P','O2P','O3 of next']
     sugars = {}
 
+    phosphateOxygens = ["O5'", "O3'", 'O1P', 'O2P']
+    pOxygens = {} 
+
+    #creates a dictionary of sugar atoms including the O3' of the last nucleotide parsed out above. 
+    #also creates dictionary of possible oxygens
     for atom in sugarAtoms:
         for atoms in nt1.atoms():
             if atom == atoms.name:
                 sugars[atom] = atoms
             elif atom == 'O3 of next':
                 sugars[atom] = lastO3
-    print(vars(sugars['O3 of next']))
-    phosphateOxygens = {'O5*':9, 'O3*': 13, 'O1P':11, 'O2P':12}
+            if 'O' in atom:
+                if atom != 'O3 of next':
+                    pOxygens[atom] = atoms
+                else:
+                    pOxygens[atom] = lastO3
+    # print(vars(sugars['O3 of next']))
+    #for oxygen in phosphateOxygens:
+        
+    #dictionary with the hydrogens of each types of base. 
+    # Key: Letter of Base 
+    # Values: Names of Hydrogens in the base
+    baseHydrogens = {}
+    baseHydrogens = {'A': ['H2', 'H8','1H6','2H6'], 
+                'C': ['H6', 'H5', '1H4', '2H4'],
+                'G': ['H1', 'H8','1H2', '2H2'],
+                'U': ['H5', 'H3', 'H6']}
 
-    baseInfo = {}
-    baseInfo['A'] = {'H2':11, 'H8':12,'1H6':14,'2H6':15} #Based on Matlab Code
-    baseInfo['DA'] = ["C1'",'N3','H2','N1','N6','H8'] 
-    baseInfo['C'] = ["C1'",'O2','N4','H5','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
-    baseInfo['DC'] = ["C1'",'O2','N4','H5','H6']
-    baseInfo['G'] = ["C1'",'H21','H22','H1','O6','N7','H8']
-    baseInfo['DG'] = ["C1'",'H21','H22','H1','O6','N7','H8']
-    baseInfo['U'] = ["C1'",'O2','H3','O4','H5','H6']
-    baseInfo['DT'] = ["C1'",'O2','H3','O4','C7', 'C6']
+    #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
+    massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base. 
+    massiveAtomsList = []
+    #Loops through nt1 atoms to make a list of its heavy atoms
+    for atom in nt1.atoms():
+        for atoms in massiveAtoms: 
+            if atoms in atom.name:
+                massiveAtomsList.append(atom.name)
+    #print(massiveAtomsList)
+
+    #Loops through the sugar atoms of nt2 and the massive atoms of nt1 and calculates the distance between them
+    for a in sugars:
+        p=[sugars[a].x,sugars[a].y,sugars[a].z]
+        for atoms in massiveAtomsList:
+            for a in nt1.atoms():
+                if atoms == a.name:
+                    q = [a.x,a.y,a.z]
+            distance = np.linalg.norm(np.subtract(p,q)) # distance from the 
+            for oxygen in phosphateOxygens:
+                o = [pOxygens[oxygen].x,pOxygens[oxygen].y,pOxygens[oxygen].z]
+                angle = calculate_hb_angle(p,q,o)
+                #print(angle)
+
+
+        # if len(point) == 3:
+        #     x,y,z = translate_rotate_point(nt1, point)
 
     #print(nt2.centers['nt_sugar'])
 
