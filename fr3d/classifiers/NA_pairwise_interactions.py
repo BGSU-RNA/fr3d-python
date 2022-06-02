@@ -56,6 +56,7 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
+from fr3d.data.components import Component
 
 # some modified nucleotides have faces flipped compared to parent nt
 flipped_nts = ['PSU']
@@ -173,6 +174,8 @@ def load_structure(filename):
         Rotation matrix is calculated for each base.
         Hydrogens are not added automatically.
         """
+        if 'bphosphate' in categories:
+            structure.infer_NA_hydrogens()
 
     return structure
 
@@ -441,6 +444,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
                         if 'bphosphate' in categories.keys():
+                            structure.infer_NA_hydrogens()
                             timerData = myTimer("Check base phosphate interactions", timerData)
                             ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
                             if nt1.index -1 > 0:
@@ -1394,7 +1398,8 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
 
 def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
-
+    if nt1.sequence in modified_nucleotides or nt2.sequence in modified_nucleotides:
+        return None
     # specify cutoffs for interactions ##########################
     carbonCutoff = 4.0          # max massive - oxygen distance
     nCarbonCutoff = 4.5         # near
@@ -1435,35 +1440,55 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
         
     #dictionary with the hydrogens of each types of base. 
     # Key: Letter of Base 
-    # Values: Names of Hydrogens in the base
-    baseHydrogens = {}
-    baseHydrogens = {'A': ['H2', 'H8','1H6','2H6'], 
-                'C': ['H6', 'H5', '1H4', '2H4'],
-                'G': ['H1', 'H8','1H2', '2H2'],
-                'U': ['H5', 'H3', 'H6']}
+    # Values: Tuples of Hydrogens in the base paired with a massive atom
+    baseMassiveAndHydrogens = {}
+    baseMassiveAndHydrogens = {'A': [('H2',"O2'"), ('H8',"O4'"),('1H6',"C4'"),('2H6',"C4'")], 
+                'C': [('H6',"O4'"), ('H5',"C5'"), ('1H4',"C4'"), ('2H4',"C4'")],
+                'G': [('H1',"C3'"), ('H8',"O4'"),('1H2',"O1P"), ('2H2',"O1P")],
+                'U': [('H5',"C5'"), ('H3',"C3'"), ('H6',"O4'")]}
+
+    phosphorus =  [sugars['P'].x,  sugars['P'].y, sugars['P'].z]
 
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
     massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base. 
     massiveAtomsList = []
+
     #Loops through nt1 atoms to make a list of its heavy atoms
-    for atom in nt1.atoms():
+    for atom in nt1._atoms:
         for atoms in massiveAtoms: 
             if atoms in atom.name:
                 massiveAtomsList.append(atom.name)
     #print(massiveAtomsList)
-
+    for atoms in baseMassiveAndHydrogens[parent1]:
+        for a in nt1._atoms:
+            if atoms[1] == a.name: #atoms[1] is the base massive atom
+                baseMassive = [a.x,a.y,a.z]
+            if atoms[0] == a.name:
+                baseHydrogens = [a.x,a.y,a.z]
+        for oxygens in phosphateOxygens:
+            oxygen = [pOxygens[oxygens].x,pOxygens[oxygens].y,pOxygens[oxygens].z]
+        angle = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, hydrogen, and oxygen
+        distance =  np.linalg.norm(np.subtract(baseMassive,oxygen))
+        PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
+        print(PAngle)
+        print(angle)
+        print(distance)
     #Loops through the sugar atoms of nt2 and the massive atoms of nt1 and calculates the distance between them
-    for a in sugars:
-        p=[sugars[a].x,sugars[a].y,sugars[a].z]
-        for atoms in massiveAtomsList:
-            for a in nt1.atoms():
-                if atoms == a.name:
-                    q = [a.x,a.y,a.z]
-            distance = np.linalg.norm(np.subtract(p,q)) # distance from the 
-            for oxygen in phosphateOxygens:
-                o = [pOxygens[oxygen].x,pOxygens[oxygen].y,pOxygens[oxygen].z]
-                angle = calculate_hb_angle(p,q,o)
-                #print(angle)
+    # for atoms in massiveAtomsList:
+    #     for a in nt1.atoms():
+    #         if atoms == a.name:
+    #             baseMassive = [a.x,a.y,a.z]
+    #     for a in sugars:
+    #         sugarHyd = [sugars[a].x,sugars[a].y,sugars[a].z] # I'm trying to emulate the matlab code. This isn't really getting the hydrogens, this is getting the atom in the sugar.
+    #         distance = np.linalg.norm(np.subtract(baseMassive,sugarHyd)) # distance from the 
+    #         for oxygens in phosphateOxygens:
+    #             oxygen = [pOxygens[oxygens].x,pOxygens[oxygens].y,pOxygens[oxygens].z]
+    #             angle = calculate_hb_angle(baseMassive,sugarHyd,oxygen) #looks like this function is the same as calculate_angle_between_3_points but is fit to handle lists
+    #             #print(angle)
+    #     for oxygens in phosphateOxygens:
+    #         phosphorus =  [sugars['P'].x,  sugars['P'].y, sugars['P'].z]
+    #         PAngle = calculate_hb_angle(baseMassive,sugarHyd,phosphorus)
+    #         print(PAngle)
 
 
         # if len(point) == 3:
