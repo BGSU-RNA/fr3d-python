@@ -451,7 +451,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
                             else:
                                 lastNT = ntDict[nt1.index] # doesn't have one. Will need adjusted
-                            check_base_phosphate_interactions(nt1, nt2, lastNT, parent1, parent2, datapoint)
+                            if nt2.index - 1 > 0:
+                                lastNT2 = ntDict[nt2.index-1]
+                            else:
+                                lastNT2 = ntDict[nt2.index]
+                            check_base_phosphate_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint)
 
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
                         if len(gly2) < 3:
@@ -1396,8 +1400,27 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
 
     return interaction, datapoint, interaction_reversed
 
-def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
+def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
+    """"""
+    sugars = {}
+    pOxygens = {}
+    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
+    for atom in sugarAtoms:
+        for atoms in nt.atoms():
+            if atom == atoms.name:
+                sugars[atom] = atoms
+            elif atom == 'O3 of next':
+                sugars[atom] = lastO3
+            if 'O' in atom and 'O' in atoms.name:
+                if atom == 'O3 of next':
+                    pOxygens[atom] = lastO3
+                elif atom == atoms.name:
+                    pOxygens[atom] = atoms
+    return sugars, pOxygens
+
+def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
+    interaction = ""
     if nt1.sequence in modified_nucleotides or nt2.sequence in modified_nucleotides:
         return None
     # specify cutoffs for interactions ##########################
@@ -1406,7 +1429,7 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
 
     nitrogenCutoff = 3.5        # max massive - oxygen distance
     nNitrogenCutoff = 4.0       # near
-
+    cutoff = 4.0
     angleLimit = 130            # angle limit for BPh
     nAngleLimit = 110           # near
 
@@ -1414,87 +1437,68 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT,parent1,parent2,datapoint):
     #isolates the O3' atom of the last nucleotide
     for atom in lastNT.atoms():
         if atom.name == "O3'":
-            lastO3 = atom
+            lastO3ofnt1 = atom
+    for atom in lastNT2.atoms():
+        if atom.name == "O3'":
+            lastO3ofnt2 = atom
+    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
+    phosphateOxygens = ["O5'", "O3'", 'OP1', 'OP2']
 
-    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','O1P','O2P','O3 of next']
-    sugars = {}
-
-    phosphateOxygens = ["O5'", "O3'", 'O1P', 'O2P']
+    sugarsNt1, pOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
+    sugarsNt2, pOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
     pOxygens = {} 
 
-    #creates a dictionary of sugar atoms including the O3' of the last nucleotide parsed out above. 
-    #also creates dictionary of possible oxygens
-    for atom in sugarAtoms:
-        for atoms in nt1.atoms():
-            if atom == atoms.name:
-                sugars[atom] = atoms
-            elif atom == 'O3 of next':
-                sugars[atom] = lastO3
-            if 'O' in atom:
-                if atom != 'O3 of next':
-                    pOxygens[atom] = atoms
-                else:
-                    pOxygens[atom] = lastO3
-    # print(vars(sugars['O3 of next']))
-    #for oxygen in phosphateOxygens:
-        
+    angle = {}
+    distance = {}
+
     #dictionary with the hydrogens of each types of base. 
     # Key: Letter of Base 
     # Values: Tuples of Hydrogens in the base paired with a massive atom
     baseMassiveAndHydrogens = {}
     baseMassiveAndHydrogens = {'A': [('H2',"O2'"), ('H8',"O4'"),('1H6',"C4'"),('2H6',"C4'")], 
                 'C': [('H6',"O4'"), ('H5',"C5'"), ('1H4',"C4'"), ('2H4',"C4'")],
-                'G': [('H1',"C3'"), ('H8',"O4'"),('1H2',"O1P"), ('2H2',"O1P")],
+                'G': [('H1',"C3'"), ('H8',"O4'"),('1H2',"OP1"), ('2H2',"OP1")],
                 'U': [('H5',"C5'"), ('H3',"C3'"), ('H6',"O4'")]}
 
-    phosphorus =  [sugars['P'].x,  sugars['P'].y, sugars['P'].z]
 
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
     massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base. 
     massiveAtomsList = []
 
-    #Loops through nt1 atoms to make a list of its heavy atoms
-    for atom in nt1._atoms:
-        for atoms in massiveAtoms: 
-            if atoms in atom.name:
-                massiveAtomsList.append(atom.name)
-    #print(massiveAtomsList)
+   # print(pOxygensNt2)
+    phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z]
     for atoms in baseMassiveAndHydrogens[parent1]:
         for a in nt1._atoms:
             if atoms[1] == a.name: #atoms[1] is the base massive atom
                 baseMassive = [a.x,a.y,a.z]
+                mass = a.name
             if atoms[0] == a.name:
                 baseHydrogens = [a.x,a.y,a.z]
+                hyd = a.name
         for oxygens in phosphateOxygens:
-            oxygen = [pOxygens[oxygens].x,pOxygens[oxygens].y,pOxygens[oxygens].z]
-        angle = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, hydrogen, and oxygen
-        distance =  np.linalg.norm(np.subtract(baseMassive,oxygen))
+            if oxygens == "O3'":
+                oxygen = [pOxygensNt2['O3 of next'].x,pOxygensNt2['O3 of next'].y,pOxygensNt2['O3 of next'].z]
+            else:
+                oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z]
+            angle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, hydrogen, and oxygen
+            distance[oxygens] =  distance_between_vectors(baseMassive,oxygen)
+            # print("oxy")
+            # print(oxygens + " \t" + mass + " \t" + hyd)
+            # print("angle: \t\t" +str(angle[oxygens])) 
+            # print("distance: \t" + str(distance[oxygens]))
         PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
-        print(PAngle)
-        print(angle)
-        print(distance)
-    #Loops through the sugar atoms of nt2 and the massive atoms of nt1 and calculates the distance between them
-    # for atoms in massiveAtomsList:
-    #     for a in nt1.atoms():
-    #         if atoms == a.name:
-    #             baseMassive = [a.x,a.y,a.z]
-    #     for a in sugars:
-    #         sugarHyd = [sugars[a].x,sugars[a].y,sugars[a].z] # I'm trying to emulate the matlab code. This isn't really getting the hydrogens, this is getting the atom in the sugar.
-    #         distance = np.linalg.norm(np.subtract(baseMassive,sugarHyd)) # distance from the 
-    #         for oxygens in phosphateOxygens:
-    #             oxygen = [pOxygens[oxygens].x,pOxygens[oxygens].y,pOxygens[oxygens].z]
-    #             angle = calculate_hb_angle(baseMassive,sugarHyd,oxygen) #looks like this function is the same as calculate_angle_between_3_points but is fit to handle lists
-    #             #print(angle)
-    #     for oxygens in phosphateOxygens:
-    #         phosphorus =  [sugars['P'].x,  sugars['P'].y, sugars['P'].z]
-    #         PAngle = calculate_hb_angle(baseMassive,sugarHyd,phosphorus)
-    #         print(PAngle)
+        PDist = distance_between_vectors(baseMassive,phosphorus)
+        for oxygens in phosphateOxygens:
+            if atoms[1] == "C3'" or atoms[1] == "C4'" or atoms[1] == 'OP1': 
+                cutoff = carbonCutoff
+            elif atoms[1] == "O4'" or atoms[1] == "C5'" or atoms[1] == "O5'":
+                cutoff = nitrogenCutoff
+            if angle[oxygens] > nAngleLimit:
+                # print(angle[oxygens])
+                # print(distance[oxygens])
+                if angle[oxygens] > angleLimit and distance[oxygens] < cutoff:
+                    print("criteria met")
 
-
-        # if len(point) == 3:
-        #     x,y,z = translate_rotate_point(nt1, point)
-
-    #print(nt2.centers['nt_sugar'])
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
