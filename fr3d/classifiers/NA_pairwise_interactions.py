@@ -1420,7 +1420,7 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
 
 def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
-    interaction = ""
+    interaction = []
     if nt1.sequence in modified_nucleotides or nt2.sequence in modified_nucleotides:
         return None
     # specify cutoffs for interactions ##########################
@@ -1443,7 +1443,7 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
             lastO3ofnt2 = atom
     sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
     phosphateOxygens = ["O5'", "O3'", 'OP1', 'OP2']
-
+    phosphateOxygens = [sugarAtoms[8], sugarAtoms[4],sugarAtoms[10], sugarAtoms[11]]
     sugarsNt1, pOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
     sugarsNt2, pOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
     pOxygens = {} 
@@ -1455,9 +1455,9 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     # Key: Letter of Base 
     # Values: Tuples of Hydrogens in the base paired with a massive atom
     baseMassiveAndHydrogens = {}
-    baseMassiveAndHydrogens = {'A': [('H2',"O2'"), ('H8',"O4'"),('1H6',"C4'"),('2H6',"C4'")], 
-                'C': [('H6',"O4'"), ('H5',"C5'"), ('1H4',"C4'"), ('2H4',"C4'")],
-                'G': [('H1',"C3'"), ('H8',"O4'"),('1H2',"OP1"), ('2H2',"OP1")],
+    baseMassiveAndHydrogens = {'A': [('H2',"O2'"), ('H8',"O4'"),('H61',"C4'"),('H62',"C4'")], 
+                'C': [('H6',"O4'"), ('H5',"C5'"), ('H41',"C4'"), ('H42',"C4'")],
+                'G': [('H1',"C3'"), ('H8',"O4'"),('H21',"OP1"), ('H22',"OP1")],
                 'U': [('H5',"C5'"), ('H3',"C3'"), ('H6',"O4'")]}
 
 
@@ -1466,20 +1466,15 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     massiveAtomsList = []
 
    # print(pOxygensNt2)
-    phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
     for atoms in baseMassiveAndHydrogens[parent1]:
-        for a in nt1._atoms:
-            if atoms[1] == a.name: #atoms[1] is the base massive atom
-                baseMassive = [a.x,a.y,a.z]
-                mass = a.name
-            if atoms[0] == a.name:
-                baseHydrogens = [a.x,a.y,a.z]
-                hyd = a.name
+        phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
+        baseMassive = nt1.centers[atoms[1]] # contains base massive atom name
+        baseHydrogens = nt1.centers[atoms[0]] # contains corresponding base hydrogen
         for oxygens in phosphateOxygens:
-            if oxygens == "O3'":
-                oxygen = [pOxygensNt2['O3 of next'].x,pOxygensNt2['O3 of next'].y,pOxygensNt2['O3 of next'].z]
-            else:
-                oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z]
+            # if oxygens == "O3'":
+            #     oxygen = [pOxygensNt2['O3 of next'].x,pOxygensNt2['O3 of next'].y,pOxygensNt2['O3 of next'].z]
+            # else:
+            oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z]
             angle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, hydrogen, and oxygen
             distance[oxygens] =  distance_between_vectors(baseMassive,oxygen)
             # print("oxy")
@@ -1497,8 +1492,11 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
                 # print(angle[oxygens])
                 #print(distance[oxygens])
                 if angle[oxygens] > angleLimit and distance[oxygens] < cutoff:
+                    interaction.append(("BPh", oxygens))
                     print("criteria met")
-
+                else: 
+                    interaction.append(("nBPh", oxygens))
+    #print(interaction)
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
