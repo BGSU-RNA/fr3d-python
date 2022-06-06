@@ -1421,6 +1421,7 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
 def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
     interaction = []
+    classification = []
     if nt1.sequence in modified_nucleotides or nt2.sequence in modified_nucleotides:
         return None
     # specify cutoffs for interactions ##########################
@@ -1455,10 +1456,10 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     # Key: Letter of Base 
     # Values: Tuples of Hydrogens in the base paired with a massive atom
     baseMassiveAndHydrogens = {}
-    baseMassiveAndHydrogens = {'A': [('H2',"O2'"), ('H8',"O4'"),('H61',"C4'"),('H62',"C4'")], 
-                'C': [('H6',"O4'"), ('H5',"C5'"), ('H41',"C4'"), ('H42',"C4'")],
-                'G': [('H1',"C3'"), ('H8',"O4'"),('H21',"OP1"), ('H22',"OP1")],
-                'U': [('H5',"C5'"), ('H3',"C3'"), ('H6',"O4'")]}
+    baseMassiveAndHydrogens = {'A': [('H2',"O2'","2BPh"), ('H8',"O4'","0BPh"),('H61',"C4'","6BPh"),('H62',"C4'","7BPh")], 
+                'C': [('H6',"O4'","0BPh"), ('H5',"C5'","9BPh"), ('H41',"C4'","7BPh"), ('H42',"C4'", "6BPh")],
+                'G': [('H1',"C3'","5BPh"), ('H8',"O4'","0BPh"),('H21',"OP1","1BPh"), ('H22',"OP1","3BPh")],
+                'U': [('H5',"C5'","9BPh"), ('H3',"C3'","5BPh"), ('H6',"O4'","0BPh")]}
 
 
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
@@ -1492,11 +1493,13 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
                 # print(angle[oxygens])
                 #print(distance[oxygens])
                 if angle[oxygens] > angleLimit and distance[oxygens] < cutoff:
-                    interaction.append(("BPh", oxygens))
+                    interaction.append((atoms[2], oxygens)) #atoms 2 holds the classification 0BPh, 7BPh, etc.
                     print("criteria met")
                 else: 
-                    interaction.append(("nBPh", oxygens))
-    #print(interaction)
+                    interaction.append(("n" + atoms[2], oxygens)) #adds near to classification
+    print(interaction)
+
+
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
