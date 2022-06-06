@@ -1401,7 +1401,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     return interaction, datapoint, interaction_reversed
 
 def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
-    """"""
+    """Function that will take a nucleotide and the one indexed before it and will create a dictionary of the sugar atoms and one of the phosphaye oxygens"""
     sugars = {}
     pOxygens = {}
     sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
@@ -1466,7 +1466,7 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     massiveAtomsList = []
 
    # print(pOxygensNt2)
-    phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z]
+    phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
     for atoms in baseMassiveAndHydrogens[parent1]:
         for a in nt1._atoms:
             if atoms[1] == a.name: #atoms[1] is the base massive atom
@@ -1495,7 +1495,7 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
                 cutoff = nitrogenCutoff
             if angle[oxygens] > nAngleLimit:
                 # print(angle[oxygens])
-                # print(distance[oxygens])
+                #print(distance[oxygens])
                 if angle[oxygens] > angleLimit and distance[oxygens] < cutoff:
                     print("criteria met")
 
