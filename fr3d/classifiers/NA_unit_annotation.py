@@ -142,7 +142,6 @@ def annotate_bond_orientation(structure,pdb,pipeline=False):
 
         if classification:
             bond_annotations.append({'unit_id'    : nt.unit_id(),
-                                    'pdb_id'      : pdb,
                                     'orientation' : classification,
                                     'chi_degree'  : ("%0.3f" % chi)})
 
@@ -153,9 +152,8 @@ def annotate_bond_orientation(structure,pdb,pipeline=False):
                 print('%s had a calculation error' % nt.unit_id())
 
             bond_annotations.append({'unit_id'    : nt.unit_id(),
-                        'pdb_id'      : pdb,
-                        'orientation' : 'NA',
-                        'chi_degree'  : None})
+                                    'orientation' : 'NA',
+                                    'chi_degree'  : None})
 
     return bond_annotations, error_message
 
@@ -264,7 +262,7 @@ if __name__=="__main__":
 
         if 'glycosidic' in categories:
             timerData = myTimer("Annotating bond orientation",timerData)
-            bond_annotations = annotate_bond_orientation(structure,PDBid)
+            bond_annotations = annotate_bond_orientation(structure)
 
             #print(bond_annotations)
 
