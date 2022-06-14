@@ -11,6 +11,7 @@ import pickle
 import math
 from collections import defaultdict
 import requests
+import os
 
 
 from fr3d.localpath import outputText
@@ -86,8 +87,10 @@ if __name__=="__main__":
     analyze_query = True
     if analyze_query:
         query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f9eef2dd0/6289f9eef2dd0.html'
-        query_nt_1 = 'Position 1'      # nucleotide using the O
-        query_nt_2 = 'Position 2'      # nucleotide using the base
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f942e49c4/6289f942e49c4.html'
+        query_id   = query_html.split('/')[5]
+        query_nt_1 = 'Position 2'      # nucleotide whose base face interacts with the oxygen
+        query_nt_2 = 'Position 4'      # nucleotide whose oxygen stacks on the base
         query_csv = query_html.replace('.html','.csv')
         data = requests.get(query_csv)
         lines = data.content.split("\n")
@@ -102,6 +105,7 @@ if __name__=="__main__":
 
         PDB_list = []
         pair_dict = {}
+        pair_list = []
 
         for line_num in range(1,len(lines)):
             line = lines[line_num].split(',')
@@ -109,27 +113,16 @@ if __name__=="__main__":
                 unit_id_1 = line[query_nt_1_col]
                 unit_id_2 = line[query_nt_2_col]
                 pair_dict[(unit_id_1,unit_id_2)] = 1
+                pair_list.append((unit_id_1,unit_id_2))
                 fields = unit_id_1.split('|')
                 if len(fields) >= 5:
                     PDB_list.append(fields[0])
 
         PDB_list = list(set(PDB_list))
 
-        print(pair_dict.keys())
+        #PDB_list = ['3AM1']
 
         print(PDB_list)
-
-        print('Shortening PDB_list for speed')
-        PDB_list = PDB_list[0:10]
-
-
-    fields = PDB_list[0].split("/")
-    if len(fields) > 7:
-        release    = PDB_list[0].split("/")[6]
-        resolution = PDB_list[0].split("/")[7]
-    else:
-        release = ""
-        resolution = PDB_list[0]
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -138,23 +131,36 @@ if __name__=="__main__":
 
     pair_to_data = defaultdict(dict)
 
-    fileset = "_".join([release,resolution,str(len(all_PDB_ids))])
+    fields = PDB_list[0].split("/")
+    if len(fields) > 7:
+        release    = PDB_list[0].split("/")[6]
+        resolution = PDB_list[0].split("/")[7]
+        fileset = "_".join([release,resolution,str(len(all_PDB_ids))])
+    elif analyze_query:
+        fileset = "_".join([query_id,str(len(all_PDB_ids))])
+    else:
+        fileset = "_".join([PDB_list[0],str(len(all_PDB_ids))])
+
 
     # load output files from NA_pairwise_interactions
+    PDB_count = 0
     for PDB in all_PDB_ids:
+        PDB_count += 1
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
-        print("Reading %s" % pair_to_data_file)
+        print("Reading %s, file %3d of %3d" % (pair_to_data_file,PDB_count,len(all_PDB_ids)))
         try:
             new_dict = pickle.load(open(pair_to_data_file,'rb'))
             pair_to_data.update(new_dict)
         except:
             print("Not able to load annotations for %s" % PDB)
 
+
+    output_data = []
+
     # loop over sets of interactions, plotting points on bases
     for interaction_list in interaction_lists:
 
         fig = plt.figure(figsize=(10.0,8.0))
-
         # loop over individual bases, to make separate plots for each base
         for v, nt1_seq in enumerate(base_seq_list):
 
@@ -177,22 +183,30 @@ if __name__=="__main__":
 
             c = 0
 
-            # loop over pairs, finding those with the desired base and interaction
-            for pair,datapoint in pair_to_data.items():
+            if analyze_query:
+                pairs_wanted = pair_list
+            else:
+                pairs_wanted = pair_to_data.keys()
 
-                if analyze_query:
-                    if pair in pair_dict.keys():
-                        pair_dict[pair] = 2          # indicate that it was observed
-                        print('Pair %15s,%15s matches' % pair)
+            # loop over pairs, finding those with the desired base and interaction
+            for pair in pairs_wanted:
+
+                if pair in pair_to_data.keys():
+                    datapoint = pair_to_data[pair]
+                    if False and analyze_query:
+                        print('Pair %-18s,%-18s was found!' % pair)
                         print(datapoint)
-                    else:
-                        continue                     # skip this pair
+                else:
+                    print('Pair %-18s,%-18s was not found in a file' % pair)
+                    continue
+
 
                 if not datapoint['nt1_seq'] == nt1_seq:
                     continue
 
                 if not 'sOinteraction' in datapoint:
                     continue
+
 
                 if datapoint['sOinteraction'] in interaction_list:
 
@@ -274,6 +288,7 @@ if __name__=="__main__":
                         xvalues.append(datapoint['sOx'])
                         yvalues.append(datapoint['sOy'])
                         zvalues.append(datapoint['sOz'])
+                        output_data.append((pair[0],pair[1],datapoint['sOinteraction'],datapoint['sOz']))
 
                         if datapoint['sOinteraction'].startswith("n"):
                             colors2d.append(near_color)
@@ -479,14 +494,21 @@ if __name__=="__main__":
         figManager.full_screen_toggle()
 
         if "n" in interaction_list[0]:
-            figure_save_file = outputNAPairwiseInteractions + "sO_%s_near_ellipse" % fileset
+            figure_save_file = os.path.join(outputNAPairwiseInteractions,"sO_%s_near_ellipse" % fileset)
         else:
-            figure_save_file = outputNAPairwiseInteractions + "sO_%s_true" % fileset
+            figure_save_file = os.path.join(outputNAPairwiseInteractions,"sO_%s_true" % fileset)
         plt.savefig(figure_save_file+".png")
         plt.savefig(figure_save_file+".pdf")
+        plt.savefig(figure_save_file+".svg")
         plt.close()
 
-
+    data_save_file = os.path.join(outputNAPairwiseInteractions,"sO_%s_data.csv" % fileset)
+    print('Writing output data file %s' % data_save_file)
+    with open(data_save_file,'w') as file:
+        file.write('unit_id_1,unit_id_2,interaction,z\n')
+        for line in output_data:
+            #print('%s,%s,%s,%0.4f' % (line))
+            file.write('%s,%s,%s,%0.4f\n' % (line))
 
     # loop over sets of interactions, plotting histograms of z values
     interaction_list = ["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2",
@@ -511,6 +533,11 @@ if __name__=="__main__":
             if not 'sOinteraction' in datapoint:
                 continue
 
+            if analyze_query and pair in pair_dict.keys():
+                    pair_dict[pair] = 2          # indicate that it was observed
+            else:
+                continue                     # skip this pair
+
             if abs(datapoint['sOz']) < 2:
                 continue
 
@@ -531,5 +558,11 @@ if __name__=="__main__":
     plt.savefig(figure_save_file+".png")
     plt.savefig(figure_save_file+".pdf")
     plt.close()
+
+    # report unsuccessful lookups of data
+    if analyze_query:
+        for pair in pair_dict.keys():
+            if pair_dict[pair] == 1:
+                print('No data found for pair %s,%s' % pair)
 
     print("Plots are in %s" % outputNAPairwiseInteractions)
