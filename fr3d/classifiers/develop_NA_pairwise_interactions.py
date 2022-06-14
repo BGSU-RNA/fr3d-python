@@ -59,7 +59,7 @@ PDB_list = list(set(PDB_list))
 PDB_list = ['3AM1','4J50']  # these have symmetry operators, but no annotations there
 PDB_list = ['3AM1']  # these have symmetry operators, but no annotations there
 PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
-PDB_list = ['4RKV']
+PDB_list = ['4RKV','4J50','3AM1']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
