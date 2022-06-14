@@ -31,12 +31,18 @@ from collections import defaultdict
 
 from time import time
 import argparse
-if sys.version_info[0] < 3:
-    from urllib import urlopen
-else:
-    from urllib.request import urlopen
+
 if sys.version_info[0] > 2:
     from urllib import request
+
+# import the version of urlretrieve appropriate to the Python version
+if sys.version_info[0] < 3:
+    from urllib import urlretrieve as urlretrieve
+    from urllib import urlopen
+else:
+    from urllib.request import urlretrieve as urlretrieve
+    from urllib.request import urlopen
+
 
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
@@ -56,6 +62,8 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
+from fr3d.classifiers.class_limits import nt_nt_cutoffs
+
 
 # some modified nucleotides have faces flipped compared to parent nt
 flipped_nts = ['PSU']
@@ -68,8 +76,6 @@ try:
 except:
     inputPath = ""
     outputNAPairwiseInteractions = ""
-
-from class_limits import nt_nt_cutoffs
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
@@ -121,60 +127,58 @@ def myTimer(state,data={}):
 
     return data
 
-def get_structure(filename,PDB):
-
-    if ".pdb" in filename:
-        filename = filename.replace(".cif","")
-
-    # if not available locally, download from PDB and save locally
-    if not os.path.exists(filename):
-        print("  Downloading %s from https://files.rcsb.org/download/%s.cif" % (PDB,PDB))
-        if sys.version_info[0] < 3:
-            urllib.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 2
-        else:
-            urllib.request.urlretrieve("http://files.rcsb.org/download/%s.cif" % PDB, filename)  # python 3
-
-    with open(filename, 'rb') as raw:
-        print("  Loading " + filename)
-        structure = Cif(raw).structure()
-        """
-        Rotation matrix is calculated for each base.
-        Hydrogens are not added automatically.
-        """
-
-        return structure
 
 def load_structure(filename):
+    """
+    filename is the full path to a .pdb or .cif file
+    If the file is not found and the filename is four characters,
+    try to download from PDB.
+    """
 
-    # if not available in inputPath, download from PDB and save locally
+    message = []
+
+    # if not available, try to download from PDB and save locally
     if not os.path.exists(filename):
-        PDB = filename[-8:-4]
-        url = "http://files.rcsb.org/download/%s.cif" % PDB
-        print("  Downloading %s from %s" % (PDB,url))
-        if sys.version_info[0] < 3:
-            status = urllib.urlretrieve(url, filename)  # python 2
+        # try to identify a PDB id in the filename
+        #fn = os.path.getparts(filename)
 
-            # TODO: detect when this is not successful and downloads an error file instead
-            # current code is clumsy
-            with open(filename,"r") as f:
-                lines = f.read()
-            if "<title>404 Not Found</title>" in lines:
-                print("  Not able to download %s from PDB" % PDB)
-                if os.path.exists(filename):
-                    os.remove(filename)
+        pdbid = filename[-8:-1]
 
-        else:
-            status = urllib.request.urlretrieve(url, filename)  # python 3
+        if '.cif' in pdbid or '.pdb' in pdbid:
+            url = "http://files.rcsb.org/download/%s.cif" % pdbid
 
-    with open(filename, 'rb') as raw:
-        print("  Loading " + filename)
-        structure = Cif(raw).structure()
-        """
-        Rotation matrix is calculated for each base.
-        Hydrogens are not added automatically.
-        """
+            try:
+                urlretrieve(url, filename)
+                message.append("Downloaded %s from %s" % (PDB,url))
 
-    return structure
+                # TODO: detect when this is not successful and downloads an error file instead
+                # current code is clumsy
+                with open(filename,"r") as f:
+                    lines = f.read()
+                if "<title>404 Not Found</title>" in lines:
+                    message.append("Not able to download %s from %s" % (PDB,url))
+                    if os.path.exists(filename):
+                        os.remove(filename)
+            except:
+                message.append("Not able to download %s from %s" % (PDB,url))
+                return None, message
+
+        message.append("Could not find or download %s" % filename)
+        return None, message
+
+    try:
+        with open(filename, 'rb') as raw:
+            structure = Cif(raw).structure()
+            message.append("Loaded " + filename)
+            """
+            Rotation matrix is calculated for each base.
+            Hydrogens are not added automatically.
+            """
+            return structure, message
+
+    except:
+        message.append("Not able to read %s" % filename)
+        return None, message
 
 def build_atom_to_unit_part_list():
 
@@ -2032,7 +2036,10 @@ if __name__=="__main__":
 
         # suppress error messages, but report failures at the end
         try:
-            structure = load_structure(PDB)
+            structure, messages = load_structure(PDB)
+            for message in messages:
+                print("  %s" % message)
+
         except Exception as ex:
             print("  Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex))
             if type(ex).__name__ == "TypeError":
