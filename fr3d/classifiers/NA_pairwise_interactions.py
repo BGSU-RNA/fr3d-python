@@ -1448,12 +1448,11 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     for atom in lastNT2.atoms():
         if atom.name == "O3'":
             lastO3ofnt2 = atom
-    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
-    phosphateOxygens = ["O5'", "O3'", 'OP1', 'OP2']
 
-    riboseOxygens = ["O2'","O4'"]
-    
-    phosphateOxygens = [sugarAtoms[8], sugarAtoms[4],sugarAtoms[10], sugarAtoms[11]]
+    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
+    phosphateOxygens = [sugarAtoms[8], sugarAtoms[4],sugarAtoms[10], sugarAtoms[11]] # "O5'", "O3'", 'OP1', 'OP2'
+    riboseOxygens = [sugarAtoms[2], sugarAtoms[6]] #"O2'","O4'"
+
     sugarsNt1, pOxygensNt1, sOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
     sugarsNt2, pOxygensNt2, sOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
     pOxygens = {} 
@@ -1468,10 +1467,10 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     # Key: Letter of Base 
     # Values: Tuples of Hydrogens in the base paired with a massive atom
     baseMassiveAndHydrogens = {}
-    baseMassiveAndHydrogens = {'A': [('H2',"O2'","2BPh"), ('H8',"O4'","0BPh"),('H61',"C4'","6BPh"),('H62',"C4'","7BPh")], 
-                'C': [('H6',"O4'","0BPh"), ('H5',"C5'","9BPh"), ('H41',"C4'","7BPh"), ('H42',"C4'", "6BPh")],
-                'G': [('H1',"C3'","5BPh"), ('H8',"O4'","0BPh"),('H21',"OP1","1BPh"), ('H22',"OP1","3BPh")],
-                'U': [('H5',"C5'","9BPh"), ('H3',"C3'","5BPh"), ('H6',"O4'","0BPh")]}
+    baseMassiveAndHydrogens = {'A': [('H2',"O2'","2BPh", "2BR"), ('H8',"O4'","0BPh", "0BR"),('H61',"C4'","6BPh", "6BR"),('H62',"C4'","7BPh", "7BR")], 
+                'C': [('H6',"O4'","0BPh","0BR"), ('H5',"C5'","9BPh","9BR"), ('H41',"C4'","7BPh","7BR"), ('H42',"C4'", "6BPh", "6BR")],
+                'G': [('H1',"C3'","5BPh","5BR"), ('H8',"O4'","0BPh", "0BR"),('H21',"OP1","1BPh", "1BR"), ('H22',"OP1","3BPh", "3BR")],
+                'U': [('H5',"C5'","9BPh","9BR"), ('H3',"C3'","5BPh","5BR"), ('H6',"O4'","0BPh","0BR")]}
 
 
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
@@ -1494,23 +1493,33 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
             for oxygens in riboseOxygens:
                 riboseOxygen = [sOxygensNt2[oxygens].x,sOxygensNt2[oxygens].y,sOxygensNt2[oxygens].z]
                 riboseAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen)
-                riboseDistance = distance_between_vectors(baseMassive, riboseOxygen)
+                riboseDistance[oxygens] = distance_between_vectors(baseMassive, riboseOxygen)
             PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
             PDist = distance_between_vectors(baseMassive,phosphorus)
+            
+            if atoms[1] == "C3'" or atoms[1] == "C4'" or atoms[1] == 'OP1': 
+                cutoff = carbonCutoff
+            elif atoms[1] == "O4'" or atoms[1] == "C5'" or atoms[1] == "O5'":
+                cutoff = nitrogenCutoff
+            #Loop for classification of potential base - phosphate interactions
             for oxygens in phosphateOxygens:
-                if atoms[1] == "C3'" or atoms[1] == "C4'" or atoms[1] == 'OP1': 
-                    cutoff = carbonCutoff
-                elif atoms[1] == "O4'" or atoms[1] == "C5'" or atoms[1] == "O5'":
-                    cutoff = nitrogenCutoff
                 if phosphateAngle[oxygens] > nAngleLimit:
                     # print(angle[oxygens])
                     #print(distance[oxygens])
                     if phosphateAngle[oxygens] > angleLimit and phosphateDistance[oxygens] < cutoff:
-                        bPhosphateInteraction.append((atoms[2], oxygens)) #atoms 2 holds the classification 0BPh, 7BPh, etc.
-                        print("criteria met")
+                        bPhosphateInteraction.append((atoms[2], oxygens)) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
+                        #print("criteria met")
                     else: 
                         bPhosphateInteraction.append(("n" + atoms[2], oxygens)) #adds near to classification
-        print(bPhosphateInteraction)
+            for oxygens in riboseOxygens:
+                if riboseAngle[oxygens] > nAngleLimit:
+                    if riboseAngle[oxygens] > angleLimit and riboseDistance[oxygens] < cutoff:
+                        bRiboseInteraction.append((atoms[3], oxygens)) #Atoms[3] holds ribose classification code
+                    else:
+                        bRiboseInteraction.append(("n" + atoms[3], oxygens)) # Adds near to classification
+                        #print("Base Ribpse met")
+        #print(bRiboseInteraction)
+        #print(bPhosphateInteraction)
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
