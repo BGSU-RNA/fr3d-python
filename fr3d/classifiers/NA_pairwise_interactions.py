@@ -174,7 +174,7 @@ def load_structure(filename):
         Rotation matrix is calculated for each base.
         Hydrogens are not added automatically.
         """
-        if 'bphosphate' in categories:
+        if 'backbone' in categories:
             structure.infer_NA_hydrogens()
 
     return structure
@@ -443,7 +443,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction)
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
-                        if 'bphosphate' in categories.keys():
+                        if 'backbone' in categories.keys(): #annotate base phosphate and base ribose interactions
                             structure.infer_NA_hydrogens()
                             timerData = myTimer("Check base phosphate interactions", timerData)
                             ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
@@ -1404,6 +1404,7 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
     """Function that will take a nucleotide and the one indexed before it and will create a dictionary of the sugar atoms and one of the phosphaye oxygens"""
     sugars = {}
     pOxygens = {}
+    sOxygens = {}
     sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
     for atom in sugarAtoms:
         for atoms in nt.atoms():
@@ -1415,12 +1416,17 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
                 if atom == 'O3 of next':
                     pOxygens[atom] = lastO3
                 elif atom == atoms.name:
-                    pOxygens[atom] = atoms
-    return sugars, pOxygens
+                    if atom == "O2'" or atom == "O4'": # sugar oxygens for ribose interactions
+                        sOxygens[atom] = atoms
+                    else: 
+                        pOxygens[atom] = atoms # phosphate oxygen for phosphate interactions
+
+    return sugars, pOxygens, sOxygens
 
 def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
-    interaction = []
+    bPhosphateInteraction = []
+    bRiboseInteraction = []
     classification = []
     if nt1.sequence in modified_nucleotides or nt2.sequence in modified_nucleotides:
         return None
@@ -1444,13 +1450,19 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
             lastO3ofnt2 = atom
     sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
     phosphateOxygens = ["O5'", "O3'", 'OP1', 'OP2']
+
+    riboseOxygens = ["O2'","O4'"]
+    
     phosphateOxygens = [sugarAtoms[8], sugarAtoms[4],sugarAtoms[10], sugarAtoms[11]]
-    sugarsNt1, pOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
-    sugarsNt2, pOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
+    sugarsNt1, pOxygensNt1, sOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
+    sugarsNt2, pOxygensNt2, sOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
     pOxygens = {} 
 
-    angle = {}
-    distance = {}
+    phosphateAngle = {}
+    riboseAngle = {}
+    phosphateDistance = {}
+    riboseDistance = {}
+
 
     #dictionary with the hydrogens of each types of base. 
     # Key: Letter of Base 
@@ -1466,40 +1478,39 @@ def check_base_phosphate_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,da
     massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base. 
     massiveAtomsList = []
 
+    dis = translate_rotate_point(nt1,nt2.centers['P'])
+    if abs(dis[2]) < 4.5:   
    # print(pOxygensNt2)
-    for atoms in baseMassiveAndHydrogens[parent1]:
-        phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
-        baseMassive = nt1.centers[atoms[1]] # contains base massive atom name
-        baseHydrogens = nt1.centers[atoms[0]] # contains corresponding base hydrogen
-        for oxygens in phosphateOxygens:
-            # if oxygens == "O3'":
-            #     oxygen = [pOxygensNt2['O3 of next'].x,pOxygensNt2['O3 of next'].y,pOxygensNt2['O3 of next'].z]
-            # else:
-            oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z]
-            angle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, hydrogen, and oxygen
-            distance[oxygens] =  distance_between_vectors(baseMassive,oxygen)
-            # print("oxy")
-            # print(oxygens + " \t" + mass + " \t" + hyd)
-            # print("angle: \t\t" +str(angle[oxygens])) 
-            # print("distance: \t" + str(distance[oxygens]))
-        PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
-        PDist = distance_between_vectors(baseMassive,phosphorus)
-        for oxygens in phosphateOxygens:
-            if atoms[1] == "C3'" or atoms[1] == "C4'" or atoms[1] == 'OP1': 
-                cutoff = carbonCutoff
-            elif atoms[1] == "O4'" or atoms[1] == "C5'" or atoms[1] == "O5'":
-                cutoff = nitrogenCutoff
-            if angle[oxygens] > nAngleLimit:
-                # print(angle[oxygens])
-                #print(distance[oxygens])
-                if angle[oxygens] > angleLimit and distance[oxygens] < cutoff:
-                    interaction.append((atoms[2], oxygens)) #atoms 2 holds the classification 0BPh, 7BPh, etc.
-                    print("criteria met")
-                else: 
-                    interaction.append(("n" + atoms[2], oxygens)) #adds near to classification
-    print(interaction)
+        for atoms in baseMassiveAndHydrogens[parent1]:
+            phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
+            baseMassive = nt1.centers[atoms[1]] # contains base massive atom name
+            baseHydrogens = nt1.centers[atoms[0]] # contains corresponding base hydrogen
+            #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
+            for oxygens in phosphateOxygens:
+                oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
+                phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, its corresponding hydrogen, and oxygen
+                phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen) #distance from the oxygen to the base atom
 
-
+            for oxygens in riboseOxygens:
+                riboseOxygen = [sOxygensNt2[oxygens].x,sOxygensNt2[oxygens].y,sOxygensNt2[oxygens].z]
+                riboseAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen)
+                riboseDistance = distance_between_vectors(baseMassive, riboseOxygen)
+            PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
+            PDist = distance_between_vectors(baseMassive,phosphorus)
+            for oxygens in phosphateOxygens:
+                if atoms[1] == "C3'" or atoms[1] == "C4'" or atoms[1] == 'OP1': 
+                    cutoff = carbonCutoff
+                elif atoms[1] == "O4'" or atoms[1] == "C5'" or atoms[1] == "O5'":
+                    cutoff = nitrogenCutoff
+                if phosphateAngle[oxygens] > nAngleLimit:
+                    # print(angle[oxygens])
+                    #print(distance[oxygens])
+                    if phosphateAngle[oxygens] > angleLimit and phosphateDistance[oxygens] < cutoff:
+                        bPhosphateInteraction.append((atoms[2], oxygens)) #atoms 2 holds the classification 0BPh, 7BPh, etc.
+                        print("criteria met")
+                    else: 
+                        bPhosphateInteraction.append(("n" + atoms[2], oxygens)) #adds near to classification
+        print(bPhosphateInteraction)
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
@@ -2084,7 +2095,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, backbone)')
 
     # process command line arguments
     args = parser.parse_args()
