@@ -500,16 +500,19 @@ class Cif(object):
                   1.0]
         result = np.dot(symmetry['transform'], np.array(coords))
         return result[0:3].T
-
+    
     def __symmetry_name__(self, symmetry):
+        oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "1EO4", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "6QNQ", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
         symmetry_name = symmetry.get('name')
-        if not symmetry_name or symmetry_name == '?':
-            if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
-                symmetry_name = '1_555'
-            else:
-                symmetry_name = 'ASM_%s' % symmetry['id'] #Some viruses and viral capsids don't have named symmetries so use this naming convention derived from the symmetry id.
+        if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
+           return '1_555'
+        if not symmetry_name or symmetry_name == '?' or symmetry_name not in oldStructures: 
+            symmetry_name = 'ASM_%s' % symmetry['id'] #we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
+        else: 
+            symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                                                    # This is only applied for the structures in the old symmetry list.
         return symmetry_name
-
+    
     def table(self, name):
         return Table(self, self.__block__(name))
 
