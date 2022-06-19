@@ -20,6 +20,8 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
+oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "1EO4", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "6QNQ", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
+
 """ The set of symbols that mark an operator expression as complex """
 COMPLEX_SYMBOLS = set('()-')
 
@@ -177,10 +179,15 @@ class Cif(object):
                                     assemblies[asym_id].append(op)
                             continue
                         #Others have a crystal frame transformation
-                        elif 'X' in operator or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
+                        elif 'X' in operator:# or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
                             #X# moves x,y,z into crystallographic positions.
                             #op = self._operators['I'] #Just apply Identity
                             pass # I don't think we need to apply anything.
+                        elif 'P' in operator:  # P moves coordinates into a "standard" icosahedral point symmettry frame
+                            if self.pdb in oldStructures:
+                                op = self.operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                                                               # This is only applied for the structures in the old structures list.
+                        
                         else: #Normal case
                             if '(' in operator or ')' in operator:
                                 operator = operator.replace("(","")
@@ -502,9 +509,7 @@ class Cif(object):
         return result[0:3].T
     
     def __symmetry_name__(self, symmetry):
-        oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "1EO4", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "6QNQ", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
         symmetry_name = symmetry.get('name')
-        
         # if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
         #    return '1_555'
         if self.pdb in oldStructures:
