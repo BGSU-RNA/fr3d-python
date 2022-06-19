@@ -20,6 +20,8 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
+oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "1EO4", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "6QNQ", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
+
 """ The set of symbols that mark an operator expression as complex """
 COMPLEX_SYMBOLS = set('()-')
 
@@ -93,6 +95,13 @@ class Cif(object):
         self._entities = self.__load_entities__()
         self._chem = self.__load_chem_comp__()
         self.logger = logging.getLogger('fr3d.cif.reader.Cif')
+    #     #test 
+    #     self.struct_conn = self.__load_struct_conn() 
+
+    # def __load_struct_conn(self):
+    #     if hasattr(self, 'struct_conn'):
+    #         for row in self.struct_conn:
+    #             print(row['ptnr1_label_seq_id'] + ":" + row['ptnr1_label_atom_id'] + " \t" + row['conn_type_id'] + "\t " + row['ptnr1_label_seq_id'] + ":" + row['ptnr2_label_atom_id'])
 
     def __load_operators__(self):
         operators = {}
@@ -177,10 +186,14 @@ class Cif(object):
                                     assemblies[asym_id].append(op)
                             continue
                         #Others have a crystal frame transformation
-                        elif 'X' in operator or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
+                        elif 'X' in operator:# or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
                             #X# moves x,y,z into crystallographic positions.
                             #op = self._operators['I'] #Just apply Identity
                             pass # I don't think we need to apply anything.
+                        elif 'P' in operator:  # P moves coordinates into a "standard" icosahedral point symmettry frame
+                            if self.pdb in oldStructures:
+                                op = self.operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                                                               # This is only applied for the structures in the old structures list.
                         else: #Normal case
                             if '(' in operator or ')' in operator:
                                 operator = operator.replace("(","")
@@ -403,9 +416,9 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        try:
+        if hasattr(self, '_assemblies.values()'):
             max_operators = max(len(op) for op in list(self._assemblies.values()))
-        except:
+        else:
             max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
 
         if not self._assemblies:
@@ -471,18 +484,11 @@ class Cif(object):
         component_id = atom['label_comp_id'] if 'label_comp_id' in atom else atom['auth_comp_id']
         atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
 
-        #Some authors leave letters or non numerical digits in their seq_id. That letter should be found in pdbx_PDB_ins_code if needed
-        try:
-            atom_auth_seq_id = int(atom['auth_seq_id'])
-        except:
-            atom_auth_seq_id = int(re.sub('\D','',atom['auth_seq_id']))
-
         return Atom(pdb=pdb,
                     model=model,
                     chain=atom['auth_asym_id'],
                     component_id=component_id,
-                    component_number = atom_auth_seq_id, 
-                    #component_number = atom['auth_seq_id'], #Used to be casted to be an int. Notify if changing to be a string causes any issues anywhere. 
+                    component_number = int(atom['auth_seq_id']),
                     component_index=index,
                     insertion_code=ins_code,
                     alt_id=alt_id,
@@ -500,19 +506,19 @@ class Cif(object):
                   1.0]
         result = np.dot(symmetry['transform'], np.array(coords))
         return result[0:3].T
-    
+
     def __symmetry_name__(self, symmetry):
-        oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "1EO4", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "6QNQ", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
         symmetry_name = symmetry.get('name')
-        if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
-           return '1_555'
-        if not symmetry_name or symmetry_name == '?' or symmetry_name not in oldStructures: 
-            symmetry_name = 'ASM_%s' % symmetry['id'] #we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
-        else: 
+        # if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
+        #    return '1_555'
+        if self.pdb in oldStructures:
             symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
                                                     # This is only applied for the structures in the old symmetry list.
+        elif not symmetry_name or symmetry_name == '?': 
+            symmetry_name = 'ASM_%s' % symmetry['id'] #we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
+
         return symmetry_name
-    
+
     def table(self, name):
         return Table(self, self.__block__(name))
 
