@@ -185,7 +185,7 @@ class Cif(object):
                             pass # I don't think we need to apply anything.
                         elif 'P' in operator:  # P moves coordinates into a "standard" icosahedral point symmettry frame
                             if self.pdb in oldStructures:
-                                op = self.operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                                op = self._operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
                                                                # This is only applied for the structures in the old structures list.
                         
                         else: #Normal case
