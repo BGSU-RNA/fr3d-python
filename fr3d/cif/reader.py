@@ -512,7 +512,7 @@ class Cif(object):
         symmetry_name = symmetry.get('name')
         # if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
         #    return '1_555'
-        if self.pdb in oldStructures:
+        if self.pdb in oldStructures and self.pdb != '6QNQ': #6QNQ is in old structures for a seperate reason than the rest of the structures. Doesn't apply the p annotation.
             symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
                                                     # This is only applied for the structures in the old symmetry list.
         elif not symmetry_name or symmetry_name == '?': 
