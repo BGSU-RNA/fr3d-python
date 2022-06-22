@@ -20,7 +20,7 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
-oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "1EO4", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "6QNQ", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
+oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
 
 """ The set of symbols that mark an operator expression as complex """
 COMPLEX_SYMBOLS = set('()-')
@@ -512,7 +512,7 @@ class Cif(object):
         symmetry_name = symmetry.get('name')
         # if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
         #    return '1_555'
-        if self.pdb in oldStructures and self.pdb != '6QNQ': #6QNQ is in old structures for a seperate reason than the rest of the structures. Doesn't apply the p annotation.
+        if self.pdb in oldStructures: 
             symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
                                                     # This is only applied for the structures in the old symmetry list.
         elif not symmetry_name or symmetry_name == '?': 
