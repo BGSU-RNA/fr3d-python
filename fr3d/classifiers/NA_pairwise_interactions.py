@@ -1437,6 +1437,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     phosphateList = []
     riboseList = []
     phosphateClassification = [] # Final list of classification
+    riboseClassification = []  # Final list of classification
     true_found_phosphate = False # Flag used to remove near classification when a true is also found
     true_found_ribose = False # Flag used to remove near classification when a true is also found
     multipleOxygensPhosphate = False # Flag used to see if base is interacting with more than one oxygen for phosphate
@@ -1476,7 +1477,8 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     phosphateDistance = {}
     riboseDistance = {}
 
-
+    ribose = ""
+    phosphate = ""
     #dictionary with the hydrogens of each types of base. 
     # Key: Letter of Base 
     # Values: Tuples of Hydrogens in the base paired with a massive atom
@@ -1494,100 +1496,123 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     test = 0
    # print(pOxygensNt2)
     phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
-    
-    for atoms in baseMassiveAndHydrogens[parent1]: #Loop through each massive atom of the base     
-        baseMassive = nt1.centers[atoms[1]] # contains base massive atom name
-        baseHydrogens = nt1.centers[atoms[0]] # contains corresponding base hydrogen
-        dis = distance_between_vectors(baseMassive,nt2.centers['P'])
-        if abs(dis) < 16:   
-            #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
-            for oxygens in phosphateOxygens: 
-                oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
-                phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, its corresponding hydrogen, and oxygen
-                phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen) #distance from the oxygen to the base atom
-            #Loop through oxygens in ribose to extract info about angle and distance
-            for oxygens in riboseOxygens:
-                riboseOxygen = [sOxygensNt2[oxygens].x,sOxygensNt2[oxygens].y,sOxygensNt2[oxygens].z]
-                riboseAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen)
-                riboseDistance[oxygens] = distance_between_vectors(baseMassive, riboseOxygen)
+    displ = np.subtract(nt2.centers["P"],nt1.centers["base"])
+    if abs(displ[2]) < 4.5:
+        for atoms in baseMassiveAndHydrogens[parent1]: #Loop through each massive atom of the base     
+            baseMassive = nt1.centers[atoms[1]] # contains base massive atom name
+            baseHydrogens = nt1.centers[atoms[0]] # contains corresponding base hydrogen
+            dis = distance_between_vectors(baseMassive,nt2.centers['P'])
+            if abs(dis) < 16:   
+                #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
+                for oxygens in phosphateOxygens: 
+                    oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
+                    phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, its corresponding hydrogen, and oxygen
+                    phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen) #distance from the oxygen to the base atom
+                #Loop through oxygens in ribose to extract info about angle and distance
+                for oxygens in riboseOxygens:
+                    riboseOxygen = [sOxygensNt2[oxygens].x,sOxygensNt2[oxygens].y,sOxygensNt2[oxygens].z]
+                    riboseAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen)
+                    riboseDistance[oxygens] = distance_between_vectors(baseMassive, riboseOxygen)
 
-            PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
-            PDist = distance_between_vectors(baseMassive,phosphorus)
-            
-            #Set the cutoff distance depending on which atom is the donor
-            if "C" in atoms[1]: 
-                cutoff = carbonCutoff
-            elif "N" in atoms[1]:
-                cutoff = nitrogenCutoff
+                PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
+                PDist = distance_between_vectors(baseMassive,phosphorus)
+                
+                #Set the cutoff distance depending on which atom is the donor
+                if "C" in atoms[1]: 
+                    cutoff = carbonCutoff
+                elif "N" in atoms[1]:
+                    cutoff = nitrogenCutoff
 
-            #Loop for classification of potential base - phosphate interactions
-            for oxygens in phosphateOxygens:
-                if phosphateAngle[oxygens] > nAngleLimit:
-                    if phosphateAngle[oxygens] > angleLimit and phosphateDistance[oxygens] < cutoff:
-                        bPhosphateInteraction.append([atoms[2], oxygens]) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
-                        phosphateInteraction = atoms[2]
-                        true_found_phosphate = True
-                        print("criteria met")
-                    else: 
-                        bPhosphateInteraction.append(["n" + atoms[2], oxygens]) #adds near to classification
-            for oxygens in riboseOxygens:
-                if riboseAngle[oxygens] > nAngleLimit:
-                    if riboseAngle[oxygens] > angleLimit and riboseDistance[oxygens] < cutoff:
-                        bRiboseInteraction.append([atoms[3], oxygens]) #Atoms[3] holds ribose classification code
-                        riboseInteraction = atoms[3]
-                        true_found_ribose = True
-                    else:
-                        bRiboseInteraction.append(["n" + atoms[3], oxygens]) # Adds near to classification
-                        riboseInteraction = " n" + atoms[3]
-        # print("before")
-        # print(bRiboseInteraction)
+                #Loop for classification of potential base - phosphate interactions
+                for oxygens in phosphateOxygens:
+                    if phosphateAngle[oxygens] > nAngleLimit:
+                        if phosphateAngle[oxygens] > angleLimit and phosphateDistance[oxygens] < cutoff:
+                            bPhosphateInteraction.append([atoms[2], oxygens]) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
+                            phosphateInteraction = atoms[2]
+                            true_found_phosphate = True
+                        else: 
+                            bPhosphateInteraction.append(["n" + atoms[2], oxygens]) #adds near to classification
+                for oxygens in riboseOxygens:
+                    if riboseAngle[oxygens] > nAngleLimit:
+                        if riboseAngle[oxygens] > angleLimit and riboseDistance[oxygens] < cutoff:
+                            bRiboseInteraction.append([atoms[3], oxygens]) #Atoms[3] holds ribose classification code
+                            ribose = atoms[3]
+                            true_found_ribose = True
+                        else:
+                            bRiboseInteraction.append(["n" + atoms[3], oxygens]) # Adds near to classification
+                            ribose = " n" + atoms[3]
+            # print("before")
+            # print(bRiboseInteraction)
 
-        #If a true annotation is found, remove near classifications
-        if true_found_ribose == True: 
+            #If a true annotation is found, remove near classifications
+            if true_found_ribose == True: 
+                for interaction in bRiboseInteraction:
+                    if "n" in interaction:
+                        bRiboseInteraction.remove(interaction)
+            if true_found_phosphate == True: 
+                for interaction in bPhosphateInteraction:
+                    if "n" in interaction:
+                        bPhosphateInteraction.remove(interaction)
+            # if len(bRiboseInteraction) > 1:
+            #     print("Longer than 1")
+            #     print(bRiboseInteraction)
+            for interaction in bPhosphateInteraction:
+                interaction[0] = interaction[0].replace("n","")
+                phosphateList.append(interaction[0])
             for interaction in bRiboseInteraction:
-                if "n" in interaction:
-                    bRiboseInteraction.remove(interaction)
-        if true_found_phosphate == True: 
-            for interaction in bPhosphateInteraction:
-                if "n" in interaction:
-                    bPhosphateInteraction.remove(interaction)
-        # if len(bRiboseInteraction) > 1:
-        #     print("Longer than 1")
-        #     print(bRiboseInteraction)
-        
-        for interaction in bPhosphateInteraction:
-            interaction[0] = interaction[0].replace("n","")
-            phosphateList.append(interaction[0])
+                interaction[0] = interaction[0].replace("n","")
+                riboseList.append(interaction[0])
+            # Processing For Classification of interaction 
+            # Checks if single or multiple bonds with one or more than one oxygen and recreates classifications
+            if len(bPhosphateInteraction) > 1:
+                firstOxygen = bPhosphateInteraction[0][1] # The oxygen of the documented interaction
+                #print(firstOxygen)
+                for interaction in bPhosphateInteraction:
+                    if interaction[1] != firstOxygen:
+                        multipleOxygensPhosphate = True
+            elif len(bPhosphateInteraction) == 1: 
+                phosphate = bPhosphateInteraction[0][0]
+            if multipleOxygensPhosphate:
+                if '7BPh' in phosphateList and '9BPh' in phosphateList:
+                    phosphate = "8BPh" # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
+                elif '3BPh' in phosphateList and '5BPh' in phosphateList:
+                    phosphate = " 4BPh" # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
+            else: 
+                if '7BPh' in phosphateList and '9BPh' in phosphateList:
+                    phosphate = "7BPh" # C N4-1H4 and C5-H5 interact with just one oxygen, called 7BPh
+                elif '3BPh' in phosphateList and '5BPh' in phosphateList:
+                    phosphate = "4BPH" # G N2-2H2 and N1-H1 interact with just one oxygen, called 4BPh
 
-        # Processing For Classification of interaction 
-        # Checks if single or multiple bonds with one or more than one oxygen and recreates classifications
-        if len(bPhosphateInteraction) > 1:
-            firstOxygen = bPhosphateInteraction[0][1] # The oxygen of the documented interaction
-            #print(firstOxygen)
-            for interaction in bPhosphateInteraction:
-                if interaction[1] != firstOxygen:
-                    multipleOxygensPhosphate = True
-        if multipleOxygensPhosphate:
-            if '7BPh' in phosphateList and '9BPh' in phosphateList:
-                phosphateClassification.append("8BPh") # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
-            elif '3BPh' in phosphateList and '5BPh' in phosphateList:
-                phosphateClassification.append(" 4BPh") # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
-        else: 
-            if '7BPh' in phosphateList and '9BPh' in phosphateList:
-                phosphateClassification.append("7BPh") # C N4-1H4 and C5-H5 interact with just one oxygen, called 7BPh
-            elif '3BPh' in phosphateList and '5BPh' in phosphateList:
-                phosphateClassification.append("4BPH") # G N2-2H2 and N1-H1 interact with just one oxygen, called 4BPh
-        # print("after") 
+            if len(bRiboseInteraction) > 1:
+                firstOxygen = bRiboseInteraction[0][1] # The oxygen of the documented interaction
+                for interaction in bRiboseInteraction:
+                    if interaction[1] != firstOxygen:
+                        multipleOxygensRibose = True
+            elif len(bRiboseInteraction) == 1:
+                ribose = bPhosphateInteraction[0][0]
+            if multipleOxygensRibose:
+                if '7BR' in riboseList and '9BR' in riboseList:
+                    ribose = "8BR" # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
+                elif '3BR' in riboseList and '5BR' in riboseList:
+                    ribose = "4BR" # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
+            else: 
+                if '7BR' in riboseList and '9BR' in riboseList:
+                    print("here")
 
-        #print(bRiboseInteraction) 
-        # for interaction in bPhosphateInteraction:
-        #     print(interaction)
-        if len(bPhosphateInteraction) > 0 and False:
-            print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),phosphateInteraction,0,0,0,nt1.unit_id(),nt2.unit_id()))
+                    ribose = "7BR" # C N4-1H4 and C5-H5 interact with just one oxygen, called 7BPh
+                elif '3BR' in riboseList and '5BR' in riboseList:
+                    ribose = "4BR" # G N2-2H2 and N1-H1 interact with just one oxygen, called 4BPh
+            # print("after") 
 
-        #print(bRiboseInteraction)
-        #print(phosphateInteraction)
-    return riboseInteraction
+            #print(bRiboseInteraction) 
+            # for interaction in bPhosphateInteraction:
+            #     print(interaction)
+            if len(bPhosphateInteraction) > 0 and False:
+                print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),phosphateInteraction,0,0,0,nt1.unit_id(),nt2.unit_id()))
+
+            #print(bRiboseInteraction)
+            #print(phosphateInteraction)
+    return phosphate
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
