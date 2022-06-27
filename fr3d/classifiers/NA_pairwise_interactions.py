@@ -1445,7 +1445,6 @@ def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrog
             for atom in baseMassiveAndHydrogens[parent1]:
                 if atoms.name in atom[1]:
                     baseMassiveAndHydrogens[nt1.sequence].append(atom)
-    
     return baseMassiveAndHydrogens
 
 def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
@@ -1505,7 +1504,8 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     baseMassiveAndHydrogens = {'A': [['H2',"C2","2BPh", "2BR"], ['H8',"C8","0BPh", "0BR"],['H61',"N6","6BPh", "6BR"],['H62',"N6","7BPh", "7BR"]], 
                 'C': [['H6',"C6","0BPh","0BR"], ['H5',"C5","9BPh","9BR"], ['H41',"N4","7BPh","7BR"], ['H42',"N4", "6BPh", "6BR"]],
                 'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
-                'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]]}
+                'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]],
+                'DT': [['H6',"C6","0BPh","0BR"], ['H71', 'C5', '7BPh', '7BR'], ['H72', 'C5', '8BPh', '8BR'], ['H73', 'C5', '9BPh', '9BR'],['H3','N3','5BPh','5BR']]}
 
     if nt1.sequence in modified_nucleotides:
         baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt1, parent1)
