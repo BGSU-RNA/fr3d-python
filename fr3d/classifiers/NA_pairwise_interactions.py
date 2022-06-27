@@ -1428,6 +1428,26 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
 
     return sugars, pOxygens, sOxygens
 
+def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt1, parent1):
+    """Method used to add modified nucleotides to a dictionary that is used for processing in function check_base_backbone_interactions.
+    This method finds atoms in a modified nucleotide that correspond with the atoms in that modified nucleotides parent.
+    Checks to see if atom of modified base has the same name as its parents, if it does the parents relevent information is added to the dictionary
+    for the key of the modified bases name.
+
+    Accepts in original dictionary of backbone interactions by base, a nucleotide and its parent. Returns updated dictionary with new key value pairs for the modified nucleotide.
+
+    NOTE: This will miss hydrogen bonds that may be on a heavy atom that isn't normally checked. This will also default to the parent case
+    in cases where a methyl group is added onto a heavy atom.
+     """
+    baseMassiveAndHydrogens[nt1.sequence] = []
+    for atoms in nt1.atoms():
+        if 'P' not in atoms.name and "'" not in atoms.name: #Eliminate backbone atoms
+            for atom in baseMassiveAndHydrogens[parent1]:
+                if atoms.name in atom[1]:
+                    baseMassiveAndHydrogens[nt1.sequence].append(atom)
+    
+    return baseMassiveAndHydrogens
+
 def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
     """Function to check base phosphate interactions"""
     bPhosphateInteraction = [] # List to store lists of preliminary phosphate interactions before processing
@@ -1443,8 +1463,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     multipleOxygensPhosphate = False # Flag used to see if base is interacting with more than one oxygen for phosphate
     multipleOxygensRibose = False # Flag used to see if base is interacting with more than one oxygen for phosphate
 
-    if nt1.sequence in modified_nucleotides or nt2.sequence in modified_nucleotides:
-        return ""
+
     # specify cutoffs for interactions ##########################
     carbonCutoff = 4.0          # max massive - oxygen distance
     nCarbonCutoff = 4.5         # near
@@ -1488,7 +1507,10 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                 'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
                 'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]]}
 
-
+    if nt1.sequence in modified_nucleotides:
+        baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt1, parent1)
+    if nt2.sequence in modified_nucleotides:
+        baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt2, parent2)
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
     massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base. 
     massiveAtomsList = []
@@ -1498,7 +1520,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
     displ = np.subtract(nt2.centers["P"],nt1.centers["base"])
     if abs(displ[2]) < 4.5:
-        for atoms in baseMassiveAndHydrogens[parent1]: #Loop through each massive atom of the base     
+        for atoms in baseMassiveAndHydrogens[nt1.sequence]: #Loop through each massive atom of the base     
             baseMassive = nt1.centers[atoms[1]] # contains base massive atom name
             baseHydrogens = nt1.centers[atoms[0]] # contains corresponding base hydrogen
             dis = distance_between_vectors(baseMassive,nt2.centers['P'])
@@ -1522,9 +1544,9 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                     cutoff = carbonCutoff
                 elif "N" in atoms[1]:
                     cutoff = nitrogenCutoff
-
                 #Loop for classification of potential base - phosphate interactions
                 for oxygens in phosphateOxygens:
+                    #print(phosphateAngle)
                     if phosphateAngle[oxygens] > nAngleLimit:
                         if phosphateAngle[oxygens] > angleLimit and phosphateDistance[oxygens] < cutoff:
                             bPhosphateInteraction.append([atoms[2], oxygens]) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
