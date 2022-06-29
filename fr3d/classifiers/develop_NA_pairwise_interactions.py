@@ -1,8 +1,6 @@
 # This script is for developing and testing NA_pairwise_interactions.py
 
-
 from NA_pairwise_interactions import *
-
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -47,10 +45,8 @@ PDB_list = ['7k00']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['6CFJ']
 PDB_list = ['7K00']
-PDB_list = ['4TNA']
 PDB_list = ['4V9F']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
 # list needed for a WebFR3D query
 PDB_list = ['7MKY', '4JF2', '5VGW', '4ENC', '5XTM', '2R8S', '4PQV', '3RW6', '4BW0', '6CB3', '4K27', '5U3G', '7OF0', '4LVW', '5D5L', '2NZ4', '3NKB', '6TFG', '2Z75', '4YAZ', '5X2G', '4V9F', '7OZQ', '4Y4O', '4WFL', '1M5K', '7K16', '5FJC', '7O7Y', '6JQ5', '6S0Z', '3P22', '7OX9', '1Q96', '6KWQ', '3LQX', '6U8D', '6SVS', '3E5C', '7RQB', '2EZ6', '6DMC', '2V3C', '5M0I', '3MXH', '4YBB', '5B2P', '4P95', '7KKV', '3NPQ', '5DDP', '4NLF', '7P7Q', '6AZ3', '7D7W', '6S0X', '7RYG', '3AM1', '4PCJ', '5UZ6', '5B2T']
 PDB_list += ['5AH5', '4ENC', '7EOG', '1QU2', '2ZUE', '2QUW', '2QUS', '5KPY', '7OF0', '7EQJ', '1U0B', '5AOX', '3FOZ', '2DRA', '4YCO', '7C79', '4V9F', '4Y4O', '4WFL', '3RG5', '5UD5', '7K16', '7O7Y', '6S0Z', '4JXZ', '4J50', '3B31', '3ADD', '7RQB', '3OVB', '6UGG', '4PRF', '4YBB', '3VJR', '1QTQ', '7K98', '4P95', '2GDI', '7DCO', '7P7Q', '6AZ3', '4YYE', '6S0X', '5HR7', '7RYG', '3AM1', '2OEU', '3D2V', '1J1U']
@@ -60,6 +56,9 @@ PDB_list = ['3AM1','4J50']  # these have symmetry operators, but no annotations 
 PDB_list = ['3AM1']  # these have symmetry operators, but no annotations there
 PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
 PDB_list = ['4RKV','4J50','3AM1']
+
+PDB_list = ['4TNA']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.235/2.5A/csv']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -74,8 +73,8 @@ categories['stacking'] = []
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
-ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
+ShowStructureReadingErrors = True
 
 # this path should be specified in localpath.py
 # intended for writing out a .pickle file to be used by the FR3D motif search tool
@@ -127,22 +126,27 @@ for PDB in PDBs:
 
             if ShowStructureReadingErrors:
                 # do this to make sure to see any error messages
-                structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
+                structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
             else:
                 # do it this way to suppress error messages
                 try:
-                    structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
+                    structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
                 except:
                     print("  Could not load structure %s" % PDB)
                     print(inputPath)
 
                     continue
 
+            if structure is None:
+                print(PDB)
+                for message in messages:
+                    print(message)
+
             # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
             # need to be able to identify each chain that is available
             # write_unit_data_file(PDB,unit_data_path,structure)
 
-            #interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
+            # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
             # annotate interactions and return pair_to_data
             interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
 
@@ -150,12 +154,17 @@ for PDB in PDBs:
             if True:
                 print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
                 pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
+                print('  Wrote FR3D pickle file %s' % outputDataFilePickle)
 
             timerData = myTimer("Recording interactions",timerData)
-            print('Writing data file %s' % pair_to_data_output_file)
             pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),2)
+            print('  Wrote classification data file %s' % pair_to_data_output_file)
 
-            myTimer("summary",timerData)
+            write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
+            print('  Wrote CSV file(s) to %s' % outputNAPairwiseInteractions)
+
+            if len(PDBs) > 10:
+                myTimer("summary",timerData)
 
 
     else:
@@ -168,11 +177,11 @@ for PDB in PDBs:
 
         if ShowStructureReadingErrors:
             # do this to make sure to see any error messages
-            structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
+            structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
         else:
             # do it this way to suppress error messages
             try:
-                structure = load_structure(os.path.join(inputPath,PDB+'.cif'))
+                structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
             except:
                 print("Could not load structure %s" % PDB)
                 continue

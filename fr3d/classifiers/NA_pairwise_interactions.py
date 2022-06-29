@@ -142,10 +142,11 @@ def load_structure(filename):
         # try to identify a PDB id in the filename
         #fn = os.path.getparts(filename)
 
-        pdbid = filename[-8:-1]
+        pdbid = filename[-8:]
+        PDB = pdbid[0:4]
 
         if '.cif' in pdbid or '.pdb' in pdbid:
-            url = "http://files.rcsb.org/download/%s.cif" % pdbid
+            url = "http://files.rcsb.org/download/%s" % pdbid
 
             try:
                 urlretrieve(url, filename)
@@ -163,8 +164,9 @@ def load_structure(filename):
                 message.append("Not able to download %s from %s" % (PDB,url))
                 return None, message
 
-        message.append("Could not find or download %s" % filename)
-        return None, message
+        else:
+            message.append("Code is not clever to find or download %s" % filename)
+            return None, message
 
     try:
         with open(filename, 'rb') as raw:
@@ -693,7 +695,7 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
 
     # annotate nt-nt interactions
-    print("  Annotating interactions")
+    #print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
 
