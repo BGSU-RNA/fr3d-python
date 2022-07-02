@@ -290,7 +290,9 @@ def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
 
 def reverse_edges(inter):
 
-    if len(inter) == 3:
+    if len(inter) == 2:
+        rev = inter
+    elif len(inter) == 3:
         rev = inter[0] + inter[2] + inter[1]
     elif len(inter) == 4:
         rev = inter[0] + inter[1] + inter[3] + inter[2]
@@ -464,6 +466,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                             timerData = myTimer("Get basepair parameters",timerData)
                             pair_data, datapoint12 = get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint12)
+
+                            # annotate coplanar relationship
+                            if 'coplanar' in categories.keys() and pair_data['coplanar']:
+                                count_pair += 1
+                                interaction_to_pair_list['cp'].append(unit_id_pair)
+                                category_to_interactions['coplanar'].add('cp')
 
                             timerData = myTimer("Check basepairing",timerData)
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
@@ -679,10 +687,10 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
 
             interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
 
-            # duplicate certain pairs in reversed order
-            if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
+            # duplicate certain pairs in reversed order; saves time this way
+            if interaction[0] in ["c","t","a"] or interaction in ["s33","s35","s53","s55","cp"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-            elif interaction[0:2] in ["nc","nt"] or interaction in ["ns33","ns35","ns53","ns55"]:
+            elif interaction[0:2] in ["nc","nt","na"] or interaction in ["ns33","ns35","ns53","ns55"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
 
     return interaction_to_list_of_tuples
@@ -1986,7 +1994,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,coplanar,basepair_detail)')
 
     # process command line arguments
     args = parser.parse_args()
