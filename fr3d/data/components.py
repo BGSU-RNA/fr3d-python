@@ -278,16 +278,28 @@ class Component(EntitySelector):
 
         if self.sequence in defs.NAbaseheavyatoms:
             baseheavy = defs.NAbaseheavyatoms[self.sequence]
+            standard_coords = defs.NAbasecoordinates[self.sequence]
             for atom in self.atoms(name=baseheavy):
                 R.append(atom.coordinates())
-                S.append(defs.NAbasecoordinates[self.sequence][atom.name])
+                S.append(standard_coords[atom.name])
 
         elif self.sequence in defs.modified_nucleotides:
-            current = defs.modified_nucleotides[self.sequence]
-            standard_coords = defs.NAbasecoordinates[current["standard"]]
-            for atom in self.atoms(name=list(current["atoms"].keys())):
+            # get the mapping from this modified nucleotide to its parent
+            mod_to_parent = defs.modified_nucleotides[self.sequence]
+            # get the standard coordinates for the parent nucleotide
+            standard_coords = defs.NAbasecoordinates[mod_to_parent["standard"]]
+            # loop over mapped base atoms in the modified nucleotide
+            for atom in self.atoms(name=list(mod_to_parent["atoms"].keys())):
                 R.append(atom.coordinates())
-                S.append(standard_coords[atom.name])
+                S.append(standard_coords[mod_to_parent["atoms"][atom.name]])
+
+            """
+            for mod_atom_name, parent_atom_name in mod_to_parent["atoms"].items():
+                print(mod_atom_name,parent_atom_name)
+                atom = self.atoms(name=[mod_atom_name])
+                R.append(atom.coordinates())
+                S.append(standard_coords[parent_atom_name])
+            """
 
         R = np.array(R)
         R = R.astype(np.float)

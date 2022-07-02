@@ -68,10 +68,6 @@ from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 from fr3d.classifiers.class_limits import nt_nt_cutoffs
 
-
-# some modified nucleotides have faces flipped compared to parent nt
-flipped_nts = ['PSU']
-
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
 try:
@@ -919,10 +915,6 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                         ringmin = "ring6"
 
     if true_found:  # over base ring and z value is OK
-        # special treatment of faces for some modified nts
-        if nt1.sequence in flipped_nts:
-            zmin = -zmin
-
         if zmin > 0:
             interaction = "s3" + oxygenmin
             interaction_reversed = "s" + oxygenmin + "3"
@@ -931,10 +923,6 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
             interaction_reversed = "s" + oxygenmin + "5"
 
     elif near_found:  # over a base ring, but z value too large for true
-        # special treatment of faces for some modified nts
-        if nt1.sequence in flipped_nts:
-            zmin = -zmin
-
         if zmin > 0:
             interaction = "ns3" + oxygenmin
             interaction_reversed = "ns" + oxygenmin + "3"
@@ -1170,10 +1158,6 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                         ringmin = "near_ring6"
 
         if near_found:
-            # special treatment of faces for some modified nts
-            if nt1.sequence in flipped_nts:
-                zmin = -zmin
-
             if zmin > 0:
                 interaction = "ns3" + oxygenmin
                 interaction_reversed = "ns" + oxygenmin + "3"
@@ -1355,13 +1339,6 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
             datapoint['normal_Z'] = normal_Z
         if coords[3] == -100:
             coords[3] = -coords2[3] #If overlap isnt found one way, sometimes the return value will be -100 when it's not supposed to be. This will use the min z the other way instead. Sets negative since direction is different but z should be similar
-        # special treatment of faces for some modified nts
-        if nt1.sequence in flipped_nts:
-            coords[2] = -coords[2]
-            coords[3] = -coords[3]
-        if nt2.sequence in flipped_nts:
-            coords2[2] = -coords2[2]
-            coords2[3] = -coords2[3]
         if coords[3] > 0: # coords[3] holds min_z
             if normal_Z > 0:
                 interaction = "ns35" # second base above, pointing up 
@@ -1631,13 +1608,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
     if len(ok_displacement_screen) == 0:
         return "", "", datapoint
 
-#    return ok_displacement_screen
-
     rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
 
     normal_Z = rotation_1_to_2[2,2]   # z component of normal vector to second base
-
-#    print("%s with %s normal_Z is %0.4f" % (nt1.unit_id(),nt2.unit_id(),normal_Z))
 
     if datapoint:
         datapoint['normal_Z'] = normal_Z
