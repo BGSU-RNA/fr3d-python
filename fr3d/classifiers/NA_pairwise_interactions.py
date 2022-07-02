@@ -2049,6 +2049,12 @@ if __name__=="__main__":
             failed_structures.append((PDB,type(ex).__name__,ex))
             continue
 
+        if not structure:
+            print("  Could not load structure %s" % (PDB))
+            failed_structures.append((PDB,"",""))
+            continue
+
+
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
