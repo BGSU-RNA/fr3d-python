@@ -1,5 +1,12 @@
 # This script is for developing and testing NA_pairwise_interactions.py
 
+# When changes are made to other code in fr3d-python
+# cd fr3d-python
+# python setup.py install
+# "C:\Program Files\Python38\python" setup.py install
+
+# "C:\Program Files\Python38\python" NA_pairwise_interactions.py 4TNA
+
 from NA_pairwise_interactions import *
 
 from fr3d.localpath import outputText
@@ -57,8 +64,10 @@ PDB_list = ['3AM1']  # these have symmetry operators, but no annotations there
 PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
 PDB_list = ['4RKV','4J50','3AM1']
 
-PDB_list = ['4TNA']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.235/2.5A/csv']
+PDB_list = ['4TNA.cif']
+PDB_list = ['5UED']
+PDB_list = ['4TNA']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -109,10 +118,12 @@ else:
 
 for PDB in PDBs:
 
+    PDB_id = PDB[0:4]
+
     counter += 1
 
-    outputDataFileCSV =    outputNAPairwiseInteractions + PDB + ".csv"
-    outputDataFilePickle = outputNAPickleInteractions + PDB + "_RNA_pairs_exp.pickle"
+    outputDataFileCSV =    outputNAPairwiseInteractions + PDB_id + ".csv"
+    outputDataFilePickle = outputNAPickleInteractions + PDB_id + "_RNA_pairs_exp.pickle"
 
     if annotate_entire_PDB_files:
 
@@ -126,21 +137,27 @@ for PDB in PDBs:
 
             if ShowStructureReadingErrors:
                 # do this to make sure to see any error messages
-                structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
+                if not '.cif' in PDB.lower() and not '.pdb' in PDB.lower():
+                    fname = os.path.join(inputPath,PDB+'.cif')
+                else:
+                    fname = os.path.join(inputPath,PDB)
+                with open(fname, 'rb') as raw:
+                    structure = Cif(raw).structure()
             else:
                 # do it this way to suppress error messages
                 try:
-                    structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
+                    structure, messages = load_structure(os.path.join(inputPath,PDB))
                 except:
                     print("  Could not load structure %s" % PDB)
                     print(inputPath)
 
                     continue
 
-            if structure is None:
-                print(PDB)
+            if not structure:
                 for message in messages:
                     print(message)
+
+                continue
 
             # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
             # need to be able to identify each chain that is available
