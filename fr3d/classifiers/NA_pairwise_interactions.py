@@ -6,6 +6,9 @@
     Basepairs might also be annotated as "near" with ncWW, ntHS.
     A few basepair categories have "alternative" geometries like acWW, ctWW.
     Alternative geometries are not checked for hydrogen bonds.
+
+    Basic usage:
+    python NA_pairwise_interactions.py 4TNA
 """
 
 """
@@ -50,6 +53,7 @@ from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
 from fr3d.definitions import nt_sugar
 from fr3d.definitions import nt_phosphate
+from fr3d.definitions import nt_backbone
 from fr3d.definitions import aa_connections
 from fr3d.definitions import aa_backconnect
 from fr3d.definitions import aa_hydrogen_connections
@@ -136,36 +140,38 @@ def load_structure(filename):
     """
 
     message = []
+    original_filename = filename
 
     # if not available, try to download from PDB and save locally
     if not os.path.exists(filename):
+
         # try to identify a PDB id in the filename
-        #fn = os.path.getparts(filename)
-
-        pdbid = filename[-8:]
-        PDB = pdbid[0:4]
-
-        if '.cif' in pdbid or '.pdb' in pdbid:
-            url = "http://files.rcsb.org/download/%s" % pdbid
-
-            try:
-                urlretrieve(url, filename)
-                message.append("Downloaded %s from %s" % (PDB,url))
-
-                # TODO: detect when this is not successful and downloads an error file instead
-                # current code is clumsy
-                with open(filename,"r") as f:
-                    lines = f.read()
-                if "<title>404 Not Found</title>" in lines:
-                    message.append("Not able to download %s from %s" % (PDB,url))
-                    if os.path.exists(filename):
-                        os.remove(filename)
-            except:
-                message.append("Not able to download %s from %s" % (PDB,url))
-                return None, message
-
+        if filename.lower().endswith('.cif'):
+            pdbid = filename[-8:-4] + '.cif'
+        elif filename.lower().endswith('.pdb'):
+            pdbid = filename[-8:-4] + '.pdb'
         else:
-            message.append("Code is not clever to find or download %s" % filename)
+            pdbid = filename[-4:].upper() + '.cif'
+            filename = filename + '.cif'
+
+        url = "http://files.rcsb.org/download/%s" % pdbid
+
+        try:
+            urlretrieve(url, filename)
+
+            # TODO: detect when this is not successful and downloads an error file instead
+            # current code is clumsy
+            with open(filename,"r") as f:
+                lines = f.read()
+            if "404 Not Found" in lines:
+                message.append("Not able to download %s from %s" % (pdbid,url))
+                if os.path.exists(filename):
+                    os.remove(filename)
+            else:
+                message.append("Downloaded %s from %s" % (pdbid,url))
+
+        except:
+            message.append("Code is not clever enough to find or download %s" % original_filename)
             return None, message
 
     try:
@@ -1401,7 +1407,7 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
 
     pair_data = {}
     pair_data["coplanar"] = False
-    pair_data["coplanar_value"] = -1         # 0 to 1 is coplanar, 1 is the best
+    pair_data["coplanar_value"] = None         # 0 to 1 is coplanar, 1 is the best
 
     # vector from origin to nt2 when standardized
     displ12 = np.dot(glycosidic_displacement,nt1.rotation_matrix)
@@ -1409,7 +1415,7 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     pair_data["displ12"] = displ12
 
     # calculate gap and standardized atoms from nt2
-    gap12, points2 = calculate_basepair_gap(nt1,nt2)
+    gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
     pair_data["gap12"] = gap12
 
     if datapoint:
@@ -1421,17 +1427,27 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     if gap12 >= 1.5179:
         return pair_data, datapoint
 
-    # calculate minimum distance between nt1 base and all atoms of nt2
-    min_distance = 100
-    points1 = []
+    # calculate minimum distance between nt1 base and base atoms of nt2
+    base_min_distance = 1000
+    min_distance = 1000
+    base_points1 = []
     for atom in nt1.atoms():                  # nt1 atoms
+        q = [atom.x, atom.y, atom.z]      # nt1 base atoms
         if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
-            q = [atom.x, atom.y, atom.z]      # nt1 base atoms
-            points1.append(q)                 # save for later gap21 calculation
-            for p in points2:                 # nt2 base atoms
+            base_points1.append(q)                 # save for later gap21 calculation
+            for p in base_points2:                 # nt2 atoms
                 d = np.linalg.norm(np.subtract(p,q))
                 if d < min_distance:
                     min_distance = d
+                if d < base_min_distance:
+                    base_min_distance = d
+
+        else:
+            for p in base_points2:                 # nt2 atoms
+                d = np.linalg.norm(np.subtract(p,q))
+                if d < min_distance:
+                    min_distance = d
+
 
     pair_data["min_distance"] = min_distance
 
@@ -1463,7 +1479,7 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     if dot3 <= 0.7757:
         return pair_data, datapoint
 
-    gap21, points1 = calculate_basepair_gap(nt1,nt2,points1)
+    gap21, base_points1 = calculate_basepair_gap(nt1,nt2,base_points1)
 
     if datapoint:
         datapoint['gap21'] = gap21
@@ -1536,26 +1552,26 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
 
     return pair_data, datapoint
 
-def calculate_basepair_gap(nt1,nt2,points2=None):
+def calculate_basepair_gap(nt1,nt2,base_points2=None):
 
     displacements = []
     distances = []
 
-    if points2:
-        for p in points2:
+    if base_points2:
+        for p in base_points2:
             v = np.subtract(p,nt1.centers["base"])
             d = np.linalg.norm(v)
             displacements.append(v)
             distances.append(d)
 
     else:
-        points2 = []
+        base_points2 = []
         for atom in nt2.atoms():
             if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
                 p = [atom.x, atom.y, atom.z]
                 v = np.subtract(p,nt1.centers["base"])
                 d = np.linalg.norm(v)
-                points2.append(p)
+                base_points2.append(p)
                 displacements.append(v)
                 distances.append(d)
 
@@ -1568,7 +1584,7 @@ def calculate_basepair_gap(nt1,nt2,points2=None):
         if z < gap12:
             gap12 = z                 # gap is smallest z value
 
-    return gap12, points2
+    return gap12, base_points2
 
 
 def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
@@ -1972,6 +1988,7 @@ if __name__=="__main__":
 
     # process command line arguments
     args = parser.parse_args()
+
     if args.input:
         inputPath = args.input
     elif not inputPath:
@@ -2010,35 +2027,40 @@ if __name__=="__main__":
         os.mkdir(outputNAPairwiseInteractions)
 
     # process additional arguments as PDB files
-    PDBs = []
+    PDBs = []  # list of (path,filename) entries
     entries = args.PDBfiles
     for entry in entries:
-        if '.pdb' in entry.lower():
-            x = entry
-        else:
-            x = entry.replace(".cif","") + ".cif"
+        path_split = os.path.split(entry)
 
-        if "/" in entry or "\\" in entry:
-            PDBs.append(x)
+        if len(path_split[0]) > 0:
+            PDBs.append(path_split)
         else:
-            PDBs.append(os.path.join(inputPath,x))
+            PDBs.append((inputPath,entry))
 
     # annotate each PDB file
     timerData = myTimer("start")
     failed_structures = []
     counter = 0
 
-    for PDB in PDBs:
+    for path, PDB in PDBs:
         counter += 1
 
-        PDBid = PDB[-8:-4]
+        if PDB.lower().endswith('.cif') or PDB.lower().endswith('.pdb'):
+            PDBid = PDB[:-4]
+            path_PDB = os.path.join(path,PDB)         # extension given
+        elif len(PDB) == 4:
+            PDBid = PDB
+            path_PDB = os.path.join(path,PDB+".cif")  # default to .cif
+        else:
+            PDBid = PDB
+            path_PDB = os.path.join(path,PDB)         # use given filename
 
-        print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDBs)))
+        print("Reading file %s, which is number %d out of %d" % (path_PDB, counter, len(PDBs)))
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
         try:
-            structure, messages = load_structure(PDB)
+            structure, messages = load_structure(path_PDB)
             for message in messages:
                 print("  %s" % message)
 
