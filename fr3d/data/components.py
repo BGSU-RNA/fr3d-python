@@ -285,7 +285,7 @@ class Component(EntitySelector):
         elif self.sequence in defs.modified_nucleotides:
             current = defs.modified_nucleotides[self.sequence]
             standard_coords = defs.NAbasecoordinates[current["standard"]]
-            for atom in self.atoms(name=current["atoms"].keys()):
+            for atom in self.atoms(name=list(current["atoms"].keys())):
                 R.append(atom.coordinates())
                 S.append(standard_coords[atom.name])
 
