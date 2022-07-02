@@ -566,9 +566,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     return interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data
 
 def calculate_crossing_numbers(bases,interaction_to_pair_list):
-    # Identify which cWW pairs are nested
-    # Then for each interaction, calculate the number of nested
-    # cWW pairs it crosses
+    """
+    Identify which cWW pairs are nested.
+    Then for each interaction, calculate the number of nested cWW pairs it crosses
+    """
 
     # map unit_id to chain and sequence index
     unit_id_to_index = {}
@@ -679,10 +680,11 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list):
             interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
 
             # duplicate certain pairs in reversed order
-            if interaction[0] in ["c","t"]:# or interaction in ["s33","s35","s53","s55"]:
+            if interaction[0] in ["c","t"] or interaction in ["s33","s35","s53","s55"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-            elif interaction[0:2] in ["nc","nt"]:# or interaction in ["ns33","ns35","ns53","ns55"]:
+            elif interaction[0:2] in ["nc","nt"] or interaction in ["ns33","ns35","ns53","ns55"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
+
     return interaction_to_list_of_tuples
 
 def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoint=False):
