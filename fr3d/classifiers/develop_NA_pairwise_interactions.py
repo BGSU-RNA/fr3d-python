@@ -64,10 +64,11 @@ PDB_list = ['3AM1']  # these have symmetry operators, but no annotations there
 PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
 PDB_list = ['4RKV','4J50','3AM1']
 
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.235/2.5A/csv']
 PDB_list = ['4TNA.cif']
 PDB_list = ['5UED']
 PDB_list = ['4TNA']
+PDB_list = ['5T2A']  # has a conflicting cBW annotation
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -78,12 +79,15 @@ categories = {}
 categories['sO'] = []        # annotate all sO interactions
 categories['basepair'] = []
 categories['stacking'] = []
+categories['coplanar'] = []
 
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
-ShowStructureReadingErrors = False
 ShowStructureReadingErrors = True
+ShowStructureReadingErrors = False
+
+experimental = True          # save interactions in pairs_exp folder so they can be compared to ones from the server
 
 # this path should be specified in localpath.py
 # intended for writing out a .pickle file to be used by the FR3D motif search tool
@@ -122,8 +126,11 @@ for PDB in PDBs:
 
     counter += 1
 
-    outputDataFileCSV =    outputNAPairwiseInteractions + PDB_id + ".csv"
-    outputDataFilePickle = outputNAPickleInteractions + PDB_id + "_RNA_pairs_exp.pickle"
+    outputDataFileCSV    = os.path.join(outputNAPairwiseInteractions, PDB_id + ".csv")
+    if experimental:
+        outputDataFilePickle = os.path.join(outputNAPickleInteractions + "_exp", PDB_id + "_RNA_pairs.pickle")
+    else:
+        outputDataFilePickle = os.path.join(outputNAPickleInteractions, PDB_id + "_RNA_pairs.pickle")
 
     if annotate_entire_PDB_files:
 
