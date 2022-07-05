@@ -66,7 +66,9 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
-from fr3d.classifiers.class_limits import nt_nt_cutoffs
+
+#from fr3d.classifiers.class_limits import nt_nt_cutoffs
+from class_limits import nt_nt_cutoffs
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
@@ -390,6 +392,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         parent_pair = parent1 + "," + parent2
                         parent_pair_reversed = parent2 + "," + parent1
 
+                        marked_coplanar = False
+
                         # store data for diagnostics, if requested
                         if get_datapoint:
                             datapoint12 = {}
@@ -468,6 +472,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 count_pair += 1
                                 interaction_to_pair_list['cp'].append(unit_id_pair)
                                 category_to_interactions['coplanar'].add('cp')
+                                marked_coplanar = True
 
                             timerData = myTimer("Check basepairing",timerData)
                             cutoffs = nt_nt_cutoffs[parent1+","+parent2]
@@ -482,11 +487,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 except:
                                     pass
 
-                            if False and len(interaction) > 1:
+                            if False and len(interaction12) > 1:
                                 print("  Identified parents as %s and %s" % (parent1,parent2))
-                                print("  Found %s interaction between %-18s and %-18s" % (interaction,nt1.unit_id(),nt2.unit_id()))
+                                print("  Found %s interaction between %-18s and %-18s" % (interaction12,nt1.unit_id(),nt2.unit_id()))
                                 print("  Gap value %0.8f" % pair_data["gap12"])
-                                print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
+                                print("  Coplanar Boolean %s" % pair_data["coplanar"])
+                                if 'coplanar_value' in pair_data and pair_data["coplanar_value"]:
+                                    print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
                                 print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
                                 print("")
 
@@ -522,20 +529,43 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             timerData = myTimer("Get basepair parameters",timerData)
                             pair_data, datapoint21 = get_basepair_parameters(nt2,nt1,glycosidic_displacement,datapoint21)
 
+                            # annotate coplanar relationship
+                            if 'coplanar' in categories.keys() and pair_data['coplanar'] and not marked_coplanar:
+                                count_pair += 1
+                                interaction_to_pair_list['cp'].append(unit_id_pair)
+                                category_to_interactions['coplanar'].add('cp')
+
                             timerData = myTimer("Check basepairing",timerData)
                             cutoffs = nt_nt_cutoffs[parent2+","+parent1]
                             interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint21)
+
+                            if False and len(interaction21) > 1:
+                                print("  Identified parents as %s and %s" % (parent2,parent1))
+                                print("  Found %s interaction between %-18s and %-18s" % (interaction21,nt2.unit_id(),nt1.unit_id()))
+                                print("  Gap value %0.8f" % pair_data["gap12"])
+                                print("  Coplanar Boolean %s" % pair_data["coplanar"])
+                                if 'coplanar_value' in pair_data and pair_data["coplanar_value"]:
+                                    print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
+                                print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+                                print("")
+
 
                             if len(interaction21) == 0:
                                 new_annotation = False
                             elif len(interaction12) == 0:
                                 new_annotation = True
-                            elif interaction21 == interaction12_reversed:
+                            elif interaction21.lower() == interaction12_reversed.lower(): # tHh = thH
                                 new_annotation = False
                                 #print("  Matching annotation: %4s and %4s for %s and %s" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id()))
                             else:
-                                new_annotation = True
-                                print("  Conflicting annotation: %4s and %4s for %s and %s" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id()))
+                                new_annotation = False  # only store one!  Otherwise the database gets two
+                                conflict_message = "  Conflicting annotation: %4s and %4s for %s and %s " % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id())
+                                conflict_message +=  "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+
+                                print(conflict_message)
+                                if get_datapoint:
+                                    with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
+                                        conf.write(conflict_message+"\n")
                             if new_annotation:
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
