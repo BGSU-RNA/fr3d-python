@@ -32,6 +32,8 @@ if sys.version_info[0] < 3:
 else:
     from urllib.request import urlopen 
 
+
+
 def load_basepair_annotations(filename,all_pair_types):
 
     with open(filename,'rb') as opener:
@@ -661,15 +663,24 @@ if __name__=="__main__":
 
     print("Plots are in %s" % outputNAPairwiseInteractions)
 
-    from tabulate import tabulate
     print("Confusion Matrix of Annotations. Columns Represent Matlab found annotations and Rows Represent Python" +
-          "Annotations in this matrix are ONLY those that both Matlab and Python found any interaction between the same two nucleotides")
+        "Annotations in this matrix are ONLY those that both Matlab and Python found any interaction between the same two nucleotides")
     row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53']]
+    border = ['----','----','----','----','----','----','----','----','----']
     col = 0 
     for interaction in interaction_list:
         for interaction2 in interaction_list:
                 row[col].append(newDict[interaction][interaction2])#"     " + str(newDict[interaction][interaction2]) + "     ")
         col+=1
-    print(tabulate(row, headers=interaction_list))
+
+    import __builtin__
+    print_function = getattr(__builtin__, 'print')
+    print_function("\t", end = "")
+    print_function(*interaction_list, sep='\t')
+    print_function(*border, sep = "\t")
+    for rows in row:
+        print_function(*rows, sep='\t')
+
+
 
     print(confusionMatrixDictionary)
