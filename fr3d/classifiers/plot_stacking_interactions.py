@@ -103,15 +103,13 @@ def reverse(pair):
     return (pair[1],pair[0])
 #=======================================================================
 def check_full_data(datapoint):
-
-    return ('x' in datapoint and 'y' in datapoint and 'z' in datapoint \
+    return ('xStack' in datapoint and 'yStack' in datapoint and 'zStack' in datapoint \
             and 'gap12' in datapoint and 'angle_in_plane' in datapoint and 'normal_Z' in datapoint)
 #=======================================================================
 def print_datapoint(datapoint):
 
 #    if 'url' in datapoint:
 #        print("  %s" % datapoint['url'])
-
     fields = ['x','y','z','gap12','angle_in_plane','normal_Z']
 
     for f in fields:
@@ -197,6 +195,49 @@ if __name__=="__main__":
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
     symmetric_base_combination_list = ['A,A','C,C','G,G','U,U']
 
+    # Data collection for confusion matrix
+    newDict = {} 
+    newDict['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['s53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['ns33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['ns35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['ns55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    newDict['ns53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+
+    confusionMatrixDictionary = {} 
+    confusionMatrixDictionary['both'] = {}
+    confusionMatrixDictionary['both']['s33'] = 0
+    confusionMatrixDictionary['both']['s35'] = 0
+    confusionMatrixDictionary['both']['s55'] = 0
+    confusionMatrixDictionary['both']['s53'] = 0
+    confusionMatrixDictionary['both']['ns33'] = 0
+    confusionMatrixDictionary['both']['ns35'] = 0
+    confusionMatrixDictionary['both']['ns55'] = 0
+    confusionMatrixDictionary['both']['ns53'] = 0
+
+    confusionMatrixDictionary['matlab'] = {}
+    confusionMatrixDictionary['matlab']['s33'] = 0
+    confusionMatrixDictionary['matlab']['s35'] = 0
+    confusionMatrixDictionary['matlab']['s55'] = 0
+    confusionMatrixDictionary['matlab']['s53'] = 0
+    confusionMatrixDictionary['matlab']['ns33'] = 0
+    confusionMatrixDictionary['matlab']['ns35'] = 0
+    confusionMatrixDictionary['matlab']['ns55'] = 0
+    confusionMatrixDictionary['matlab']['ns53'] = 0
+
+    confusionMatrixDictionary['python'] = {}
+    confusionMatrixDictionary['python']['s33'] = 0
+    confusionMatrixDictionary['python']['s35'] = 0
+    confusionMatrixDictionary['python']['s55'] = 0
+    confusionMatrixDictionary['python']['s53'] = 0
+    confusionMatrixDictionary['python']['ns33'] = 0
+    confusionMatrixDictionary['python']['ns35'] = 0
+    confusionMatrixDictionary['python']['ns55'] = 0
+    confusionMatrixDictionary['python']['ns53'] = 0
+
+    both33 = 0
     # plot one instance of each of the pairwise interactions
     PlotPair = False
     PlotPair = True
@@ -219,7 +260,7 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
-
+    PDB_list = ['7K00']
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -361,19 +402,31 @@ if __name__=="__main__":
                     nvalues.append(datapoint['normal_Z'])
 
                     if 'sInteraction' in datapoint:
-                        stacking = datapoint['basepair']
+                        stacking = datapoint['sInteraction']
                     else:
                         stacking = "   "
-                    
+                     
                     if Python and Matlab:
+                        # adding counts for which is happening for both
+                        if stacking != "   ":
+                            confusionMatrixDictionary['both'][stacking] += 1
+                            newDict[stacking][pair_to_Matlab_annotation[pair]] += 1
+                        both33 += 1
                         color = black
                         size = 1
                     elif Python and not Matlab:
+                        # counting for confusion matrix 
+                        if stacking != "   ":
+                            confusionMatrixDictionary['python'][stacking] += 1
                         color = blue
                         size = 40
                         print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
                     elif not Python and Matlab:
+                        # counting for confusion matrix 
+
+                        if stacking != "   ":
+                            confusionMatrixDictionary['matlab'][stacking] += 1
                         color = red
                         size = 40
                         print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
@@ -557,12 +610,20 @@ if __name__=="__main__":
         plt.close()
 
 
+    matlabDictionary = {} 
+
+
+
+
+
 
     # loop over sets of interactions, plotting histograms of z values
     interaction_list = ["s33", "s35", "s55", "s53",
                         "ns33", "ns35", "ns55", "ns53"]
 
     fig = plt.figure(figsize=(10.0,8.0))
+
+
 
     # loop over individual bases, to make separate plots for each base
     for v, nt1_seq in enumerate(base_seq_list):
@@ -599,3 +660,16 @@ if __name__=="__main__":
     plt.close()
 
     print("Plots are in %s" % outputNAPairwiseInteractions)
+
+    from tabulate import tabulate
+    print("Confusion Matrix of Annotations. Columns Represent Matlab found annotations and Rows Represent Python" +
+          "Annotations in this matrix are ONLY those that both Matlab and Python found any interaction between the same two nucleotides")
+    row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53']]
+    col = 0 
+    for interaction in interaction_list:
+        for interaction2 in interaction_list:
+                row[col].append(newDict[interaction][interaction2])#"     " + str(newDict[interaction][interaction2]) + "     ")
+        col+=1
+    print(tabulate(row, headers=interaction_list))
+
+    print(confusionMatrixDictionary)

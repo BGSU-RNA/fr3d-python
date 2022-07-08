@@ -302,7 +302,7 @@ def reverse_edges(inter):
     return rev
 
 
-def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint = False):
+def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint = True):
     """
     loop through nt cubes, loop through neighboring nt cubes,
     then loop through bases in the two cubes,
@@ -1399,6 +1399,9 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
     if datapoint and len(interaction) > 0:
+        datapoint['gap12'], base_points2 = calculate_basepair_gap(nt1,nt2)
+        datapoint['angle_in_plane'] = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
+        datapoint['normal_Z'] = normal_Z
         datapoint['sInteraction'] = interaction
         datapoint['xStack'] = coords[0]
         datapoint['yStack'] = coords[1]
