@@ -441,7 +441,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
-                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint12)
+                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, False, datapoint12)
 
                             if len(interaction) > 0:
                                 count_pair += 1
@@ -1301,7 +1301,7 @@ def create_modified_base_atoms_list(nt):
             atomList.append(atom.name)
     return atomList
 
-def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
+def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucleotides, datapoint):
     """Checks for nucleotide base stacking.
     Two nucleotides and their parents passed in.
     Creates a list of their outermost atoms. 
@@ -1334,17 +1334,25 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Create a list in case one of these is nucleotides is a modified nucleotide. 
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
-    if nt1.sequence in convexHullAtoms: #standard base
+    if nt1.sequence in convexHullAtoms and modified_nucleotides: #standard base
         nt1ConvexHullAtomsList = convexHullAtoms[parent1]
     elif nt1.sequence in modified_nucleotides: #modified base
-        nt1ConvexHullAtomsList = create_modified_base_atoms_list(nt1)
+        if annotate_modified_nucleotides:
+            nt1ConvexHullAtomsList = create_modified_base_atoms_list(nt1)
+        else:
+            print("Modified Nucleotides not considered for annotation %s and %s" % (nt1.unit_id(),nt2.unit_id()))
+            return "", datapoint, ""
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
     if nt2.sequence in convexHullAtoms:
         nt2ConvexHullAtomsList = convexHullAtoms[parent2]
     elif nt2.sequence in modified_nucleotides:
-        nt2ConvexHullAtomsList = create_modified_base_atoms_list(nt2)
+        if annotate_modified_nucleotides:
+            nt2ConvexHullAtomsList = create_modified_base_atoms_list(nt2)
+        else:
+            print("Modified Nucleotides not considered for annotation %s and %s" % (nt1.unit_id(),nt2.unit_id()))
+            return "", datapoint, ""
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
