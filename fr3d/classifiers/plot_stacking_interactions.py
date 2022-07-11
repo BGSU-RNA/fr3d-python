@@ -13,6 +13,7 @@ import sys
 import os
 from collections import defaultdict
 import urllib
+import __builtin__
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -183,6 +184,39 @@ def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
                             ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             cc += 1
 #=======================================================================
+def plot_confusion_matrix(confusionMatrix, interaction_list):
+        ### Construction of confusion matrices ##############################################################################################
+    row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53']]
+    border = ['----','----','----','----','----','----','----','----','----']
+    col = 0 
+    for interaction in interaction_list:
+        for interaction2 in interaction_list:
+                row[col].append(confusionMatrix[interaction][interaction2])
+        col+=1
+
+    print("\n\nConfusion Matrix of Annotations.\nColumns Represent Matlab found annotations and Rows Represent Python " +
+    "\nAnnotations in this matrix are ONLY those that both Matlab and Python found any interaction between the same two nucleotides")
+    print_function = getattr(__builtin__, 'print')
+    print_function("\t", end = "")
+    print_function(*interaction_list, sep='\t')
+    print_function(*border, sep = "\t")
+    for rows in row:
+        print_function(*rows, sep='\t')
+
+def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
+    if ordering == "python":
+        other = "matlab"
+    elif ordering == "matlab":
+        other = "python"
+
+    print_function = getattr(__builtin__, 'print')
+    print("\n\nAnnotations that were found by %s and not by %s" % (ordering, other))
+    border = ['----','----','----','----','----','----','----','----']
+    print_function(*interaction_list, sep='\t')
+    print_function(*border, sep = "\t")
+    for category in interactionDict:
+        print_function(interactionDict[category], end = "\t")
+    print("\n")
 
 if __name__=="__main__":
 
@@ -198,16 +232,38 @@ if __name__=="__main__":
     symmetric_base_combination_list = ['A,A','C,C','G,G','U,U']
 
     # Data collection for confusion matrix
-    newDict = {} 
-    newDict['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['s53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['ns33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['ns35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['ns55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    newDict['ns53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    # each main key represents annotations found in python. The Keys within represent annotations found in matlab
+    # This dictionary is used to detect instances where python and matlab agree vs where they disagree
+    confusionMatrix = {} 
+    confusionMatrix['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['s53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['ns33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['ns35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['ns55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['ns53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
 
+    pythonNotMatlab = {} 
+    pythonNotMatlab['s33']=0
+    pythonNotMatlab['s35']=0
+    pythonNotMatlab['s55']=0
+    pythonNotMatlab['s53']=0
+    pythonNotMatlab['ns33']=0
+    pythonNotMatlab['ns35']=0
+    pythonNotMatlab['ns55']=0
+    pythonNotMatlab['ns53']=0
+
+    matlabNotPython = {} 
+    matlabNotPython['s33']=0
+    matlabNotPython['s35']=0
+    matlabNotPython['s55']=0
+    matlabNotPython['s53']=0
+    matlabNotPython['ns33']=0
+    matlabNotPython['ns35']=0
+    matlabNotPython['ns55']=0
+    matlabNotPython['ns53']=0
+    # 
     confusionMatrixDictionary = {} 
     confusionMatrixDictionary['both'] = {}
     confusionMatrixDictionary['both']['s33'] = 0
@@ -412,7 +468,7 @@ if __name__=="__main__":
                         # adding counts for which is happening for both
                         if stacking != "   ":
                             confusionMatrixDictionary['both'][stacking] += 1
-                            newDict[stacking][pair_to_Matlab_annotation[pair]] += 1
+                            confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
                         both33 += 1
                         color = black
                         size = 1
@@ -420,6 +476,7 @@ if __name__=="__main__":
                         # counting for confusion matrix 
                         if stacking != "   ":
                             confusionMatrixDictionary['python'][stacking] += 1
+                            pythonNotMatlab[stacking] += 1
                         color = blue
                         size = 40
                         print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
@@ -429,6 +486,7 @@ if __name__=="__main__":
 
                         if stacking != "   ":
                             confusionMatrixDictionary['matlab'][stacking] += 1
+                            matlabNotPython[stacking] += 1
                         color = red
                         size = 40
                         print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
@@ -663,24 +721,15 @@ if __name__=="__main__":
 
     print("Plots are in %s" % outputNAPairwiseInteractions)
 
-    print("Confusion Matrix of Annotations. Columns Represent Matlab found annotations and Rows Represent Python" +
-        "Annotations in this matrix are ONLY those that both Matlab and Python found any interaction between the same two nucleotides")
-    row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53']]
-    border = ['----','----','----','----','----','----','----','----','----']
-    col = 0 
-    for interaction in interaction_list:
-        for interaction2 in interaction_list:
-                row[col].append(newDict[interaction][interaction2])#"     " + str(newDict[interaction][interaction2]) + "     ")
-        col+=1
-
-    import __builtin__
-    print_function = getattr(__builtin__, 'print')
-    print_function("\t", end = "")
-    print_function(*interaction_list, sep='\t')
-    print_function(*border, sep = "\t")
-    for rows in row:
-        print_function(*rows, sep='\t')
 
 
 
-    print(confusionMatrixDictionary)
+
+    ### Construction of confusion matrices ##############################################################################################
+    plot_confusion_matrix(confusionMatrix, interaction_list)
+    plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
+    plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
+
+    #####################################################################################################################################
+       
+
