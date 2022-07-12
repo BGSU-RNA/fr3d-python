@@ -186,9 +186,10 @@ def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
 #=======================================================================
 def plot_confusion_matrix(confusionMatrix, interaction_list):
         ### Construction of confusion matrices ##############################################################################################
-    row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53']]
-    border = ['----','----','----','----','----','----','----','----','----']
+    row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53'],['blank']]
+    border = ['----','----','----','----','----','----','----','----','----','----']
     col = 0 
+    interaction_list.append('blank')
     for interaction in interaction_list:
         for interaction2 in interaction_list:
                 row[col].append(confusionMatrix[interaction][interaction2])
@@ -208,13 +209,16 @@ def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
         other = "matlab"
     elif ordering == "matlab":
         other = "python"
+    if 'blank' in interaction_list:
+        interaction_list.remove('blank')
 
+    interaction_list = ['s33', 's35','s55','s53','ns33','ns35','ns55','ns53','total']
     print_function = getattr(__builtin__, 'print')
     print("\n\nAnnotations that were found by %s and not by %s" % (ordering, other))
-    border = ['----','----','----','----','----','----','----','----']
+    border = ['----','----','----','----','----','----','----','----', '----']
     print_function(*interaction_list, sep='\t')
     print_function(*border, sep = "\t")
-    for category in interactionDict:
+    for category in interaction_list:
         print_function(interactionDict[category], end = "\t")
     print("\n")
 
@@ -235,14 +239,16 @@ if __name__=="__main__":
     # each main key represents annotations found in python. The Keys within represent annotations found in matlab
     # This dictionary is used to detect instances where python and matlab agree vs where they disagree
     confusionMatrix = {} 
-    confusionMatrix['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['s53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['ns33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['ns35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['ns55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
-    confusionMatrix['ns53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0}
+    confusionMatrix['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['s53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['blank']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['total'] = 0
 
     pythonNotMatlab = {} 
     pythonNotMatlab['s33']=0
@@ -253,6 +259,7 @@ if __name__=="__main__":
     pythonNotMatlab['ns35']=0
     pythonNotMatlab['ns55']=0
     pythonNotMatlab['ns53']=0
+    pythonNotMatlab['total']=0
 
     matlabNotPython = {} 
     matlabNotPython['s33']=0
@@ -263,6 +270,7 @@ if __name__=="__main__":
     matlabNotPython['ns35']=0
     matlabNotPython['ns55']=0
     matlabNotPython['ns53']=0
+    matlabNotPython['total']=0
     # 
     confusionMatrixDictionary = {} 
     confusionMatrixDictionary['both'] = {}
@@ -319,6 +327,8 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
     PDB_list = ['7K00']
+    # PDB_list = ['6ZMI']
+
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -340,7 +350,7 @@ if __name__=="__main__":
         num_pairs = 0
         for interaction in interaction_to_pairs.keys():
             # store all basepairs and only basepairs
-            if "s" in interaction:
+            if "s" in interaction and "O" not in interaction:
                 num_pairs += 1
                 Matlab_annotation_to_pair[interaction] += interaction_to_pairs[interaction]
                 for pair in interaction_to_pairs[interaction]:
@@ -404,6 +414,7 @@ if __name__=="__main__":
                 # eliminate Python annotations of alternate locations other than A
                 fields1 = pair[0].split("|")
 
+
                 # some PDB ids are not annotated by Matlab, just skip them here
                 if fields1[0] in PDB_skip_set:
                     continue
@@ -414,7 +425,13 @@ if __name__=="__main__":
                 fields2 = pair[1].split("|")
                 if len(fields2) > 5 and not fields2[5] == 'A':
                     continue
+                
+                standardBases = ["A", "C", "G", "U"]
+                fields3 = pair[0].split("|")
 
+                if fields3[3] not in standardBases:
+                    print(fields3)
+                    sys.exit(0)
                 have_data_in_other_order = False
 
                 if 'sInteraction' in datapoint and datapoint['sInteraction'].lower() in lowercase_list:
@@ -469,6 +486,7 @@ if __name__=="__main__":
                         if stacking != "   ":
                             confusionMatrixDictionary['both'][stacking] += 1
                             confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
+                            confusionMatrix['total'] += 1
                         both33 += 1
                         color = black
                         size = 1
@@ -477,16 +495,23 @@ if __name__=="__main__":
                         if stacking != "   ":
                             confusionMatrixDictionary['python'][stacking] += 1
                             pythonNotMatlab[stacking] += 1
+                            pythonNotMatlab['total'] += 1
+                            confusionMatrix[stacking]['blank'] += 1
+                            confusionMatrix['total'] += 1
+
                         color = blue
                         size = 40
                         print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
                     elif not Python and Matlab:
                         # counting for confusion matrix 
-
                         if stacking != "   ":
                             confusionMatrixDictionary['matlab'][stacking] += 1
                             matlabNotPython[stacking] += 1
+                            matlabNotPython['total'] += 1
+                            confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
+                            confusionMatrix['total'] += 1
+
                         color = red
                         size = 40
                         print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
