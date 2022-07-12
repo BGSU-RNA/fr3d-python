@@ -441,7 +441,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
-                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, False, datapoint12)
+                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, True, datapoint12)
 
                             if len(interaction) > 0:
                                 count_pair += 1
@@ -1301,6 +1301,25 @@ def create_modified_base_atoms_list(nt):
             atomList.append(atom.name)
     return atomList
 
+def stacking_interaction(minz, normal_Z):
+    """Method used to determine orientation of annotated interaction depending on the minimum z found and the z value of the normal line
+     """
+    if minz > 0: 
+        if normal_Z > 0:
+            interaction = "ns35" # second base above, pointing up 
+            interaction_reversed = "ns53"
+        elif normal_Z < 0:
+            interaction = "ns33" #second base above, pointing down
+            interaction_reversed = "ns33"
+    elif minz < 0:
+        if normal_Z > 0: 
+            interaction = "ns53"  #second base below, pointing up
+            interaction_reversed = "ns35"
+        elif normal_Z < 0: 
+            interaction =  "ns55" #second base below, pointing down
+            interaction_reversed = "ns55"
+    return interaction, interaction_reversed
+
 def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucleotides, datapoint):
     """Checks for nucleotide base stacking.
     Two nucleotides and their parents passed in.
@@ -1319,7 +1338,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
 
     interaction = ""
     interaction_reversed = ""
-
+    reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
     convexHullAtoms = {}
     convexHullAtoms['A'] = ["C1'",'N3','H2','N1','N6','H8'] #Based on Matlab Code
@@ -1365,50 +1384,87 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
     #Returns true if an atom is projected inside the atom (overlap). Also returns the x,y,z coordinates of the nt inside and the minimum z value
     nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
     nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2) 
-    #print("NT 2 On 1: " + str(nt2on1) + " and NT 1 on 2: " + str(nt1on2))
     
     #check near stacking
     if nt2on1 or nt1on2:
-        #Gets the normal vector for later calculation
-        rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
-        normal_Z = rotation_1_to_2[2,2]
+        # in a near stacking instance where where nt1 projects onto nt2 but nt2 doesnt project onto nt1 its important to make sure that the normal z and min z are calculated correctly
+        # and that you're using the right value. 
 
-        if datapoint:
-            datapoint['normal_Z'] = normal_Z
-        if coords[3] == -100:
-            coords[3] = -coords2[3] #If overlap isnt found one way, sometimes the return value will be -100 when it's not supposed to be. This will use the min z the other way instead. Sets negative since direction is different but z should be similar
-        if coords[3] > 0: # coords[3] holds min_z
+        # Extract normal z vector and minimum z value depending on how the nts project onto one another
+        # projection of nt2 onto nt 1 but not nt1 onto nt2 
+        if nt1on2 and not nt2on1:
+            rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
+            normal_Z = rotation_2_to_1[2,2]
+            minz = coords2[3]
+            reverseAnnotation = True #when projection is only found on 1 to 2 and not the other way around the interaction is switched. Use flag to mark this scenario
+
+        # projection of nt1 onto nt2 but not nt2 onto nt1
+        elif not nt1on2 and nt2on1:
+            rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+            normal_Z = rotation_1_to_2[2,2]           
+            minz = coords[3]
+
+        #projection of both (sometimes minz isn't found...deals with that)
+        elif nt1on2 and nt2on1:
+            if coords[3] != -100 and coords2[3] != -100:   
+                rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
+                normal_Z = rotation_2_to_1[2,2]            
+                minz = coords[3]
+            elif coords[3] == -100 and coords2[3] != -100:
+                rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+                normal_Z = rotation_1_to_2[2,2]
+                minz = -coords2[3]
+            # elif coords2[3] == -100 and coords[3] != -100:
+            #     rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
+            #     normal_Z = rotation_2_to_1[2,2]            
+            #     minz = coords[3]
+
+        # get interaction 
+        # interaction, interaction_reversed = stacking_interaction(minz, normal_Z)
+
+        if minz > 0: 
             if normal_Z > 0:
                 interaction = "ns35" # second base above, pointing up 
                 interaction_reversed = "ns53"
-            else:
+            elif normal_Z < 0:
                 interaction = "ns33" #second base above, pointing down
                 interaction_reversed = "ns33"
-        else:
+        elif minz < 0:
             if normal_Z > 0: 
                 interaction = "ns53"  #second base below, pointing up
                 interaction_reversed = "ns35"
-            else: 
+            elif normal_Z < 0: 
                 interaction =  "ns55" #second base below, pointing down
-                interaction_reversed = "ns55" 
+                interaction_reversed = "ns55"
+        
+        # if projection is only found from nt2 onto nt1, the extracted values are backwards and will lead to a backwards annotation. Swap the values
+        if reverseAnnotation:
+            interactionPH = interaction_reversed
+            interaction_reversed = interaction
+            interaction = interactionPH
+        if datapoint:
+            datapoint['normal_Z'] = normal_Z
+
         #checks for true stacking. If it meets criteria, strip the n from the annotation
-        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
+        if abs(minz) < true_z_cutoff and abs(minz) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
             interaction = interaction.replace("n","")
             interaction_reversed = interaction_reversed.replace("n", "")
+
         #checks the last of the criteria to make sure its near stacking. All others get no annotation
         #Min z must be greater than 1 and the normal z should be greater than 0.5 to be considered near
-        elif abs(coords[3]) < 1 or abs(normal_Z) < 0.5: 
+        if abs(minz) < 1 or abs(normal_Z) < 0.5:    
             return "", datapoint, ""
-        # print(nt1.unit_id() + " " + nt2.unit_id())
-        # print("coords: " +str(coords[3]) + "normZ: " + str(normal_Z) + " normZ2 " + str(normZ2))
-        # print(interaction)
+
 
     if len(interaction) > 0 and False:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
     if datapoint and len(interaction) > 0:
         datapoint['gap12'], base_points2 = calculate_basepair_gap(nt1,nt2)
-        datapoint['angle_in_plane'] = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
+        try:
+            datapoint['angle_in_plane'] = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
+        except: 
+            datapoint['angle_in_plane'] = math.atan2(rotation_2_to_1[1,1],rotation_2_to_1[1,0])*57.29577951308232 - 90
         datapoint['normal_Z'] = normal_Z
         datapoint['sInteraction'] = interaction
         datapoint['xStack'] = coords[0]
