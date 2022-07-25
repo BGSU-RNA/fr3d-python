@@ -48,6 +48,9 @@ else:
 
 
 from fr3d.cif.reader import Cif
+#test 
+from fr3d.cif.pdb_reader import PDBStructure
+#
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
@@ -136,10 +139,11 @@ def load_structure(filename):
     If the file is not found and the filename is four characters,
     try to download from PDB.
     """
-
+    pdb_format = False
     message = []
     original_filename = filename
-
+    if filename.lower().endswith('.pdb'):
+        pdb_format = True
     # if not available, try to download from PDB and save locally
     if not os.path.exists(filename):
 
@@ -147,6 +151,8 @@ def load_structure(filename):
         if filename.lower().endswith('.cif'):
             pdbid = filename[-8:-4] + '.cif'
         elif filename.lower().endswith('.pdb'):
+            # from Bio.PDB import PDBParser
+            # from Bio.PDB.PDBParser import PDBParser
             pdbid = filename[-8:-4] + '.pdb'
         else:
             pdbid = filename[-4:].upper() + '.cif'
@@ -172,8 +178,13 @@ def load_structure(filename):
             message.append("Code is not clever enough to find or download %s" % original_filename)
             return None, message
 
-    try:
-        with open(filename, 'rb') as raw:
+    #try:
+    with open(filename, 'rb') as raw:
+        if pdb_format:
+            structure = PDBStructure(filename).structures()
+            message.append("Loaded " + filename)
+            return structure, message
+        else:
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
@@ -182,9 +193,9 @@ def load_structure(filename):
             """
             return structure, message
 
-    except:
-        message.append("Not able to read %s" % filename)
-        return None, message
+    #except:
+        # message.append("Not able to read %s" % filename)
+        # return None, message
 
 def build_atom_to_unit_part_list():
 
@@ -262,7 +273,7 @@ def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
     # also record which other cubes are neighbors of each cube
     baseCubeList = {}
     baseCubeNeighbors = {}
-
+ 
     # build a set of cubes and record which bases are in which cube
     for base in bases:
         center = base.centers[nt_reference]  # chosen reference point
@@ -728,14 +739,14 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     """
 
     bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-    #print("  Building nucleotide cubes in " + PDB)
 
+    #print("  Building nucleotide cubes in " + PDB)
     if not timerData:
         timerData = myTimer("start")
 
     timerData = myTimer("Building cubes",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
-
+    print(baseCubeList)
     # annotate nt-nt interactions
     #print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
@@ -2072,10 +2083,11 @@ if __name__=="__main__":
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
+        structure, messages = load_structure(path_PDB)
+        for message in messages:
+            print("  %s" % message)
         try:
-            structure, messages = load_structure(path_PDB)
-            for message in messages:
-                print("  %s" % message)
+            x = 2
 
         except Exception as ex:
             print("  Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex))
@@ -2088,7 +2100,7 @@ if __name__=="__main__":
             print("  Could not load structure %s" % (PDB))
             failed_structures.append((PDB,"",""))
             continue
-
+        print(structure.residues)
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
 
