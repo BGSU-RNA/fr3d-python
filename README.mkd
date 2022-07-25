@@ -165,6 +165,15 @@ python NA_pairwise_interactions.py --output <path_to_output> <pdb_id>
 
 This will write where you wish to output your annotations. If the specified directory doesn't exist, one will be made.
 
+<details>
+  <summary>Using fr3d-python with .pdb formatted files</summary>
+
+FR3D Python currently is only able to read .cif formatted files. Support for .pdb files is currently in development. 
+
+FR3D Python will soon be able to read 3D structure files that are in .pdb format. Support for this functionality is in development. If analyzing 3D structures from the PDB, it is recommended to use .cif formatted files if one is available. 
+
+</details>
+
 ## Get in touch
 
 If you have any questions or feature requests, feel free to [submit an issue](https://github.com/BGSU-RNA/fr3d-python/issues) or get in touch via a [contact form](https://www.bgsu.edu/research/rna/contact-us.html) on the website of the BGSU RNA Bioinformatics group.
