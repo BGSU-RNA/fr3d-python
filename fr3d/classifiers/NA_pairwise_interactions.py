@@ -174,7 +174,7 @@ def load_structure(filename):
     #try:
     with open(filename, 'rb') as raw:
         if pdb_format:
-            from fr3d.cif.pdb_reader import PDBStructure
+            from fr3d.pdb.pdb_reader import PDBStructure
             structure = PDBStructure(filename).structures()
             message.append("Loaded " + filename)
             return structure, message
