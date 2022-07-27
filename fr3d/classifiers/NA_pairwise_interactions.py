@@ -47,10 +47,6 @@ else:
     from urllib.request import urlopen
 
 
-from fr3d.cif.reader import Cif
-#test 
-from fr3d.cif.pdb_reader import PDBStructure
-#
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
@@ -151,8 +147,6 @@ def load_structure(filename):
         if filename.lower().endswith('.cif'):
             pdbid = filename[-8:-4] + '.cif'
         elif filename.lower().endswith('.pdb'):
-            # from Bio.PDB import PDBParser
-            # from Bio.PDB.PDBParser import PDBParser
             pdbid = filename[-8:-4] + '.pdb'
         else:
             pdbid = filename[-4:].upper() + '.cif'
@@ -162,7 +156,6 @@ def load_structure(filename):
 
         try:
             urlretrieve(url, filename)
-
             # TODO: detect when this is not successful and downloads an error file instead
             # current code is clumsy
             with open(filename,"r") as f:
@@ -181,10 +174,12 @@ def load_structure(filename):
     #try:
     with open(filename, 'rb') as raw:
         if pdb_format:
+            from fr3d.cif.pdb_reader import PDBStructure
             structure = PDBStructure(filename).structures()
             message.append("Loaded " + filename)
             return structure, message
         else:
+            from fr3d.cif.reader import Cif
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
@@ -273,7 +268,6 @@ def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
     # also record which other cubes are neighbors of each cube
     baseCubeList = {}
     baseCubeNeighbors = {}
- 
     # build a set of cubes and record which bases are in which cube
     for base in bases:
         center = base.centers[nt_reference]  # chosen reference point
@@ -335,6 +329,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
             if nt2key in baseCubeList:                  # if this cube was actually made
                 for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
 
+                    #print(nt1.unit_id())
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
@@ -739,14 +734,12 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     """
 
     bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-
     #print("  Building nucleotide cubes in " + PDB)
     if not timerData:
         timerData = myTimer("start")
 
     timerData = myTimer("Building cubes",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
-    print(baseCubeList)
     # annotate nt-nt interactions
     #print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
@@ -2100,7 +2093,6 @@ if __name__=="__main__":
             print("  Could not load structure %s" % (PDB))
             failed_structures.append((PDB,"",""))
             continue
-        print(structure.residues)
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
 
