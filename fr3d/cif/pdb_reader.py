@@ -1,3 +1,4 @@
+from importlib.resources import path
 from Bio.PDB import PDBParser
 from Bio.PDB.PDBParser import PDBParser
 
@@ -24,9 +25,12 @@ class PDBStructure(object):
     by BioPython to extract relevant information from PDB files. """
     def __init__(self, filename):
         p = PDBParser(PERMISSIVE=1) # Call BioPython Method to read cif file
-        name = filename.split('.')
         self.structure = p.get_structure(filename, filename) # biopython method (What the file will be referred to as, what the file is named in your local path)
         self.name = self.structure.header['idcode']
+        if self.name == " " or not self.name:
+            path = filename.split('.')
+            names = path[0].split("\\") #slightly sloppy but it works
+            self.name = names[-1]
         #structure = p.get_structure("Top_Model_11nt_GAAA", "Top Model_11nt_GAAA.pdb")
         self.logger = logging.getLogger('fr3d.cif.reader.PDBStructure')
         self.residues = self.__residues__(self.name)
@@ -93,8 +97,8 @@ class PDBStructure(object):
                         group=res_group,
                         type=atom_type,
                         name=atom.get_name(),
-                        symmetry=None,
-                        polymeric=False)) # Need to find a way to parse this from biopython. Important, may be relevent in structures.py
+                        symmetry='1_555', #I haven't figured out how to extract symmetries from pdb files yet. Resort to identity
+                        polymeric=True)) # Need to find a way to parse this from biopython. Important, may be relevent in structures.py
         return atoms
         
     # TODO: See if we can import the same method in the Cif class of reader.py here.
@@ -121,7 +125,7 @@ class PDBStructure(object):
                     atoms,
                     pdb=first.pdb,
                     model=first.model,
-                    type=None, #atom_type,
+                    type="RNA linking", #atom_type,
                     alt_id=alt_id,
                     chain=first.chain,
                     symmetry=first.symmetry,
@@ -152,4 +156,10 @@ class PDBStructure(object):
 
             return sorted(list(alt_ids.values()), key=ordering_key)
 
-   
+    def structures(self):
+        """Get the structure from the Cif file.
+        :returns: The first structure in the cif file.
+        """
+        pdb = self.name
+        residues = self.__residues__(pdb)
+        return Structure(list(residues), pdb=pdb)
