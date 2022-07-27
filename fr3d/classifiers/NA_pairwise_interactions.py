@@ -2009,6 +2009,7 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to
                         ann["nt1"]      = fields[3]
                         ann["unit1"]    = fields[3]
                         ann["bp"]       = inter
+                        fields = b.split("|")
                         ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
                         ann["nt2"]      = fields[3]
                         ann["unit2"]    = fields[3]
