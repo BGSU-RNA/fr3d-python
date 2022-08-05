@@ -327,7 +327,7 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
     PDB_list = ['7K00']
-    # PDB_list = ['6ZMI']
+    PDB_list = ['6ZMI']
 
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
@@ -480,37 +480,65 @@ if __name__=="__main__":
                         stacking = datapoint['sInteraction']
                     else:
                         stacking = "   "
-                     
+
+                    if Python and stacking != "   " and pair_to_Matlab_annotation[pair] != '' and Matlab:
+                        confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
+                        confusionMatrix['total'] += 1
+                    elif Python and stacking != "   " and pair_to_Matlab_annotation[pair] == '' and not Matlab:
+                        #Python finds an annotation and matlab does not
+                        confusionMatrix[stacking]['blank'] += 1
+                        confusionMatrix['total'] += 1    
+                        pythonNotMatlab[stacking] += 1
+                        pythonNotMatlab['total'] += 1
+                    elif not Python and stacking == "   " and pair_to_Matlab_annotation[pair] != '' and Matlab:
+                        #Python does not find an annotation and matlab does
+                        confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
+                        confusionMatrix['total'] += 1
+                        sys.exit(0)
+                        matlabNotPython[stacking] += 1
+                        matlabNotPython['total'] += 1
                     if Python and Matlab:
+                        print(pair_to_Matlab_annotation[pair])
+                        print(stacking)
+                        print("/n/n/n/n/n/n")
+
                         # adding counts for which is happening for both
-                        if stacking != "   ":
-                            confusionMatrixDictionary['both'][stacking] += 1
-                            confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
-                            confusionMatrix['total'] += 1
+                        # if stacking != "   ":
+                        #     #confusionMatrixDictionary['both'][stacking] += 1
+                        #     confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
+                        #     confusionMatrix['total'] += 1
+                        if stacking != pair_to_Matlab_annotation[pair]:
+                            print("py " + stacking)
+                            print("mat " + pair_to_Matlab_annotation[pair])
+                            print("\n\n\n\n\n\n\nn\n\n\n\n\n")
                         both33 += 1
                         color = black
                         size = 1
-                    elif Python and not Matlab:
+                    if Python and not Matlab:
                         # counting for confusion matrix 
-                        if stacking != "   ":
-                            confusionMatrixDictionary['python'][stacking] += 1
-                            pythonNotMatlab[stacking] += 1
-                            pythonNotMatlab['total'] += 1
-                            confusionMatrix[stacking]['blank'] += 1
-                            confusionMatrix['total'] += 1
+                        # if stacking != "   ":
+                            # if pair_to_Matlab_annotation[pair] != '':
+                            #     #confusionMatrixDictionary['python'][stacking] += 1
+                            #     pythonNotMatlab[stacking] += 1
+                            #     pythonNotMatlab['total'] += 1
+                            #     confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
+                            #     confusionMatrix['total'] += 1
+                            # else:
+                            #     confusionMatrix[stacking]['blank'] += 1
+                            #     confusionMatrix['total'] += 1
 
                         color = blue
                         size = 40
                         print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
-                    elif not Python and Matlab:
+                    if not Python and Matlab:
                         # counting for confusion matrix 
-                        if stacking != "   ":
-                            confusionMatrixDictionary['matlab'][stacking] += 1
-                            matlabNotPython[stacking] += 1
-                            matlabNotPython['total'] += 1
-                            confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
-                            confusionMatrix['total'] += 1
+                        # if stacking != "   ":
+                        #     confusionMatrixDictionary['matlab'][stacking] += 1
+                        #     matlabNotPython[stacking] += 1
+                        #     matlabNotPython['total'] += 1
+                        #     confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
+                        #     confusionMatrix['total'] += 1
 
                         color = red
                         size = 40
