@@ -185,7 +185,7 @@ def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
                             cc += 1
 #=======================================================================
 def plot_confusion_matrix(confusionMatrix, interaction_list):
-        ### Construction of confusion matrices ##############################################################################################
+    "Tabular construction of confusion matrix created from a dictionary of dictionaries of values."
     row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53'],['blank']]
     border = ['----','----','----','----','----','----','----','----','----','----']
     col = 0 
@@ -205,6 +205,7 @@ def plot_confusion_matrix(confusionMatrix, interaction_list):
         print_function(*rows, sep='\t')
 
 def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
+    """Creates a 2x9 plot to show which annotations were found by passed in language and not found by other passed in language"""
     if ordering == "python":
         other = "matlab"
     elif ordering == "matlab":
@@ -234,10 +235,12 @@ if __name__=="__main__":
 
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
     symmetric_base_combination_list = ['A,A','C,C','G,G','U,U']
-
-    # Data collection for confusion matrix
-    # each main key represents annotations found in python. The Keys within represent annotations found in matlab
-    # This dictionary is used to detect instances where python and matlab agree vs where they disagree
+    
+    ###############################################################################################################
+    # Data collection for confusion matrix ########################################################################
+    # each main key represents annotations found in python. The Keys within represent annotations found in matlab #
+    # This dictionary is used to detect instances where python and matlab agree vs where they disagree ############
+    ###############################################################################################################
     confusionMatrix = {} 
     confusionMatrix['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
     confusionMatrix['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
@@ -250,6 +253,9 @@ if __name__=="__main__":
     confusionMatrix['blank']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
     confusionMatrix['total'] = 0
 
+    ###############################################################################################################
+    # Collection to display totals ################################################################################
+    ###############################################################################################################
     pythonNotMatlab = {} 
     pythonNotMatlab['s33']=0
     pythonNotMatlab['s35']=0
@@ -271,39 +277,8 @@ if __name__=="__main__":
     matlabNotPython['ns55']=0
     matlabNotPython['ns53']=0
     matlabNotPython['total']=0
-    # 
-    confusionMatrixDictionary = {} 
-    confusionMatrixDictionary['both'] = {}
-    confusionMatrixDictionary['both']['s33'] = 0
-    confusionMatrixDictionary['both']['s35'] = 0
-    confusionMatrixDictionary['both']['s55'] = 0
-    confusionMatrixDictionary['both']['s53'] = 0
-    confusionMatrixDictionary['both']['ns33'] = 0
-    confusionMatrixDictionary['both']['ns35'] = 0
-    confusionMatrixDictionary['both']['ns55'] = 0
-    confusionMatrixDictionary['both']['ns53'] = 0
+    ###############################################################################################################
 
-    confusionMatrixDictionary['matlab'] = {}
-    confusionMatrixDictionary['matlab']['s33'] = 0
-    confusionMatrixDictionary['matlab']['s35'] = 0
-    confusionMatrixDictionary['matlab']['s55'] = 0
-    confusionMatrixDictionary['matlab']['s53'] = 0
-    confusionMatrixDictionary['matlab']['ns33'] = 0
-    confusionMatrixDictionary['matlab']['ns35'] = 0
-    confusionMatrixDictionary['matlab']['ns55'] = 0
-    confusionMatrixDictionary['matlab']['ns53'] = 0
-
-    confusionMatrixDictionary['python'] = {}
-    confusionMatrixDictionary['python']['s33'] = 0
-    confusionMatrixDictionary['python']['s35'] = 0
-    confusionMatrixDictionary['python']['s55'] = 0
-    confusionMatrixDictionary['python']['s53'] = 0
-    confusionMatrixDictionary['python']['ns33'] = 0
-    confusionMatrixDictionary['python']['ns35'] = 0
-    confusionMatrixDictionary['python']['ns55'] = 0
-    confusionMatrixDictionary['python']['ns53'] = 0
-
-    both33 = 0
     # plot one instance of each of the pairwise interactions
     PlotPair = False
     PlotPair = True
@@ -327,7 +302,7 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
     PDB_list = ['7K00']
-    PDB_list = ['6ZMI']
+    # PDB_list = ['6ZMI']
 
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
@@ -481,65 +456,44 @@ if __name__=="__main__":
                     else:
                         stacking = "   "
 
-                    if Python and stacking != "   " and pair_to_Matlab_annotation[pair] != '' and Matlab:
+                    ###########################################################################################
+                    # Add record of annotations by pair #######################################################
+                    # confusionMatrix is a dictionary - key is python annotation, value is dictionary where ###
+                    # key is matlab annotation - values are numerical total ###################################
+                    ###########################################################################################
+                    if (Python and stacking != "   ") and (pair_to_Matlab_annotation[pair] != ''):
+                        # Python finds an annotation and Matlab also finds an annotation ################
                         confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
-                    elif Python and stacking != "   " and pair_to_Matlab_annotation[pair] == '' and not Matlab:
-                        #Python finds an annotation and matlab does not
+
+                    elif (Python and stacking != "   ") and pair_to_Matlab_annotation[pair] == '':
+                        # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[stacking]['blank'] += 1
                         confusionMatrix['total'] += 1    
                         pythonNotMatlab[stacking] += 1
                         pythonNotMatlab['total'] += 1
-                    elif not Python and stacking == "   " and pair_to_Matlab_annotation[pair] != '' and Matlab:
-                        #Python does not find an annotation and matlab does
+
+                    elif not Python and pair_to_Matlab_annotation[pair] != '':
+                        # Python does not find an annotation and matlab does ##################################
                         confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
-                        sys.exit(0)
                         matlabNotPython[stacking] += 1
                         matlabNotPython['total'] += 1
-                    if Python and Matlab:
-                        print(pair_to_Matlab_annotation[pair])
-                        print(stacking)
-                        print("/n/n/n/n/n/n")
 
-                        # adding counts for which is happening for both
-                        # if stacking != "   ":
-                        #     #confusionMatrixDictionary['both'][stacking] += 1
-                        #     confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
-                        #     confusionMatrix['total'] += 1
-                        if stacking != pair_to_Matlab_annotation[pair]:
-                            print("py " + stacking)
-                            print("mat " + pair_to_Matlab_annotation[pair])
-                            print("\n\n\n\n\n\n\nn\n\n\n\n\n")
-                        both33 += 1
+                    ###########################################################################################
+                    # Processing for construction of graphs ###################################################
+                    ###########################################################################################
+                    if Python and Matlab:
                         color = black
                         size = 1
-                    if Python and not Matlab:
-                        # counting for confusion matrix 
-                        # if stacking != "   ":
-                            # if pair_to_Matlab_annotation[pair] != '':
-                            #     #confusionMatrixDictionary['python'][stacking] += 1
-                            #     pythonNotMatlab[stacking] += 1
-                            #     pythonNotMatlab['total'] += 1
-                            #     confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
-                            #     confusionMatrix['total'] += 1
-                            # else:
-                            #     confusionMatrix[stacking]['blank'] += 1
-                            #     confusionMatrix['total'] += 1
 
+                    if Python and not Matlab:
                         color = blue
                         size = 40
                         print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
-                    if not Python and Matlab:
-                        # counting for confusion matrix 
-                        # if stacking != "   ":
-                        #     confusionMatrixDictionary['matlab'][stacking] += 1
-                        #     matlabNotPython[stacking] += 1
-                        #     matlabNotPython['total'] += 1
-                        #     confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
-                        #     confusionMatrix['total'] += 1
 
+                    if not Python and Matlab:
                         color = red
                         size = 40
                         print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
@@ -585,6 +539,7 @@ if __name__=="__main__":
                 plt.savefig(figure_save_file)
                 #plt.show()
                 plt.close()
+
     # loop over sets of interactions, plotting points on bases
     for interaction_list in interaction_lists:
 
@@ -724,12 +679,6 @@ if __name__=="__main__":
 
 
     matlabDictionary = {} 
-
-
-
-
-
-
     # loop over sets of interactions, plotting histograms of z values
     interaction_list = ["s33", "s35", "s55", "s53",
                         "ns33", "ns35", "ns55", "ns53"]
@@ -774,15 +723,10 @@ if __name__=="__main__":
 
     print("Plots are in %s" % outputNAPairwiseInteractions)
 
-
-
-
-
     ### Construction of confusion matrices ##############################################################################################
     plot_confusion_matrix(confusionMatrix, interaction_list)
     plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
     plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
-
     #####################################################################################################################################
        
 
