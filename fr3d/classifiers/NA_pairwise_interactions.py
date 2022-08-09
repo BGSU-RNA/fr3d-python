@@ -1975,7 +1975,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list
                     for a,b,c in interaction_to_list_of_tuples[interaction]:
                         f.write("%s\t%s\t%s\t%s\n" % (a,inter,b,c))
 
-def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position):
+def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified):
     """
     For each chain, write interactions according to category,
     and within each category, write by annotation.
@@ -1991,6 +1991,7 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to
         output = {}
         output["pdb_id"] = PDBid
         output["chain_id"] = chain
+        output["modified"] = modified
 
         annotations = []
         for interaction in category_to_interactions[category]:
@@ -2001,27 +2002,28 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to
             if len(categories[category]) == 0 or inter in categories[category]:
 
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
-                    if unit_id_to_sequence_position[a] < unit_id_to_sequence_position[b]:
-                        ann = {}
-                        fields = a.split("|")
-                        ann["seq_id1"]  = str(unit_id_to_sequence_position[a])
-                        ann["3d_id1"]   = fields[4]
-                        ann["nt1"]      = fields[3]
-                        ann["unit1"]    = fields[3]
-                        ann["bp"]       = inter
-                        fields = b.split("|")
-                        ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
-                        ann["nt2"]      = fields[3]
-                        ann["unit2"]    = fields[3]
-                        ann["3d_id2"]   = fields[4]
-                        ann["crossing"] = str(c)
-                        #{"seq_id1":"1","3d_id1":"13","nt1":"C","bp":"cWW","seq_id2":"71","nt2":"G","3d_id2":"83","crossing":"0"}
+                    fields1 = a.split("|")
+                    fields2 = b.split("|")
+                    if fields1[2] == chain and fields2[2] == chain:
+                        if unit_id_to_sequence_position[a] < unit_id_to_sequence_position[b]:
+                            ann = {}
+                            ann["seq_id1"]  = str(unit_id_to_sequence_position[a])
+                            ann["3d_id1"]   = fields1[4]
+                            ann["nt1"]      = fields1[3]
+                            ann["unit1"]    = fields1[3]
+                            ann["bp"]       = inter
+                            ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
+                            ann["nt2"]      = fields2[3]
+                            ann["unit2"]    = fields2[3]
+                            ann["3d_id2"]   = fields2[4]
+                            ann["crossing"] = str(c)
+                            #{"seq_id1":"1","3d_id1":"13","nt1":"C","bp":"cWW","seq_id2":"71","nt2":"G","3d_id2":"83","crossing":"0"}
 
-                        annotations.append(ann)
-
-                        print(str(ann))
+                            annotations.append(ann)
 
         output["annotations"] = annotations
+
+        print(json.dumps(output))
 
         with open(filename,'w') as f:
             f.write(json.dumps(output))
@@ -2158,16 +2160,25 @@ if __name__=="__main__":
         elif outputFormat == 'ebi_json':
             bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
             chain_unit_id_to_sequence_position = {}
+            chain_modified = {}
             for base in bases:
                 chain = base.chain
                 if not chain in chain_unit_id_to_sequence_position:
                     chain_unit_id_to_sequence_position[chain] = {}
+                    chain_modified[chain] = []
                 chain_unit_id_to_sequence_position[chain][base.unit_id()] = base.index
 
-            print(chain_unit_id_to_sequence_position)
+                fields = base.unit_id().split('|')
+                if not fields[3] in ['A','C','G','U','DA','DC','DG','DT']:
+                    modif = {}
+                    modif['seq_id'] = str(base.index)
+                    modif['nt1'] = fields[3]
+                    modif['unit1'] = fields[3]
+                    modif['3d_id'] = fields[4]
+                    chain_modified[chain].append(modif)
 
             for chain in list(chain_unit_id_to_sequence_position.keys()):
-                write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain])
+                write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
 
 
     myTimer("summary",timerData)
