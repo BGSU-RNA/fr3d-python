@@ -182,8 +182,10 @@ def load_structure(filename):
             """
             return structure, message
 
-    except:
-        message.append("Not able to read %s" % filename)
+    except Exception as ex:
+        message.append("Could not load structure %s due to exception %s: %s" % (filename,type(ex).__name__,ex))
+        if type(ex).__name__ == "TypeError":
+            message.append("See suggestions in the fr3d-python Readme file")
         return None, message
 
 def build_atom_to_unit_part_list():
@@ -2134,19 +2136,18 @@ if __name__=="__main__":
         # suppress error messages, but report failures at the end
         try:
             structure, messages = load_structure(path_PDB)
-            for message in messages:
-                print("  %s" % message)
 
         except Exception as ex:
-            print("  Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex))
+            message = "Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex)
+            failed_structures.append((PDB,message))
             if type(ex).__name__ == "TypeError":
-                print("  See suggestions in the fr3d-python Readme file")
-            failed_structures.append((PDB,type(ex).__name__,ex))
+                failed_structures.append((PDB,"See suggestions in the fr3d-python Readme file"))
             continue
 
         if not structure:
             print("  Could not load structure %s" % (PDB))
-            failed_structures.append((PDB,"",""))
+            for message in messages:
+                failed_structures.append((PDB,message))
             continue
 
 
@@ -2184,7 +2185,9 @@ if __name__=="__main__":
     myTimer("summary",timerData)
 
     if len(failed_structures) > 0:
-        print("Not able to read these files: %s" % failed_structures)
+        print("Error messages:")
+        for message in failed_structures:
+            print("%s %s" % message)
     else:
         print("All files read successfully")
 
