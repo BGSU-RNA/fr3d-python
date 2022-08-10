@@ -181,6 +181,16 @@ def load_structure(filename):
             Hydrogens are not added automatically.
             """
             return structure, message
+    except TypeError:
+        with open(filename, 'r') as raw:
+            structure = Cif(raw).structure()
+            message.append("Loaded " + filename)
+            """
+            Rotation matrix is calculated for each base.
+            Hydrogens are not added automatically.
+            """
+            return structure, message
+
 
     except Exception as ex:
         message.append("Could not load structure %s due to exception %s: %s" % (filename,type(ex).__name__,ex))
@@ -1270,13 +1280,13 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
     list of base atoms of nt2, 2 nucleotides, and the parent of nt1 are passed in.
     Checks each atom in the list of atoms. Takes its coordinates and translates them to be in respect to nt1 in standard orientation
     Calls check_convex_hull_atoms to see if there is truly overlap
-    Finds the value of z closest to 0. 
+    Finds the value of z closest to 0.
     If overlap is found:
          a list of the x,y,z coordinates of a point with overlap and the minimum z value are t returned as well as a true flag to show there is overlap
     Otherwise:
         overlap is returned as False, and coordinates are filled with dummy lists filled with -100 (which are not coordinates that would be seen otherwise)"""
     min_z = 1000
-    inside = False 
+    inside = False
     overlap = False
     for atom in listOfAtoms:
         point = nt2.centers[atom]
@@ -1286,7 +1296,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
             if abs(z) < abs(min_z):
                 min_z_x = x
                 min_z_y = y
-                min_z = z 
+                min_z = z
             if inside:
                 overlap = True #since we're iterating over the whole list of atoms, inside will be set over and over so a second flag overlap will be set that won't be reset if inside is true at least once
     if overlap:
@@ -1294,7 +1304,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
     return False, [-100,-100,-100, -100]
 
 def create_modified_base_atoms_list(nt):
-    """Function to create a list of all base atoms for modified nucleotides. 
+    """Function to create a list of all base atoms for modified nucleotides.
     Goes through all atoms in a nucleotide and parses out atoms that have "'" in them or OP1/2 or P.
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
@@ -1306,7 +1316,7 @@ def create_modified_base_atoms_list(nt):
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     """Checks for nucleotide base stacking.
     Two nucleotides and their parents passed in.
-    Creates a list of their outermost atoms. 
+    Creates a list of their outermost atoms.
     Projects nucleotides onto one another to find overlap.
     Annotated Near Stacking if the following criteria are met:
         Overlap is found at least one way
@@ -1325,7 +1335,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
     convexHullAtoms = {}
     convexHullAtoms['A'] = ["C1'",'N3','H2','N1','N6','H8'] #Based on Matlab Code
-    convexHullAtoms['DA'] = ["C1'",'N3','H2','N1','N6','H8'] 
+    convexHullAtoms['DA'] = ["C1'",'N3','H2','N1','N6','H8']
     convexHullAtoms['C'] = ["C1'",'O2','N4','H5','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
     convexHullAtoms['DC'] = ["C1'",'O2','N4','H5','H6']
     convexHullAtoms['G'] = ["C1'",'H21','H22','H1','O6','N7','H8']
@@ -1333,7 +1343,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     convexHullAtoms['U'] = ["C1'",'O2','H3','O4','H5','H6']
     convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6']
 
-    #Create a list in case one of these is nucleotides is a modified nucleotide. 
+    #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
     if nt1.sequence in convexHullAtoms: #standard base
@@ -1358,9 +1368,9 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Is there overlap?
     #Returns true if an atom is projected inside the atom (overlap). Also returns the x,y,z coordinates of the nt inside and the minimum z value
     nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
-    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2) 
+    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2)
     #print("NT 2 On 1: " + str(nt2on1) + " and NT 1 on 2: " + str(nt1on2))
-    
+
     #check near stacking
     if nt2on1 or nt1on2:
         #Gets the normal vector for later calculation
@@ -1373,25 +1383,25 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
             coords[3] = -coords2[3] #If overlap isnt found one way, sometimes the return value will be -100 when it's not supposed to be. This will use the min z the other way instead. Sets negative since direction is different but z should be similar
         if coords[3] > 0: # coords[3] holds min_z
             if normal_Z > 0:
-                interaction = "ns35" # second base above, pointing up 
+                interaction = "ns35" # second base above, pointing up
                 interaction_reversed = "ns53"
             else:
                 interaction = "ns33" #second base above, pointing down
                 interaction_reversed = "ns33"
         else:
-            if normal_Z > 0: 
+            if normal_Z > 0:
                 interaction = "ns53"  #second base below, pointing up
                 interaction_reversed = "ns35"
-            else: 
+            else:
                 interaction =  "ns55" #second base below, pointing down
-                interaction_reversed = "ns55" 
+                interaction_reversed = "ns55"
         #checks for true stacking. If it meets criteria, strip the n from the annotation
-        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
+        if abs(coords[3]) < true_z_cutoff and abs(coords[3]) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True:
             interaction = interaction.replace("n","")
             interaction_reversed = interaction_reversed.replace("n", "")
         #checks the last of the criteria to make sure its near stacking. All others get no annotation
         #Min z must be greater than 1 and the normal z should be greater than 0.5 to be considered near
-        elif abs(coords[3]) < 1 or abs(normal_Z) < 0.5: 
+        elif abs(coords[3]) < 1 or abs(normal_Z) < 0.5:
             return "", datapoint, ""
         # print(nt1.unit_id() + " " + nt2.unit_id())
         # print("coords: " +str(coords[3]) + "normZ: " + str(normal_Z) + " normZ2 " + str(normZ2))
