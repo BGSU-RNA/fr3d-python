@@ -11,10 +11,11 @@ from NA_pairwise_interactions import *
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import outputNAPickleInteractions
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
+from fr3d.localpath import fr3d_pickle_path
+
 from fr3d.data.base import EntitySelector
 
 
@@ -65,10 +66,10 @@ PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
 PDB_list = ['4RKV','4J50','3AM1']
 
 PDB_list = ['4TNA.cif']
-PDB_list = ['5UED']
-PDB_list = ['4TNA']
 PDB_list = ['5T2A']  # has a conflicting cBW annotation
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
+PDB_list = ['4TNA']
+PDB_list = ['5UED']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -91,7 +92,6 @@ experimental = True          # save interactions in pairs_exp folder so they can
 
 # this path should be specified in localpath.py
 # intended for writing out a .pickle file to be used by the FR3D motif search tool
-unit_data_path = "C:/Users/jimitch/Documents/GitHub/fr3d-python/data/units"
 
 # annotate all nucleotides in all chains, even when a representative set is used
 annotate_entire_PDB_files = True
@@ -128,9 +128,9 @@ for PDB in PDBs:
 
     outputDataFileCSV    = os.path.join(outputNAPairwiseInteractions, PDB_id + ".csv")
     if experimental:
-        outputDataFilePickle = os.path.join(outputNAPickleInteractions + "_exp", PDB_id + "_RNA_pairs.pickle")
+        outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs_exp", PDB_id + "_RNA_pairs.pickle")
     else:
-        outputDataFilePickle = os.path.join(outputNAPickleInteractions, PDB_id + "_RNA_pairs.pickle")
+        outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs", PDB_id + "_RNA_pairs.pickle")
 
     if annotate_entire_PDB_files:
 
@@ -168,7 +168,7 @@ for PDB in PDBs:
 
             # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
             # need to be able to identify each chain that is available
-            # write_unit_data_file(PDB,unit_data_path,structure)
+            write_unit_data_file(PDB,fr3d_pickle_path,structure)
 
             # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
             # annotate interactions and return pair_to_data
@@ -178,7 +178,7 @@ for PDB in PDBs:
             if True:
                 print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
                 pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
-                print('  Wrote FR3D pickle file %s' % outputDataFilePickle)
+                print('  Wrote FR3D pair file %s' % outputDataFilePickle)
 
             timerData = myTimer("Recording interactions",timerData)
             pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),2)

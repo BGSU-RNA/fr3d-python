@@ -173,7 +173,7 @@ def load_structure(filename):
             return None, message
 
     try:
-        with open(filename, 'rb') as raw:
+        with open(filename, 'rb') as raw:          # needed for Python 3 on Windows
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
@@ -182,7 +182,7 @@ def load_structure(filename):
             """
             return structure, message
     except TypeError:
-        with open(filename, 'r') as raw:
+        with open(filename, 'r') as raw:           # needed on Ubuntu
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
@@ -1876,30 +1876,44 @@ def write_unit_data_file(PDB,unit_data_path,structure):
     One file for each chain.
     """
 
-    print("Writing data file")
-    print(structure.pdb)
-    print(structure.model)
-    print(structure.symmetry)
-    print(structure.chain)
-
     if len(unit_data_path) > 0:
-        # get a list of RNA and DNA chains in the structure
-        # loop over the chains
-        # get the nucleotides in the chain in sequence order
-        # write out data for each nucleotide including its sequence position
 
-        filename = unit_data_path + "/" + PDB + "_NA_base_rotation.pickle"
-        if not os.path.exists(filename):
+        nucleotides = structure.residues(type = ["RNA linking","DNA linking"])
+        all_nts = {}
+
+        # get the nucleotides in each model and chain, able to sort by symmetry and index
+        for nt in nucleotides:
+            fields = nt.unit_id().split("|")
+            id = "_".join(fields[0:3])   # PDB_model_chain
+
+            if len(fields) == 9:
+                symmetry = fields[8]
+            else:
+                symmetry = ""
+
+            if not id in all_nts:
+                all_nts[id] = []
+
+            #all_nts[id].append((nt.index,nt.unit_id(),nt.centers["glycosidic"],nt.rotation_matrix))
+            all_nts[id].append((symmetry,nt.index,nt))
+
+        # loop over models and chains
+        for id in all_nts.keys():
+
+            # write out data for each nucleotide
+            # note that _NA goes with glycosidic centers, while _RNA would be for base centers
+            filename = os.path.join(unit_data_path, "units", id + "_NA.pickle")
 
             units = []
             order = []
             cntrs = []
             rttns = []
 
-            for nt in nucleotides:
+            # sort by symmetry and index
+            for symmetry,index,nt in sorted(all_nts[id]):
                 units.append(nt.unit_id())
                 order.append(nt.index)
-                cntrs.append(nt.centers["base"])
+                cntrs.append(nt.centers["glycosidic"])
                 rttns.append(nt.rotation_matrix)
 
             rsset = [units, order, cntrs, rttns]
@@ -1907,6 +1921,9 @@ def write_unit_data_file(PDB,unit_data_path,structure):
             with open(filename, 'wb') as fh:
                 # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
                 pickle.dump(rsset, fh, 2)
+
+            print("  Wrote unit data file %s" % filename)
+
 
 def map_PDB_list_to_PDB_IFE_dict(PDB_list):
     """
