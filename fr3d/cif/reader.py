@@ -20,6 +20,8 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
+# Structures that originally had symmetry operators P_1 and P_P computed, which is unnecessary.
+# For consistency with nucleotide lists at rna.bgsu.edu, these symmetries are still computed.
 oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
 
 """ The set of symbols that mark an operator expression as complex """
@@ -152,7 +154,9 @@ class Cif(object):
     def __load_assemblies__(self):
         listOfNumbers = []
         assemblies = coll.defaultdict(list)
-        if self.pdb in oldStructures: # For our database, we have to deal with a small list of structures in an old manner to maintain old unit ids and naming conventions
+
+        # For rna.bgsu.edu deal with a small list of structures in an old manner to maintain old unit ids and naming conventions
+        if self.pdb in oldStructures:
             for assembly in self.pdbx_struct_assembly_gen:
                 oper_expression = assembly['oper_expression']
 
@@ -181,8 +185,6 @@ class Cif(object):
         if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
             for assembly in self.pdbx_struct_assembly_gen:
                 oper_expression = assembly['oper_expression']
-
-               
 
                 # # TODO: Implement computation of complex operators
                 # if COMPLEX_SYMBOLS & set(oper_expression):
@@ -231,6 +233,7 @@ class Cif(object):
                         previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                         if not op['id'] in previous_id:
                             assemblies[asym_id].append(op)
+
         return assemblies
 
     def __load_entities__(self):
@@ -476,7 +479,8 @@ class Cif(object):
                     filtered = filter(None, with_operators)
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
-        if hasattr(self, '_assemblies.values()'):
+
+        if hasattr(self, '_assemblies') and hasattr(self._assemblies, 'values'):
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         else:
             max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
