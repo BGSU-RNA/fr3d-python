@@ -335,7 +335,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
                 for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
-
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
@@ -740,7 +739,6 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     """
 
     bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-    #print("  Building nucleotide cubes in " + PDB)
 
     if not timerData:
         timerData = myTimer("start")
@@ -749,7 +747,6 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
 
     # annotate nt-nt interactions
-    #print("  Annotating interactions")
     timerData = myTimer("Annotating interactions",timerData)
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
 
@@ -2052,7 +2049,7 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to
 
         output["annotations"] = annotations
 
-        print(json.dumps(output))
+        #print(json.dumps(output))
 
         with open(filename,'w') as f:
             f.write(json.dumps(output))
