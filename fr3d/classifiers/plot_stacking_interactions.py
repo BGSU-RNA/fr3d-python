@@ -195,8 +195,7 @@ def plot_confusion_matrix(confusionMatrix, interaction_list):
                 row[col].append(confusionMatrix[interaction][interaction2])
         col+=1
 
-    print("\n\nConfusion Matrix of Annotations.\nColumns Represent Matlab found annotations and Rows Represent Python " +
-    "\nAnnotations in this matrix are ONLY those that both Matlab and Python found any interaction between the same two nucleotides")
+    print("\n\nConfusion Matrix of Annotations. \nColumns Represent Matlab found annotations and Rows Represent Python")
     print_function = getattr(__builtin__, 'print')
     print_function("\t", end = "")
     print_function(*interaction_list, sep='\t')
