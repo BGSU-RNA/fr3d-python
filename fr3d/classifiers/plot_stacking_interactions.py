@@ -255,6 +255,8 @@ if __name__=="__main__":
     ###############################################################################################################
     # Collection to display totals ################################################################################
     ###############################################################################################################
+    incorrectPairs = []
+
     pythonNotMatlab = {} 
     pythonNotMatlab['s33']=0
     pythonNotMatlab['s35']=0
@@ -301,7 +303,7 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
     PDB_list = ['7K00']
-    # PDB_list = ['6ZMI']
+    PDB_list = ['6ZMI']
 
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
@@ -465,6 +467,8 @@ if __name__=="__main__":
                         confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
 
+                        if stacking[-2:] != pair_to_Matlab_annotation[pair][-2:]:
+                            incorrectPairs.append((pair, stacking,pair_to_Matlab_annotation[pair]))
                     elif (Python and stacking != "   ") and pair_to_Matlab_annotation[pair] == '':
                         # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[stacking]['blank'] += 1
@@ -726,6 +730,7 @@ if __name__=="__main__":
     plot_confusion_matrix(confusionMatrix, interaction_list)
     plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
     plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
+    print(incorrectPairs)
     #####################################################################################################################################
        
 
