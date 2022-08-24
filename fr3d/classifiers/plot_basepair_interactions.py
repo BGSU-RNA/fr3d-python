@@ -17,13 +17,13 @@ if sys.version_info[0] < 3:
 else:
     from urllib.request import urlretrieve as urlretrieve
 
-from class_limits import nt_nt_cutoffs
+from class_limits import basepair_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import outputNAPickleInteractions
+from fr3d.localpath import fr3d_pickle_path
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
@@ -234,17 +234,17 @@ def print_datapoint(datapoint):
     return None
 
 
-def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
+def plot_basepair_cutoffs(base_combination,lowercase_list,ax,variables):
 
     color = ["#BA55D3","#63B8FF","#00EE76","#FF8C00","#CDC9A5","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A"]
     cc = 0
 
-    for bc in nt_nt_cutoffs.keys():
+    for bc in basepair_cutoffs.keys():
         if bc == base_combination:
-            for interaction in nt_nt_cutoffs[bc].keys():
+            for interaction in basepair_cutoffs[bc].keys():
                 if interaction.lower().replace("a","") in lowercase_list:
-                    for subcategory in nt_nt_cutoffs[bc][interaction].keys():
-                        limits = nt_nt_cutoffs[bc][interaction][subcategory]
+                    for subcategory in basepair_cutoffs[bc][interaction].keys():
+                        limits = basepair_cutoffs[bc][interaction][subcategory]
                         if variables == 1:            # x and y
                             xmin = limits['xmin']
                             xmax = limits['xmax']
@@ -322,9 +322,9 @@ if __name__=="__main__":
     cyan  = [0,1,1] # cyan
     blue  = [0,0,1] # blue
 
-    PDB_list = ['4V9F','7K00']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
+    PDB_list = ['4V9F','7K00']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -352,7 +352,7 @@ if __name__=="__main__":
             print("No Matlab-annotated pairs in %s" % PDB_id)
             PDB_skip_set.add(PDB_id)
 
-    print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
+    #print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
     print("Found these Matlab annotations: %s" % sorted(Matlab_annotation_to_pair.keys()))
 
     all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
@@ -517,23 +517,23 @@ if __name__=="__main__":
 
                 ax = fig.add_subplot(1, 4, 1)
                 ax.axis("equal")
-                plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,1)
+                plot_basepair_cutoffs(base_combination,lowercase_list,ax,1)
                 ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('x and y for %d %s %s' % (c,base_combination,interaction_list[0]))
-                draw_base(nt1_seq,2,ax)
+                draw_base(nt1_seq,'default',2,ax)
 
                 ax = fig.add_subplot(1, 4, 2)
-                plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,2)
+                plot_basepair_cutoffs(base_combination,lowercase_list,ax,2)
                 ax.scatter(tvalues,rvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('theta and radius')
 
                 ax = fig.add_subplot(1, 4, 3)
-                plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,3)
+                plot_basepair_cutoffs(base_combination,lowercase_list,ax,3)
                 ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('angle and normal, blue=Matlab only')
 
                 ax = fig.add_subplot(1, 4, 4)
-                plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,4)
+                plot_basepair_cutoffs(base_combination,lowercase_list,ax,4)
                 ax.scatter(gvalues,zvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('gap12 and z values, red=Python only')
 
@@ -545,4 +545,4 @@ if __name__=="__main__":
                 #plt.show()
                 plt.close()
 
-
+    print('Wrote files to %s' % outputNAPairwiseInteractions)

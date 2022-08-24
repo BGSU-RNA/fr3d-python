@@ -67,8 +67,11 @@ from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 
-#from fr3d.classifiers.class_limits import nt_nt_cutoffs
-from class_limits import nt_nt_cutoffs
+#from fr3d.classifiers.class_limits import basepair_cutoffs
+from class_limits import basepair_cutoffs
+
+from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from hydrogen_bonds import check_hydrogen_bond
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
@@ -93,6 +96,37 @@ nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
 base_seq_list = []                     # for all nucleic acids, modified or not
 
+
+def focus_basepair_cutoffs(basepair_cutoffs,interactions):
+    """
+    Reduce the dictionary of basepair cutoffs to just the pairs
+    that need to be annotated in this run.
+    """
+
+    focused_basepair_cutoffs = {}
+
+    lower_interactions = set([])
+    for interaction in interactions:
+        lower_interactions.add(interaction.lower())
+
+    for combination in basepair_cutoffs.keys():
+        focused_basepair_cutoffs[combination] = {}
+        focused_basepair_cutoffs[combination][1] = {}   # interactions with positive normal
+        focused_basepair_cutoffs[combination][-1] = {}  # interactions with negative normal
+        for interaction in basepair_cutoffs[combination]:
+            family = interaction.lower().replace('a','')
+            if family in lower_interactions:
+                if basepair_cutoffs[combination][interaction][0]["normalmin"] > 0:
+                    focused_basepair_cutoffs[combination][1][interaction] = {}   # interactions with positive normal
+                    for subcategory in basepair_cutoffs[combination][interaction]:
+                        focused_basepair_cutoffs[combination][1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
+
+                else:
+                    focused_basepair_cutoffs[combination][-1][interaction] = {}   # interactions with negative normal
+                    for subcategory in basepair_cutoffs[combination][interaction]:
+                        focused_basepair_cutoffs[combination][-1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
+
+    return focused_basepair_cutoffs
 
 def myTimer(state,data={}):
 
@@ -189,6 +223,7 @@ def load_structure(filename):
             Rotation matrix is calculated for each base.
             Hydrogens are not added automatically.
             """
+            #structure.infer_hydrogens()
             return structure, message
 
 
@@ -467,27 +502,32 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             print("  Missing glycosidic atom for %s" % nt2.unit_id())
                             continue
 
-                        # always annotate basepairs to be able to calculate crossing numbers
+                        # always annotate cWW basepairs to be able to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
                         # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
                         # need to add T and have a plan for DNA nucleotides as well
                         if parent_pair in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
 
-                            glycosidic_displacement = np.subtract(gly2,gly1)
+                            pair_data = {}
+                            pair_data["glycosidic_displacement"] = np.subtract(gly2,gly1)
+                            # vector from origin to nt2 when standardized
+                            pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt1.rotation_matrix)
 
-                            timerData = myTimer("Get basepair parameters",timerData)
-                            pair_data, datapoint12 = get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint12)
+                            if 'coplanar' in categories.keys():
+                                timerData = myTimer("Check coplanar",timerData)
+                                pair_data, datapoint12 = check_coplanar(nt1,nt2,pair_data,datapoint12)
 
-                            # annotate coplanar relationship
-                            if 'coplanar' in categories.keys() and pair_data['coplanar']:
-                                count_pair += 1
-                                interaction_to_pair_list['cp'].append(unit_id_pair)
-                                category_to_interactions['coplanar'].add('cp')
-                                marked_coplanar = True
+                                # annotate coplanar relationship
+                                if pair_data['coplanar']:
+                                    count_pair += 1
+                                    interaction_to_pair_list['cp'].append(unit_id_pair)
+                                    category_to_interactions['coplanar'].add('cp')
+                                    marked_coplanar = True
 
                             timerData = myTimer("Check basepairing",timerData)
-                            cutoffs = nt_nt_cutoffs[parent1+","+parent2]
-                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint12)
+                            cutoffs = focused_basepair_cutoffs[parent1+","+parent2]
+                            hydrogen_bonds = ideal_hydrogen_bonds[parent1+","+parent2]
+                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint12)
 
                             # record basepairs made by modified nucleotides
                             if False and len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
@@ -535,20 +575,25 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         # check pair in the other order
                         if parent_pair_reversed in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
 
-                            glycosidic_displacement = np.subtract(gly1,gly2)
+                            pair_data = {}
+                            pair_data["glycosidic_displacement"] = np.subtract(gly1,gly2)
+                            # vector from origin to nt2 when standardized
+                            pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt2.rotation_matrix)
 
-                            timerData = myTimer("Get basepair parameters",timerData)
-                            pair_data, datapoint21 = get_basepair_parameters(nt2,nt1,glycosidic_displacement,datapoint21)
+                            if 'coplanar' in categories.keys():
+                                timerData = myTimer("Check coplanar",timerData)
+                                pair_data, datapoint21 = check_coplanar(nt2,nt1,pair_data,datapoint21)
 
-                            # annotate coplanar relationship
-                            if 'coplanar' in categories.keys() and pair_data['coplanar'] and not marked_coplanar:
-                                count_pair += 1
-                                interaction_to_pair_list['cp'].append(unit_id_pair)
-                                category_to_interactions['coplanar'].add('cp')
+                                # annotate coplanar relationship
+                                if pair_data['coplanar'] and not marked_coplanar:
+                                    count_pair += 1
+                                    interaction_to_pair_list['cp'].append(unit_id_pair)
+                                    category_to_interactions['coplanar'].add('cp')
 
                             timerData = myTimer("Check basepairing",timerData)
-                            cutoffs = nt_nt_cutoffs[parent2+","+parent1]
-                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint21)
+                            cutoffs = focused_basepair_cutoffs[parent2+","+parent1]
+                            hydrogen_bonds = ideal_hydrogen_bonds[parent2+","+parent1]
+                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,hydrogen_bonds,datapoint21)
 
                             if False and len(interaction21) > 1:
                                 print("  Identified parents as %s and %s" % (parent2,parent1))
@@ -1214,7 +1259,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     return interaction, datapoint, interaction_reversed
 
 
-def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
+def check_coplanar(nt1,nt2,pair_data,datapoint):
     """
     Calculate data needed for basepair classification.
     Also, check specific criteria to say that
@@ -1228,14 +1273,10 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
       Angle between normal vectors must be < 39.1315 degrees
     """
 
-    pair_data = {}
     pair_data["coplanar"] = False
     pair_data["coplanar_value"] = None         # 0 to 1 is coplanar, 1 is the best
 
-    # vector from origin to nt2 when standardized
-    displ12 = np.dot(glycosidic_displacement,nt1.rotation_matrix)
-
-    pair_data["displ12"] = displ12
+    displ12 = pair_data["displ12"]
 
     # calculate gap and standardized atoms from nt2
     gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
@@ -1410,27 +1451,40 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     return gap12, base_points2
 
 
-def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
+def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     """
     Given nt1 and nt2 and the dictionary of cutoffs
     for that pair of nucleotides, check cutoffs for each
     basepair interaction type
     """
 
+
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
-    if abs(displ[0,2]) > 3.6:                            # too far out of plane
+    if abs(displ[0,2]) > 3.6:             # too far out of plane for a basepair
         return "", "", datapoint
 
-    ok_displacement_screen = []
+    # check sign of normal vector to cut number of possible families in half
+    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
 
-    for interaction in cutoffs:                          # cWW, tWW, etc.
-        for subcategory in cutoffs[interaction].keys():  # 0, 1, etc.
-            cut = cutoffs[interaction][subcategory]
-            if displ[0,2] < cut['zmin']:
-                continue
-            if displ[0,2] > cut['zmax']:
-                continue
+    normal_Z = rotation_1_to_2[2,2]   # z component of normal vector to second base
+
+    if datapoint:
+        datapoint['normal_Z'] = normal_Z
+
+    if normal_Z > 0:
+        normal_sgn = 1
+    else:
+        normal_sgn = -1
+
+    ok_normal_displ = []              # those that pass the normal and displacement
+    possible_interactions = set([])   # list of possible interactions from normal vector,
+                                      # for checking hydrogen bonds and near pairs
+
+    for interaction in cutoffs[normal_sgn].keys():
+        possible_interactions.add(interaction)  # use exact interaction like cWw
+        for subcategory in cutoffs[normal_sgn][interaction].keys():
+            cut = cutoffs[normal_sgn][interaction][subcategory]
             if displ[0,0] < cut['xmin']:
                 continue
             if displ[0,0] > cut['xmax']:
@@ -1439,29 +1493,34 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
                 continue
             if displ[0,1] > cut['ymax']:
                 continue
-            ok_displacement_screen.append((interaction,subcategory)) # ("cWW",0), etc.
+            if displ[0,2] < cut['zmin']:
+                continue
+            if displ[0,2] > cut['zmax']:
+                continue
+            if normal_Z < cut['normalmin']:
+                continue
+            if normal_Z > cut['normalmax']:
+                continue
+            ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
 
-    if len(ok_displacement_screen) == 0:
-        return "", "", datapoint
+    # check hydrogen bonds
+    print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+    result = {}
+    for LW in hydrogen_bonds:
+        if LW in possible_interactions:
+            counter = 0
+            for atom_set in hydrogen_bonds[LW]:
+                if not atom_set in result:
+                    # return True/False, length, angle
+                    result[atom_set] = check_hydrogen_bond(nt1,nt2,atom_set)
+                if result[atom_set][0]:
+                    counter += 1
 
-    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
+            if counter > 0:
+                print('%s has %d out of %s hydrogen bonds' % (LW,counter,len(hydrogen_bonds[LW])))
 
-    normal_Z = rotation_1_to_2[2,2]   # z component of normal vector to second base
 
-    if datapoint:
-        datapoint['normal_Z'] = normal_Z
-
-    ok_normal = []
-
-    for interaction,subcategory in ok_displacement_screen:
-        cut = cutoffs[interaction][subcategory]
-        if normal_Z < cut['normalmin']:
-            continue
-        if normal_Z > cut['normalmax']:
-            continue
-        ok_normal.append((interaction,subcategory))
-
-    if len(ok_normal) == 0:
+    if len(ok_normal_displ) == 0:
         return "", "", datapoint
 
     angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
@@ -1474,8 +1533,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
 
     ok_angle_in_plane = []
 
-    for interaction,subcategory in ok_normal:
-        cut = cutoffs[interaction][subcategory]
+    for interaction,subcategory in ok_normal_displ:
+        cut = cutoffs[normal_sgn][interaction][subcategory]
         if cut['anglemin'] < cut['anglemax']:     # for ranges in -90 to 270 like 50 to 120
             if angle_in_plane <= cut['anglemin']:
                 continue
@@ -1493,8 +1552,13 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
     # (interaction,subcategory) pairs that meet all requirements so far
     ok_gap = []
 
+    if not 'gap12' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
+        pair_data["gap12"] = gap12
+
     for interaction,subcategory in ok_angle_in_plane:
-        cut = cutoffs[interaction][subcategory]
+        cut = cutoffs[normal_sgn][interaction][subcategory]
         if cut['gapmax'] > 0.1:
             if pair_data["gap12"] > cut['gapmax']:
                 continue
@@ -1521,6 +1585,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
     if datapoint:
         datapoint['basepair'] = ok_gap[0][0]
         datapoint['basepair_subcategory'] = ok_gap[0][1]
+
+    # print the eventual basepair classification if one is found, to compare to hydrogen bonds
+    if len(ok_gap) > 0:
+        print("Checking cutoffs gives classification %s" % ok_gap)
 
     # return just the first interaction type and subcategory
     return ok_gap[0][0], ok_gap[0][1], datapoint
@@ -1912,6 +1980,8 @@ if __name__=="__main__":
     # only output true basepairs in these main categories
     if 'basepair' in categories:
         categories['basepair'] = Leontis_Westhof_basepairs
+    else:
+        categories['basepair'] = ['cWW']  # only annotate cWW, for crossing number
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
@@ -1938,6 +2008,24 @@ if __name__=="__main__":
     timerData = myTimer("start")
     failed_structures = []
     counter = 0
+
+    focused_basepair_cutoffs = focus_basepair_cutoffs(basepair_cutoffs,categories['basepair'])
+
+    # check how this worked
+    for combination in focused_basepair_cutoffs:
+        for normal in focused_basepair_cutoffs[combination]:
+            for interaction in focused_basepair_cutoffs[combination][normal]:
+                for subcategory in focused_basepair_cutoffs[combination][normal][interaction]:
+                    #print(combination, normal, interaction, subcategory, focused_basepair_cutoffs[combination][normal][interaction][subcategory])
+                    pass
+
+    ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
+
+    """
+    for combination in ideal_hydrogen_bonds:
+        for LW in ideal_hydrogen_bonds[combination]:
+            print(combination, LW, ideal_hydrogen_bonds[combination][LW])
+    """
 
     for path, PDB in PDBs:
         counter += 1
