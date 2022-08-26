@@ -303,7 +303,9 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
     PDB_list = ['7K00']
-    PDB_list = ['6ZMI']
+    # PDB_list = ['6ZMI']
+    PDB_list = ['4V9F']
+    PDB_list = ['4TNA']
 
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
@@ -462,21 +464,21 @@ if __name__=="__main__":
                     # confusionMatrix is a dictionary - key is python annotation, value is dictionary where ###
                     # key is matlab annotation - values are numerical total ###################################
                     ###########################################################################################
-                    if (Python and stacking != "   ") and (pair_to_Matlab_annotation[pair] != ''):
+                    if stacking != "   " and pair_to_Matlab_annotation[pair] != '':
                         # Python finds an annotation and Matlab also finds an annotation ################
                         confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
 
                         if stacking[-2:] != pair_to_Matlab_annotation[pair][-2:]:
                             incorrectPairs.append((pair, stacking,pair_to_Matlab_annotation[pair]))
-                    elif (Python and stacking != "   ") and pair_to_Matlab_annotation[pair] == '':
+                    elif stacking != "   " and pair_to_Matlab_annotation[pair] == '':
                         # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[stacking]['blank'] += 1
                         confusionMatrix['total'] += 1    
                         pythonNotMatlab[stacking] += 1
                         pythonNotMatlab['total'] += 1
 
-                    elif not Python and pair_to_Matlab_annotation[pair] != '':
+                    elif stacking == "   " and pair_to_Matlab_annotation[pair] != '':
                         # Python does not find an annotation and matlab does ##################################
                         confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
@@ -730,7 +732,9 @@ if __name__=="__main__":
     plot_confusion_matrix(confusionMatrix, interaction_list)
     plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
     plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
-    print(incorrectPairs)
+    print("Unit ids of pairs that disagree on faces being used. \n ('unit_id_1', 'unit_id_2','PythonAnnotation,MatLabAnnotation) ")
+    for pair in incorrectPairs:
+        print(pair)
     #####################################################################################################################################
        
 
