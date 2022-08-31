@@ -34,7 +34,12 @@ def load_ideal_basepair_hydrogen_bonds():
                     if not LW in hbond[combination]:
                         hbond[combination][LW] = []
 
-                    hbond[combination][LW].append((a,b,c,d))
+                    # store as donor, hydrogen, acceptor, and order of nucleotides
+                    if len(a) > 0:
+                        hbond[combination][LW].append((a,b,c,'12'))
+                    else:
+                        hbond[combination][LW].append((d,c,b,'21'))
+
                 elif combination in ['C,A','G,A','U,A','C,G','U,C','U,G']:
                     # reverse order of edges, bases, and atoms
                     #print(LW,combination)
@@ -56,7 +61,11 @@ def load_ideal_basepair_hydrogen_bonds():
                     if not LW in hbond[combination]:
                         hbond[combination][LW] = []
 
-                    hbond[combination][LW].append((a,b,c,d))
+                    # store as donor, hydrogen, acceptor, and order of nucleotides
+                    if len(a) > 0:
+                        hbond[combination][LW].append((a,b,c,'12'))
+                    else:
+                        hbond[combination][LW].append((d,c,b,'21'))
 
     """
     for combination in hbond:
@@ -81,60 +90,49 @@ def angle_between_vectors(vec1, vec2):
     else:
         return None
 
-def check_hbond_donor_acceptor(nt1,nt2,atoms):
+def check_hydrogen_bond(nt1,nt2,atoms):
     """
     Calculate hydrogen bond parameters for hydrogen donor and hydrogen from nt1
     and hydrogen bond acceptor from nt2.
+    Return:
+      Whether or not the bond could be checked
+      Whether or not the bond meets criteria to form
+      Distance between hydrogen and acceptor if available
+      Angle in degrees
+      A measure of the "badness" of the bond
     """
 
     donor    = nt1.centers[atoms[0]]
     hydrogen = nt1.centers[atoms[1]]
     acceptor = nt2.centers[atoms[2]]
 
-    if atoms[1] == "H2'":
+    if atoms[1] == "H2'" or len(hydrogen) < 3:
+        # hydrogen coordinates are not available, check donor-acceptor distance
         if len(donor) == 3 and len(acceptor) == 3:
             distance = np.linalg.norm(np.subtract(donor,acceptor))
         else:
-            return False, None, None
+            return False, False, float("NaN"), float("NaN"), float("Inf")
 
         if distance > 4.5:
-            return False, distance, None
+            return True, False, distance, float("NaN"), max(0,distance-3.0)
         else:
-            return True, distance, None
+            return True, True, distance, float("NaN"), max(0,distance-3.0)
 
 
     else:
         if len(hydrogen) == 3 and len(acceptor) == 3:
             distance = np.linalg.norm(np.subtract(hydrogen,acceptor))
         else:
-            return False, None, None
+            return False, False, float("NaN"), float("NaN"), float("Inf")
 
-        if distance > 4:
-            return False, distance, None
-        else:
+        if len(donor) == 3:
             hb_angle = calculate_hb_angle(donor,hydrogen,acceptor)
 
-        if not hb_angle:
-            return False, distance, hb_angle
-        elif hb_angle > 110:
-            return True, distance, hb_angle
-        else:
-            return False, distance, hb_angle
-
-def check_hydrogen_bond(nt1,nt2,atoms):
-    """
-    atoms is a list of three atoms in a 4-tuple
-    The code first determines which direction is donor and acceptor.
-    """
-
-    if len(atoms[0]) > 0:
-        hbond = check_hbond_donor_acceptor(nt1,nt2,atoms[0:3])
-    else:
-        hbond = check_hbond_donor_acceptor(nt2,nt1,atoms[3:0:-1])
-
-
-    return hbond
-
-
+            if not hb_angle:
+                return False, False, distance, float("NaN"), float("Inf")
+            elif hb_angle > 110 and distance < 4.0:
+                return True, True, distance, hb_angle, (max(0,distance-2.5)+max(0,150-hb_angle)/20.0)
+            else:
+                return True, False, distance, hb_angle, (max(0,distance-2.5)+max(0,150-hb_angle)/20.0)
 
 
