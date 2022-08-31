@@ -1458,7 +1458,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     basepair interaction type
     """
 
-
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
     if abs(displ[0,2]) > 3.6:             # too far out of plane for a basepair
@@ -1482,7 +1481,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                                       # for checking hydrogen bonds and near pairs
 
     for interaction in cutoffs[normal_sgn].keys():
-        possible_interactions.add(interaction)  # use exact interaction like cWw
         for subcategory in cutoffs[normal_sgn][interaction].keys():
             cut = cutoffs[normal_sgn][interaction][subcategory]
             if displ[0,0] < cut['xmin']:
@@ -1502,22 +1500,69 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             if normal_Z > cut['normalmax']:
                 continue
             ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
+            possible_interactions.add(interaction)  # use exact interaction like cWw
 
-    # check hydrogen bonds
-    print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-    result = {}
-    for LW in hydrogen_bonds:
-        if LW in possible_interactions:
-            counter = 0
+    if len(possible_interactions) > 0:
+        print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+
+    # check hydrogen bonds for interactions that are still possible
+    # store according to donor and acceptor to disqualify worse acceptors
+    atom_set_to_bond_parameters = {}
+    donor_hydrogen_to_badness = {}
+    for LW in possible_interactions:
+        if LW in hydrogen_bonds.keys():
             for atom_set in hydrogen_bonds[LW]:
-                if not atom_set in result:
-                    # return True/False, length, angle
-                    result[atom_set] = check_hydrogen_bond(nt1,nt2,atom_set)
-                if result[atom_set][0]:
-                    counter += 1
+                if not atom_set in atom_set_to_bond_parameters:
+                    # return True/False, length, angle, badness
+                    if atom_set[3] == '12':
+                        result = check_hydrogen_bond(nt1,nt2,atom_set)
+                    else:
+                        result = check_hydrogen_bond(nt2,nt1,atom_set)
 
-            if counter > 0:
-                print('%s has %d out of %s hydrogen bonds' % (LW,counter,len(hydrogen_bonds[LW])))
+                    atom_set_to_bond_parameters[atom_set] = result
+
+                    # store the lowest "badness" for this donor-hydrogen pair
+                    if result[0]:
+                        donor    = atom_set[0]
+                        hydrogen = atom_set[1]
+                        if (donor,hydrogen) in donor_hydrogen_to_badness:
+                            if result[4] < donor_hydrogen_to_badness[(donor,hydrogen)]:
+                                donor_hydrogen_to_badness[(donor,hydrogen)] = result[4]
+                        else:
+                            donor_hydrogen_to_badness[(donor,hydrogen)] = result[4]
+
+                    if result[0]:
+                        if result[1]:
+                            print('%s has   %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                        else:
+                            print('%s lacks %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+
+        else:
+            print('No hydrogen bonds to check for %s' % LW)
+
+    # count hydrogen bonds for each possible annotation
+    for LW in possible_interactions:
+        if LW in hydrogen_bonds.keys():
+            checked_counter = 0
+            bond_counter = 0
+            for atom_set in hydrogen_bonds[LW]:
+                result = atom_set_to_bond_parameters[atom_set]
+
+                if result[0]:
+                    checked_counter += 1
+                    if result[1]:
+                        donor    = atom_set[0]
+                        hydrogen = atom_set[1]
+                        # if the badness is not so far from the best
+                        if result[4] < donor_hydrogen_to_badness[(donor,hydrogen)] + 0.5:
+                            bond_counter += 1
+                        else:
+                            print('Rejected %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+
+            print('%s has %d out of %s hydrogen bonds' % (LW,bond_counter,checked_counter))
+
+        else:
+            print('No hydrogen bonds to check for %s' % LW)
 
 
     if len(ok_normal_displ) == 0:
