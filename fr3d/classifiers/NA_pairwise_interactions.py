@@ -1560,6 +1560,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                             print('Rejected %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
 
             print('%s has %d out of %s hydrogen bonds' % (LW,bond_counter,checked_counter))
+            LW_bond_counter[LW] = (bond_counter,checked_counter)
 
         else:
             print('No hydrogen bonds to check for %s' % LW)
