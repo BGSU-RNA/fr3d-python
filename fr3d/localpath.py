@@ -6,9 +6,11 @@ outputNAPairwiseInteractions = 'C:\\Users\\zirbel\\Documents\\FR3D\\NAPairwiseIn
 
 outputText = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\proteinRNA_%s.txt'
 outputBaseAAFG = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\aa-fg_base_%s.csv'
-outputNAPickleInteractions = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data\\pairs\\'
 contact_list_file = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\contact_list_%s.txt'
 outputHTML = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\output'
+
+# the following directory will be for both units and pairs since that's what fr3d uses
+fr3d_pickle_path = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data'
 
 storeMatlabFR3DPairs = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs/"
 
