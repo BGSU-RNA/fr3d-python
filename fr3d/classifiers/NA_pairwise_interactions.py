@@ -1228,17 +1228,16 @@ def check_convex_hull_atoms(x,y,z, parent):
                                         if  1.943584*x +  2.101573*y +  9.539166 > 0:  # Left of H8-C1'
                                             inside = True
         elif parent == 'A' or parent == 'DA':
-            if -1.919603*x +  2.409029*y +  5.826043 > 0:  # Left of C1'-N3
-                if -0.878321*x +  1.862418*y +  3.717570 > 0:  # Left of N3-H2
-                    if -1.506467*x + -1.406603*y +  4.050950 > 0:  # Left of H2-N1
-                        if -1.622643*x + -1.661740*y +  4.510171 > 0:  # Left of N1-N6
-                            if  3.999889*x + -3.303567*y +  8.297273 > 0:  # Left of N6-H8
-                                if  1.927145*x +  2.100463*y +  9.078623 > 0:  # Left of H8-C1'
+            if -2.797924*x +  4.271447*y + 11.002815 > 0:  # Left of C1'-H2
+                if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
+                    if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
+                        if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
+                            if  1.927145*x +  2.100463*y +  9.078623 > 0:  # Left of H8-C1'
                                     inside = True
         elif parent == 'C' or parent == 'DC':
             if -1.359217*x +  2.269450*y +  6.210683 > 0:  # Left of C1'-O2
-                if -4.129985*x + -1.988094*y +  4.609390 > 0:  # Left of O2-N4
-                    if  1.362107*x + -2.318128*y +  5.987542 > 0:  # Left of N4-H5
+                if -5.129985*x + -1.488094*y +  7.300944 > 0:  # Left of O2-test
+                    if  2.362107*x + -2.818128*y +  8.986149 > 0:  # Left of test-H5
                         if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
                             if  1.603632*x +  2.082733*y +  6.784744 > 0:  # Left of H6-C1'
                                 inside = True
@@ -1341,14 +1340,14 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
     reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
     convexHullAtoms = {}
-    convexHullAtoms['A'] = ["C1'",'N3','H2','N1','N6','H8'] #Based on Matlab Code
-    convexHullAtoms['DA'] = ["C1'",'N3','H2','N1','N6','H8'] 
-    convexHullAtoms['C'] = ["C1'",'O2','N4','H5','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
-    convexHullAtoms['DC'] = ["C1'",'O2','N4','H5','H6']
-    convexHullAtoms['G'] = ["C1'",'H21','H22','H1','O6','N7','H8']
-    convexHullAtoms['DG'] = ["C1'",'H21','H22','H1','O6','N7','H8']
-    convexHullAtoms['U'] = ["C1'",'O2','H3','O4','H5','H6']
-    convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6']
+    convexHullAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4'] #9/6/2022 took out "C1'",
+    convexHullAtoms['DA'] = convexHullAtoms['A']
+    convexHullAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
+    convexHullAtoms['DC'] = convexHullAtoms['C']
+    convexHullAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4']
+    convexHullAtoms['DG'] = convexHullAtoms['G']
+    convexHullAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2']
+    convexHullAtoms['DT'] = ['N1','C6', 'H6','C5','C7','H71','H72','H73','C4','O4','N3','H3','C2','O2']
 
     #Create a list in case one of these is nucleotides is a modified nucleotide. 
     #This will allow us to project atoms that may not follow the same coordinates as standard
@@ -1470,6 +1469,10 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
         datapoint['xStack'] = coords[0]
         datapoint['yStack'] = coords[1]
         datapoint['zStack'] = coords[2]
+        datapoint['nt1on2'] = nt1on2
+        datapoint['nt2on1'] = nt2on1
+        datapoint['minz'] = minz
+        datapoint['normal_Z'] = normal_Z
         datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
 
     return interaction, datapoint, interaction_reversed
