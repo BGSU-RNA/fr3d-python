@@ -136,7 +136,7 @@ class Cif(object):
         trans[3, 3] = 1.0
         return {
             'id': 'I',
-            'name': 'I',
+            'name': '1_555',
             'vector': vector,
             'matrix': mat,
             'transform': trans
