@@ -67,7 +67,7 @@ def load_Matlab_FR3D_pairs(PDBID):
     if not os.path.exists(pathAndFileName):
         print("Downloading %s to %s" % (pairsFileName,pathAndFileName))
         if sys.version_info[0] < 3:
-            urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+            urllib.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
         else:
             urllib.request.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
 
@@ -256,6 +256,7 @@ if __name__=="__main__":
     # Collection to display totals ################################################################################
     ###############################################################################################################
     incorrectPairs = []
+    nearVSTrue = [] 
 
     pythonNotMatlab = {} 
     pythonNotMatlab['s33']=0
@@ -267,6 +268,30 @@ if __name__=="__main__":
     pythonNotMatlab['ns55']=0
     pythonNotMatlab['ns53']=0
     pythonNotMatlab['total']=0
+
+    incorrectPairs = []
+
+    pythonTotals = {} 
+    pythonTotals['s33']=0
+    pythonTotals['s35']=0
+    pythonTotals['s55']=0
+    pythonTotals['s53']=0
+    pythonTotals['ns33']=0
+    pythonTotals['ns35']=0
+    pythonTotals['ns55']=0
+    pythonTotals['ns53']=0
+    pythonTotals['total']=0
+
+    matlabTotals = {} 
+    matlabTotals['s33']=0
+    matlabTotals['s35']=0
+    matlabTotals['s55']=0
+    matlabTotals['s53']=0
+    matlabTotals['ns33']=0
+    matlabTotals['ns35']=0
+    matlabTotals['ns55']=0
+    matlabTotals['ns53']=0
+    matlabTotals['total']=0
 
     matlabNotPython = {} 
     matlabNotPython['s33']=0
@@ -468,24 +493,26 @@ if __name__=="__main__":
                         # Python finds an annotation and Matlab also finds an annotation ################
                         confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
-
+                        pythonTotals[stacking] += 1
+                        matlabTotals[pair_to_Matlab_annotation[pair]] += 1
                         if stacking[-2:] != pair_to_Matlab_annotation[pair][-2:]:
-                            incorrectPairs.append((pair, stacking,pair_to_Matlab_annotation[pair], datapoint['url']))
+                            incorrectPairs.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["minz"],datapoint['normal_Z'], datapoint['url']))
+                        if stacking != pair_to_Matlab_annotation[pair]:
+                            nearVSTrue.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["minz"],datapoint['normal_Z'], datapoint['url']))
                     elif stacking != "   " and pair_to_Matlab_annotation[pair] == '':
                         # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[stacking]['blank'] += 1
                         confusionMatrix['total'] += 1    
                         pythonNotMatlab[stacking] += 1
                         pythonNotMatlab['total'] += 1
-
+                        pythonTotals[stacking] += 1
                     elif stacking == "   " and pair_to_Matlab_annotation[pair] != '':
                         # Python does not find an annotation and matlab does ##################################
-                        sys.exit(0)
                         confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
                         matlabNotPython[stacking] += 1
                         matlabNotPython['total'] += 1
-
+                        matlabTotals[pair_to_Matlab_annotation[pair]] += 1
                     ###########################################################################################
                     # Processing for construction of graphs ###################################################
                     ###########################################################################################
@@ -736,6 +763,44 @@ if __name__=="__main__":
     print("Unit ids of pairs that disagree on faces being used. \n ('unit_id_1', 'unit_id_2','PythonAnnotation,MatLabAnnotation) ")
     for pair in incorrectPairs:
         print(pair)
+    if True: 
+        for pair in nearVSTrue:
+            print(pair)
     #####################################################################################################################################
        
+    percents = {}
+    percents['overallML'] = 0
+    percents['overallPy'] = 0 
 
+    pythonTotals['near']=0
+    pythonTotals['true']=0
+    matlabTotals['near']=0
+    matlabTotals['true']=0
+    for cat in interaction_list:
+        if cat[0] == "n":
+            pythonTotals['near'] += pythonTotals[cat]
+            matlabTotals['near'] += matlabTotals[cat]
+        else: 
+            matlabTotals['true'] += matlabTotals[cat]
+            pythonTotals['true'] += pythonTotals[cat]
+        pythonTotals["total"] += pythonTotals[cat]
+        matlabTotals["total"] += matlabTotals[cat]
+    print(pythonTotals)
+    print(matlabTotals)
+    test = pythonTotals['near']/pythonTotals['total']
+    print(pythonTotals['total'])
+
+    if pythonTotals > matlabTotals:
+        larger = "PYTHON"
+    else:
+        larger = "MATLAB"
+    trueInts=["s33",'s55','s53','s35']
+    nearInts=['ns33','ns55','ns53','ns35']
+    print("THE NUMBER DIFFERENCE BETWEEN PYTHON AND MATLAB IS: " + str(abs(pythonTotals['total']-matlabTotals['total'])) + " WHERE " + larger + " FINDS MORE ANNOTATIONS")
+    print("PYTHON PERCENT NEAR: " + str(float(pythonTotals['near'])/float(pythonTotals['total'])))
+    print("MATLAB PERCENT NEAR: " + str(float(matlabTotals['near'])/float(matlabTotals['total'])))
+    for interaction in trueInts:
+        near = "n" + interaction
+        print("PYTHON NEAR/TOTAL FOR " + interaction + " INTERACTIONS: " + str(float(pythonTotals[near])/(float(pythonTotals[interaction]+pythonTotals[near]))))
+        print("MATLAB NEAR/TOTAL FOR " + interaction + " INTERACTIONS: " + str(float(matlabTotals[near])/(float(matlabTotals[interaction]+matlabTotals[near]))))
+        print("\n")
