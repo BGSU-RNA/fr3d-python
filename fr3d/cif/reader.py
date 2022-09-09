@@ -400,16 +400,26 @@ class Cif(object):
                 'symmetry',
         )
         else:
-            key = op.attrgetter(
-                'pdb',
-                'model',
-                'chain',
-                'component_id',
-                'component_number',
-                #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
-                'symmetry',
-            )
-
+            if self.pdb == '1FJF' and sys.version_info[0] >= 3:
+                key = op.attrgetter(
+                    'pdb',
+                    'model',
+                    #'chain', #For the structure 1FJF, the sorted function is not able to sort using the chain. 
+                    'component_id',
+                    'component_number',
+                    #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
+                    'symmetry',
+                )
+            else: 
+                key = op.attrgetter(
+                    'pdb',
+                    'model',
+                    'chain',
+                    'component_id',
+                    'component_number',
+                    #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
+                    'symmetry',
+                )
         mapping = it.groupby(sorted(self.__atoms__(pdb), key=key), key)
 
 
@@ -556,11 +566,12 @@ class Cif(object):
                         symmetry=symmetry_name,
                         polymeric=self.is_polymeric_atom(atom))
         except: 
+            comp_num = re.sub('\D', '',atom['auth_seq_id'])
             return Atom(pdb=pdb,
                         model=model,
                         chain=atom['auth_asym_id'],
                         component_id=component_id,
-                        component_number = atom['auth_seq_id'],
+                        component_number = int(comp_num),
                         component_index=index,
                         insertion_code=ins_code,
                         alt_id=alt_id,
