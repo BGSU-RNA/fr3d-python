@@ -82,7 +82,7 @@ def create_convex_hull_plot(seqlist):
         ax = fig.add_subplot(1, 4, sub)
         ax.axis("equal")
         ax.set_title('Random Plotted Points on Base %s' % seq) # %d %s %s' % (c,base_combination,interaction_list[0]), rotation=10)
-        draw_base(seq,'default',2,ax)
+        draw_base(seq.replace('M',''),'default',2,ax)
         ax.scatter(xvalues,yvalues,color='c',marker=".",s=1)
         sub += 1
 
