@@ -466,6 +466,7 @@ NAbasecoordinates['A'][ 'H8'] = [ -3.210978,  -1.376174,   0.000000]
 NAbasecoordinates['A'][ 'H9'] = [ -1.110515,  -2.832638,   0.000000]
 NAbasecoordinates['A']['H61'] = [  0.810429,   3.327414,   0.000000]
 NAbasecoordinates['A']['H62'] = [ -0.880080,   2.876400,   0.000000]
+
 NAbasecoordinates['C'] = {}
 NAbasecoordinates['C'][ 'N1'] = [ -0.380579,  -1.484583,   0.000000]
 NAbasecoordinates['C'][ "C1'"] = [ -0.380579,  (-1.484583-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1 
@@ -481,6 +482,7 @@ NAbasecoordinates['C'][ 'H6'] = [ -2.463312,  -1.360951,   0.000000]
 NAbasecoordinates['C'][ 'H5'] = [ -2.417351,   1.162512,   0.000000]
 NAbasecoordinates['C']['H41'] = [ -0.908549,   3.117619,   0.000000]
 NAbasecoordinates['C']['H42'] = [  0.823255,   2.927413,   0.000000]
+
 NAbasecoordinates['G'] = {}
 NAbasecoordinates['G'][ 'N9'] = [ -1.456680,  -1.711888,   0.000000]
 NAbasecoordinates['G'][ "C1'"] = [ -1.456680,  (-1.711888-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9 
@@ -499,6 +501,7 @@ NAbasecoordinates['G'][ 'H8'] = [ -3.558253,  -1.248304,   0.000000]
 NAbasecoordinates['G'][ 'H9'] = [ -1.456680,  -2.721417,   0.000000]  # if no C1' atom
 NAbasecoordinates['G']['H21'] = [  3.415836,  -1.614107,   0.000000]
 NAbasecoordinates['G']['H22'] = [  3.838495,   0.070395,   0.000000]
+
 NAbasecoordinates['U'] = {}
 NAbasecoordinates['U'][ 'N1'] = [ -0.326420,  -1.514422,   0.000000]
 NAbasecoordinates['U'][ "C1'"] = [ -0.326420,  (-1.514422-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1
@@ -582,6 +585,49 @@ NAbasecoordinates['DT']['H6'] = [-1.913009,-1.488609, 0.000000]
 NAbasecoordinates['DT']['H71'] = [-2.422619, 1.940262, 0.339933]
 NAbasecoordinates['DT']['H72'] = [-2.882094, 1.068812,-0.906410]
 NAbasecoordinates['DT']['H73'] = [-3.153579, 0.548710, 0.569770]
+
+# Coordinates of atoms as defined by the matlab FR3D code in zStackingOverlap.m
+# NTs are all translated to try to match the C1' x,y coordinates to work with Draw Base Method from draw_residues 
+# These coordinates are used to create checks in generate_location_checks which are then used in checkconvexhull.py
+# The M is stands for Matlab and the second letter stands for the RNA base
+# The indeces can probably be renamed to atoms 
+NAbasecoordinates['MA'] = {}
+NAbasecoordinates['MA']['0'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.000000] 
+NAbasecoordinates['MA']['1'] = [(0.000000 - 1.110515), (-1.009320 - 2.293999) , 0.000000]
+NAbasecoordinates['MA']['2'] = [(4.271447 - 1.110515), (1.317924 - 2.293999) ,0.000000]
+NAbasecoordinates['MA']['3'] = [(1.920945 - 1.110515), (5.150733 - 2.293999) ,0.000000]
+NAbasecoordinates['MA']['4'] = [(0.230436 - 1.110515), (4.699718 - 2.293999) ,0.000000]
+NAbasecoordinates['MA']['5'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.00000]
+
+NAbasecoordinates['MC'] = {}
+NAbasecoordinates['MC']['0'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324), 0.000000] 
+NAbasecoordinates['MC']['1'] = [(0.000000 - 0.380579), (-1.010259 - 1.954324), 0.000000] 
+NAbasecoordinates['MC']['2'] = [(2.269450 - 0.380579), (-0.120783 - 1.954324), 0.000000]
+NAbasecoordinates['MC']['3'] = [(1.203833 - 0.380579), (4.41199 - 1.954324) , 0.000000]
+NAbasecoordinates['MC']['4'] = [(-0.527970 - 0.380579), (4.602202 - 1.954324) , 0.000000]
+NAbasecoordinates['MC']['5'] = [(-2.036772 - 0.380579), (2.647095 - 1.954324) , 0.00000]
+NAbasecoordinates['MC']['6'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324) , 0.000000]
+
+NAbasecoordinates['MG'] = {}
+NAbasecoordinates['MG']['0'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000] 
+NAbasecoordinates['MG']['1'] = [(0.000000 - 1.456680), (-1.009529 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['2'] = [(4.872516 - 1.456680), (0.0977814 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['3'] = [(5.295175 - 1.456680), (1.782283 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['4'] = [(3.613335 - 1.456680), (3.374547 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['5'] = [(1.396986 - 1.456680), (4.394213 - 2.182359), 0.00000]
+NAbasecoordinates['MG']['6'] = [(-0.751391 - 1.456680), (2.120132 - 2.182359), 0.00000]
+NAbasecoordinates['MG']['7'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000]
+
+NAbasecoordinates['MU'] = {}
+NAbasecoordinates['MU']['0'] = [(-2.082780 - 0.326420), (0.111836 - 1.985475), 0.000000] 
+NAbasecoordinates['MU']['1'] = [(0.000000 - 0.326420), (-1.008947 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['2'] = [(2.292490 - 0.326420), (-0.048394 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['3'] = [(2.092152 - 0.326420), (2.445179 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['4'] = [(0.177156 - 0.326420), (4.020060 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['5'] = [(-2.124577 - 0.326420), (2.616537 - 1.985475), 0.00000]
+NAbasecoordinates['MU']['6'] = [(-2.082780 - 0.326420), (0.111836 - 1.985475), 0.00000]
+
+
 
 #Definitions for drawing nucleotides
 NAbasecolor = {}
