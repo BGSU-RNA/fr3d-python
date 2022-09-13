@@ -13,4 +13,4 @@ outputHTML = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\output'
 fr3d_pickle_path = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data'
 
 storeMatlabFR3DPairs = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs/"
-
+fr3d_pickle_path = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data'

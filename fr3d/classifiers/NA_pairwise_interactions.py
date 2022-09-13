@@ -66,9 +66,7 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
-
-#from fr3d.classifiers.class_limits import basepair_cutoffs
-from class_limits import basepair_cutoffs
+from fr3d.classifiers.class_limits import nt_nt_cutoffs
 
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
@@ -173,6 +171,13 @@ def load_structure(filename):
 
     message = []
     original_filename = filename
+
+    # if not available, try other extensions
+    if not os.path.exists(filename):
+        if os.path.exists(filename+".cif"):
+            filename = filename + ".cif"
+        elif os.path.exists(filename+".pdb"):
+            filename = filename + ".pdb"
 
     # if not available, try to download from PDB and save locally
     if not os.path.exists(filename):
@@ -1784,54 +1789,56 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
 
     PDB_IFE_Dict = defaultdict(str)   # accumulate PDB-IFE pairs
     for PDB in PDB_list:
-        if "nrlist" in PDB and "NR_" in PDB:
-                                      # referring to an equivalence class online
-                                      # download the entire representative set,
-                                      # then find the right line for the equivalence class
-                                      # then extract the list
-            if sys.version_info[0] < 3:
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
+        try:
+            if "nrlist" in PDB and "NR_" in PDB:
+                                          # referring to an equivalence class online
+                                          # download the entire representative set,
+                                          # then find the right line for the equivalence class
+                                          # then extract the list
+                if sys.version_info[0] < 3:
+                    f = urllib.urlopen(PDB)
+                    myfile = f.read()
+                else:
+                    f = urllib.request.urlopen(PDB)
+                    myfile = f.read().decode()
+
+                alltbody = myfile.split("tbody")
+                alllines = alltbody[1].split("<a class='pdb'>")
+                del alllines[0]
+                for line in alllines:
+                    fields = line.split("</a>")
+                    if len(fields[0]) > 1:
+                        newIFE = fields[0].replace(" ","")   # remove spaces
+                        newPDB = newIFE[0:4]
+                        PDB_IFE_Dict[newPDB] += "+" + newIFE
+
+            elif "nrlist" in PDB:           # referring to a representative set online
+                if sys.version_info[0] < 3:
+                    f = urllib.urlopen(PDB)
+                    myfile = f.read()
+                else:
+                    f = urllib.request.urlopen(PDB)
+                    myfile = f.read().decode()
+                alllines = myfile.split("\n")
+                for line in alllines:
+                    fields = line.split(",")
+
+                    if len(fields) > 1 and len(fields[1]) > 4:
+                        newPDB = fields[1][1:5]   # use only PDB identifier, ignore IFE for now
+                        PDB_IFE_Dict[newPDB] += "+" + fields[1].replace('"','')
+
+            elif "+" in PDB:                      # in case multiple chains in an IFE
+                newPDB = PDB.split("|")[0]        # in case model, chain is indicated
+                PDB_IFE_Dict[newPDB] = PDB
+
+            elif "|" in PDB:                      # in case model, chain is indicated
+                newPDB = PDB.split("|")[0]
+                PDB_IFE_Dict[newPDB] = PDB
+
             else:
-                f = urllib.request.urlopen(PDB)
-                myfile = f.read().decode()
-
-            alltbody = myfile.split("tbody")
-            alllines = alltbody[1].split("<a class='pdb'>")
-            del alllines[0]
-            for line in alllines:
-                fields = line.split("</a>")
-                if len(fields[0]) > 1:
-                    newIFE = fields[0].replace(" ","")   # remove spaces
-                    newPDB = newIFE[0:4]
-                    PDB_IFE_Dict[newPDB] += "+" + newIFE
-
-        elif "nrlist" in PDB:           # referring to a representative set online
-            if sys.version_info[0] < 3:
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
-            else:
-                f = urllib.request.urlopen(PDB)
-                myfile = f.read().decode()
-            alllines = myfile.split("\n")
-            for line in alllines:
-                fields = line.split(",")
-
-                if len(fields) > 1 and len(fields[1]) > 4:
-                    newPDB = fields[1][1:5]   # use only PDB identifier, ignore IFE for now
-                    PDB_IFE_Dict[newPDB] += "+" + fields[1].replace('"','')
-
-        elif "+" in PDB:                      # in case multiple chains in an IFE
-            newPDB = PDB.split("|")[0]        # in case model, chain is indicated
-            PDB_IFE_Dict[newPDB] = PDB
-
-        elif "|" in PDB:                      # in case model, chain is indicated
-            newPDB = PDB.split("|")[0]
-            PDB_IFE_Dict[newPDB] = PDB
-
-        else:
-            PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
-
+                PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
+        except:
+            print("Not able to process %s" % PDB)
     return PDB_IFE_Dict
 
 
