@@ -66,8 +66,8 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
-from fr3d.classifiers.class_limits import nt_nt_cutoffs
 
+from fr3d.classifiers.class_limits import basepair_cutoffs
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
@@ -104,8 +104,15 @@ def focus_basepair_cutoffs(basepair_cutoffs,interactions):
     focused_basepair_cutoffs = {}
 
     lower_interactions = set([])
-    for interaction in interactions:
-        lower_interactions.add(interaction.lower())
+
+    if interactions:
+        for interaction in interactions:
+            lower_interactions.add(interaction.lower())
+    else:
+        # use all available interactions
+        for combination in basepair_cutoffs.keys():
+            for interaction in basepair_cutoffs[combination]:
+                lower_interactions.add(interaction.lower())
 
     for combination in basepair_cutoffs.keys():
         focused_basepair_cutoffs[combination] = {}
@@ -123,6 +130,16 @@ def focus_basepair_cutoffs(basepair_cutoffs,interactions):
                     focused_basepair_cutoffs[combination][-1][interaction] = {}   # interactions with negative normal
                     for subcategory in basepair_cutoffs[combination][interaction]:
                         focused_basepair_cutoffs[combination][-1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
+
+    # check how this worked
+    """
+    for combination in focused_basepair_cutoffs:
+        for normal in focused_basepair_cutoffs[combination]:
+            for interaction in focused_basepair_cutoffs[combination][normal]:
+                for subcategory in focused_basepair_cutoffs[combination][normal][interaction]:
+                    print(combination, normal, interaction, subcategory, focused_basepair_cutoffs[combination][normal][interaction][subcategory])
+                    pass
+    """
 
     return focused_basepair_cutoffs
 
@@ -370,6 +387,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
+
+    try:
+        keys = focused_basepair_cutoffs.keys()
+    except:
+        focused_basepair_cutoffs = focus_basepair_cutoffs(basepair_cutoffs,categories['basepair'])
+        ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
@@ -1465,7 +1488,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
-    if abs(displ[0,2]) > 3.6:             # too far out of plane for a basepair
+    if abs(displ[0,2]) > 3.6:         # too far out of plane for a basepair
         return "", "", datapoint
 
     # check sign of normal vector to cut number of possible families in half
@@ -1507,7 +1530,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
             possible_interactions.add(interaction)  # use exact interaction like cWw
 
-    if len(possible_interactions) > 0:
+    if datapoint and len(possible_interactions) > 0:
         print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
     # check hydrogen bonds for interactions that are still possible
@@ -1527,6 +1550,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                     atom_set_to_bond_parameters[atom_set] = result
 
                     # store the lowest "badness" for this donor-hydrogen pair
+                    # over all acceptors; avoids identifying a worse option
                     if result[0]:
                         donor    = atom_set[0]
                         hydrogen = atom_set[1]
@@ -1536,39 +1560,42 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                         else:
                             donor_hydrogen_to_badness[(donor,hydrogen)] = result[4]
 
-                    if result[0]:
+                    if datapoint and result[0]:
                         if result[1]:
-                            print('%s has   %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                            print('%s has   %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
                         else:
-                            print('%s lacks %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                            print('%s lacks %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
 
-        else:
+        elif datapoint:
             print('No hydrogen bonds to check for %s' % LW)
 
     # count hydrogen bonds for each possible annotation
-    for LW in possible_interactions:
-        if LW in hydrogen_bonds.keys():
-            checked_counter = 0
-            bond_counter = 0
-            for atom_set in hydrogen_bonds[LW]:
-                result = atom_set_to_bond_parameters[atom_set]
+    # only for informational purposes
+    if datapoint:
+        LW_bond_counter = {}
+        for LW in possible_interactions:
+            if LW in hydrogen_bonds.keys():
+                checked_counter = 0
+                bond_counter = 0
+                for atom_set in hydrogen_bonds[LW]:
+                    result = atom_set_to_bond_parameters[atom_set]
 
-                if result[0]:
-                    checked_counter += 1
-                    if result[1]:
-                        donor    = atom_set[0]
-                        hydrogen = atom_set[1]
-                        # if the badness is not so far from the best
-                        if result[4] < donor_hydrogen_to_badness[(donor,hydrogen)] + 0.5:
-                            bond_counter += 1
-                        else:
-                            print('Rejected %s,%s,%s,%s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                    if result[0]:
+                        checked_counter += 1
+                        if result[1]:
+                            donor    = atom_set[0]
+                            hydrogen = atom_set[1]
+                            # if the badness is not so far from the best
+                            if result[4] < donor_hydrogen_to_badness[(donor,hydrogen)] + 0.5:
+                                bond_counter += 1
+                            else:
+                                print('Rejected %3s,%3s,%3s,%3s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
 
-            print('%s has %d out of %s hydrogen bonds' % (LW,bond_counter,checked_counter))
-            LW_bond_counter[LW] = (bond_counter,checked_counter)
+                print('%s has %d out of %s hydrogen bonds' % (LW,bond_counter,checked_counter))
+                LW_bond_counter[LW] = (bond_counter,checked_counter)
 
-        else:
-            print('No hydrogen bonds to check for %s' % LW)
+            else:
+                print('No hydrogen bonds to check for %s' % LW)
 
 
     if len(ok_normal_displ) == 0:
@@ -1616,10 +1643,16 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
         ok_gap.append((interaction,subcategory))
 
-    # deal with the possibility of multiple matching interactions
+
+    # use poor hydrogen bonds to knock out annotations
+    # TODO
+
+    # no annotated basepairs
     if len(ok_gap) == 0:
         return "", "", datapoint
-    elif len(ok_gap) > 1:
+
+    # multiple matching interactions
+    if len(ok_gap) > 1:
         interactions = sorted(list(set([i for i,s in ok_gap])))
         if len(ok_gap) == 2:
             i0 = ok_gap[0][0]  # first interaction
@@ -1628,17 +1661,23 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 ok_gap = [ok_gap[0]]   # just use the main category
             elif "a" + i1 == i0:
                 ok_gap = [ok_gap[1]]   # just use the main category
-        if False and len(set([i for i,s in ok_gap])) > 1:
+        if datapoint and len(set([i for i,s in ok_gap])) > 1:
             print("Multiple basepair types for %s, using the first one" % datapoint['url'])
             print(ok_gap)
             print(datapoint)
 
+    # store diagnostic data about this interaction
     if datapoint:
         datapoint['basepair'] = ok_gap[0][0]
         datapoint['basepair_subcategory'] = ok_gap[0][1]
+        datapoint['hbond'] = []
+        LW = ok_gap[0][0]
+        if LW in hydrogen_bonds.keys():
+            for atom_set in hydrogen_bonds[LW]:
+                result = atom_set_to_bond_parameters[atom_set]
+                datapoint['hbond'].append((atom_set,result))
 
-    # print the eventual basepair classification if one is found, to compare to hydrogen bonds
-    if len(ok_gap) > 0:
+        # print the basepair classification if one is found, to compare to hydrogen bonds
         print("Checking cutoffs gives classification %s" % ok_gap)
 
     # return just the first interaction type and subcategory
@@ -2062,16 +2101,8 @@ if __name__=="__main__":
     failed_structures = []
     counter = 0
 
+    # restrict dictionary of cutoffs to just the basepairs needed here
     focused_basepair_cutoffs = focus_basepair_cutoffs(basepair_cutoffs,categories['basepair'])
-
-    # check how this worked
-    for combination in focused_basepair_cutoffs:
-        for normal in focused_basepair_cutoffs[combination]:
-            for interaction in focused_basepair_cutoffs[combination][normal]:
-                for subcategory in focused_basepair_cutoffs[combination][normal][interaction]:
-                    #print(combination, normal, interaction, subcategory, focused_basepair_cutoffs[combination][normal][interaction][subcategory])
-                    pass
-
     ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     """
