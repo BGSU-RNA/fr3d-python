@@ -5,7 +5,8 @@
 # python setup.py install
 # "C:\Program Files\Python38\python" setup.py install
 
-# "C:\Program Files\Python38\python" NA_pairwise_interactions.py 4TNA
+# "C:\Program Files\Python38\python" NA_pairwise_interactions.py -c basepair 4TNA
+# "C:\Program Files\Python38\python" develop_NA_pairwise_interactions.py
 
 from NA_pairwise_interactions import *
 
@@ -68,8 +69,8 @@ PDB_list = ['4RKV','4J50','3AM1']
 PDB_list = ['4TNA.cif']
 PDB_list = ['5T2A']  # has a conflicting cBW annotation
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
-PDB_list = ['4TNA']
 PDB_list = ['5UED']
+PDB_list = ['4TNA']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
