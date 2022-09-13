@@ -19,6 +19,9 @@ from fr3d.localpath import fr3d_pickle_path
 
 from fr3d.data.base import EntitySelector
 
+from fr3d.classifiers.class_limits import basepair_cutoffs
+from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from hydrogen_bonds import check_hydrogen_bond
 
 PDB_list = ['5AJ3']
 PDB_list = ['6hiv']
@@ -51,7 +54,6 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
 PDB_list = ['4V9F']
 PDB_list = ['203D']
 PDB_list = ['7k00']
-PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['6CFJ']
 PDB_list = ['7K00']
 PDB_list = ['4V9F']
@@ -71,6 +73,7 @@ PDB_list = ['5T2A']  # has a conflicting cBW annotation
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
 PDB_list = ['5UED']
 PDB_list = ['4TNA']
+PDB_list = ['4V9F','6ZMI','7K00','4TNA']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
