@@ -326,6 +326,7 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
+    PDB_list = ['4V9F','6ZMI','7K00','4TNA']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -405,7 +406,13 @@ if __name__=="__main__":
             colors2d  = []
             sizes = []
 
-            c = 0
+            hdvalues = []
+            havalues = []
+            hbvalues = []
+            hcolors2d = []  # more hydrogen bonds than basepairs
+            hsizes    = []
+
+            c = 0           # count points
 
             # loop over pairs for which we have data, finding those with the interaction and base combination
             for pair,datapoint in pair_to_data.items():
@@ -510,31 +517,53 @@ if __name__=="__main__":
                     colors2d.append(color)
                     sizes.append(size)
 
+                    if 'hbond' in datapoint:
+                        for hbond in datapoint['hbond']:
+                            if hbond[0][0]:    # able to check the hydrogen bond
+                                hdvalues.append(hbond[1][2])  # hbond distance
+                                havalues.append(hbond[1][3])  # hbond angle
+                                hbvalues.append(hbond[1][4])  # hbond badness
+                                hcolors2d.append(color)
+                                hsizes.append(size)
+
+
+            #print(hdvalues)
+            #print(havalues)
+            #print(hbvalues)
+
             # make the figure
             if c > 0:
-                fig = plt.figure(figsize=(11.0, 4.0))
+                fig = plt.figure(figsize=(11.0, 7.0))
 
-                ax = fig.add_subplot(1, 4, 1)
+                ax = fig.add_subplot(2, 3, 1)
                 ax.axis("equal")
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,1)
                 ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('x and y for %d %s %s' % (c,base_combination,interaction_list[0]))
                 draw_base(nt1_seq,'default',2,ax)
 
-                ax = fig.add_subplot(1, 4, 2)
+                ax = fig.add_subplot(2, 3, 2)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,2)
                 ax.scatter(tvalues,rvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('theta and radius')
+                ax.set_title('radius vs theta')
 
-                ax = fig.add_subplot(1, 4, 3)
+                ax = fig.add_subplot(2, 3, 3)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,3)
                 ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('angle and normal blue=M only')
+                ax.set_title('normal vs angle blue=M only')
 
-                ax = fig.add_subplot(1, 4, 4)
+                ax = fig.add_subplot(2, 3, 4)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,4)
                 ax.scatter(gvalues,zvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('gap12 and z values red=P only')
+                ax.set_title('z versus gap12 red=P only')
+
+                ax = fig.add_subplot(2, 3, 5)
+                ax.scatter(hdvalues,havalues,color=hcolors2d,marker=".",s=hsizes)
+                ax.set_title('h-angle vs h-dist')
+
+                ax = fig.add_subplot(2, 3, 6)
+                ax.scatter(hdvalues,hbvalues,color=hcolors2d,marker=".",s=hsizes)
+                ax.set_title('h-badness vs h-dist')
 
                 # show all plots for this interaction_list
                 figManager = plt.get_current_fig_manager()
