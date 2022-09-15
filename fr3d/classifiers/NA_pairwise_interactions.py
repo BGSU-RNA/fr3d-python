@@ -1218,44 +1218,46 @@ def check_convex_hull_atoms(x,y,z, parent):
     near_z_cutoff = 4.5
     inside = False
     if abs(z) < near_z_cutoff:
-        if parent == 'G' or parent == 'DG':
-            if -1.577781*x +  4.872516*y + 13.254203 > 0:  # Left of C1'-H21
-                if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
-                    if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
-                            if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
-                                if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
-                                    if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
-                                        if  1.943584*x +  2.101573*y +  9.539166 > 0:  # Left of H8-C1'
-                                            inside = True
-        elif parent == 'A' or parent == 'DA':
-            if -2.797924*x +  4.271447*y + 11.002815 > 0:  # Left of C1'-H2
+        if parent == 'A' or parent == 'DA':
+            if -2.327244*x +  4.271447*y +  9.515028 > 0:  # Left of H9'-H2
                 if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
                     if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
                         if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
-                            if  1.927145*x +  2.100463*y +  9.078623 > 0:  # Left of H8-C1'
-                                    inside = True
-        elif parent == 'C' or parent == 'DC':
-            if -1.359217*x +  2.269450*y +  6.210683 > 0:  # Left of C1'-O2
-                if -5.129985*x + -1.488094*y +  7.300944 > 0:  # Left of O2-test
-                    if  2.362107*x + -2.818128*y +  8.986149 > 0:  # Left of test-H5
-                        if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
-                            if  1.603632*x +  2.082733*y +  6.784744 > 0:  # Left of H6-C1'
+                            if  1.456465*x +  2.100463*y +  7.567280 > 0:  # Left of H8-H9'
                                 inside = True
+        elif parent == 'C' or parent == 'DC':
+            if -0.889476*x +  2.269450*y +  5.323403 > 0:  # Left of H1'-O2
+                if -4.532779*x + -1.065616*y +  6.851131 > 0:  # Left of O2-H42
+                    if -0.190206*x + -1.731804*y +  5.226294 > 0:  # Left of H42-H41
+                        if  1.955107*x + -1.508802*y +  6.480180 > 0:  # Left of H41-H5
+                            if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
+                                if  1.133891*x +  2.082733*y +  5.627625 > 0:  # Left of H6-H1'
+                                    inside = True
+        elif parent == 'G' or parent == 'DG':
+            if -1.107310*x +  4.872516*y + 11.647152 > 0:  # Left of H9'-H21
+                if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
+                    if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
+                        if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
+                            if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
+                                if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
+                                    if  1.473113*x +  2.101573*y +  7.865111 > 0:  # Left of H8-H9'
+                                        inside = True
+        
         elif parent == 'U':
-            if -1.431606*x +  2.292490*y +  6.397378 > 0:  # Left of C1'-O2
+            if -0.960553*x +  2.292490*y +  5.471254 > 0:  # Left of H1'-O2
                 if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
                     if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
                         if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
                             if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
-                                if  1.591836*x +  2.082780*y +  6.756329 > 0:  # Left of H6-C1'
+                                if  1.120783*x +  2.082780*y +  5.621468 > 0:  # Left of H6-H1' 
                                     inside = True
         elif parent == 'DT':
-            if -1.596119*x +  2.281277*y +  7.309875 > 0:  # Left of C1'-O2
+            if -1.125648*x +  2.281277*y +  6.199955 > 0:  # Left of C1'-O2
                 if -2.368105*x + -0.456021*y +  4.878252 > 0:  # Left of O2-H3
                     if -1.526233*x + -1.897795*y +  4.450270 > 0:  # Left of H3-O4
                         if  1.301401*x + -2.544887*y +  5.949759 > 0:  # Left of O4-C7
                             if  2.031505*x +  1.412190*y +  3.691439 > 0:  # Left of C7-C6
-                                if  2.157551*x +  1.205236*y +  3.628188 > 0:  # Left of C6-C1'
+                                if  1.687080*x +  1.205236*y +  3.097805 > 0:  # Left of C6-C1'
                                     inside = True
         else:
             print("Unrecognized parent " + parent + " in function check_convex_hull_atoms. FR3D is currently unable to recognize this modified base.")
@@ -1300,25 +1302,6 @@ def create_modified_base_atoms_list(nt):
             atomList.append(atom.name)
     return atomList
 
-def stacking_interaction(minz, normal_Z):
-    """Method used to determine orientation of annotated interaction depending on the minimum z found and the z value of the normal line
-     """
-    if minz > 0: 
-        if normal_Z > 0:
-            interaction = "ns35" # second base above, pointing up 
-            interaction_reversed = "ns53"
-        elif normal_Z < 0:
-            interaction = "ns33" #second base above, pointing down
-            interaction_reversed = "ns33"
-    elif minz < 0:
-        if normal_Z > 0: 
-            interaction = "ns53"  #second base below, pointing up
-            interaction_reversed = "ns35"
-        elif normal_Z < 0: 
-            interaction =  "ns55" #second base below, pointing down
-            interaction_reversed = "ns55"
-    return interaction, interaction_reversed
-
 def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucleotides, datapoint):
     """Checks for nucleotide base stacking.
     Two nucleotides and their parents passed in.
@@ -1339,35 +1322,35 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
     interaction_reversed = ""
     reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
-    convexHullAtoms = {}
-    convexHullAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4'] #9/6/2022 took out "C1'",
-    convexHullAtoms['DA'] = convexHullAtoms['A']
-    convexHullAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
-    convexHullAtoms['DC'] = convexHullAtoms['C']
-    convexHullAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4']
-    convexHullAtoms['DG'] = convexHullAtoms['G']
-    convexHullAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2']
-    convexHullAtoms['DT'] = ['N1','C6', 'H6','C5','C7','H71','H72','H73','C4','O4','N3','H3','C2','O2']
+    baseAtoms = {}
+    baseAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4'] #9/6/2022 took out "C1'",
+    baseAtoms['DA'] = baseAtoms['A']
+    baseAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
+    baseAtoms['DC'] = baseAtoms['C']
+    baseAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4']
+    baseAtoms['DG'] = baseAtoms['G']
+    baseAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2']
+    baseAtoms['DT'] = ['N1','C6', 'H6','C5','C7','H71','H72','H73','C4','O4','N3','H3','C2','O2']
 
     #Create a list in case one of these is nucleotides is a modified nucleotide. 
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
-    if nt1.sequence in convexHullAtoms and modified_nucleotides: #standard base
-        nt1ConvexHullAtomsList = convexHullAtoms[parent1]
+    if nt1.sequence in baseAtoms and modified_nucleotides: #standard base
+        nt1baseAtomsList = baseAtoms[parent1]
     elif nt1.sequence in modified_nucleotides: #modified base
         if annotate_modified_nucleotides:
-            nt1ConvexHullAtomsList = create_modified_base_atoms_list(nt1)
+            nt1baseAtomsList = create_modified_base_atoms_list(nt1)
         else:
             print("Modified Nucleotides not considered for annotation %s and %s" % (nt1.unit_id(),nt2.unit_id()))
             return "", datapoint, ""
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
-    if nt2.sequence in convexHullAtoms:
-        nt2ConvexHullAtomsList = convexHullAtoms[parent2]
+    if nt2.sequence in baseAtoms:
+        nt2baseAtomsList = baseAtoms[parent2]
     elif nt2.sequence in modified_nucleotides:
         if annotate_modified_nucleotides:
-            nt2ConvexHullAtomsList = create_modified_base_atoms_list(nt2)
+            nt2baseAtomsList = create_modified_base_atoms_list(nt2)
         else:
             print("Modified Nucleotides not considered for annotation %s and %s" % (nt1.unit_id(),nt2.unit_id()))
             return "", datapoint, ""
@@ -1381,8 +1364,8 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
 
     #Is there overlap?
     #Returns true if an atom is projected inside the atom (overlap). Also returns the x,y,z coordinates of the nt inside and the minimum z value
-    nt2on1, coords = return_overlap(nt2ConvexHullAtomsList, nt1, nt2, parent1)
-    nt1on2, coords2 = return_overlap(nt1ConvexHullAtomsList, nt2, nt1, parent2) 
+    nt2on1, coords = return_overlap(nt2baseAtomsList, nt1, nt2, parent1)
+    nt1on2, coords2 = return_overlap(nt1baseAtomsList, nt2, nt1, parent2) 
     
     #check near stacking
     if nt2on1 or nt1on2:
