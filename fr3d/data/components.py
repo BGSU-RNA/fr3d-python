@@ -351,17 +351,24 @@ class Component(EntitySelector):
         """
         try:
             if self.sequence in defs.NAbasehydrogens:
-                hydrogens = defs.NAbasehydrogens[self.sequence]
-                coordinates = defs.NAbasecoordinates[self.sequence]
+                hydrogens = set(defs.NAbasehydrogens[self.sequence])
 
-                for hydrogenatom in hydrogens:
-                    hydrogencoordinates = coordinates[hydrogenatom]
-                    newcoordinates = self.base_center + \
-                        np.dot(self.rotation_matrix, hydrogencoordinates)
-                    self._atoms.append(Atom(name=hydrogenatom,
-                                            x=newcoordinates[0, 0],
-                                            y=newcoordinates[0, 1],
-                                            z=newcoordinates[0, 2]))
+                # skip any hydrogens that are already defined
+                hydrogens = hydrogens - set(self.centers.__iter__())
+
+                if len(hydrogens) > 0:
+                    coordinates = defs.NAbasecoordinates[self.sequence]
+
+                    #print(set(self.centers.__iter__()))
+
+                    for hydrogenatom in hydrogens:
+                        hydrogencoordinates = coordinates[hydrogenatom]
+                        newcoordinates = self.base_center + \
+                            np.dot(self.rotation_matrix, hydrogencoordinates)
+                        self._atoms.append(Atom(name=hydrogenatom,
+                                                x=newcoordinates[0, 0],
+                                                y=newcoordinates[0, 1],
+                                                z=newcoordinates[0, 2]))
 
         except:
                 print("%s Adding hydrogens failed" % self.unit_id())
