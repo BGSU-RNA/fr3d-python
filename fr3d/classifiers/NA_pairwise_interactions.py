@@ -1541,11 +1541,46 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         if LW in hydrogen_bonds.keys():
             for atom_set in hydrogen_bonds[LW]:
                 if not atom_set in atom_set_to_bond_parameters:
-                    # return True/False, length, angle, badness
+                    # return bond checked, bond made, length, angle, badness
                     if atom_set[3] == '12':
                         result = check_hydrogen_bond(nt1,nt2,atom_set)
                     else:
                         result = check_hydrogen_bond(nt2,nt1,atom_set)
+
+                    """
+                    In some structures like 7QI4, H61 and H62 on A are switched relative
+                    to https://www.rcsb.org/ligand/A So if one of these hydrogens is being
+                    checked, it's not already good, and it's plausible,
+                    check both, and take the better hydrogen bond.
+                    """
+
+                    if result[4] > 0 and result[2] < 5:
+                        atom_set_2 = ()
+                        if atom_set[1] == 'H61':
+                            atom_set_2 = (atom_set[0],'H62',atom_set[2],atom_set[3])
+                        elif atom_set[1] == 'H62':
+                            atom_set_2 = (atom_set[0],'H61',atom_set[2],atom_set[3])
+
+                        if atom_set_2:
+                            if atom_set_2[3] == '12':
+                                result2 = check_hydrogen_bond(nt1,nt2,atom_set_2)
+                            else:
+                                result2 = check_hydrogen_bond(nt2,nt1,atom_set_2)
+
+                            print(atom_set)
+                            print(result)
+                            print(atom_set_2)
+                            print(result2)
+
+                            for atom in nt1.atoms():
+                                print(atom.name,atom.x,atom.y,atom.z)
+
+                            if result2[4] < result[4]:
+                                # use the better result
+                                result = result2
+                                print('Used a better hydrogen')
+                                # but don't change the atom set since those are
+                                # tied to specific basepairs
 
                     atom_set_to_bond_parameters[atom_set] = result
 
@@ -1570,7 +1605,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             print('No hydrogen bonds to check for %s' % LW)
 
     # count hydrogen bonds for each possible annotation
-    # only for informational purposes
+    # only for informational purposes at the moment
     if datapoint:
         LW_bond_counter = {}
         for LW in possible_interactions:
@@ -1923,7 +1958,7 @@ def write_unit_data_file(PDB,unit_data_path,structure):
             rttns = []
 
             # sort by symmetry and index
-            for symmetry,index,nt in sorted(all_nts[id]):
+            for symmetry,index,nt in sorted(all_nts[id], key=lambda p: (p[0],p[1])):
                 units.append(nt.unit_id())
                 order.append(nt.index)
                 cntrs.append(nt.centers["glycosidic"])
