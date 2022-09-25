@@ -70,10 +70,11 @@ PDB_list = ['4RKV','4J50','3AM1']
 
 PDB_list = ['4TNA.cif']
 PDB_list = ['5T2A']  # has a conflicting cBW annotation
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
 PDB_list = ['5UED']
 PDB_list = ['4TNA']
 PDB_list = ['4V9F','6ZMI','7K00','4TNA']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.248/2.5A/csv']
+PDB_list = ['7QI4','4TNA']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -86,8 +87,8 @@ categories['basepair'] = []
 categories['stacking'] = []
 categories['coplanar'] = []
 
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
@@ -118,7 +119,8 @@ count_pair = 0
 PDBs = PDB_IFE_Dict.keys()
 #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
 
-if len(PDBs) > 1 and not OverwriteDataFiles:
+# If just a few files are requested, overwrite data files
+if len(PDBs) > 10 and not OverwriteDataFiles:
     print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
 else:
     print("Annotating interactions and saving in %s" % outputNAPairwiseInteractions)
@@ -141,7 +143,7 @@ for PDB in PDBs:
         pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
         pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
-        if not os.path.exists(pair_to_data_output_file) or len(PDBs) == 1 or OverwriteDataFiles:
+        if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles:
 
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
