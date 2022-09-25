@@ -13,7 +13,8 @@ def load_ideal_basepair_hydrogen_bonds():
 
     hbond = {}
 
-    with open('H_bonding_Atoms_from_Isostericity_Table.csv', newline='') as csvfile:
+    #with open('H_bonding_Atoms_from_Isostericity_Table.csv', newline='') as csvfile:
+    with open('H_bonding_Atoms_from_Isostericity_Table.csv') as csvfile:
         bond_reader = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in bond_reader:
             if len(row) == 9:
@@ -94,11 +95,11 @@ def check_hydrogen_bond(nt1,nt2,atoms):
     """
     Calculate hydrogen bond parameters for hydrogen donor and hydrogen from nt1
     and hydrogen bond acceptor from nt2.
-    Return:
+    Return a list telling:
       Whether or not the bond could be checked
       Whether or not the bond meets criteria to form
       Distance between hydrogen and acceptor if available
-      Angle in degrees
+      Angle in degrees if available
       A measure of the "badness" of the bond
     """
 
@@ -109,14 +110,14 @@ def check_hydrogen_bond(nt1,nt2,atoms):
     if atoms[1] == "H2'" or len(hydrogen) < 3:
         # hydrogen coordinates are not available, check donor-acceptor distance
         if len(donor) == 3 and len(acceptor) == 3:
-            distance = np.linalg.norm(np.subtract(donor,acceptor))
+            heavy_distance = np.linalg.norm(np.subtract(donor,acceptor))
         else:
             return False, False, float("NaN"), float("NaN"), float("Inf")
 
-        if distance > 4.5:
-            return True, False, distance, float("NaN"), max(0,distance-3.0)
+        if heavy_distance > 4.5:
+            return True, False, heavy_distance, float("NaN"), max(0,heavy_distance-3.0)
         else:
-            return True, True, distance, float("NaN"), max(0,distance-3.0)
+            return True, True, heavy_distance, float("NaN"), max(0,heavy_distance-3.0)
 
 
     else:
@@ -134,5 +135,10 @@ def check_hydrogen_bond(nt1,nt2,atoms):
                 return True, True, distance, hb_angle, (max(0,distance-2.5)+max(0,150-hb_angle)/20.0)
             else:
                 return True, False, distance, hb_angle, (max(0,distance-2.5)+max(0,150-hb_angle)/20.0)
+
+        elif distance < 4.0:
+            return True, True, distance, float("NaN"), max(0,distance-2.5)
+        else:
+            return True, False, distance, float("NaN"), max(0,distance-2.5)
 
 
