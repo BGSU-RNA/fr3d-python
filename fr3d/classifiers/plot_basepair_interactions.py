@@ -12,6 +12,9 @@ from collections import defaultdict
 import math
 import os
 import sys
+import numpy as np
+import random
+
 if sys.version_info[0] < 3:
     from urllib import urlretrieve as urlretrieve
 else:
@@ -28,6 +31,189 @@ from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
+
+from orderBySimilarityTemp import treePenalizedPathLength
+
+JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
+JS2 = '  <script src="./js/jquery.jmolTools.js"></script>'
+JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
+JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
+JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+TEMPLATEPATH = '../search/'
+OUTPUTPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/output/"
+
+def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
+    """ Write the list of candidates in an HTML format that also shows
+    the coordinate window and a heat map of all-against-all distances.
+    """
+
+    pairTypes = ['pairsStacks']
+    pairsToPrint = defaultdict(list)
+
+    pairsToPrint['pairsStacks'] = [(1,2)]
+
+    pagetitle = "%s" % Q['name']
+
+    htmlfilename = Q['name'].replace(" ","_")
+
+    candidatelist = '<table style="white-space:nowrap;">\n'
+
+    numPositions = 2
+
+    sequence_column = 3
+
+    # write header line
+    candidatelist += "<tr><th>S.</th><th>Show</th>"
+
+    sequence_column += 1
+    for j in range(0,numPositions):
+        candidatelist += "<th>Position %d</th>" % (j+1)
+        sequence_column += 1
+    candidatelist += "<th>Python</th>"
+    candidatelist += "<th>Subcat</th>"
+    candidatelist += "<th>New Python</th>"
+    candidatelist += "<th>Matlab</th>"
+
+    candidatelist += "<th>x</th>"
+    candidatelist += "<th>y</th>"
+    candidatelist += "<th>z</th>"
+    candidatelist += "<th>gap12</th>"
+    candidatelist += "<th>angle_in_plane</th>"
+    candidatelist += "<th>normal_z</th>"
+    candidatelist += "<th>max_distance</th>"
+    candidatelist += "<th>min_angle</th>"
+    candidatelist += "<th>max_badness</th>"
+
+    candidatelist += "</tr>\n"
+
+    # write one row for each candidate
+    for i in range(0,len(candidates)):
+        candidate = candidates[i]
+        candidatelist += '<tr><td>'+str(i+1)+'.</td><td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
+        for j in range(0,numPositions):
+            candidatelist += candidate[j]
+            if j < numPositions-1:
+                candidatelist += ','
+        candidatelist += '">&nbsp</label></td>'
+
+        PDB_id = candidate[0][0:4]
+
+        """
+        if PDB_id in Q["PDB_data_file"]:
+            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][PDB_id])
+        else:
+            candidatelist += "<td>NA</td>"
+        """
+
+        # write unit ids
+        for j in range(0,numPositions):
+            candidatelist += "<td>"+candidate[j]+"</td>"
+
+        # write Python, Matlab interactions
+        candidatelist += "<td>%s</td>" % candidate[11]  # python
+        candidatelist += "<td>%d</td>" % candidate[12]  # python subcategory
+        candidatelist += "<td>%s</td>" % candidate[13]  # new python
+        candidatelist += "<td>%s</td>" % candidate[14]  # matlab
+
+        for colnum in range(2,11):
+            candidatelist += "<td>%0.2f</td>" % candidate[colnum]
+
+        candidatelist += '</tr>\n'
+    candidatelist += '</table>\n'
+
+    discrepancydata = ''
+
+    if np.size(allvsallmatrix) > 0:
+        s = allvsallmatrix.shape[0]
+        for c in range(0,s):
+            ife1 = candidates[c][0]
+            for d in range(0,s):
+                ife2 = candidates[d][0]
+
+                discrepancydata += '{"discrepancy": ' + "%.4f" % allvsallmatrix[c][d]
+                discrepancydata += ', "ife1": "' + ife1 + '", "ife1_index": ' + str(c)
+                discrepancydata += ', "ife2": "' + ife2 + '", "ife2_index": ' + str(d) + '}'
+                if c < s-1 or d < s-1:
+                    discrepancydata += ',\n'
+
+            """
+                      {"discrepancy": 0.0, "ife1": "3KIS|1|a", "ife1_index": 0, "ife2": "3KIS|1|a", "ife2_index": 0},
+                      {"discrepancy": 0.14582092027413304, "ife1": "3KIS|1|a", "ife1_index": 0, "ife2": "3FIC|1|A", "ife2_index": 1},
+                      {"discrepancy": 0.0093556396649322, "ife1": "3KIS|1|a", "ife1_index": 0, "ife2": "3KIQ|1|a", "ife2_index": 2},
+                      {"discrepancy": 0.14582092027413304, "ife1": "3FIC|1|A", "ife1_index": 1, "ife2": "3KIS|1|a", "ife2_index": 0},
+                      {"discrepancy": 0.0, "ife1": "3FIC|1|A", "ife1_index": 1, "ife2": "3FIC|1|A", "ife2_index": 1},
+                      {"discrepancy": 0.14260495908457801, "ife1": "3FIC|1|A", "ife1_index": 1, "ife2": "3KIQ|1|a", "ife2_index": 2},
+                      {"discrepancy": 0.0093556396649322, "ife1": "3KIQ|1|a", "ife1_index": 2, "ife2": "3KIS|1|a", "ife2_index": 0},
+                      {"discrepancy": 0.14260495908457801, "ife1": "3KIQ|1|a", "ife1_index": 2, "ife2": "3FIC|1|A", "ife2_index": 1},
+                      {"discrepancy": 0.0, "ife1": "3KIQ|1|a", "ife1_index": 2, "ife2": "3KIQ|1|a", "ife2_index": 2}
+            """
+
+    # read template.html into one string
+    with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
+        template = myfile.read()
+
+    # replace ###PAGETITLE### with pagetitle
+    template = template.replace("###PAGETITLE###",pagetitle)
+
+    sequence_column = 0   # column to set in fixed width font
+    template = template.replace("###sequencecolumn###",str(sequence_column))
+
+    queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedCPUTime"])
+    queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedCPUTime"])
+
+    if "moreCandidatesThanHeatMap" in Q:
+        queryNote += " " + Q["moreCandidatesThanHeatMap"] + "\n"
+    else:
+        queryNote += "\n"
+
+    template = template.replace("###QUERYNAME###",str(queryNote.encode('ascii','ignore')))
+
+    seeModifyQuery = ''
+    template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
+
+    template = template.replace("###seeCSVOutput###","")
+
+    # replace ###CANDIDATELIST### with candidatelist
+    template = template.replace("###CANDIDATELIST###",candidatelist)
+
+    template = template.replace("###JS1###",JS1)
+    template = template.replace("###JS2###",JS2)
+    template = template.replace("###JS3###",JS3)
+    template = template.replace("###JS4###",JS4)
+
+    refresh = ""
+    if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
+        refresh = '<meta http-equiv="refresh" content="%d">' % REFRESHTIME
+    template = template.replace("###REFRESH###",refresh)
+
+    if np.size(allvsallmatrix) > 0:
+        template = template.replace("###JS5###",JS5)    # include heatmap.js code
+        discrepancydata = "var data =  [\n" + discrepancydata + "]"
+        discrepancydata = '<script type="text/javascript">\n' + discrepancydata + '\n</script>'
+        template = template.replace("###DISCREPANCYDATA###",discrepancydata)
+    else:
+        #template = template.replace("###DISCREPANCYDATA###","")
+        template = template.replace("###JS5###","")    # do not display a heat map
+
+    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
+
+    print("Writing to %s" % outputfilename)
+
+    messages = ""
+
+    messages += "\n<br>"
+    if len(Q["userMessage"]) > 0:
+        messages += "User messages:<br>\n"
+        for line in Q["userMessage"]:
+            messages += line + "<br>\n"
+    else:
+        messages += "No error or warning messages.<br>\n"
+
+    template = template.replace("###MESSAGES###",messages)
+
+    with open(outputfilename, 'w') as myfile:
+        myfile.write(template)
+
 
 def load_basepair_annotations(filename,all_pair_types):
 
@@ -231,6 +417,10 @@ def print_datapoint(datapoint):
         if f in datapoint:
             print("  %20s = %11.6f" % (f,datapoint[f]))
 
+    if 'hbond' in datapoint:
+        for hbond in datapoint['hbond']:
+            print(hbond)
+
     return None
 
 
@@ -304,6 +494,8 @@ def plot_basepair_cutoffs(base_combination,lowercase_list,ax,variables):
 
 if __name__=="__main__":
 
+    write_html_pages = True
+
     base_seq_list = ['DA','DC','DG','DT']  # for DNA
     base_seq_list = ['A','C','G','U']      # for RNA
 
@@ -321,23 +513,25 @@ if __name__=="__main__":
     black = [0,0,0] # black
     cyan  = [0,1,1] # cyan
     blue  = [0,0,1] # blue
+    orange = [1,165/255,0] # orange
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
     PDB_list = ['4V9F','6ZMI','7K00','4TNA']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.248/2.5A/csv']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
     # load all datapoints on pairs of bases, whether annotated as paired or not
     all_PDB_ids = PDB_IFE_Dict.keys()
-    print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
+    print("Working on %d PDB files" % len(all_PDB_ids))
 
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
 
     # load annotations of these PDB files from the BGSU RNA server
-    print('Loading Matlab annotations of these files')
+    print('Loading Matlab annotations')
     Matlab_annotation_to_pair = defaultdict(list)
     pair_to_Matlab_annotation = defaultdict(str)
     for PDB_id in all_PDB_ids:
@@ -358,6 +552,7 @@ if __name__=="__main__":
     print("Found these Matlab annotations: %s" % sorted(Matlab_annotation_to_pair.keys()))
 
     all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
+    print("Found Matlab annotations in %s files" % len(all_PDB_ids))
     print("Loading Python annotations from %d PDB files" % len(all_PDB_ids))
 
     pair_to_data = defaultdict(dict)
@@ -365,21 +560,23 @@ if __name__=="__main__":
     # load output files from NA_pairwise_interactions
     for PDB in all_PDB_ids:
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
-        #print("Reading %s" % pair_to_data_file)
         try:
-            new_dict = pickle.load(open(pair_to_data_file,'rb'))
+            if sys.version_info[0] < 3:
+                new_dict = pickle.load(open(pair_to_data_file,'rb'))
+            else:
+                new_dict = pickle.load(open(pair_to_data_file,'rb'),encoding = 'latin1')
             pair_to_data.update(new_dict)
             if len(new_dict.keys()) == 0:
                 print("No Python-annotated pairs in %s" % PDB)
         except:
-            print("Not able to load annotations for %s" % PDB)
+            print("Not able to load Python annotations for %s from %s" % (PDB,pair_to_data_file))
 
     # loop over specified sets of interactions
     for interaction_list in interaction_lists:
 
         lowercase_list = [i.lower() for i in interaction_list]
 
-        # identify unit id pairs that are annotated as basepairing by Matlab code
+        # identify unit id pairs that are annotated with this basepairing by Matlab code
         Matlab_pairs = []
         for interaction in interaction_list:
             Matlab_pairs += Matlab_annotation_to_pair[interaction]
@@ -388,29 +585,33 @@ if __name__=="__main__":
         # loop over specified base combinations
         for base_combination in base_combination_list:
 
-            # don't show AA cHW because AA cWH will be shown
+            # don't show AA cHW because AA cWH will be shown, for example
             if base_combination in symmetric_base_combination_list and interaction in ['cHW','tHW','cSW','tSW','cSH','tSH']:
                 continue
 
             nt1_seq, nt2_seq = base_combination.split(",")
 
             # accumulate data specific to this interaction and base combination
-            xvalues = []
-            yvalues = []
-            rvalues = []
-            tvalues = []
-            zvalues = []
-            avalues = []
-            gvalues = []
-            nvalues = []
-            colors2d  = []
-            sizes = []
+            xvalues = []    # x coordinate of the second base
+            yvalues = []    # y coordinate of the second base
+            rvalues = []    # radius of second base
+            tvalues = []    # angle of second base relative to first
+            zvalues = []    # z coordinate of the second base
+            avalues = []    # rotation angle of second base
+            gvalues = []    # gap
+            nvalues = []    # third component of normal vector of second base
+            dvalues = []    # worst hydrogen bond distance
+            colors2d  = []  # store the color to use
+            sizes = []      # store the size of dot to use
 
-            hdvalues = []
-            havalues = []
-            hbvalues = []
-            hcolors2d = []  # more hydrogen bonds than basepairs
-            hsizes    = []
+            pairs = []      # list of data to print in a table
+
+            # accumulate information about hydrogen bonds; multiple ones per basepair
+            hdvalues = []   # hydrogen bond distances
+            havalues = []   # hydrogen bond angles
+            hbvalues = []   # hydrogen bond badness measures
+            hcolors2d = []  # store color to use for hydrogen bond dots
+            hsizes    = []  # store size of dot to use for hydrogen bonds
 
             c = 0           # count points
 
@@ -493,27 +694,81 @@ if __name__=="__main__":
                     avalues.append(datapoint['angle_in_plane'])
                     nvalues.append(datapoint['normal_Z'])
 
+                    if Matlab:
+                        matlab_annotation = pair_to_Matlab_annotation[pair]
+                    else:
+                        matlab_annotation = ""
+
                     if 'basepair' in datapoint:
+                        python_annotation = datapoint['basepair']
+                        new_python_annotation = datapoint['basepair']
                         basepair = datapoint['basepair']
+                        basepair_subcat = datapoint['basepair_subcategory']
                     else:
                         basepair = "   "
+                        basepair_subcat = '0'
 
-                    if Python and Matlab:
-                        color = black
-                        size = 1
+                    max_badness = 0
+                    max_distance = 0
+                    min_angle = 180
+                    if 'hbond' in datapoint:
+                        for hbond in datapoint['hbond']:
+                            if hbond[0][0]:    # able to check the hydrogen bond
+                                if hbond[1][4] > max_badness:
+                                    max_badness = hbond[1][4]
+                                if hbond[1][2] > max_distance:
+                                    max_distance = hbond[1][2]
+                                if not math.isnan(hbond[1][3]) and hbond[1][3] < min_angle:
+                                    min_angle = hbond[1][3]
+
+                    dvalues.append(max_distance)
+
+                    disqualified = False
+
+                    if Python:
+                        if max_distance > 4 or min_angle < 100:
+                            new_python_annotation = ''
+                            disqualified = True
+
+                    pairs.append((pair[0],pair[1],datapoint['x'],datapoint['y'],datapoint['z'],datapoint['gap12'],datapoint['angle_in_plane'],datapoint['normal_Z'],max_distance,min_angle,max_badness-0.000001*random.uniform(0,1),python_annotation,int(basepair_subcat),new_python_annotation,matlab_annotation))
+
+                    # color and print information about bad examples
+                    if disqualified:
+                        color = orange
+                        hcolor = orange
+                        size = 40
+                        hsize = 40
                     elif Python and not Matlab:
                         color = blue
+                        hcolor = blue
                         size = 40
-                        print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
-                        print_datapoint(datapoint)
+                        hsize = 40
+                        #print("blue = only Python:  %s Python: %4s Matlab: %4s\n%s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
+                        #print_datapoint(datapoint)
                     elif not Python and Matlab:
                         color = red
+                        hcolor = red
                         size = 40
-                        print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
-                        print_datapoint(datapoint)
+                        hsize = 40
+                        #print("red = only Matlab: %s Python: %4s Matlab: %4s\n%s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
+                        #print_datapoint(datapoint)
+                    elif False and max_badness > 2.5:
+                        color = cyan
+                        size = 20
+                        hcolor = cyan
+                        hsize = 20
+                        #print("cyan max_badness %8.4f %s Python %4s Matlab %4s\n%s" % (max_badness,base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
+                        #print_datapoint(datapoint)
+                    elif Python and Matlab:
+                        color = black
+                        size = 1
+                        hcolor = color
+                        hsize = size
                     else:
                         color = [0,1,0]
                         size = 100
+                        hcolor = color
+                        hsize = size
                     colors2d.append(color)
                     sizes.append(size)
 
@@ -523,15 +778,10 @@ if __name__=="__main__":
                                 hdvalues.append(hbond[1][2])  # hbond distance
                                 havalues.append(hbond[1][3])  # hbond angle
                                 hbvalues.append(hbond[1][4])  # hbond badness
-                                hcolors2d.append(color)
-                                hsizes.append(size)
+                                hcolors2d.append(hcolor)
+                                hsizes.append(hsize)
 
-
-            #print(hdvalues)
-            #print(havalues)
-            #print(hbvalues)
-
-            # make the figure
+            # make scatterplots for pairwise combinations of data
             if c > 0:
                 fig = plt.figure(figsize=(11.0, 7.0))
 
@@ -550,12 +800,12 @@ if __name__=="__main__":
                 ax = fig.add_subplot(2, 3, 3)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,3)
                 ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('normal vs angle blue=M only')
+                ax.set_title('normal vs angle blue=P only')
 
                 ax = fig.add_subplot(2, 3, 4)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,4)
                 ax.scatter(gvalues,zvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('z versus gap12 red=P only')
+                ax.set_title('z versus gap12 red=M only')
 
                 ax = fig.add_subplot(2, 3, 5)
                 ax.scatter(hdvalues,havalues,color=hcolors2d,marker=".",s=hsizes)
@@ -569,13 +819,82 @@ if __name__=="__main__":
                 figManager = plt.get_current_fig_manager()
                 figManager.full_screen_toggle()
                 if len(all_PDB_ids) == 1:
-                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (base_combination,interaction_list[0],all_PDB_ids[0])
+                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (interaction_list[0],base_combination,all_PDB_ids[0])
                 else:
-                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (base_combination,interaction_list[0],len(all_PDB_ids))
+                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (interaction_list[0],base_combination,len(all_PDB_ids))
                 plt.savefig(figure_save_file)
                 #plt.show()
                 plt.close()
 
             print("Plotted %5d points for %s %s" % (c,base_combination,",".join(interaction_list)))
+
+            if c > 0 and write_html_pages:
+                Q = {}
+                Q['name'] = "%s %s" % (",".join(interaction_list),base_combination)
+                Q['numFilesSearched'] = len(all_PDB_ids)
+                Q['searchFiles'] = all_PDB_ids
+                Q['elapsedCPUTime'] = 0
+                Q['userMessage'] = []
+
+                # if too many pairs, show some good and also the worst ones
+                if len(xvalues) > 300:
+                    pairs = sorted(pairs, key=lambda p: p[9])
+                    orderpairs = pairs[0:50] + pairs[-250:]
+                    otherpairs = sorted(pairs[51:-251], key=lambda p: (p[11],p[9]))
+                else:
+                    orderpairs = pairs
+                    otherpairs = []
+
+                n = len(orderpairs)  # number of pairs to order by similarity
+
+                dista = np.zeros((n,n))  # matrix to display
+                distb = np.zeros((n,n))  # matrix to order by
+                maxd = 0
+                for i in range(0,n):
+                    for j in range(i+1,n):
+                        d = 0.0
+                        d += (orderpairs[i][2]-orderpairs[j][2])**2
+                        d += (orderpairs[i][3]-orderpairs[j][3])**2
+                        d += (orderpairs[i][4]-orderpairs[j][4])**2
+                        d += (orderpairs[i][5]-orderpairs[j][5])**2
+                        d += 0.01*(min(abs(orderpairs[i][6]-orderpairs[j][6]),360-abs(orderpairs[i][6]-orderpairs[j][6])))**2
+                        d += (orderpairs[i][7]-orderpairs[j][7])**2
+                        dista[i][j] = math.sqrt(d)
+                        dista[j][i] = dista[i][j]
+                        maxd = max(maxd,dista[i][j])
+
+                        d += 100*(orderpairs[i][12]-orderpairs[j][12])**2
+                        distb[i][j] = math.sqrt(d)
+                        distb[j][i] = math.sqrt(d)
+
+                # color entries on diagonal according to matching annotations
+                for i in range(0,n):
+                    # python annotation has changed by new rules
+                    if not orderpairs[i][11] == orderpairs[i][13]:
+                        dista[i][i] = maxd
+                    # new python annotation differs from Matlab annotation
+                    if not orderpairs[i][13].lower() == orderpairs[i][14].lower():
+                        dista[i][i] = maxd * 0.5
+
+                print("Finding order")
+                order = treePenalizedPathLength(distb,20)
+                print("Found order")
+                #print(order)
+
+                reorder_pairs = [orderpairs[o] for o in order] + otherpairs
+
+                reorder_dista = np.zeros((n,n))
+                for i in range(0,n):
+                    for j in range(0,n):
+                        reorder_dista[i][j] = dista[order[i]][order[j]]
+
+                writeHTMLOutput(Q,reorder_pairs,reorder_dista)
+                """ Write the list of candidates in an HTML format that also shows
+                the coordinate window and a heat map of all-against-all distances.
+                """
+                # create table entries
+                # create heat map
+
+
 
     print("Saved figures in %s" % outputNAPairwiseInteractions)
