@@ -1,22 +1,23 @@
-﻿This table shows all the ATOM-ATOM interactions of the interacting Bases from the 13 families of the Isostericity Matrices.  I have designated the oxygen on the sugar as O2* and the hydrogen on that oxygen as H2*.  All other ATOM designations come from the Sponer file.,,,,,,,,
-CLZ changed hydrogen names 1H1 to H61, 1H6 to H61, 2H4 to H42, 2H2 to H22, 1H4 to H41, 2H6 to H62, 1H2 to H21,,,,
+﻿This table shows all the ATOM-ATOM interactions of the interacting Bases from the 13 families of the Isostericity Matrices.  I have designated the oxygen on the sugar as O2* and the hydrogen on that oxygen as H2*.  All other ATOM designations come from the Sponer file.
+CLZ changed hydrogen names 1H1 to H61, 1H6 to H61, 2H4 to H42, 2H2 to H22, 1H4 to H41, 2H6 to H62, 1H2 to H21.
 CLZ notes that protonated A may have 1H1 or now H11; cWW,A,C and cWW,C,C may not have full h-bonds
 CLZ changed * to '
 CLZ removed reversible cases cWW,C,G; cWW,U,A; cWW,U,G; cWW,G,A; tWW,C,A; tWW,U,A; tWW,C,G; tWW,U,C; tWW,U,G;
 cHH,C,G; cHH,G,A
 CLZ changed the case of the edges in non-symmetric, non-reversible cases like cWw,A,A
+
 TYPE,Bases,,ATOM 1,ATOM 2 ,H-bond,ATOM 3 ,ATOM 4,
 cis W/w,A,A,N6,H61,---,N1,-,
 cis W/w,A,A,-,N1,---,H2,C2,
 cis W/W,A,C,N6,H61,---,N3,-,
-cis W/W,A,C,N1,H11,---,O2,-, *** need to check this
+cis W/W,A,C,N1,H11,---,O2,-, *** presumes that N1 is protonated
 cis W/W,A,G,N6,H61,---,O6,-,
 cis W/W,A,G,-,N1,---,H1,N1,
 cis W/W,A,U,N6,H61,---,O4,-,
 cis W/W,A,U,-,N1,---,H3,N3,
 cis W/W,A,U,C2,H2,---,O2,-,
 cis W/w,C,C,-,N3,---,H42,N4,
-cis W/w,C,C,-,O2,---,H3,N3,  *** this will be unusual, protonated
+cis W/w,C,C,-,O2,---,H3,N3,  *** this will be unusual, N3 is protonated
 cis W/W,C,U,N4,H42,---,O4,-,
 cis W/W,G,C,-,O6,---,H42,N4,
 cis W/W,G,C,N1,H1,---,N3,-,
