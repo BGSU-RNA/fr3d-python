@@ -218,13 +218,13 @@ Sugar_2['DT']= ["C2", "O2"]
 
 # This "RNA" variable is here for backward compatibility
 RNAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
-RNAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
+RNAbasehydrogens['A'] = ['H2','H8','H61','H62']
 RNAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
-RNAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
+RNAbasehydrogens['C'] = ['H6','H5','H41','H42']
 RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-RNAbasehydrogens['G'] = ['H1','H8','H9','H22','H22']
+RNAbasehydrogens['G'] = ['H1','H8','H22','H22']
 RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
-RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
+RNAbasehydrogens['U'] = ['H5','H3','H6']
 
 # This should be the new standard, for all nucleic acids
 NAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
@@ -251,10 +251,10 @@ nt_backbone['C'] = ribose + phosphate
 nt_backbone['G'] = ribose + phosphate
 nt_backbone['U'] = ribose + phosphate
 
-NAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
-NAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
-NAbasehydrogens['G'] = ['H1','H8','H9','H21','H22']
-NAbasehydrogens['U'] = ['H5','H1','H3','H6']
+NAbasehydrogens['A'] = ['H2','H8','H61','H62']
+NAbasehydrogens['C'] = ['H6','H5','H41','H42']
+NAbasehydrogens['G'] = ['H1','H8','H21','H22']
+NAbasehydrogens['U'] = ['H5','H3','H6']
 
 """Defining the parts of DNA nucleotides"""
 
@@ -280,9 +280,9 @@ NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
 NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
 NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
 
-NAbasehydrogens['DA'] = ['H2','H8','H9','H61','H62']
-NAbasehydrogens['DC'] = ['H1','H6','H5','H41','H42']
-NAbasehydrogens['DG'] = ['H1','H8','H9','H21','H22']
+NAbasehydrogens['DA'] = ['H2','H8','H61','H62']
+NAbasehydrogens['DC'] = ['H6','H5','H41','H42']
+NAbasehydrogens['DG'] = ['H1','H8','H21','H22']
 NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 #Amino acid computation definitions
