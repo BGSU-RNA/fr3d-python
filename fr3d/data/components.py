@@ -354,12 +354,12 @@ class Component(EntitySelector):
                 hydrogens = set(defs.NAbasehydrogens[self.sequence])
 
                 # skip any hydrogens that are already defined
-                hydrogens = hydrogens - set(self.centers.__iter__())
+                already = set([atom.name for atom in self._atoms])
+
+                hydrogens = hydrogens - already
 
                 if len(hydrogens) > 0:
                     coordinates = defs.NAbasecoordinates[self.sequence]
-
-                    #print(set(self.centers.__iter__()))
 
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
