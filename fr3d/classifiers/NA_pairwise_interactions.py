@@ -1275,6 +1275,9 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
     Otherwise:
         overlap is returned as False, and coordinates are filled with dummy lists filled with -100 (which are not coordinates that would be seen otherwise)"""
     min_z = 1000
+    maxz = -1000 #checks to see if a point of an nt is on both sides of the other nt
+    minz = 1000
+    # min_z shows how close two are together, where as minz shows the actual smallest z value
     inside = False 
     overlap = False
     for atom in listOfAtoms:
@@ -1286,8 +1289,15 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
                 min_z_x = x
                 min_z_y = y
                 min_z = z 
+            # check to see if a nt has points on both sides of the plane of a nt. See http://rna.bgsu.edu/rna3dhub/display3D/unitid/6ZMI%7C1%7CL5%7CG%7C2605,6ZMI%7C1%7CL5%7CG%7C2668 for an example.    
+            if z < minz:
+                minz = z
+            if z > maxz:
+                maxz = z
             if inside:
                 overlap = True #since we're iterating over the whole list of atoms, inside will be set over and over so a second flag overlap will be set that won't be reset if inside is true at least once
+    if maxz > 0 and minz < 0:
+        return False, [-100, -100, -100, -100]
     if overlap:
         return True, [x,y,z, min_z]
     return False, [-100,-100,-100, -100]

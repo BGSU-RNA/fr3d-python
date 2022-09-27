@@ -113,13 +113,13 @@ ring_lists['DT'] = ['N1','C2','N3','C4','C5','C6']
 ring_lists['U'] = ['N1','C2','N3','C4','C5','C6']
 
 convexHullAtoms = {}
-convexHullAtoms['A'] = ["C1'",'H2','H61','H62','H8',"C1'"] #Based on Matlab Code
-convexHullAtoms['DA'] = ["C1'",'N3','H2','N1','N6','H8',"C1'"] 
-convexHullAtoms['C'] = ["C1'",'O2','H42','H41','H5','H6', "C1'"] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
-convexHullAtoms['DC'] = ["C1'",'O2','N4','H5','H6', "C1'"]
-convexHullAtoms['G'] = ["C1'",'H21','H22','H1','O6','H8',"C1'"]
-convexHullAtoms['DG'] = ["C1'",'H21','H22','H1','O6','N7','H8',"C1'"]
-convexHullAtoms['U'] = ["C1'",'O2','H3','O4','H5','H6',"C1'"]
+convexHullAtoms['A'] = ["H9'",'H2','H61','H62','H8',"H9'"] 
+convexHullAtoms['DA'] = convexHullAtoms['A']
+convexHullAtoms['C'] = ["H1'",'O2','H42','H41','H5','H6', "H1'"]
+convexHullAtoms['DC'] = convexHullAtoms['C']
+convexHullAtoms['G'] = ["H9'",'H21','H22','H1','O6','N7','H8',"H9'"]
+convexHullAtoms['DG'] = convexHullAtoms['G']
+convexHullAtoms['U'] = ["H1'",'O2','H3','O4','H5','H6',"H1'"]
 convexHullAtoms['DT'] = ["C1'",'O2','H3','O4','C7', 'C6', "C1'"]
 
 matlabConvexHull = {}
