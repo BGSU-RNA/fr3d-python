@@ -31,6 +31,7 @@ from math import floor
 import os
 from os import path
 from collections import defaultdict
+from importlib import import_module
 
 from time import time
 import argparse
@@ -73,11 +74,11 @@ from fr3d.classifiers.class_limits import nt_nt_cutoffs
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
 try:
-    from fr3d.localpath import outputNAPairwiseInteractions
-    from fr3d.localpath import inputPath
+    from .config import outputNAPairwiseInteractions
+    from .config import inputPath
 except:
-    inputPath = ""
-    outputNAPairwiseInteractions = ""
+    inputPath = None
+    outputNAPairwiseInteractions = None
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
@@ -1874,11 +1875,8 @@ def simplify_basepair(interaction):
 
 #=======================================================================
 
-
-
-if __name__=="__main__":
-
-    # allow user to specify input and output paths
+def main(): 
+        # allow user to specify input and output paths
     parser = argparse.ArgumentParser()
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
@@ -1891,13 +1889,22 @@ if __name__=="__main__":
 
     if args.input:
         inputPath = args.input
-    elif not inputPath:
-        inputPath = ""
-
+    elif not args.input:
+        try: 
+            sys.path.insert(1, os.getcwd())
+            import config
+            #print(config.config)
+            inputPath = config.config['3d_structure_file_path']
+        except: 
+            print("No path to 3D structure file to read specified. Try navigating to the directory that contains your config.py file or using the -i flag to specify your file input path.")
+            sys.exit(0)
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
-    elif not outputNAPairwiseInteractions:
-        outputNAPairwiseInteractions = ""
+    elif not args.output:
+        if 'config' not in sys.modules:
+            sys.path.insert(1, os.getcwd())
+            import config
+        outputNAPairwiseInteractions = config.config['annotation_text_path']
 
     if args.format:
         outputFormat = args.format
@@ -2028,3 +2035,7 @@ if __name__=="__main__":
 
     if 'basepair' in categories:
         print("Basepair annotations are not yet finalized")
+
+
+if __name__=="__main__":
+    main()
