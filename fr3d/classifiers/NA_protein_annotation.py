@@ -2140,21 +2140,6 @@ def main():
 
     myTimer("summary",timerData)
 
-# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-try: 
-    from fr3d.localpath import outputText
-    from fr3d.localpath import outputBaseAAFG
-    from fr3d.localpath import contact_list_file
-    from fr3d.localpath import inputPath
-    from fr3d.localpath import outputHTML
-except: 
-    outputText = "./"
-    outputBaseAAFG = "./"
-    contact_list_file = "./"
-    inputPath = "./"
-    outputHTML = "./"
-
-
 """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
 if __name__=="__main__":
     main()
