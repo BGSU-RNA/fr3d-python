@@ -9,6 +9,7 @@ import numpy as np
 import argparse
 import math
 import os
+import sys
 
 from fr3d.modified_parent_mapping import modified_nucleotides
 
@@ -37,12 +38,12 @@ try:
     from fr3d.localpath import outputNAPairwiseInteractions
     from fr3d.localpath import inputPath
 except:
-    inputPath = ""
-    outputNAPairwiseInteractions = ""
+    inputPath = "./"
+    outputNAPairwiseInteractions = "./"
 
-from NA_pairwise_interactions import load_structure
-from NA_pairwise_interactions import get_parent
-from NA_pairwise_interactions import myTimer
+from fr3d.classifiers.NA_pairwise_interactions import load_structure
+from fr3d.classifiers.NA_pairwise_interactions import get_parent
+from fr3d.classifiers.NA_pairwise_interactions import myTimer
 
 def annotate_bond_orientation(structure,pipeline=False):
 
@@ -181,10 +182,8 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations):
 
 ShowStructureReadingErrors = True
 
-
-if __name__=="__main__":
-
-    # allow user to specify input and output paths
+def main():
+# allow user to specify input and output paths
     parser = argparse.ArgumentParser()
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
@@ -195,13 +194,22 @@ if __name__=="__main__":
     args = parser.parse_args()
     if args.input:
         inputPath = args.input
-    elif not inputPath:
-        inputPath = ""
+    else:
+        try:
+            sys.path.insert(1, os.getcwd())
+            import config
+            #print(config.config)
+            inputPath = config.config['3d_structure_file_path']
+        except: 
+            print("No path to 3D structure file to read specified. Try navigating to the directory that contains your config.py file or using the -i flag to specify your file input path.")
+            sys.exit(0)
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
-    elif not outputNAPairwiseInteractions:
-        outputNAPairwiseInteractions = ""
-
+    else:
+        if 'config' not in sys.modules:
+            sys.path.insert(1, os.getcwd())
+            import config
+        outputNAPairwiseInteractions = config.config['annotation_text_path']
     # dictionary to control what specific annotations are output, in a file named for the key
     # empty list means to output all interactions in that category
     # non-empty list specifies which interactions to output in that category
@@ -276,3 +284,7 @@ if __name__=="__main__":
         print("Not able to read these files: %s" % failed_structures)
     else:
         print("All files read successfully")
+
+if __name__=="__main__":
+    main()
+    

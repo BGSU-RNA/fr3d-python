@@ -1910,6 +1910,7 @@ def main():
             sys.path.insert(1, os.getcwd())
             import config
         outputBaseAAFG = config.config['annotation_text_path']
+        outputHTML = config.config['diagnostic_html_path']
     
     hasNoProteinFilename = inputPath + "hasNoProtein.pickle"
     hasNoProteinFilename = hasNoProteinFilename.replace(".cif","")
