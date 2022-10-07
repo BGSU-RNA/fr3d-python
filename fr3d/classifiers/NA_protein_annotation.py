@@ -24,7 +24,7 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 
-from discrepancy import matrix_discrepancy
+from fr3d.classifiers.discrepancy import matrix_discrepancy
 import numpy as np
 import csv
 import sys
@@ -34,16 +34,13 @@ else:
     import urllib.request
 import pickle
 import math
+import argparse
 
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from mpl_toolkits.mplot3d import Axes3D
-# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-from fr3d.localpath import outputText
-from fr3d.localpath import outputBaseAAFG
-from fr3d.localpath import contact_list_file
-from fr3d.localpath import inputPath
-from fr3d.localpath import outputHTML
+
+
 from fr3d.data.base import EntitySelector
 
 from fr3d.ordering.greedyInsertion import orderWithPathLengthFromDistanceMatrix
@@ -397,13 +394,16 @@ def get_structure(filename):
         return structure
     print(filename)
     if not os.path.exists(filename):
-        mmCIFname = filename[-8:]               # last 8 characters ... awkward
+        mmCIFname = filename[-4:]               # last 8 characters ... awkward
+        if mmCIFname[-4:] != '.cif':
+            mmCIFname += '.cif'
+        print(mmCIFname)
         print("  Downloading "+mmCIFname)
         print("https://files.rcsb.org/download/%s" % mmCIFname)
         if sys.version_info[0] < 3:
-            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 2
+            urllib.urlopen("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 2
         else:
-            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
+            urllib.request.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
         #f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
         #myfile = f.read()
         #print(myfile[0:1000])
@@ -1865,12 +1865,6 @@ base_aa_screen_distance = 18    #
 nt_reference = "C1'"
 aa_reference = "aa_fg"
 
-hasNoProteinFilename = inputPath % "hasNoProtein.pickle"
-hasNoProteinFilename = hasNoProteinFilename.replace(".cif","")
-try:
-    hasNoProtein = pickle.load(open(hasNoProteinFilename,"rb"))
-except:
-    hasNoProtein = []
 
 # plot one instance of each of the amino acids, showing the hydrogen atoms added
 PlotAA = True
@@ -1884,8 +1878,45 @@ WriteProteinInteractionFile = True
 WriteProteinUnitsFile = False
 WriteProteinInteractionFile = False
 
-"""Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
-if __name__=="__main__":
+def main():
+    """Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('PDBfiles', type=str, nargs='+', help='3D structure filename(s)')
+    parser.add_argument('-o', "--output", help="Output Location of NA Protein Interaction Annotations")
+    parser.add_argument('-i', "--input", help='Input Path of 3D structure files')
+    # Don't believe we'll need these flags for NA_Protein Annotations but maybe that will change so I'll leave these here 
+    #parser.add_argument('-c', "--category", help='Interaction category or categories (bidentate, pseudopair, etc)')
+    #parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
+
+    # process command line arguments
+    args = parser.parse_args()
+
+    if args.input:
+        inputPath = args.input
+    elif not args.input:
+        try: 
+            sys.path.insert(1, os.getcwd())
+            import config
+            #print(config.config)
+            inputPath = config.config['3d_structure_file_path']
+        except: 
+            print("No path to 3D structure file to read specified. Try navigating to the directory that contains your config.py file or using the -i flag to specify your file input path.")
+            sys.exit(0)
+    if args.output:
+        outputBaseAAFG = args.output     # set output path
+    elif not args.output:
+        if 'config' not in sys.modules:
+            sys.path.insert(1, os.getcwd())
+            import config
+        outputBaseAAFG = config.config['annotation_text_path']
+    
+    hasNoProteinFilename = inputPath + "hasNoProtein.pickle"
+    hasNoProteinFilename = hasNoProteinFilename.replace(".cif","")
+    try:
+        hasNoProtein = pickle.load(open(hasNoProteinFilename,"rb"))
+    except:
+        hasNoProtein = []
 
     timerData = myTimer("start")
 
@@ -1897,11 +1928,20 @@ if __name__=="__main__":
 
     result_nt_aa = []               # for accumulating a complete list over all PDB files
 
-    outputDataFile = outputBaseAAFG % ""
+    outputDataFile = outputBaseAAFG #% ""
     outputDataFile = outputDataFile.replace("aa-fg_base_.csv","RNAProtein"+version+".pickle")
 
     timerData = myTimer("Making PDB list",timerData)
+    # process additional arguments as PDB files
+    PDBs = []  # list of (path,filename) entries
+    entries = args.PDBfiles
+    for entry in entries:
+        path_split = os.path.split(entry)
 
+        if len(path_split[0]) > 0:
+            PDBs.append(path_split)
+        else:
+            PDBs.append(entry)#(inputPath,entry))
     if ReadPickleFile:
         print("Reading " + outputDataFile)
         timerData = myTimer("Reading pickle file",timerData)
@@ -1910,7 +1950,7 @@ if __name__=="__main__":
         writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
     else:
         PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
-        for PDB in PDB_List:
+        for PDB in PDBs:
             if "nrlist" in PDB and "NR_" in PDB:            # referring to an equivalence class online
                                           # download the entire representative set,
                                           # then find the right line for the equivalence class
@@ -1966,11 +2006,10 @@ if __name__=="__main__":
             if 0 > 1 and PDB in hasNoProtein:
                 print("Skipping file " + PDB + " since it has no amino acids")
                 continue
-
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
 
-            structure = get_structure(inputPath % PDB)
+            structure = get_structure(inputPath + PDB)
 
             try:
                 #structure = get_structure(inputPath % PDB)
@@ -2100,3 +2139,22 @@ if __name__=="__main__":
             writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
 
     myTimer("summary",timerData)
+
+# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
+try: 
+    from fr3d.localpath import outputText
+    from fr3d.localpath import outputBaseAAFG
+    from fr3d.localpath import contact_list_file
+    from fr3d.localpath import inputPath
+    from fr3d.localpath import outputHTML
+except: 
+    outputText = "./"
+    outputBaseAAFG = "./"
+    contact_list_file = "./"
+    inputPath = "./"
+    outputHTML = "./"
+
+
+"""Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
+if __name__=="__main__":
+    main()
