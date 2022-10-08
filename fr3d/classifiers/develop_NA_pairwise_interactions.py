@@ -74,7 +74,13 @@ PDB_list = ['5UED']
 PDB_list = ['4TNA']
 PDB_list = ['4V9F','6ZMI','7K00','4TNA']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.248/2.5A/csv']
-PDB_list = ['7QI4','4TNA']
+PDB_list = ['4TNA','7QI4']
+PDB_list = ['4K27']
+PDB_list = ['5B2R']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/all/csv']
+PDB_list = ['1AJF', '1JTW', '1N66', '1R7W', '1S9S', '1U6P', '1ZIF', '1ZIG', '1ZIH', '2JXV', '2KPV', '2LK3', '2MXJ', '2MXL', '2N1Q', '4BY9', '6MCI', '6VU1', '6VVJ']
+PDB_list = ['2GDI']
+PDB_list = ['4J50']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
