@@ -16,7 +16,7 @@ import os
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import outputNAPickleInteractions
+from fr3d.localpath import fr3d_pickle_path
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
@@ -88,9 +88,16 @@ if __name__=="__main__":
     if analyze_query:
         query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f9eef2dd0/6289f9eef2dd0.html'
         query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f942e49c4/6289f942e49c4.html'
+
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/62b82fc53f382/62b82fc53f382.html'
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/634072156eaf7/634072156eaf7.html'
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/634074c9dad54/634074c9dad54.html'
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/62b8399661a45/62b8399661a45.html'
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/6341a36090c96/6341a36090c96.html'
+
         query_id   = query_html.split('/')[5]
-        query_nt_1 = 'Position 2'      # nucleotide whose base face interacts with the oxygen
-        query_nt_2 = 'Position 4'      # nucleotide whose oxygen stacks on the base
+        query_nt_1 = 'Position 1'      # nucleotide whose base face interacts with the oxygen
+        query_nt_2 = 'Position 3'      # nucleotide whose oxygen stacks on the base
         query_csv = query_html.replace('.html','.csv')
         data = requests.get(query_csv)
         lines = data.content.split("\n")
@@ -144,6 +151,7 @@ if __name__=="__main__":
 
     # load output files from NA_pairwise_interactions
     PDB_count = 0
+    missing_PDB = []
     for PDB in all_PDB_ids:
         PDB_count += 1
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
@@ -153,7 +161,11 @@ if __name__=="__main__":
             pair_to_data.update(new_dict)
         except:
             print("Not able to load annotations for %s" % PDB)
+            missing_PDB.append(PDB)
 
+
+    if missing_PDB:
+        print(missing_PDB)
 
     output_data = []
 
@@ -557,6 +569,7 @@ if __name__=="__main__":
     figure_save_file = outputNAPairwiseInteractions + "sO_%s_z_histogram" % fileset
     plt.savefig(figure_save_file+".png")
     plt.savefig(figure_save_file+".pdf")
+    plt.savefig(figure_save_file+".svg")
     plt.close()
 
     # report unsuccessful lookups of data
