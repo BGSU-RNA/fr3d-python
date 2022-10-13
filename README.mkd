@@ -175,13 +175,13 @@ In order to use fr3d-python without specifying input and output paths every time
 Below is an outline of how we recommended to setup your config.py file and local file structure to use FR3D-Python.
 ```
 config = {}
-config['3d_structure_file_path'] = 'C:\\Users\\User\\...\\FR3D\\PDBFiles\\' 
-config['annotation_text_path'] = 'C:\\Users\\User\\...\\FR3D\\NAPairwiseInteractions\\'
-config['unit_data_binary_path'] = 'C:\\Users\\User\\...\\FR3D\\Python FR3D\\data\\units\\' 
-config['unit_annotation_binary_path'] = 'C:\\Users\\User\\...\\FR3D\\Python FR3D\\data\\units\\'
-config['pairwise_annotation_binary_path'] = 'C:\\Users\\User\\...\\FR3D\\Python FR3D\\data\\pairs\\'
-config['fr3d_search_html_path'] = 'C:\\Users\\User\\...\\FR3D\\fr3d_search_html_pages\\' #HTML documents
-config['diagnostic_html_path'] = 'C:\\Users\\User\\...\\FR3D\\html_pages\\' #HTML documents
+config['3d_structure_file_path'] = 'C:/Users/User/.../FR3D/PDBFiles/' 
+config['annotation_text_path'] = 'C:/Users/User/.../FR3D/NAPairwiseInteractions/'
+config['unit_data_binary_path'] = 'C:/Users/User/.../FR3D/Python FR3D/data/units/' 
+config['unit_annotation_binary_path'] = 'C:/Users/User/.../FR3D/Python FR3D/data/units/'
+config['pairwise_annotation_binary_path'] = 'C:/Users/User/.../FR3D/Python FR3D/data/pairs/'
+config['fr3d_search_html_path'] = 'C:/Users/User/.../FR3D/fr3d_search_html_pages/' #HTML documents
+config['diagnostic_html_path'] = 'C:/Users/User/.../FR3D/html_pages/' #HTML documents
 ```
 
 Note that the above config is representative of a Windows system but this can be changed to represent a Mac system.
@@ -220,13 +220,13 @@ If you have installed fr3d-python and have navigated to the folder where config.
     - Optional Flags:
         - `-c` or `--category`: category. 
             - By default, not specifying -c will annotate basepairs only. 
-            - Use ```NA_Pairwise_Interactions -c basepair``` to annotate basepairs
+            - Use ```NA_Pairwise_Interactions -c basepair``` to annotate basepairs (Still preliminary)
             - Use `NA_Pairwise_Interactions -c stacking` to annotate base-base stacking interactions (Still preliminary)
             - Use `NA_Pairwise_Interactions -c backbone` to annotate base-ribose and base-phosphate interactions (Still Preliminary)
             - Use `NA_Pairwise_Interactions <3D Structure File Name> -c sO` to annotate base-oxygen-stacking interactions.
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c coplanar` to annotate coplanar interactions(?).
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c basepair_detail` to annotate basepair_detail interactions(?).
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c covalent` to annotate covalent bonds(?).
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c coplanar` to annotate coplanar nucleotides.
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c basepair_detail` to annotate basepair interactions with extra details.
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c covalent` to annotate covalent connections.
         - `-f` or `--format`
             - By default, output will be a .txt file.
             -  Use `NA_Pairwise_Interactions <3D Structure File Name> -f txt` to specify .txt file as output
