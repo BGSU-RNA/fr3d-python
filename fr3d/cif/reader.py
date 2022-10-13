@@ -483,9 +483,9 @@ class Cif(object):
                     filtered = filter(None, with_operators)
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
-        if hasattr(self, '_assemblies.values()'):
+        try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
-        else:
+        except:
             max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
 
         if not self._assemblies:
