@@ -165,6 +165,79 @@ python NA_pairwise_interactions.py --output <path_to_output> <pdb_id>
 
 This will write where you wish to output your annotations. If the specified directory doesn't exist, one will be made.
 
+### Install Fr3d-Python
+You can now install fr3d-python from the command line using pip. (Only on testPyPI right now. Waiting on license and a few other things)
+
+`pip install fr3d`
+
+In order to use fr3d-python without specifying input and output paths every time you run, you can create a file called config.py that specifies which directories input and output should be ran. 
+
+Below is an outline of how we recommended to setup your config.py file and local file structure to use FR3D-Python.
+```
+config = {}
+config['3d_structure_file_path'] = 'C:\\Users\\User\\...\\FR3D\\PDBFiles\\' 
+config['annotation_text_path'] = 'C:\\Users\\User\\...\\FR3D\\NAPairwiseInteractions\\'
+config['unit_data_binary_path'] = 'C:\\Users\\User\\...\\FR3D\\Python FR3D\\data\\units\\' 
+config['unit_annotation_binary_path'] = 'C:\\Users\\User\\...\\FR3D\\Python FR3D\\data\\units\\'
+config['pairwise_annotation_binary_path'] = 'C:\\Users\\User\\...\\FR3D\\Python FR3D\\data\\pairs\\'
+config['fr3d_search_html_path'] = 'C:\\Users\\User\\...\\FR3D\\fr3d_search_html_pages\\' #HTML documents
+config['diagnostic_html_path'] = 'C:\\Users\\User\\...\\FR3D\\html_pages\\' #HTML documents
+```
+
+Note that the above config is representative of a Windows system but this can be changed to represent a Mac system.
+
+```
+FR3D
+|  
+└─── config.py 
+│
+└───3DStructureFiles
+|   |    
+|   └─── Where .cif or .pdb Files will be stored or downloaded to 
+└───AnnotationTextOutput
+|   │  
+|   └───Text
+|   |   |
+|   |   └─── Where .txt files of annotations will be output 
+|   |
+|   └───Binary
+|   |   |
+|   |   └─── Where binary files or .pickle files will be output 
+└───PythonFR3D
+|   |
+|   └───data
+|       |
+|       └───pairs
+|
+└───FR3DSearchHTMLPages
+|
+└───DiagnosticHTMLPages
+```
+
+If you have installed fr3d-python and have navigated to the folder where config.py is, you can use the following commands: 
+
+- `NA_Pairwise_Interactions <3D Structure File Name>` - Will run the program NA_Pairwise_Interactions.py on the specified 3D Structure files. 
+    - Optional Flags:
+        - `-c` or `--category`: category. 
+            - By default, not specifying -c will annotate basepairs only. 
+            - Use ```NA_Pairwise_Interactions -c basepair``` to annotate basepairs
+            - Use `NA_Pairwise_Interactions -c stacking` to annotate base-base stacking interactions (Still preliminary)
+            - Use `NA_Pairwise_Interactions -c backbone` to annotate base-ribose and base-phosphate interactions (Still Preliminary)
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c sO` to annotate base-oxygen-stacking interactions.
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c coplanar` to annotate coplanar interactions(?).
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c basepair_detail` to annotate basepair_detail interactions(?).
+            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c covalent` to annotate covalent bonds(?).
+        - `-f` or `--format`
+            - By default, output will be a .txt file.
+            -  Use `NA_Pairwise_Interactions <3D Structure File Name> -f txt` to specify .txt file as output
+            -  Use `NA_Pairwise_Interactions <3D Structure File Name> -f ebi_json` to specify json as output.
+
+`NA_Protein_Annotation <3D Stucture File Name>` - Will run the program NA_Protein_Annotation.py on the specified 3D Structure File. 
+
+`NA_Unit_Annotation <3D Stucture File Name> -c <category>` - Will run the program NA_Unit_Annotation.py on the given structure file for the specified category. 
+
+For all of the above scripts, you can use the `--input` (`-i`) and `--output` (`-o`) flags to specify the location of your input 3D Structure files and the output text or binary files.
+
 ## Get in touch
 
 If you have any questions or feature requests, feel free to [submit an issue](https://github.com/BGSU-RNA/fr3d-python/issues) or get in touch via a [contact form](https://www.bgsu.edu/research/rna/contact-us.html) on the website of the BGSU RNA Bioinformatics group.
