@@ -216,25 +216,29 @@ FR3D
 
 If you have installed fr3d-python and have navigated to the folder where config.py is, you can use the following commands: 
 
-- `NA_Pairwise_Interactions <3D Structure File Name>` - Will run the program NA_Pairwise_Interactions.py on the specified 3D Structure files. 
+- `NA_pairwise_interactions <3D Structure File Name>` - Will run the program NA_Pairwise_Interactions.py on the specified 3D Structure files. 
     - Optional Flags:
         - `-c` or `--category`: category. 
             - By default, not specifying -c will annotate basepairs only. 
-            - Use ```NA_Pairwise_Interactions -c basepair``` to annotate basepairs (Still preliminary)
-            - Use `NA_Pairwise_Interactions -c stacking` to annotate base-base stacking interactions (Still preliminary)
-            - Use `NA_Pairwise_Interactions -c backbone` to annotate base-ribose and base-phosphate interactions (Still Preliminary)
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c sO` to annotate base-oxygen-stacking interactions.
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c coplanar` to annotate coplanar nucleotides.
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c basepair_detail` to annotate basepair interactions with extra details.
-            - Use `NA_Pairwise_Interactions <3D Structure File Name> -c covalent` to annotate covalent connections.
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c basepair` to annotate basepairs (Still preliminary)
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c stacking` to annotate base-base stacking interactions (Still preliminary)
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c backbone` to annotate base-ribose and base-phosphate interactions (Still Preliminary)
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c sO` to annotate base-oxygen-stacking interactions.
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c coplanar` to annotate coplanar nucleotides.
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c basepair_detail` to annotate basepair interactions with extra details.
+            - Use `NA_pairwise_interactions <3D Structure File Name> -c covalent` to annotate covalent connections.
         - `-f` or `--format`
             - By default, output will be a .txt file.
-            -  Use `NA_Pairwise_Interactions <3D Structure File Name> -f txt` to specify .txt file as output
-            -  Use `NA_Pairwise_Interactions <3D Structure File Name> -f ebi_json` to specify json as output.
-
-`NA_Protein_Annotation <3D Stucture File Name>` - Will run the program NA_Protein_Annotation.py on the specified 3D Structure File. 
-
-`NA_Unit_Annotation <3D Stucture File Name> -c <category>` - Will run the program NA_Unit_Annotation.py on the given structure file for the specified category. 
+            -  Use `NA_pairwise_interactions <3D Structure File Name> -f txt` to specify .txt file as output
+            -  Use `NA_pairwise_interactions <3D Structure File Name> -f ebi_json` to specify json as output.
+        - `-i` or `--input` to specify the location of your input 3D Structure files. It will default to the input of your config file if it's set up, or the directory you're running the command in otherwise. 
+            - Use `NA_pairwise_interactions <3D Structure File Name> -i C:/User/User/PathToFiles/`
+        - `-o` or `--output` to specify where annotation output will be placed. 
+            - Use `NA_pairwise_interactions <3D Structure File Name> -o C:/User/User/DesiredOutputPath/`
+            
+`NA_protein_annotation <3D Stucture File Name>` - Will run the program NA_Protein_Annotation.py on the specified 3D Structure File. 
+        - 
+`NA_unit_annotation <3D Stucture File Name> -c <category>` - Will run the program NA_Unit_Annotation.py on the given structure file for the specified category. 
 
 For all of the above scripts, you can use the `--input` (`-i`) and `--output` (`-o`) flags to specify the location of your input 3D Structure files and the output text or binary files.
 
