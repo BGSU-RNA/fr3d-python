@@ -20,6 +20,7 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
+# Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
 oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
 
 """ The set of symbols that mark an operator expression as complex """
@@ -145,6 +146,7 @@ class Cif(object):
     def __load_assemblies__(self):
         listOfNumbers = []
         assemblies = coll.defaultdict(list)
+        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
         if self.pdb in oldStructures: # For our database, we have to deal with a small list of structures in an old manner to maintain old unit ids and naming conventions
             if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
                 for assembly in self.pdbx_struct_assembly_gen:
@@ -171,20 +173,13 @@ class Cif(object):
                         assemblies[asym_id].append(self._operators['I'])
 
                 return assemblies
-
+        ###########################################################################################
+        # Otherwise, Default to this main way of processing 
         if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
             for assembly in self.pdbx_struct_assembly_gen:
                 oper_expression = assembly['oper_expression']
 
-               
-
-                # # TODO: Implement computation of complex operators
-                # if COMPLEX_SYMBOLS & set(oper_expression):
-                #     warnings.warn('Cannot compute symmetries from complex '
-                #                   'expressions. Will use a simple identity '
-                #                   'transformation if no others possible')
-                #     operators = []
-                # else:
+                # Attempt to handle complex symettries. These symmetries have characters such as -, X, and P 
                 operators = oper_expression.split(',')
 
                 for asym_id in assembly['asym_id_list'].split(','):
@@ -448,6 +443,7 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
+        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
         if self.pdb in oldStructures: 
             if hasattr(self, '_assemblies.values()'):
                 max_operators = max(len(op) for op in list(self._assemblies.values()))
@@ -483,6 +479,8 @@ class Cif(object):
                     filtered = filter(None, with_operators)
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
+        ###########################################################################
+        # Otherwise, this is the default way to handle this 
         try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         except:
@@ -591,8 +589,7 @@ class Cif(object):
 
     def __symmetry_name__(self, symmetry):
         symmetry_name = symmetry.get('name')
-        # if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
-        #    return '1_555'
+        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
         if self.pdb in oldStructures:
              if not symmetry_name or symmetry_name == '?':
                 #6QNQ is in old structures for a seperate reason than the rest of the structures. Doesn't apply the p annotation.
