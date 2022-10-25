@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 #from numpy.random import default_rng #not available in python 2.7 
 from fr3d.classifiers.NA_pairwise_interactions import check_convex_hull_atoms 
+
 import argparse
 
 def create_random_x_y_coordinates(size):
@@ -13,6 +14,7 @@ def create_random_x_y_coordinates(size):
     return rints_x,rints_y,rints_z
 
 def check_generated_coordinates(seq):
+
     py = ['A','C','G','U']
     ml = ['MA','MC','MG','MU']
     xvalues = []
@@ -23,6 +25,7 @@ def check_generated_coordinates(seq):
     x,y,z = create_random_x_y_coordinates(samples)
     print(x,y,z)
     for num in range(samples):
+
         if seq in py:
             check = check_convex_hull_atoms(x[num],y[num],z[num],seq)
         elif seq in ml:
@@ -32,6 +35,7 @@ def check_generated_coordinates(seq):
             yvalues.append(y[num])
             zvalues.append(z[num])
     return xvalues, yvalues, zvalues
+
 
 def check_convex_hull_ML(x,y,z, parent):
     near_z_cutoff = 4.5
@@ -82,6 +86,7 @@ def create_convex_hull_plot(seqlist):
         ax = fig.add_subplot(1, 4, sub)
         ax.axis("equal")
         ax.set_title('Random Plotted Points on Base %s' % seq) # %d %s %s' % (c,base_combination,interaction_list[0]), rotation=10)
+
         draw_base(seq.replace('M',''),'default',2,ax)
         ax.scatter(xvalues,yvalues,color='c',marker=".",s=1)
         sub += 1

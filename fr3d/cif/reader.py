@@ -20,6 +20,7 @@ from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
+# Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
 oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
 
 """ The set of symbols that mark an operator expression as complex """
@@ -95,13 +96,6 @@ class Cif(object):
         self._entities = self.__load_entities__()
         self._chem = self.__load_chem_comp__()
         self.logger = logging.getLogger('fr3d.cif.reader.Cif')
-    #     #test 
-    #     self.struct_conn = self.__load_struct_conn() 
-
-    # def __load_struct_conn(self):
-    #     if hasattr(self, 'struct_conn'):
-    #         for row in self.struct_conn:
-    #             print(row['ptnr1_label_seq_id'] + ":" + row['ptnr1_label_atom_id'] + " \t" + row['conn_type_id'] + "\t " + row['ptnr1_label_seq_id'] + ":" + row['ptnr2_label_atom_id'])
 
     def __load_operators__(self):
         operators = {}
@@ -143,7 +137,7 @@ class Cif(object):
         trans[3, 3] = 1.0
         return {
             'id': 'I',
-            'name': 'I',
+            'name': '1_555',
             'vector': vector,
             'matrix': mat,
             'transform': trans
@@ -152,45 +146,40 @@ class Cif(object):
     def __load_assemblies__(self):
         listOfNumbers = []
         assemblies = coll.defaultdict(list)
+        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
         if self.pdb in oldStructures: # For our database, we have to deal with a small list of structures in an old manner to maintain old unit ids and naming conventions
-            for assembly in self.pdbx_struct_assembly_gen:
-                oper_expression = assembly['oper_expression']
+            if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
+                for assembly in self.pdbx_struct_assembly_gen:
+                    oper_expression = assembly['oper_expression']
 
-                # TODO: Implement computation of complex operators
-                if COMPLEX_SYMBOLS & set(oper_expression):
-                    warnings.warn('Cannot compute symmetries from complex '
-                                'expressions. Will use a simple identity '
-                                'transformation if no others possible')
-                    operators = []
-                else:
-                    operators = oper_expression.split(',')
+                    # TODO: Implement computation of complex operators
+                    if COMPLEX_SYMBOLS & set(oper_expression):
+                        warnings.warn('Cannot compute symmetries from complex '
+                                    'expressions. Will use a simple identity '
+                                    'transformation if no others possible')
+                        operators = []
+                    else:
+                        operators = oper_expression.split(',')
 
-                for asym_id in assembly['asym_id_list'].split(','):
-                    for operator in operators:
-                        op = self._operators[operator]
-                        assemblies[asym_id].append(op)
+                    for asym_id in assembly['asym_id_list'].split(','):
+                        for operator in operators:
+                            op = self._operators[operator]
+                            assemblies[asym_id].append(op)
 
-            for asym_id, ops in assemblies.items():
-                if not ops:
-                    self.logger.info("Adding default identity operator for %s",
-                                    asym_id)
-                    assemblies[asym_id].append(self._operators['I'])
+                for asym_id, ops in assemblies.items():
+                    if not ops:
+                        self.logger.info("Adding default identity operator for %s",
+                                        asym_id)
+                        assemblies[asym_id].append(self._operators['I'])
 
-            return assemblies
-
+                return assemblies
+        ###########################################################################################
+        # Otherwise, Default to this main way of processing 
         if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
             for assembly in self.pdbx_struct_assembly_gen:
                 oper_expression = assembly['oper_expression']
 
-               
-
-                # # TODO: Implement computation of complex operators
-                # if COMPLEX_SYMBOLS & set(oper_expression):
-                #     warnings.warn('Cannot compute symmetries from complex '
-                #                   'expressions. Will use a simple identity '
-                #                   'transformation if no others possible')
-                #     operators = []
-                # else:
+                # Attempt to handle complex symettries. These symmetries have characters such as -, X, and P 
                 operators = oper_expression.split(',')
 
                 for asym_id in assembly['asym_id_list'].split(','):
@@ -406,16 +395,26 @@ class Cif(object):
                 'symmetry',
         )
         else:
-            key = op.attrgetter(
-                'pdb',
-                'model',
-                'chain',
-                'component_id',
-                'component_number',
-                #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
-                'symmetry',
-            )
-
+            if self.pdb == '1FJF' and sys.version_info[0] >= 3:
+                key = op.attrgetter(
+                    'pdb',
+                    'model',
+                    #'chain', #For the structure 1FJF, the sorted function is not able to sort using the chain. 
+                    'component_id',
+                    'component_number',
+                    #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
+                    'symmetry',
+                )
+            else: 
+                key = op.attrgetter(
+                    'pdb',
+                    'model',
+                    'chain',
+                    'component_id',
+                    'component_number',
+                    #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
+                    'symmetry',
+                )
         mapping = it.groupby(sorted(self.__atoms__(pdb), key=key), key)
 
 
@@ -444,8 +443,12 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
+        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
         if self.pdb in oldStructures: 
-            max_operators = max(len(op) for op in self._assemblies.values())
+            if hasattr(self, '_assemblies.values()'):
+                max_operators = max(len(op) for op in list(self._assemblies.values()))
+            else:
+                max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
             if not max_operators:
                 raise ValueError("Could not find any operators")
 
@@ -476,9 +479,11 @@ class Cif(object):
                     filtered = filter(None, with_operators)
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
-        if hasattr(self, '_assemblies.values()'):
+        ###########################################################################
+        # Otherwise, this is the default way to handle this 
+        try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
-        else:
+        except:
             max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
 
         if not self._assemblies:
@@ -543,22 +548,37 @@ class Cif(object):
         model = atom['pdbx_PDB_model_num'] if 'pdbx_PDB_model_num' in atom else 1
         component_id = atom['label_comp_id'] if 'label_comp_id' in atom else atom['auth_comp_id']
         atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
-
-        return Atom(pdb=pdb,
-                    model=model,
-                    chain=atom['auth_asym_id'],
-                    component_id=component_id,
-                    component_number = int(atom['auth_seq_id']),
-                    component_index=index,
-                    insertion_code=ins_code,
-                    alt_id=alt_id,
-                    x=x, y=y, z=z,
-                    group=atom['group_PDB'],
-                    type=atom['type_symbol'],
-                    name=atom_id,
-                    symmetry=symmetry_name,
-                    polymeric=self.is_polymeric_atom(atom))
-
+        try:
+            return Atom(pdb=pdb,
+                        model=model,
+                        chain=atom['auth_asym_id'],
+                        component_id=component_id,
+                        component_number = int(atom['auth_seq_id']),
+                        component_index=index,
+                        insertion_code=ins_code,
+                        alt_id=alt_id,
+                        x=x, y=y, z=z,
+                        group=atom['group_PDB'],
+                        type=atom['type_symbol'],
+                        name=atom_id,
+                        symmetry=symmetry_name,
+                        polymeric=self.is_polymeric_atom(atom))
+        except: 
+            comp_num = re.sub('\D', '',atom['auth_seq_id'])
+            return Atom(pdb=pdb,
+                        model=model,
+                        chain=atom['auth_asym_id'],
+                        component_id=component_id,
+                        component_number = int(comp_num),
+                        component_index=index,
+                        insertion_code=ins_code,
+                        alt_id=alt_id,
+                        x=x, y=y, z=z,
+                        group=atom['group_PDB'],
+                        type=atom['type_symbol'],
+                        name=atom_id,
+                        symmetry=symmetry_name,
+                        polymeric=self.is_polymeric_atom(atom))
     def __apply_symmetry__(self, atom, symmetry):
         coords = [float(atom['Cartn_x']),
                   float(atom['Cartn_y']),
@@ -569,8 +589,7 @@ class Cif(object):
 
     def __symmetry_name__(self, symmetry):
         symmetry_name = symmetry.get('name')
-        # if symmetry.get('type') == 'identity operation': #a small handful of cif files have a missing name for a symmetry that is labelled as an ID matrix. See 5A9Z for an example of this.
-        #    return '1_555'
+        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
         if self.pdb in oldStructures:
              if not symmetry_name or symmetry_name == '?':
                 #6QNQ is in old structures for a seperate reason than the rest of the structures. Doesn't apply the p annotation.

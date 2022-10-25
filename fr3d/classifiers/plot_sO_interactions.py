@@ -12,6 +12,7 @@ import math
 from collections import defaultdict
 import requests
 import os
+import sys
 
 
 from fr3d.localpath import outputText
@@ -20,6 +21,8 @@ from fr3d.localpath import outputNAPickleInteractions
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
+from fr3d.localpath import fr3d_pickle_path
+
 
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
@@ -41,6 +44,52 @@ def load_basepair_annotations(filename,all_pair_types):
 #         pair_to_interaction[(u1,u2)]=near_bp_type
 
     return pair_to_interaction
+
+def format_resolution(data):
+
+    r = data['resolution']
+    try:
+        s = "%0.2f" % r
+        # remove trailing 0
+        if s[-1] == "0":
+            s = s[0:(len(s)-1)]
+    except:
+        if 'NMR' in data['method']:
+            s = "NMR"
+        else:
+            s = "NA"
+    return s
+
+def readPDBDatafile():
+    """
+    Read .pickle file containing data about each nucleic-
+    acid-containing PDB file.
+    """
+
+    datafile = {}
+
+    filename = "NA_datafile.pickle"
+    pathAndFileName = os.path.join(fr3d_pickle_path,'units',filename)
+
+    print(pathAndFileName)
+
+    if not os.path.exists(pathAndFileName):
+        try:
+            print("Downloading %s" % filename)
+            urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+        except:
+            print("Unable to download %s" % filename)
+
+    if os.path.exists(pathAndFileName):
+        try:
+            if sys.version_info[0] < 3:
+                datafile = pickle.load(open(pathAndFileName,"rb"))
+            else:
+                datafile = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
+        except:
+            print("Could not read "+filename)
+
+    return datafile
 
 #=======================================================================
 
@@ -88,9 +137,22 @@ if __name__=="__main__":
     if analyze_query:
         query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f9eef2dd0/6289f9eef2dd0.html'
         query_html = 'http://rna.bgsu.edu/webfr3d/Results/6289f942e49c4/6289f942e49c4.html'
-        query_id   = query_html.split('/')[5]
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/6343b780487ff/6343b780487ff.html'
+
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/634072156eaf7/634072156eaf7.html'
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/62b82fc53f382/62b82fc53f382.html'
+
         query_nt_1 = 'Position 2'      # nucleotide whose base face interacts with the oxygen
         query_nt_2 = 'Position 4'      # nucleotide whose oxygen stacks on the base
+
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/6343b6fe6bf55/6343b6fe6bf55.html'
+        query_html = 'http://rna.bgsu.edu/webfr3d/Results/6343b0380e378/6343b0380e378.html'
+
+        query_nt_1 = 'Position 1'      # nucleotide whose base face interacts with the oxygen
+        query_nt_2 = 'Position 3'      # nucleotide whose oxygen stacks on the base
+
+
+        query_id   = query_html.split('/')[5]
         query_csv = query_html.replace('.html','.csv')
         data = requests.get(query_csv)
         lines = data.content.split("\n")
@@ -144,6 +206,7 @@ if __name__=="__main__":
 
     # load output files from NA_pairwise_interactions
     PDB_count = 0
+    not_able_to_load = []
     for PDB in all_PDB_ids:
         PDB_count += 1
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
@@ -153,7 +216,11 @@ if __name__=="__main__":
             pair_to_data.update(new_dict)
         except:
             print("Not able to load annotations for %s" % PDB)
+            not_able_to_load.append(PDB)
 
+    if len(not_able_to_load) > 0:
+        print("Not able to load from these files:")
+        print(not_able_to_load)
 
     output_data = []
 
@@ -502,13 +569,20 @@ if __name__=="__main__":
         plt.savefig(figure_save_file+".svg")
         plt.close()
 
+
+    PDB_data_file = readPDBDatafile()  # available PDB structures, resolutions, chains
+
     data_save_file = os.path.join(outputNAPairwiseInteractions,"sO_%s_data.csv" % fileset)
     print('Writing output data file %s' % data_save_file)
     with open(data_save_file,'w') as file:
-        file.write('unit_id_1,unit_id_2,interaction,z\n')
+        file.write('unit_id_1,unit_id_2,interaction,z,resolution\n')
         for line in output_data:
             #print('%s,%s,%s,%0.4f' % (line))
-            file.write('%s,%s,%s,%0.4f\n' % (line))
+            PDB = line[0].split("|")[0]
+            linelist = list(line)
+            linelist.append(format_resolution(PDB_data_file[PDB]))
+            print(linelist)
+            file.write('%s,%s,%s,%0.4f,%s\n' % tuple(linelist))
 
     # loop over sets of interactions, plotting histograms of z values
     interaction_list = ["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2",
@@ -557,6 +631,7 @@ if __name__=="__main__":
     figure_save_file = outputNAPairwiseInteractions + "sO_%s_z_histogram" % fileset
     plt.savefig(figure_save_file+".png")
     plt.savefig(figure_save_file+".pdf")
+    plt.savefig(figure_save_file+".svg")
     plt.close()
 
     # report unsuccessful lookups of data
