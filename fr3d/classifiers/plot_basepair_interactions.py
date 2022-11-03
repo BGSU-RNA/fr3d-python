@@ -20,7 +20,7 @@ if sys.version_info[0] < 3:
 else:
     from urllib.request import urlretrieve as urlretrieve
 
-from class_limits import basepair_cutoffs
+from class_limits import nt_nt_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
 
@@ -196,6 +196,201 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         template = template.replace("###JS5###","")    # do not display a heat map
 
     outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
+
+    print("Writing to %s" % outputfilename)
+
+    messages = ""
+
+    messages += "\n<br>"
+    if len(Q["userMessage"]) > 0:
+        messages += "User messages:<br>\n"
+        for line in Q["userMessage"]:
+            messages += line + "<br>\n"
+    else:
+        messages += "No error or warning messages.<br>\n"
+
+    template = template.replace("###MESSAGES###",messages)
+
+    with open(outputfilename, 'w') as myfile:
+        myfile.write(template)
+
+def writeHTMLOutputEfficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
+    """
+    Write the list of candidates in an HTML format that also shows
+    the coordinate window and a heat map of all-against-all distances.
+    Write the heatmap data in an efficient way.
+    """
+
+    pairTypes = ['pairsStacks']
+    pairsToPrint = defaultdict(list)
+
+    pairsToPrint['pairsStacks'] = [(1,2)]
+
+    pagetitle = "%s" % Q['name']
+
+    htmlfilename = Q['name'].replace(" ","_")
+
+    candidatelist = '<table style="white-space:nowrap;">\n'
+
+    numPositions = 2
+
+    sequence_column = 3
+
+    # write header line
+    candidatelist += "<tr><th>S.</th><th>Show</th>"
+
+    sequence_column += 1
+    for j in range(0,numPositions):
+        candidatelist += "<th>Position %d</th>" % (j+1)
+        sequence_column += 1
+    candidatelist += "<th>Python</th>"
+    candidatelist += "<th>Subcat</th>"
+    candidatelist += "<th>New Python</th>"
+    candidatelist += "<th>Matlab</th>"
+
+    candidatelist += "<th>x</th>"
+    candidatelist += "<th>y</th>"
+    candidatelist += "<th>z</th>"
+    candidatelist += "<th>gap12</th>"
+    candidatelist += "<th>angle_in_plane</th>"
+    candidatelist += "<th>normal_z</th>"
+    candidatelist += "<th>max_distance</th>"
+    candidatelist += "<th>min_angle</th>"
+    candidatelist += "<th>max_badness</th>"
+
+    candidatelist += "</tr>\n"
+
+    # write one row for each candidate
+    for i in range(0,len(candidates)):
+        candidate = candidates[i]
+        candidatelist += '<tr><td>'+str(i+1)+'.</td><td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
+        for j in range(0,numPositions):
+            candidatelist += candidate[j]
+            if j < numPositions-1:
+                candidatelist += ','
+        candidatelist += '">&nbsp</label></td>'
+
+        PDB_id = candidate[0][0:4]
+
+        """
+        if PDB_id in Q["PDB_data_file"]:
+            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][PDB_id])
+        else:
+            candidatelist += "<td>NA</td>"
+        """
+
+        # write unit ids
+        for j in range(0,numPositions):
+            candidatelist += "<td>"+candidate[j]+"</td>"
+
+        # write Python, Matlab interactions
+        candidatelist += "<td>%s</td>" % candidate[11]  # python
+        candidatelist += "<td>%d</td>" % candidate[12]  # python subcategory
+        candidatelist += "<td>%s</td>" % candidate[13]  # new python
+        candidatelist += "<td>%s</td>" % candidate[14]  # matlab
+
+        for colnum in range(2,11):
+            candidatelist += "<td>%0.2f</td>" % candidate[colnum]
+
+        candidatelist += '</tr>\n'
+    candidatelist += '</table>\n'
+
+    discrepancydata = '[['              # start a list, start a matrix
+
+    if np.size(allvsallmatrix) > 0:
+        s = allvsallmatrix.shape[0]
+        for c in range(0,s):
+
+            discrepancydata += '['     # start a row of the discrepancy matrix
+            ife1 = candidates[c][0]
+            for d in range(0,s):
+                ife2 = candidates[d][0]
+
+                discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
+
+                if d < s-1:
+                    discrepancydata += ','  # commas between entries in a row
+                else:
+                    discrepancydata += '],\n'  # end a row, newline
+
+        discrepancydata += '],\n'             # end the matrix, continue the list
+        discrepancydata += '['              # start list of instances
+
+        for c in range(0,s):
+            ife1 = candidates[c][0]
+            discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
+            if c < s-1:
+                discrepancydata += ","  # commas between instances
+            else:
+                discrepancydata += "]]" # end list of instances, end list of data
+
+            """
+            Kind of like this:
+             const data = [
+                [1, 1, 1, 1],
+                [1, 0.8, 1, 0.5],
+                [0, 1, 1, 1],
+                [1, 1, 1, 0],
+              ];
+
+              // Add our labels as an array of strings
+              const rowLabelsData = ["First Row", "Second Row", "Third Row", "Fourth Row"];
+              const columnLabelsData = [
+                "First Column",
+                "Second Column",
+                "Third Column",
+                "Fourth Column",
+              ];
+            """
+
+    # read template.html into one string
+    with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
+        template = myfile.read()
+
+    # replace ###PAGETITLE### with pagetitle
+    template = template.replace("###PAGETITLE###",pagetitle)
+
+    sequence_column = 0   # column to set in fixed width font
+    template = template.replace("###sequencecolumn###",str(sequence_column))
+
+    queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedCPUTime"])
+    queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedCPUTime"])
+
+    if "moreCandidatesThanHeatMap" in Q:
+        queryNote += " " + Q["moreCandidatesThanHeatMap"] + "\n"
+    else:
+        queryNote += "\n"
+
+    template = template.replace("###QUERYNAME###",str(queryNote.encode('ascii','ignore')))
+
+    seeModifyQuery = ''
+    template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
+
+    template = template.replace("###seeCSVOutput###","")
+
+    # replace ###CANDIDATELIST### with candidatelist
+    template = template.replace("###CANDIDATELIST###",candidatelist)
+
+    template = template.replace("###JS1###",JS1)
+    template = template.replace("###JS2###",JS2)
+    template = template.replace("###JS3###",JS3)
+    template = template.replace("###JS4###",JS4)
+
+    refresh = ""
+    if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
+        refresh = '<meta http-equiv="refresh" content="%d">' % REFRESHTIME
+    template = template.replace("###REFRESH###",refresh)
+
+    if np.size(allvsallmatrix) > 0:
+        template = template.replace("###JS5###",JS5)    # include heatmap.js code
+        discrepancydata = "var data =  " + discrepancydata
+        discrepancydata = '<script type="text/javascript">\n' + discrepancydata + '\n</script>'
+        template = template.replace("###DISCREPANCYDATA###",discrepancydata)
+    else:
+        #template = template.replace("###DISCREPANCYDATA###","")
+        template = template.replace("###JS5###","")    # do not display a heat map
+
+    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+"_efficient.html")
 
     print("Writing to %s" % outputfilename)
 
@@ -429,12 +624,12 @@ def plot_basepair_cutoffs(base_combination,lowercase_list,ax,variables):
     color = ["#BA55D3","#63B8FF","#00EE76","#FF8C00","#CDC9A5","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A"]
     cc = 0
 
-    for bc in basepair_cutoffs.keys():
+    for bc in nt_nt_cutoffs.keys():
         if bc == base_combination:
-            for interaction in basepair_cutoffs[bc].keys():
+            for interaction in nt_nt_cutoffs[bc].keys():
                 if interaction.lower().replace("a","") in lowercase_list:
-                    for subcategory in basepair_cutoffs[bc][interaction].keys():
-                        limits = basepair_cutoffs[bc][interaction][subcategory]
+                    for subcategory in nt_nt_cutoffs[bc][interaction].keys():
+                        limits = nt_nt_cutoffs[bc][interaction][subcategory]
                         if variables == 1:            # x and y
                             xmin = limits['xmin']
                             xmax = limits['xmax']
@@ -888,7 +1083,16 @@ if __name__=="__main__":
                     for j in range(0,n):
                         reorder_dista[i][j] = dista[order[i]][order[j]]
 
+                print("Reordered instances and distance matrix")
+
                 writeHTMLOutput(Q,reorder_pairs,reorder_dista)
+
+                print("Wrote HTML file")
+
+                writeHTMLOutputEfficient(Q,reorder_pairs,reorder_dista)
+
+                print("Wrote efficient HTML file")
+
                 """ Write the list of candidates in an HTML format that also shows
                 the coordinate window and a heat map of all-against-all distances.
                 """
