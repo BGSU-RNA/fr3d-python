@@ -67,7 +67,7 @@ from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 
-from fr3d.classifiers.class_limits import basepair_cutoffs
+from fr3d.classifiers.class_limits import nt_nt_cutoffs
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
