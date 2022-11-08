@@ -1087,34 +1087,38 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
          a list of the x,y,z coordinates of a point with overlap and the minimum z value are t returned as well as a true flag to show there is overlap
     Otherwise:
         overlap is returned as False, and coordinates are filled with dummy lists filled with -100 (which are not coordinates that would be seen otherwise)"""
-    min_z = 1000
-    maxz = -1000 #checks to see if a point of an nt is on both sides of the other nt
-    minz = 1000
+    min_z = 1000 # absolute minimum | Used to check the atom of nt2 distance from nt1 after its translated to standard orientation and the same transformation is applied to nt2
+    maxz = -1000 #actual maximum | checks to see if a point of an nt is on both sides of the other nt
+    minz = 1000 #actual minimum | checks to see if a point of an nt is on both sides of the other nt
+    retValue = [-100,-100,-100]
     # min_z shows how close two are together, where as minz shows the actual smallest z value
     inside = False 
     overlap = False
+
+    #iteratoe over list of atoms of nt2. Check xyz of each atom and see if projection is found.
     for atom in listOfAtoms:
         point = nt2.centers[atom]
         if len(point) == 3:
-            x,y,z = translate_rotate_point(nt1, point)
+            x,y,z = translate_rotate_point(nt1, point) #put nt1 in standard orientation, apply same transformation to nt2, get back coordinates of atom of nt2 from nt1 center
             inside = check_convex_hull_atoms(x,y,z, parent)
             if abs(z) < abs(min_z):
-                min_z_x = x
-                min_z_y = y
-
                 min_z = z 
+                retValue = [x,y,z]
+
             # check to see if a nt has points on both sides of the plane of a nt. See http://rna.bgsu.edu/rna3dhub/display3D/unitid/6ZMI%7C1%7CL5%7CG%7C2605,6ZMI%7C1%7CL5%7CG%7C2668 for an example.    
             if z < minz:
                 minz = z
             if z > maxz:
                 maxz = z
+
             if inside:
-                overlap = True #since we're iterating over the whole list of atoms, inside will be set over and over so a second flag overlap will be set that won't be reset if inside is true at least once
-    if maxz > 0 and minz < 0:
-        return False, [-100, -100, -100, -100]
+                overlap = True # since we're iterating over the whole list of atoms, inside will be set over and over so a second flag overlap will be set that won't be reset if inside is true at least once
+                               # This allows us to check for atoms that may be closer. 
+    if maxz > 0 and minz < 0: 
+        return False, [-100, -100, -100] # Don't return true for nts that have atoms on both sides of the other nts
     if overlap:
-        return True, [x,y,z, min_z]
-    return False, [-100,-100,-100, -100]
+        return True, retValue
+    return False, [-100,-100,-100]
 
 def create_modified_base_atoms_list(nt):
     """Function to create a list of all base atoms for modified nucleotides.
@@ -1148,13 +1152,13 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
 
     baseAtoms = {}
-    baseAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4'] #9/6/2022 took out "C1'",
+    baseAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4', "H9"] #9/6/2022 took out "C1'",
     baseAtoms['DA'] = baseAtoms['A']
-    baseAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6'] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
+    baseAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6', "H1"] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
     baseAtoms['DC'] = baseAtoms['C']
-    baseAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4']
+    baseAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4',"H9"]
     baseAtoms['DG'] = baseAtoms['G']
-    baseAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2']
+    baseAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2', "H1"]
     baseAtoms['DT'] = ['N1','C6', 'H6','C5','C7','H71','H72','H73','C4','O4','N3','H3','C2','O2']
 
     #Create a list in case one of these is nucleotides is a modified nucleotide.
@@ -1203,34 +1207,24 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
         if nt1on2 and not nt2on1:
             rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
             normal_Z = rotation_2_to_1[2,2]
-            minz = coords2[3]
+            min_vertical_distance = coords2[2]
             reverseAnnotation = True #when projection is only found on 1 to 2 and not the other way around the interaction is switched. Use flag to mark this scenario
 
         # projection of nt1 onto nt2 but not nt2 onto nt1
         elif not nt1on2 and nt2on1:
             rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
             normal_Z = rotation_1_to_2[2,2]           
-            minz = coords[3]
+            min_vertical_distance = coords[2]
 
-        #projection of both (sometimes minz isn't found...deals with that)
+        #projection of both 
         elif nt1on2 and nt2on1:
-            if coords[3] != -100 and coords2[3] != -100:   
+            if coords[2] != -100 and coords2[2] != -100:   
                 rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
                 normal_Z = rotation_2_to_1[2,2]            
-                minz = coords[3]
-            elif coords[3] == -100 and coords2[3] != -100:
-                rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
-                normal_Z = rotation_1_to_2[2,2]
-                minz = -coords2[3]
-            # elif coords2[3] == -100 and coords[3] != -100:
-            #     rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
-            #     normal_Z = rotation_2_to_1[2,2]            
-            #     minz = coords[3]
+                min_vertical_distance = coords[2]
 
-        # get interaction 
-        # interaction, interaction_reversed = stacking_interaction(minz, normal_Z)
 
-        if minz > 0: 
+        if min_vertical_distance > 0: 
             if normal_Z > 0:
                 interaction = "ns35" # second base above, pointing up
                 interaction_reversed = "ns53"
@@ -1238,7 +1232,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
                 interaction = "ns33" #second base above, pointing down
                 interaction_reversed = "ns33"
 
-        elif minz < 0:
+        elif min_vertical_distance < 0:
             if normal_Z > 0: 
                 interaction = "ns53"  #second base below, pointing up
                 interaction_reversed = "ns35"
@@ -1254,15 +1248,17 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
         if datapoint:
             datapoint['normal_Z'] = normal_Z
 
+        min_distance = calculate_min_distances(nt1, nt2, None)[1]
+
         #checks for true stacking. If it meets criteria, strip the n from the annotation
-        if abs(minz) < true_z_cutoff and abs(minz) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
+        if abs(min_distance) < true_z_cutoff and abs(min_distance) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
             interaction = interaction.replace("n","")
             interaction_reversed = interaction_reversed.replace("n", "")
 
         #checks the last of the criteria to make sure its near stacking. All others get no annotation
         #Min z must be greater than 1 and the normal z should be greater than 0.5 to be considered near
 
-        if abs(minz) < 1 or abs(normal_Z) < 0.5:    
+        if abs(min_distance) < 1 or abs(normal_Z) < 0.5:    
             return "", datapoint, ""
 
 
@@ -1282,12 +1278,50 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
         datapoint['zStack'] = coords[2]
         datapoint['nt1on2'] = nt1on2
         datapoint['nt2on1'] = nt2on1
-        datapoint['minz'] = minz
+        datapoint['min_distance'] = min_distance
         datapoint['normal_Z'] = normal_Z
         datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
 
     return interaction, datapoint, interaction_reversed
 
+def calculate_min_distances(nt1, nt2, base_points2):
+    base_min_distance = 1000
+    min_distance = 1000
+    base_points1 = []
+    for atom in nt1.atoms():                  # nt1 atoms
+        q = [atom.x, atom.y, atom.z]      # nt1 base atoms
+        if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
+            base_points1.append(q)                 # save for later gap21 calculation
+            if(base_points2):
+                for p in base_points2:                 # nt2 atoms
+                    d = np.linalg.norm(np.subtract(p,q))
+                    if d < min_distance:
+                        min_distance = d
+                    if d < base_min_distance:
+                        base_min_distance = d
+            else: 
+                for atom2 in nt2.atoms():
+                    p = [atom2.x, atom2.y, atom2.z]
+                    if not "'" in atom2.name and not atom2.name in ["P","OP1","OP2"]:  # exclude backbone atoms
+                        d = np.linalg.norm(np.subtract(p,q))
+                        if d < min_distance:
+                            min_distance = d
+                        if d < base_min_distance:
+                            base_min_distance = d
+        else:
+            if(base_points2):
+                for p in base_points2:                 # nt2 atoms
+                    d = np.linalg.norm(np.subtract(p,q))
+                    if d < min_distance:
+                        min_distance = d
+            else: 
+                for atom2 in nt2.atoms():
+                    p = [atom2.x, atom2.y, atom2.z]
+                    d = np.linalg.norm(np.subtract(p,q))
+                    if d < min_distance:
+                        min_distance = d
+
+    return min_distance, base_min_distance, base_points1
 
 def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     """
@@ -1329,23 +1363,26 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     base_min_distance = 1000
     min_distance = 1000
     base_points1 = []
-    for atom in nt1.atoms():                  # nt1 atoms
-        q = [atom.x, atom.y, atom.z]      # nt1 base atoms
-        if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
-            base_points1.append(q)                 # save for later gap21 calculation
-            for p in base_points2:                 # nt2 atoms
-                d = np.linalg.norm(np.subtract(p,q))
-                if d < min_distance:
-                    min_distance = d
-                if d < base_min_distance:
-                    base_min_distance = d
 
-        else:
-            for p in base_points2:                 # nt2 atoms
-                d = np.linalg.norm(np.subtract(p,q))
-                if d < min_distance:
-                    min_distance = d
+    # for atom in nt1.atoms():                  # nt1 atoms
+    #     q = [atom.x, atom.y, atom.z]      # nt1 base atoms
+    #     if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
+    #         base_points1.append(q)                 # save for later gap21 calculation
+    #         for p in base_points2:                 # nt2 atoms
+    #             d = np.linalg.norm(np.subtract(p,q))
+    #             if d < min_distance:
+    #                 min_distance = d
+    #             if d < base_min_distance:
+    #                 base_min_distance = d
 
+    #     else:
+    #         for p in base_points2:                 # nt2 atoms
+    #             d = np.linalg.norm(np.subtract(p,q))
+    #             if d < min_distance:
+    #                 min_distance = d
+
+
+    base_min_distance, min_distance, base_points1 = calculate_min_distances(nt1, nt2, base_points2)
 
     pair_data["min_distance"] = min_distance
 
