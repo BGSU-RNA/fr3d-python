@@ -218,13 +218,13 @@ Sugar_2['DT']= ["C2", "O2"]
 
 # This "RNA" variable is here for backward compatibility
 RNAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
-RNAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
+RNAbasehydrogens['A'] = ['H2','H8','H61','H62']
 RNAbaseheavyatoms['C'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
-RNAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
+RNAbasehydrogens['C'] = ['H6','H5','H41','H42']
 RNAbaseheavyatoms['G'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
-RNAbasehydrogens['G'] = ['H1','H8','H9','H22','H22']
+RNAbasehydrogens['G'] = ['H1','H8','H22','H22']
 RNAbaseheavyatoms['U'] = ['N1','C2','O2','N3','C4','O4','C6','C5']
-RNAbasehydrogens['U'] = ['H5','H1','H3','H6']
+RNAbasehydrogens['U'] = ['H5','H3','H6']
 
 # This should be the new standard, for all nucleic acids
 NAbaseheavyatoms['A'] = ['N9','C4','N3','N1','C6','N6','C8','C5','C2','N7']
@@ -251,10 +251,10 @@ nt_backbone['C'] = ribose + phosphate
 nt_backbone['G'] = ribose + phosphate
 nt_backbone['U'] = ribose + phosphate
 
-NAbasehydrogens['A'] = ['H2','H8','H9','H61','H62']
-NAbasehydrogens['C'] = ['H1','H6','H5','H41','H42']
-NAbasehydrogens['G'] = ['H1','H8','H9','H21','H22']
-NAbasehydrogens['U'] = ['H5','H1','H3','H6']
+NAbasehydrogens['A'] = ['H2','H8','H61','H62']
+NAbasehydrogens['C'] = ['H6','H5','H41','H42']
+NAbasehydrogens['G'] = ['H1','H8','H21','H22']
+NAbasehydrogens['U'] = ['H5','H3','H6']
 
 """Defining the parts of DNA nucleotides"""
 
@@ -280,9 +280,9 @@ NAbaseheavyatoms['DC'] = ['N1','C2','O2','N3','C4','N4','C6','C5']
 NAbaseheavyatoms['DG'] = ['N9','C4','N3','N1','C6','O6','C8','C5','C2','N7','N2']
 NAbaseheavyatoms['DT'] = ['N1','C2','O2','N3','C4','O4','C6','C5','C7']
 
-NAbasehydrogens['DA'] = ['H2','H8','H9','H61','H62']
-NAbasehydrogens['DC'] = ['H1','H6','H5','H41','H42']
-NAbasehydrogens['DG'] = ['H1','H8','H9','H21','H22']
+NAbasehydrogens['DA'] = ['H2','H8','H61','H62']
+NAbasehydrogens['DC'] = ['H6','H5','H41','H42']
+NAbasehydrogens['DG'] = ['H1','H8','H21','H22']
 NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
 #Amino acid computation definitions
@@ -451,7 +451,8 @@ RNAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 NAbasecoordinates = {}
 NAbasecoordinates['A'] = {}
 NAbasecoordinates['A'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
-NAbasecoordinates['A'][ "C1'"] = [ -1.110515,  (-1.823319 - 1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9 
+NAbasecoordinates['A'][ "C1'"] = [ -1.110515,  (-1.823319 - 1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9 \
+NAbasecoordinates['A']["H9'"] = [ -1.110515,  (-1.823319-1.009320),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['A'][ 'C4'] = [  0.007975,  -1.020192,   0.000000]
 NAbasecoordinates['A'][ 'N3'] = [  1.298514,  -1.383716,   0.000000]
 NAbasecoordinates['A'][ 'N1'] = [  1.754329,   1.001072,   0.000000]
@@ -466,9 +467,11 @@ NAbasecoordinates['A'][ 'H8'] = [ -3.210978,  -1.376174,   0.000000]
 NAbasecoordinates['A'][ 'H9'] = [ -1.110515,  -2.832638,   0.000000]
 NAbasecoordinates['A']['H61'] = [  0.810429,   3.327414,   0.000000]
 NAbasecoordinates['A']['H62'] = [ -0.880080,   2.876400,   0.000000]
+
 NAbasecoordinates['C'] = {}
 NAbasecoordinates['C'][ 'N1'] = [ -0.380579,  -1.484583,   0.000000]
 NAbasecoordinates['C'][ "C1'"] = [ -0.380579,  (-1.484583-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1 
+NAbasecoordinates['C'][ "H1'"] = [ -0.380579,  (-1.484583-1.010259),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['C'][ 'C2'] = [  0.908756,  -0.885330,   0.000000]
 NAbasecoordinates['C'][ 'O2'] = [  1.888871,  -1.605366,   0.000000]
 NAbasecoordinates['C'][ 'N3'] = [  0.931558,   0.493192,   0.000000]
@@ -481,9 +484,11 @@ NAbasecoordinates['C'][ 'H6'] = [ -2.463312,  -1.360951,   0.000000]
 NAbasecoordinates['C'][ 'H5'] = [ -2.417351,   1.162512,   0.000000]
 NAbasecoordinates['C']['H41'] = [ -0.908549,   3.117619,   0.000000]
 NAbasecoordinates['C']['H42'] = [  0.823255,   2.927413,   0.000000]
+
 NAbasecoordinates['G'] = {}
 NAbasecoordinates['G'][ 'N9'] = [ -1.456680,  -1.711888,   0.000000]
 NAbasecoordinates['G'][ "C1'"] = [ -1.456680,  (-1.711888-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9 
+NAbasecoordinates['G'][ "H9'"] = [ -1.456680,  (-1.711888-1.009529),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['G'][ 'C4'] = [ -0.339093,  -0.921183,   0.000000]
 NAbasecoordinates['G'][ 'N3'] = [  0.947138,  -1.370892,   0.000000]
 NAbasecoordinates['G'][ 'N1'] = [  1.440727,   0.946157,   0.000000]
@@ -499,9 +504,11 @@ NAbasecoordinates['G'][ 'H8'] = [ -3.558253,  -1.248304,   0.000000]
 NAbasecoordinates['G'][ 'H9'] = [ -1.456680,  -2.721417,   0.000000]  # if no C1' atom
 NAbasecoordinates['G']['H21'] = [  3.415836,  -1.614107,   0.000000]
 NAbasecoordinates['G']['H22'] = [  3.838495,   0.070395,   0.000000]
+
 NAbasecoordinates['U'] = {}
 NAbasecoordinates['U'][ 'N1'] = [ -0.326420,  -1.514422,   0.000000]
 NAbasecoordinates['U'][ "C1'"] = [ -0.326420,  (-1.514422-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1
+NAbasecoordinates['U'][ "H1'"] = [ -0.326420,  (-1.514422-1.008947),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['U'][ 'C2'] = [  0.933866,  -0.925171,   0.000000]
 NAbasecoordinates['U'][ 'O2'] = [  1.966070,  -1.562816,   0.000000]
 NAbasecoordinates['U'][ 'N3'] = [  0.868896,   0.459470,   0.000000]
@@ -517,6 +524,7 @@ NAbasecoordinates['U'][ 'H6'] = [ -2.409200,  -1.402586,   0.000000]
 NAbasecoordinates['DA'] = {}
 NAbasecoordinates['DA'][ 'N9'] = [ -1.110515,  -1.823319,   0.000000]
 NAbasecoordinates['DA'][ "C1'"] = [ -1.110515,  (-1.823319-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9
+NAbasecoordinates['DA']["H9'"] = [ -1.110515,  (-1.823319-1.009320),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['DA'][ 'C4'] = [  0.007975,  -1.020192,   0.000000]
 NAbasecoordinates['DA'][ 'N3'] = [  1.298514,  -1.383716,   0.000000]
 NAbasecoordinates['DA'][ 'N1'] = [  1.754329,   1.001072,   0.000000]
@@ -534,6 +542,7 @@ NAbasecoordinates['DA']['H62'] = [ -0.880080,   2.876400,   0.000000]
 NAbasecoordinates['DC'] = {}
 NAbasecoordinates['DC'][ 'N1'] = [ -0.380579,  -1.484583,   0.000000]
 NAbasecoordinates['DC'][ "C1'"] = [ -0.380579,  (-1.484583-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1
+NAbasecoordinates['DC'][ "H1'"] = [ -0.380579,  (-1.484583-1.010259),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['DC'][ 'C2'] = [  0.908756,  -0.885330,   0.000000]
 NAbasecoordinates['DC'][ 'O2'] = [  1.888871,  -1.605366,   0.000000]
 NAbasecoordinates['DC'][ 'N3'] = [  0.931558,   0.493192,   0.000000]
@@ -549,6 +558,7 @@ NAbasecoordinates['DC']['H42'] = [  0.823255,   2.927413,   0.000000]
 NAbasecoordinates['DG'] = {}
 NAbasecoordinates['DG'][ 'N9'] = [ -1.456680,  -1.711888,   0.000000]
 NAbasecoordinates['DG'][ "C1'"] = [ -1.456680,  (-1.711888-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9
+NAbasecoordinates['DG'][ "H9'"] = [ -1.456680,  (-1.711888-1.009529),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['DG'][ 'C4'] = [ -0.339093,  -0.921183,   0.000000]
 NAbasecoordinates['DG'][ 'N3'] = [  0.947138,  -1.370892,   0.000000]
 NAbasecoordinates['DG'][ 'N1'] = [  1.440727,   0.946157,   0.000000]
@@ -569,6 +579,7 @@ NAbasecoordinates['DG']['H22'] = [  3.838495,   0.070395,   0.000000]
 NAbasecoordinates['DT'] = {}
 NAbasecoordinates['DT']['N1'] = [ 0.077892,-1.669793, 0.000000]
 NAbasecoordinates['DT']["C1'"] = [ 0.077892,(-1.669793-1.48), 0.000000] #should be roughly 1.48 angstroms lower than N1
+NAbasecoordinates['DT']["C1'"] = [ 0.077892,(-1.669793-1.009529), 0.000000] #should be roughly 1.48 angstroms lower than N1
 NAbasecoordinates['DT']['C2'] = [ 1.276471,-0.994656, 0.000000]
 NAbasecoordinates['DT']['O2'] = [ 2.359169,-1.553674, 0.000000]
 NAbasecoordinates['DT']['N3'] = [ 1.166654, 0.370792, 0.000000]
@@ -582,6 +593,49 @@ NAbasecoordinates['DT']['H6'] = [-1.913009,-1.488609, 0.000000]
 NAbasecoordinates['DT']['H71'] = [-2.422619, 1.940262, 0.339933]
 NAbasecoordinates['DT']['H72'] = [-2.882094, 1.068812,-0.906410]
 NAbasecoordinates['DT']['H73'] = [-3.153579, 0.548710, 0.569770]
+
+# Coordinates of atoms as defined by the matlab FR3D code in zStackingOverlap.m
+# NTs are all translated to try to match the C1' x,y coordinates to work with Draw Base Method from draw_residues 
+# These coordinates are used to create checks in generate_location_checks which are then used in checkconvexhull.py
+# The M is stands for Matlab and the second letter stands for the RNA base
+# The indeces can probably be renamed to atoms 
+NAbasecoordinates['MA'] = {}
+NAbasecoordinates['MA']['0'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.000000] 
+NAbasecoordinates['MA']['1'] = [(0.000000 - 1.110515), (-1.009320 - 2.293999) , 0.000000]
+NAbasecoordinates['MA']['2'] = [(4.271447 - 1.110515), (1.317924 - 2.293999) ,0.000000]
+NAbasecoordinates['MA']['3'] = [(1.920945 - 1.110515), (5.150733 - 2.293999) ,0.000000]
+NAbasecoordinates['MA']['4'] = [(0.230436 - 1.110515), (4.699718 - 2.293999) ,0.000000]
+NAbasecoordinates['MA']['5'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.00000]
+
+NAbasecoordinates['MC'] = {}
+NAbasecoordinates['MC']['0'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324), 0.000000] 
+NAbasecoordinates['MC']['1'] = [(0.000000 - 0.380579), (-1.010259 - 1.954324), 0.000000] 
+NAbasecoordinates['MC']['2'] = [(2.269450 - 0.380579), (-0.120783 - 1.954324), 0.000000]
+NAbasecoordinates['MC']['3'] = [(1.203833 - 0.380579), (4.41199 - 1.954324) , 0.000000]
+NAbasecoordinates['MC']['4'] = [(-0.527970 - 0.380579), (4.602202 - 1.954324) , 0.000000]
+NAbasecoordinates['MC']['5'] = [(-2.036772 - 0.380579), (2.647095 - 1.954324) , 0.00000]
+NAbasecoordinates['MC']['6'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324) , 0.000000]
+
+NAbasecoordinates['MG'] = {}
+NAbasecoordinates['MG']['0'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000] 
+NAbasecoordinates['MG']['1'] = [(0.000000 - 1.456680), (-1.009529 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['2'] = [(4.872516 - 1.456680), (0.0977814 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['3'] = [(5.295175 - 1.456680), (1.782283 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['4'] = [(3.613335 - 1.456680), (3.374547 - 2.182359), 0.000000]
+NAbasecoordinates['MG']['5'] = [(1.396986 - 1.456680), (4.394213 - 2.182359), 0.00000]
+NAbasecoordinates['MG']['6'] = [(-0.751391 - 1.456680), (2.120132 - 2.182359), 0.00000]
+NAbasecoordinates['MG']['7'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000]
+
+NAbasecoordinates['MU'] = {}
+NAbasecoordinates['MU']['0'] = [(-2.082780 - 0.326420), (0.111836 - 1.985475), 0.000000] 
+NAbasecoordinates['MU']['1'] = [(0.000000 - 0.326420), (-1.008947 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['2'] = [(2.292490 - 0.326420), (-0.048394 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['3'] = [(2.092152 - 0.326420), (2.445179 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['4'] = [(0.177156 - 0.326420), (4.020060 - 1.985475), 0.000000]
+NAbasecoordinates['MU']['5'] = [(-2.124577 - 0.326420), (2.616537 - 1.985475), 0.00000]
+NAbasecoordinates['MU']['6'] = [(-2.082780 - 0.326420), (0.111836 - 1.985475), 0.00000]
+
+
 
 #Definitions for drawing nucleotides
 NAbasecolor = {}

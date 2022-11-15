@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    plot-sO-interactions.py reads a data file and plots points to represent
-    oxygen-base stacking interactions.
+    plot-stacking-interactions.py reads a data file and plots points to represent
+    base-base stacking interactions.
 """
 
 from mpl_toolkits.mplot3d import Axes3D
@@ -13,6 +13,7 @@ import sys
 import os
 from collections import defaultdict
 import urllib
+import __builtin__
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -31,6 +32,7 @@ if sys.version_info[0] < 3:
     from urllib import urlopen
 else:
     from urllib.request import urlopen 
+
 
 def load_basepair_annotations(filename,all_pair_types):
 
@@ -64,7 +66,7 @@ def load_Matlab_FR3D_pairs(PDBID):
     if not os.path.exists(pathAndFileName):
         print("Downloading %s to %s" % (pairsFileName,pathAndFileName))
         if sys.version_info[0] < 3:
-            urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+            urllib.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
         else:
             urllib.request.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
 
@@ -103,15 +105,13 @@ def reverse(pair):
     return (pair[1],pair[0])
 #=======================================================================
 def check_full_data(datapoint):
-
-    return ('x' in datapoint and 'y' in datapoint and 'z' in datapoint \
+    return ('xStack' in datapoint and 'yStack' in datapoint and 'zStack' in datapoint \
             and 'gap12' in datapoint and 'angle_in_plane' in datapoint and 'normal_Z' in datapoint)
 #=======================================================================
 def print_datapoint(datapoint):
 
 #    if 'url' in datapoint:
 #        print("  %s" % datapoint['url'])
-
     fields = ['x','y','z','gap12','angle_in_plane','normal_Z']
 
     for f in fields:
@@ -183,6 +183,60 @@ def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
                             ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             cc += 1
 #=======================================================================
+def plot_confusion_matrix(confusionMatrix, interaction_list):
+    "Tabular construction of confusion matrix created from a dictionary of dictionaries of values."
+    row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53'],['blank']]
+    border = ['----','----','----','----','----','----','----','----','----','----']
+    col = 0 
+    interaction_list.append('blank')
+    for interaction in interaction_list:
+        for interaction2 in interaction_list:
+                row[col].append(confusionMatrix[interaction][interaction2])
+        col+=1
+
+    print("\n\nConfusion Matrix of Annotations. \nColumns Represent Matlab found annotations and Rows Represent Python")
+    print_function = getattr(__builtin__, 'print')
+    print_function("\t", end = "")
+    print_function(*interaction_list, sep='\t')
+    print_function(*border, sep = "\t")
+    for rows in row:
+        print_function(*rows, sep='\t')
+
+def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
+    """Creates a 2x9 plot to show which annotations were found by passed in language and not found by other passed in language"""
+    if ordering == "python":
+        other = "matlab"
+    elif ordering == "matlab":
+        other = "python"
+    if 'blank' in interaction_list:
+        interaction_list.remove('blank')
+
+    interaction_list = ['s33', 's35','s55','s53','ns33','ns35','ns55','ns53','total']
+    print_function = getattr(__builtin__, 'print')
+    print("\n\nAnnotations that were found by %s and not by %s" % (ordering, other))
+    border = ['----','----','----','----','----','----','----','----', '----']
+    print_function(*interaction_list, sep='\t')
+    print_function(*border, sep = "\t")
+    for category in interaction_list:
+        print_function(interactionDict[category], end = "\t")
+    print("\n")
+
+def check_for_matching_pairs(Matlab_pairs, pair_to_data, not_loaded):
+    """Loop through all Matlab pairs and all python pairs and see if any aren't found"""
+    print("Checking For Unmatched Pairs Between Matlab and Python...")
+    found = False
+    notFound = []
+    for pair in Matlab_pairs:
+        found = False
+        if(pair[0][0:4] not in not_loaded):
+            for pair2, datapoint in pair_to_data.items():
+                if pair == pair2:
+                    found = True
+                    break
+            if not found:
+                print(str(pair) + " Not Found by python but found by Matlab")
+                notFound.append(pair)
+    print("Amount of pairs found by Matlab but not by Python: " + str(len(notFound)))
 
 if __name__=="__main__":
 
@@ -196,6 +250,78 @@ if __name__=="__main__":
 
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
     symmetric_base_combination_list = ['A,A','C,C','G,G','U,U']
+    
+    ###############################################################################################################
+    # Data collection for confusion matrix ########################################################################
+    # each main key represents annotations found in python. The Keys within represent annotations found in matlab #
+    # This dictionary is used to detect instances where python and matlab agree vs where they disagree ############
+    ###############################################################################################################
+    confusionMatrix = {} 
+    confusionMatrix['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['s53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['ns53']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['blank']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
+    confusionMatrix['total'] = 0
+
+    ###############################################################################################################
+    # Collection to display totals ################################################################################
+    ###############################################################################################################
+    incorrectFaces = []
+    nearVSTrue = [] 
+    matlabNoPythonMatch = []
+    pythonNoMatlabMatch = []
+
+    pythonNotMatlab = {} 
+    pythonNotMatlab['s33']=0
+    pythonNotMatlab['s35']=0
+    pythonNotMatlab['s55']=0
+    pythonNotMatlab['s53']=0
+    pythonNotMatlab['ns33']=0
+    pythonNotMatlab['ns35']=0
+    pythonNotMatlab['ns55']=0
+    pythonNotMatlab['ns53']=0
+    pythonNotMatlab['total']=0
+
+    incorrectFaces = []
+
+    pythonTotals = {} 
+    pythonTotals['s33']=0
+    pythonTotals['s35']=0
+    pythonTotals['s55']=0
+    pythonTotals['s53']=0
+    pythonTotals['ns33']=0
+    pythonTotals['ns35']=0
+    pythonTotals['ns55']=0
+    pythonTotals['ns53']=0
+    pythonTotals['total']=0
+
+    matlabTotals = {} 
+    matlabTotals['s33']=0
+    matlabTotals['s35']=0
+    matlabTotals['s55']=0
+    matlabTotals['s53']=0
+    matlabTotals['ns33']=0
+    matlabTotals['ns35']=0
+    matlabTotals['ns55']=0
+    matlabTotals['ns53']=0
+    matlabTotals['total']=0
+
+    matlabNotPython = {} 
+    matlabNotPython['s33']=0
+    matlabNotPython['s35']=0
+    matlabNotPython['s55']=0
+    matlabNotPython['s53']=0
+    matlabNotPython['ns33']=0
+    matlabNotPython['ns35']=0
+    matlabNotPython['ns55']=0
+    matlabNotPython['ns53']=0
+    matlabNotPython['total']=0
+    ###############################################################################################################
 
     # plot one instance of each of the pairwise interactions
     PlotPair = False
@@ -219,6 +345,17 @@ if __name__=="__main__":
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
     # PDB_list = ['4V9F','6ZMI','7K00']
+    PDB_list = ['6ZMI']
+#    PDB_list = ['4V9F']
+    # PDB_list = ['4TNA']
+    PDB_list = ['4V9F']
+    PDB_list = ['7K00']
+    PDB_list = ['6XRQ']
+    PDB_list = ['4V9F']
+    PDB_list = ['4MCF']
+    PDB_list = ['2C4Q']
+    PDB_list = ['7K00']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
 
     #PDB LIST and Skip Files##################################################
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
@@ -241,7 +378,7 @@ if __name__=="__main__":
         num_pairs = 0
         for interaction in interaction_to_pairs.keys():
             # store all basepairs and only basepairs
-            if "s" in interaction:
+            if "s" in interaction and "O" not in interaction:
                 num_pairs += 1
                 Matlab_annotation_to_pair[interaction] += interaction_to_pairs[interaction]
                 for pair in interaction_to_pairs[interaction]:
@@ -260,6 +397,7 @@ if __name__=="__main__":
 
     pair_to_data = defaultdict(dict)
 
+    not_loaded = []
         # load output files from NA_pairwise_interactions
     for PDB in all_PDB_ids:
         pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
@@ -269,6 +407,10 @@ if __name__=="__main__":
             pair_to_data.update(new_dict)
         except:
             print("Not able to load annotations for %s" % PDB)
+            not_loaded.append(PDB)
+            # Not very Efficient way but checking to see if pairs are listed in both python and matlab
+            # For whatever reason, this isn't being found accurately where the other processing is.
+
 
     for interaction_list in interaction_lists:
         lowercase_list = [i.lower() for i in interaction_list]
@@ -278,6 +420,10 @@ if __name__=="__main__":
         for interaction in interaction_list:
             Matlab_pairs += Matlab_annotation_to_pair[interaction]
         Matlab_pairs = set(Matlab_pairs)
+
+        if False:
+            check_for_matching_pairs(Matlab_pairs, pair_to_data, not_loaded)
+
         for base_combination in base_combination_list:
             nt1_seq, nt2_seq = base_combination.split(",")
          
@@ -294,6 +440,7 @@ if __name__=="__main__":
             sizes = []
 
             c = 0
+
             for pair,datapoint in pair_to_data.items():
                 # restrict to the current base combination
                 if not datapoint['nt1_seq'] == nt1_seq:
@@ -315,7 +462,13 @@ if __name__=="__main__":
                 fields2 = pair[1].split("|")
                 if len(fields2) > 5 and not fields2[5] == 'A':
                     continue
+                
+                standardBases = ["A", "C", "G", "U"]
+                fields3 = pair[0].split("|")
 
+                if fields3[3] not in standardBases:
+                    print(fields3)
+                    sys.exit(0)
                 have_data_in_other_order = False
 
                 if 'sInteraction' in datapoint and datapoint['sInteraction'].lower() in lowercase_list:
@@ -361,19 +514,55 @@ if __name__=="__main__":
                     nvalues.append(datapoint['normal_Z'])
 
                     if 'sInteraction' in datapoint:
-                        stacking = datapoint['basepair']
+                        stacking = datapoint['sInteraction']
                     else:
                         stacking = "   "
-                    
+
+                    ###########################################################################################
+                    # Add record of annotations by pair #######################################################
+                    # confusionMatrix is a dictionary - key is python annotation, value is dictionary where ###
+                    # key is matlab annotation - values are numerical total ###################################
+                    ###########################################################################################
+                    if stacking != "   " and pair_to_Matlab_annotation[pair] != '':
+                        # Python finds an annotation and Matlab also finds an annotation ################
+                        confusionMatrix[stacking][pair_to_Matlab_annotation[pair]] += 1
+                        confusionMatrix['total'] += 1
+                        pythonTotals[stacking] += 1
+                        matlabTotals[pair_to_Matlab_annotation[pair]] += 1
+                        if stacking[-2:] != pair_to_Matlab_annotation[pair][-2:]:
+                            incorrectFaces.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["min_distance"],datapoint['normal_Z'], datapoint['url']))
+                        if stacking != pair_to_Matlab_annotation[pair]:
+                            nearVSTrue.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["min_distance"],datapoint['normal_Z'], datapoint['url']))
+                    elif stacking != "   " and pair_to_Matlab_annotation[pair] == '':
+                        # Python finds an annotation and matlab does not ######################################
+                        confusionMatrix[stacking]['blank'] += 1
+                        confusionMatrix['total'] += 1    
+                        pythonNotMatlab[stacking] += 1
+                        pythonNotMatlab['total'] += 1
+                        pythonTotals[stacking] += 1
+                        pythonNoMatlabMatch.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["min_distance"],datapoint['normal_Z'], datapoint['url']))
+                    elif stacking == "   " and Matlab_annotation_to_pair != "":  
+                        # Python does not find an annotation and matlab does ##################################
+                        confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
+                        confusionMatrix['total'] += 1
+                        matlabNotPython[pair_to_Matlab_annotation[pair]] += 1
+                        matlabNotPython['total'] += 1
+                        matlabTotals[pair_to_Matlab_annotation[pair]] += 1
+                        matlabNoPythonMatch.append((pair, stacking, pair_to_Matlab_annotation[pair], datapoint['url']))
+                    ###########################################################################################
+                    # Processing for construction of graphs ###################################################
+                    ###########################################################################################
                     if Python and Matlab:
                         color = black
                         size = 1
-                    elif Python and not Matlab:
+
+                    if Python and not Matlab:
                         color = blue
                         size = 40
                         print("blue = only Python:  %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
                         print_datapoint(datapoint)
-                    elif not Python and Matlab:
+
+                    if not Python and Matlab:
                         color = red
                         size = 40
                         print("red = only Matlab: %s Python %4s Matlab %4s %s" % (base_combination,stacking,pair_to_Matlab_annotation[pair],datapoint['url']))
@@ -419,6 +608,7 @@ if __name__=="__main__":
                 plt.savefig(figure_save_file)
                 #plt.show()
                 plt.close()
+
     # loop over sets of interactions, plotting points on bases
     for interaction_list in interaction_lists:
 
@@ -466,48 +656,47 @@ if __name__=="__main__":
                     x = datapoint['xStack']
                     y = datapoint['yStack']
 
-                    if parent1 == 'G':
-                        if -0.097781*x +  4.872516*y +  8.198766 > 0:  # Left of N9-H21
+                    if parent1 == 'A' or parent1 == 'DA':
+                        if -2.327244*x +  4.271447*y +  9.515028 > 0:  # Left of H9'-H2
+                            if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
+                                if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
+                                    if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
+                                        if  1.456465*x +  2.100463*y +  7.567280 > 0:  # Left of H8-H9'
+                                            inside = True
+                    elif parent1 == 'C' or parent1 == 'DC':
+                        if -0.889476*x +  2.269450*y +  5.323403 > 0:  # Left of H1'-O2
+                            if -4.532779*x + -1.065616*y +  6.851131 > 0:  # Left of O2-H42
+                                if -0.190206*x + -1.731804*y +  5.226294 > 0:  # Left of H42-H41
+                                    if  1.955107*x + -1.508802*y +  6.480180 > 0:  # Left of H41-H5
+                                        if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
+                                            if  1.133891*x +  2.082733*y +  5.627625 > 0:  # Left of H6-H1'
+                                                inside = True
+                    elif parent1 == 'G' or parent1 == 'DG':
+                        if -1.107310*x +  4.872516*y + 11.647152 > 0:  # Left of H9'-H21
                             if -1.684502*x +  0.422659*y +  6.436199 > 0:  # Left of H21-H22
                                 if -1.592264*x + -1.681840*y +  6.230291 > 0:  # Left of H22-H1
                                     if -1.019666*x + -2.216349*y +  5.884100 > 0:  # Left of H1-O6
                                         if  2.274081*x + -2.148378*y +  5.898397 > 0:  # Left of O6-N7
                                             if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
-                                                if  0.463584*x +  2.101573*y +  4.272951 > 0:  # Left of H8-N9
+                                                if  1.473113*x +  2.101573*y +  7.865111 > 0:  # Left of H8-H9'
                                                     inside = True
-                    elif parent1 == 'A':
-                        if -1.317924*x +  4.271447*y +  6.324636 > 0:  # Left of N9-H2
-                            if -3.832809*x + -2.350503*y + 10.927316 > 0:  # Left of H2-H61
-                                if  0.451014*x + -1.690509*y +  5.259508 > 0:  # Left of H61-H62
-                                    if  4.252574*x + -2.330898*y + 10.447200 > 0:  # Left of H62-H8
-                                        if  0.447145*x +  2.100463*y +  4.326375 > 0:  # Left of H8-N9
-                                                inside = True
-                    elif parent1 == 'C':
-                        if  0.120783*x +  2.269450*y +  3.415154 > 0:  # Left of N1-O2
-                            if -2.098558*x + -0.957313*y +  2.427068 > 0:  # Left of O2-N3
-                                if -2.031427*x + -1.030781*y +  2.400765 > 0:  # Left of N3-N4
-                                    if  1.362107*x + -2.318128*y +  5.987542 > 0:  # Left of N4-H5
-                                        if  2.523463*x + -0.045961*y +  6.153526 > 0:  # Left of H5-H6
-                                            if  0.123632*x +  2.082733*y +  3.139042 > 0:  # Left of H6-N1
-                                                inside = True
-                                                
+                    
                     elif parent1 == 'U':
-                        if  0.048394*x +  2.292490*y +  3.487594 > 0:  # Left of N1-O2
+                        if -0.960553*x +  2.292490*y +  5.471254 > 0:  # Left of H1'-O2
                             if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
                                 if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
                                     if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
                                         if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
-                                            if  0.111836*x +  2.082780*y +  3.190713 > 0:  # Left of H6-N1
+                                            if  1.120783*x +  2.082780*y +  5.621468 > 0:  # Left of H6-H1' 
                                                 inside = True
                     elif parent1 == 'DT':
-                        if -0.181184*x + -1.990901*y + -3.310280 > 0:  # Left of N1-H6
-                            if -2.557421*x + -0.969085*y + -6.334958 > 0:  # Left of H6-H72
-                                if -0.871450*x +  0.459475*y + -3.002693 > 0:  # Left of H72-H71
-                                    if -0.400402*x +  2.427972*y + -5.680923 > 0:  # Left of H71-O4
-                                        if  1.526233*x +  1.897795*y + -4.450270 > 0:  # Left of O4-H3
-                                            if  2.368105*x +  0.456021*y + -4.878252 > 0:  # Left of H3-O2
-                                                if  0.116119*x + -2.281277*y + -3.818305 > 0:  # Left of O2-N1
-                                                    inside = True
+                        if -1.125648*x +  2.281277*y +  6.199955 > 0:  # Left of C1'-O2
+                            if -2.368105*x + -0.456021*y +  4.878252 > 0:  # Left of O2-H3
+                                if -1.526233*x + -1.897795*y +  4.450270 > 0:  # Left of H3-O4
+                                    if  1.301401*x + -2.544887*y +  5.949759 > 0:  # Left of O4-C7
+                                        if  2.031505*x +  1.412190*y +  3.691439 > 0:  # Left of C7-C6
+                                            if  1.687080*x +  1.205236*y +  3.097805 > 0:  # Left of C6-C1'
+                                                inside = True
 
                     if inside:     
                         xvalues.append(datapoint['xStack'])
@@ -557,12 +746,14 @@ if __name__=="__main__":
         plt.close()
 
 
-
+    matlabDictionary = {} 
     # loop over sets of interactions, plotting histograms of z values
     interaction_list = ["s33", "s35", "s55", "s53",
                         "ns33", "ns35", "ns55", "ns53"]
 
     fig = plt.figure(figsize=(10.0,8.0))
+
+
 
     # loop over individual bases, to make separate plots for each base
     for v, nt1_seq in enumerate(base_seq_list):
@@ -599,3 +790,103 @@ if __name__=="__main__":
     plt.close()
 
     print("Plots are in %s" % outputNAPairwiseInteractions)
+
+
+
+
+    ### Construction of confusion matrices ##############################################################################################
+    plot_confusion_matrix(confusionMatrix, interaction_list)
+    plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
+    plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
+    print("Unit ids of pairs that disagree on faces being used. \n ('unit_id_1', 'unit_id_2','PythonAnnotation,MatLabAnnotation) ")
+    
+
+    ## Create files in pwd to output pairs stored annotations ##########################################################################
+    original_stdout = sys.stdout # Save a reference to the original standard output
+    if True: 
+        with open('incorrectFaces_Stacking.txt', 'w') as f:
+            sys.stdout = f # Change the standard output to the file we created.
+            print('Annotations where the faces of the two nucleotides annotated as stacking or near stacking dont match')
+            for pair in incorrectFaces:
+                print(pair)
+            sys.stdout = original_stdout
+
+    if True: 
+        with open('nearVsTrue_Stacking.txt', 'w') as f:
+            sys.stdout = f # Change the standard output to the file we created.
+            print('Annotations where Python and Matlab stacking annotations disagree on near and true stacking')
+            for pair in nearVSTrue:
+                print(pair)
+            sys.stdout = original_stdout
+    if True: 
+        with open('PythonNoMatlabMatch_Stacking.txt', 'w') as f:
+            sys.stdout = f # Change the standard output to the file we created.
+            print('Annotations where Python finds an interaction but Matlab doesnt')
+            for pair in pythonNoMatlabMatch:
+                print(pair)
+            sys.stdout = original_stdout
+
+    if True: 
+        with open('MatlabNoPythonMatch_Stacking.txt', 'w') as f:
+            sys.stdout = f # Change the standard output to the file we created.
+            print('Annotations where Matlab finds an interaction but Python doesnt')
+            for pair in matlabNoPythonMatch:
+                print(pair)
+            sys.stdout = original_stdout
+
+    #####################################################################################################################################
+    
+    if True: #Output Near/Total and matching/total percents
+        percents = {}
+        percents['overallML'] = 0
+        percents['overallPy'] = 0 
+
+        pythonTotals['near']=0
+        pythonTotals['true']=0
+        matlabTotals['near']=0
+        matlabTotals['true']=0
+        for cat in interaction_list:
+            if cat[0] == "n":
+                pythonTotals['near'] += pythonTotals[cat]
+                matlabTotals['near'] += matlabTotals[cat]
+            else: 
+                matlabTotals['true'] += matlabTotals[cat]
+                pythonTotals['true'] += pythonTotals[cat]
+            pythonTotals["total"] += pythonTotals[cat]
+            matlabTotals["total"] += matlabTotals[cat]
+        print(pythonTotals)
+        print(matlabTotals)
+        test = pythonTotals['near']/pythonTotals['total']
+        print(pythonTotals['total'])
+
+        if pythonTotals > matlabTotals:
+            larger = "PYTHON"
+        else:
+            larger = "MATLAB"
+        trueInts=["s33",'s55','s53','s35']
+        nearInts=['ns33','ns55','ns53','ns35']
+        print("THE NUMBER DIFFERENCE BETWEEN PYTHON AND MATLAB IS: " + str(abs(pythonTotals['total']-matlabTotals['total'])) + " WHERE " + larger + " FINDS MORE ANNOTATIONS")
+        print("PYTHON PERCENT NEAR: " + str(float(pythonTotals['near'])/float(pythonTotals['total'])))
+        print("MATLAB PERCENT NEAR: " + str(float(matlabTotals['near'])/float(matlabTotals['total'])))
+        for interaction in trueInts:
+            near = "n" + interaction
+            if float(pythonTotals[interaction]+pythonTotals[near] != 0):
+                print("PYTHON NEAR/TOTAL FOR " + interaction + " INTERACTIONS: " + str(float(pythonTotals[near])/(float(pythonTotals[interaction]+pythonTotals[near]))))
+            if float(matlabTotals[interaction]+matlabTotals[near] != 0):
+                print("MATLAB NEAR/TOTAL FOR " + interaction + " INTERACTIONS: " + str(float(matlabTotals[near])/(float(matlabTotals[interaction]+matlabTotals[near]))))
+            print("\n")
+
+        matching = 0
+        total = 0
+        for pyInteraction in interaction_list:
+            for mlInteraction in interaction_list:
+                if pyInteraction == mlInteraction:
+                    matching += confusionMatrix[pyInteraction][mlInteraction]
+                    total += confusionMatrix[pyInteraction][mlInteraction] 
+                else:
+                    total += confusionMatrix[pyInteraction][mlInteraction] 
+            total += confusionMatrix[pyInteraction]['blank']
+
+        print("MATCHING: " + str(matching))
+        if total != 0: 
+            print("Percent Matching: " + str(float(matching)/float(total)))

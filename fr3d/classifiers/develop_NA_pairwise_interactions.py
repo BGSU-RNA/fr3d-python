@@ -1,15 +1,22 @@
 # This script is for developing and testing NA_pairwise_interactions.py
 
+# When changes are made to other code in fr3d-python
+# cd fr3d-python
+# python setup.py install
+# "C:\Program Files\Python38\python" setup.py install
+
+# "C:\Program Files\Python38\python" NA_pairwise_interactions.py -c basepair 4TNA
+# "C:\Program Files\Python38\python" develop_NA_pairwise_interactions.py
 
 from NA_pairwise_interactions import *
 
-
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import outputNAPickleInteractions
 from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
+from fr3d.localpath import fr3d_pickle_path
+
 from fr3d.data.base import EntitySelector
 
 parser = argparse.ArgumentParser()
@@ -60,34 +67,53 @@ PDB_list = ['7k00']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['6CFJ']
 PDB_list = ['7K00']
-PDB_list = ['4TNA']
 PDB_list = ['4V9F']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.224/2.5A/csv']
+# list needed for a WebFR3D query
+PDB_list = ['7MKY', '4JF2', '5VGW', '4ENC', '5XTM', '2R8S', '4PQV', '3RW6', '4BW0', '6CB3', '4K27', '5U3G', '7OF0', '4LVW', '5D5L', '2NZ4', '3NKB', '6TFG', '2Z75', '4YAZ', '5X2G', '4V9F', '7OZQ', '4Y4O', '4WFL', '1M5K', '7K16', '5FJC', '7O7Y', '6JQ5', '6S0Z', '3P22', '7OX9', '1Q96', '6KWQ', '3LQX', '6U8D', '6SVS', '3E5C', '7RQB', '2EZ6', '6DMC', '2V3C', '5M0I', '3MXH', '4YBB', '5B2P', '4P95', '7KKV', '3NPQ', '5DDP', '4NLF', '7P7Q', '6AZ3', '7D7W', '6S0X', '7RYG', '3AM1', '4PCJ', '5UZ6', '5B2T']
+PDB_list += ['5AH5', '4ENC', '7EOG', '1QU2', '2ZUE', '2QUW', '2QUS', '5KPY', '7OF0', '7EQJ', '1U0B', '5AOX', '3FOZ', '2DRA', '4YCO', '7C79', '4V9F', '4Y4O', '4WFL', '3RG5', '5UD5', '7K16', '7O7Y', '6S0Z', '4JXZ', '4J50', '3B31', '3ADD', '7RQB', '3OVB', '6UGG', '4PRF', '4YBB', '3VJR', '1QTQ', '7K98', '4P95', '2GDI', '7DCO', '7P7Q', '6AZ3', '4YYE', '6S0X', '5HR7', '7RYG', '3AM1', '2OEU', '3D2V', '1J1U']
+PDB_list = list(set(PDB_list))
+
+PDB_list = ['3AM1','4J50']  # these have symmetry operators, but no annotations there
+PDB_list = ['3AM1']  # these have symmetry operators, but no annotations there
+PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
+PDB_list = ['4RKV','4J50','3AM1']
+
+PDB_list = ['4TNA.cif']
+PDB_list = ['5T2A']  # has a conflicting cBW annotation
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
+PDB_list = ['5UED']
 PDB_list = ['4TNA']
+PDB_list = ['283D']
+PDB_list = ['1BVJ', '1FHK', '1FQZ', '1HS1', '1HS2', '1HS3', '1HS4', '1KAJ', '1NYB', '1XWP', '2KXM', '2U2A']
+PDB_list = ['4V9F']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.256/3.5A/csv']
+
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
 
-OverwriteDataFiles = False   #
-OverwriteDataFiles = True    #
+# tell which types of interactions to annotate
+categories = {}
+categories['sO'] = []        # annotate all sO interactions
+categories['basepair'] = []
+categories['stacking'] = []
+categories['coplanar'] = []
 
-# plot one instance of each of the pairwise interactions
-PlotPair = False
-PlotPair = True
-AlreadyPlotted = {}
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
-ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
+ShowStructureReadingErrors = True
+
+experimental = True          # save interactions in pairs_exp folder so they can be compared to ones from the server
 
 # this path should be specified in localpath.py
 # intended for writing out a .pickle file to be used by the FR3D motif search tool
-unit_data_path = "C:/Users/jimitch/Documents/GitHub/fr3d-python/data/units"
 
 # annotate all nucleotides in all chains, even when a representative set is used
-annotate_entire_PDB_files = True
-
+annotate_entire_PDB_files = False
 
 timerData = myTimer("start")
 lastwritetime = time()
@@ -115,10 +141,15 @@ else:
 
 for PDB in PDBs:
 
+    PDB_id = PDB[0:4]
+
     counter += 1
 
-    outputDataFileCSV =    outputNAPairwiseInteractions + PDB + ".csv"
-    outputDataFilePickle = outputNAPickleInteractions + PDB + "_RNA_pairs_exp.pickle"
+    outputDataFileCSV    = os.path.join(outputNAPairwiseInteractions, PDB_id + ".csv")
+    if experimental:
+        outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs_exp", PDB_id + "_RNA_pairs.pickle")
+    else:
+        outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs", PDB_id + "_RNA_pairs.pickle")
 
     if annotate_entire_PDB_files:
 
@@ -132,31 +163,52 @@ for PDB in PDBs:
 
             if ShowStructureReadingErrors:
                 # do this to make sure to see any error messages
-                structure = get_structure(inputPath % PDB,PDB)
+                if not '.cif' in PDB.lower() and not '.pdb' in PDB.lower():
+                    fname = os.path.join(inputPath,PDB+'.cif')
+                else:
+                    fname = os.path.join(inputPath,PDB)
+                with open(fname, 'rb') as raw:
+                    structure = Cif(raw).structure()
             else:
                 # do it this way to suppress error messages
                 try:
-                    structure = get_structure(inputPath % PDB,PDB)
+                    structure, messages = load_structure(os.path.join(inputPath,PDB))
                 except:
                     print("  Could not load structure %s" % PDB)
+                    print(inputPath)
+
                     continue
+
+            if not structure:
+                for message in messages:
+                    print(message)
+
+                continue
 
             # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
             # need to be able to identify each chain that is available
-            # write_unit_data_file(PDB,unit_data_path,structure)
+            write_unit_data_file(PDB,fr3d_pickle_path,structure)
 
-            interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,categories,timerData)
+            # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
+            # annotate interactions and return pair_to_data
+            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
+
 
             # turn this off during development and testing
             if True:
-                print("  Annotated these interactions: %s" % interaction_to_triple_list.keys())
-                pickle.dump(interaction_to_triple_list,open(outputDataFilePickle,"wb"),2)
+                print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
+                pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
+                print('  Wrote FR3D pair file %s' % outputDataFilePickle)
 
             timerData = myTimer("Recording interactions",timerData)
-            print('Writing data file %s' % pair_to_data_output_file)
             pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),2)
+            print('  Wrote classification data file %s' % pair_to_data_output_file)
 
-            myTimer("summary",timerData)
+            write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
+            print('  Wrote CSV file(s) to %s' % outputNAPairwiseInteractions)
+
+            if len(PDBs) > 10:
+                myTimer("summary",timerData)
 
 
     else:
@@ -169,11 +221,11 @@ for PDB in PDBs:
 
         if ShowStructureReadingErrors:
             # do this to make sure to see any error messages
-            structure = get_structure(inputPath % PDB,PDB)
+            structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
         else:
             # do it this way to suppress error messages
             try:
-                structure = get_structure(inputPath % PDB,PDB)
+                structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
             except:
                 print("Could not load structure %s" % PDB)
                 continue
@@ -195,7 +247,10 @@ for PDB in PDBs:
             if base_seq_list:
                 bases = structure.residues(chain = chain_ids, sequence = base_seq_list)  # load just the types of bases in base_seq_list
             else:
-                bases = structure.residues(chain = chain_ids)  # load all bases
+                if structure:
+                    bases = structure.residues(chain = chain_ids)  # load all bases
+                else: 
+                    continue
 
         # ??? record which RNA/DNA chains are actually present
         # count nucleotides
@@ -207,11 +262,13 @@ for PDB in PDBs:
         # build cubes to be able to find potential pairs quickly
         timerData = myTimer("Building cubes",timerData)
         print("  Building nucleotide cubes in " + PDB)
-        baseCubeList, baseCubeNeighbors = make_nt_cubes(bases, nt_nt_screen_distance, nt_reference_point)
+        baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
 
         # annotate nt-nt interactions
         timerData = myTimer("Annotating interactions",timerData)
-        interaction_to_triple_list, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, timerData)
+
+        # annotate interactions and return pair_to_data
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
 
         # used to return Python_pairs, pair_to_data, timerData
 
@@ -219,17 +276,35 @@ for PDB in PDBs:
 
         # write out pairs in the format that WebFR3D reads
         # accumulate list of interacting units by base, interaction type, and edges
-        for nt1, nt2, interaction, edge, standard_aa, param in list_nt_nt:
-            base = base_residue.unit_id()
-            # skip symmetry operated instances; generally these are just duplicates anyway
-            if not "||||" in str(base):
-                aa = aa_residue.unit_id()
-                base_component = str(base).split("|")
-                aa_component = str(aa).split("|")
-                key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
-                count_pair += 1
-                allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
+        write_unit_data_file(PDB,fr3d_pickle_path,structure)
+        # for nt1, nt2, interaction, edge, standard_aa, param in list_nt_nt:
+        #     base = base_residue.unit_id()
+        #     # skip symmetry operated instances; generally these are just duplicates anyway
+        #     if not "||||" in str(base):
+        #         aa = aa_residue.unit_id()
+        #         base_component = str(base).split("|")
+        #         aa_component = str(aa).split("|")
+        #         key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
+        #         count_pair += 1
+        #         allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
+            # turn this off during development and testing
+        pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
+        pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
+        if True:
+                print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
+                pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
+                print('  Wrote FR3D pair file %s' % outputDataFilePickle)
+
+        timerData = myTimer("Recording interactions",timerData)
+        pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),2)
+        print('  Wrote classification data file %s' % pair_to_data_output_file)
+
+        write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
+        print('  Wrote CSV file(s) to %s' % outputNAPairwiseInteractions)
+
+        if len(PDBs) > 10:
+            myTimer("summary",timerData)
         myTimer("summary",timerData)
 
 # when appropriate, write out HTML files

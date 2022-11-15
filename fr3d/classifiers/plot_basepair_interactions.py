@@ -322,9 +322,10 @@ if __name__=="__main__":
     cyan  = [0,1,1] # cyan
     blue  = [0,0,1] # blue
 
-    PDB_list = ['4V9F','7K00']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
+    PDB_list = ['4V9F','7K00']
+    PDB_list = ['4TNA']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -509,8 +510,6 @@ if __name__=="__main__":
                     colors2d.append(color)
                     sizes.append(size)
 
-            print("Plotted %5d points for %s %s" % (c,base_combination,",".join(interaction_list)))
-
             # make the figure
             if c > 0:
                 fig = plt.figure(figsize=(11.0, 4.0))
@@ -520,7 +519,7 @@ if __name__=="__main__":
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,1)
                 ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=sizes)
                 ax.set_title('x and y for %d %s %s' % (c,base_combination,interaction_list[0]))
-                draw_base(nt1_seq,2,ax)
+                draw_base(nt1_seq,'default',2,ax)
 
                 ax = fig.add_subplot(1, 4, 2)
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,2)
@@ -530,19 +529,24 @@ if __name__=="__main__":
                 ax = fig.add_subplot(1, 4, 3)
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,3)
                 ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('angle and normal, blue=Matlab only')
+                ax.set_title('angle and normal blue=M only')
 
                 ax = fig.add_subplot(1, 4, 4)
                 plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,4)
                 ax.scatter(gvalues,zvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('gap12 and z values, red=Python only')
+                ax.set_title('gap12 and z values red=P only')
 
                 # show all plots for this interaction_list
                 figManager = plt.get_current_fig_manager()
                 figManager.full_screen_toggle()
-                figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (base_combination,interaction_list[0],len(all_PDB_ids))
+                if len(all_PDB_ids) == 1:
+                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (base_combination,interaction_list[0],all_PDB_ids[0])
+                else:
+                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (base_combination,interaction_list[0],len(all_PDB_ids))
                 plt.savefig(figure_save_file)
                 #plt.show()
                 plt.close()
 
+            print("Plotted %5d points for %s %s" % (c,base_combination,",".join(interaction_list)))
 
+    print("Saved figures in %s" % outputNAPairwiseInteractions)

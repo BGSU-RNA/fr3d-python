@@ -44,7 +44,7 @@ from NA_pairwise_interactions import load_structure
 from NA_pairwise_interactions import get_parent
 from NA_pairwise_interactions import myTimer
 
-def annotate_bond_orientation(structure,pdb,pipeline=False):
+def annotate_bond_orientation(structure,pipeline=False):
 
     bond_annotations = []
     error_message = []
@@ -142,7 +142,6 @@ def annotate_bond_orientation(structure,pdb,pipeline=False):
 
         if classification:
             bond_annotations.append({'unit_id'    : nt.unit_id(),
-                                    'pdb_id'      : pdb,
                                     'orientation' : classification,
                                     'chi_degree'  : ("%0.3f" % chi)})
 
@@ -153,9 +152,8 @@ def annotate_bond_orientation(structure,pdb,pipeline=False):
                 print('%s had a calculation error' % nt.unit_id())
 
             bond_annotations.append({'unit_id'    : nt.unit_id(),
-                        'pdb_id'      : pdb,
-                        'orientation' : 'NA',
-                        'chi_degree'  : None})
+                                    'orientation' : 'NA',
+                                    'chi_degree'  : None})
 
     return bond_annotations, error_message
 
@@ -177,7 +175,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations):
                     if d['orientation'] == 'NA':
                         f.write("%s\t%s\t%s\n" % (d['unit_id'],d['orientation'],d['chi_degree']))
                     else:
-                        f.write("%s\t%s\t%0.8f\n" % (d['unit_id'],d['orientation'],d['chi_degree']))
+                        f.write("%s\t%s\t%s\n" % (d['unit_id'],d['orientation'],d['chi_degree']))
 
 #=======================================================================
 
@@ -254,7 +252,7 @@ if __name__=="__main__":
 
         # suppress error messages, but report failures at the end
         try:
-            structure = load_structure(PDB)
+            structure, messages = load_structure(PDB)
         except Exception as ex:
             print("  Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex))
             if type(ex).__name__ == "TypeError":
@@ -264,7 +262,7 @@ if __name__=="__main__":
 
         if 'glycosidic' in categories:
             timerData = myTimer("Annotating bond orientation",timerData)
-            bond_annotations = annotate_bond_orientation(structure,PDBid)
+            bond_annotations, error_message = annotate_bond_orientation(structure)
 
             #print(bond_annotations)
 

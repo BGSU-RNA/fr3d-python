@@ -4,7 +4,6 @@
 inputPath = 'C:\\Users\\zirbel\\Documents\\FR3D\\PDBFiles\\'
 outputNAPairwiseInteractions = 'C:\\Users\\zirbel\\Documents\\FR3D\\NAPairwiseInteractions\\'
 
-
 outputText = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\proteinRNA_%s.txt'
 outputBaseAAFG = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\aa-fg_base_%s.csv'
 outputNAPickleInteractions = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data\\pairs\\'
@@ -12,4 +11,4 @@ contact_list_file = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\contact_lis
 outputHTML = 'C:\\Users\\zirbel\\Documents\\FR3D\\RNAProtein\\output'
 
 storeMatlabFR3DPairs = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs/"
-
+fr3d_pickle_path = 'C:\\Users\\zirbel\\Documents\\FR3D\\Python FR3D\\data'

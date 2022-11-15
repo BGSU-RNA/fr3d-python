@@ -5,12 +5,11 @@ contextlib2==0.6.0.post1
 cycler==0.10.0
 distlib==0.3.0
 filelock==3.0.12
-fr3d==0.0.1
 importlib-metadata==1.6.0
 importlib-resources==1.4.0
 kiwisolver==1.1.0
 matplotlib==2.2.5
-numpy==1.16.6
+numpy==1.22.0
 pathlib2==2.3.5
 pyparsing==2.4.7
 python-dateutil==2.8.2
