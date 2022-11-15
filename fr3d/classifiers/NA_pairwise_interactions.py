@@ -188,6 +188,7 @@ def load_structure(filename):
             message.append("Loaded " + filename)
             return structure, message
          else:
+            from fr3d.cif.reader import Cif
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
@@ -197,6 +198,7 @@ def load_structure(filename):
             return structure, message
     except TypeError:
         with open(filename, 'r') as raw:           # needed on Ubuntu
+            from fr3d.cif.reader import Cif
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
