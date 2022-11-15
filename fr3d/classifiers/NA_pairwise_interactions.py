@@ -47,7 +47,6 @@ else:
     from urllib.request import urlopen
 
 
-from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
@@ -136,9 +135,10 @@ def load_structure(filename):
     If the file is not found and the filename is four characters,
     try to download from PDB.
     """
-
+    pdb_format = False
     message = []
     original_filename = filename
+
 
     # if not available, try other extensions
     if not os.path.exists(filename):
@@ -146,7 +146,8 @@ def load_structure(filename):
             filename = filename + ".cif"
         elif os.path.exists(filename+".pdb"):
             filename = filename + ".pdb"
-
+            pdb_format = True
+            
     # if not available, try to download from PDB and save locally
     if not os.path.exists(filename):
 
@@ -163,7 +164,6 @@ def load_structure(filename):
 
         try:
             urlretrieve(url, filename)
-
             # TODO: detect when this is not successful and downloads an error file instead
             # current code is clumsy
             with open(filename,"r") as f:
@@ -179,8 +179,15 @@ def load_structure(filename):
             message.append("Code is not clever enough to find or download %s" % original_filename)
             return None, message
 
+
     try:
         with open(filename, 'rb') as raw:          # needed for Python 3 on Windows
+         if pdb_format:
+            from fr3d.pdb.pdb_reader import PDBStructure
+            structure = PDBStructure(filename).structures()
+            message.append("Loaded " + filename)
+            return structure, message
+         else:
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
@@ -197,7 +204,6 @@ def load_structure(filename):
             Hydrogens are not added automatically.
             """
             return structure, message
-
 
     except Exception as ex:
         message.append("Could not load structure %s due to exception %s: %s" % (filename,type(ex).__name__,ex))
@@ -281,7 +287,6 @@ def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
     # also record which other cubes are neighbors of each cube
     baseCubeList = {}
     baseCubeNeighbors = {}
-
     # build a set of cubes and record which bases are in which cube
     for base in bases:
         center = base.centers[nt_reference]  # chosen reference point
@@ -342,6 +347,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
                 for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
+
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
@@ -784,7 +790,6 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
 
     timerData = myTimer("Building cubes",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
-
     # annotate nt-nt interactions
     timerData = myTimer("Annotating interactions",timerData)
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
@@ -2033,6 +2038,9 @@ if __name__=="__main__":
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
+        structure, messages = load_structure(path_PDB)
+        for message in messages:
+            print("  %s" % message)
         try:
             structure, messages = load_structure(path_PDB)
 
@@ -2048,7 +2056,6 @@ if __name__=="__main__":
             for message in messages:
                 failed_structures.append((PDB,message))
             continue
-
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
 
