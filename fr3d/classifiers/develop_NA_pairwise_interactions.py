@@ -19,6 +19,19 @@ from fr3d.localpath import fr3d_pickle_path
 
 from fr3d.data.base import EntitySelector
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
+args = parser.parse_args()
+categories = {}
+
+Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+
+if args.category:
+    for category in args.category.split(","):
+        categories[category] = []
+else:
+    # default is to annotate and write just "true" basepairs
+    categories['basepair'] = Leontis_Westhof_basepairs
 
 PDB_list = ['5AJ3']
 PDB_list = ['6hiv']
@@ -75,6 +88,7 @@ PDB_list = ['283D']
 PDB_list = ['1BVJ', '1FHK', '1FQZ', '1HS1', '1HS2', '1HS3', '1HS4', '1KAJ', '1NYB', '1XWP', '2KXM', '2U2A']
 PDB_list = ['4V9F']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.256/3.5A/csv']
+
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -178,6 +192,7 @@ for PDB in PDBs:
             # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
             # annotate interactions and return pair_to_data
             interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
+
 
             # turn this off during development and testing
             if True:
