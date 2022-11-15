@@ -459,7 +459,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
-                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, True, datapoint12)
+                            interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint12)
 
                             if len(interaction) > 0:
                                 count_pair += 1
@@ -1130,7 +1130,7 @@ def create_modified_base_atoms_list(nt):
             atomList.append(atom.name)
     return atomList
 
-def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucleotides, datapoint):
+def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     """Checks for nucleotide base stacking.
     Two nucleotides and their parents passed in.
     Creates a list of their outermost atoms.
@@ -1167,22 +1167,14 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, annotate_modified_nucle
     if nt1.sequence in baseAtoms and modified_nucleotides: #standard base
         nt1baseAtomsList = baseAtoms[parent1]
     elif nt1.sequence in modified_nucleotides: #modified base
-        if annotate_modified_nucleotides:
-            nt1baseAtomsList = create_modified_base_atoms_list(nt1)
-        else:
-            print("Modified Nucleotides not considered for annotation %s and %s" % (nt1.unit_id(),nt2.unit_id()))
-            return "", datapoint, ""
+        nt1baseAtomsList = create_modified_base_atoms_list(nt1)
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
     if nt2.sequence in baseAtoms:
         nt2baseAtomsList = baseAtoms[parent2]
     elif nt2.sequence in modified_nucleotides:
-        if annotate_modified_nucleotides:
-            nt2baseAtomsList = create_modified_base_atoms_list(nt2)
-        else:
-            print("Modified Nucleotides not considered for annotation %s and %s" % (nt1.unit_id(),nt2.unit_id()))
-            return "", datapoint, ""
+        nt2baseAtomsList = create_modified_base_atoms_list(nt2)
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
