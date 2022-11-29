@@ -2317,7 +2317,6 @@ if __name__=="__main__":
     parser.add_argument('-i', "--input", help='Input Path')
     parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,coplanar,basepair_detail,covalent)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, backbone)')
 
     # process command line arguments
     args = parser.parse_args()
