@@ -189,7 +189,10 @@ def load_structure(filename):
             message.append("Loaded " + filename)
             return structure, message
          else:
-            from fr3d.cif.reader import Cif
+            if os.path.exists('../cif/legacyReader.py'):
+                from fr3d.cif.legacyReader import Cif
+            else: 
+                from fr3d.cif.reader import Cif
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
             """
