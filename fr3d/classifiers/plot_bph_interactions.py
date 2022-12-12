@@ -286,52 +286,6 @@ if __name__=="__main__":
     nearVSTrue = [] 
     matlabNoPythonMatch = []
     pythonNoMatlabMatch = []
-
-    pythonNotMatlab = {} 
-    pythonNotMatlab['s33']=0
-    pythonNotMatlab['s35']=0
-    pythonNotMatlab['s55']=0
-    pythonNotMatlab['s53']=0
-    pythonNotMatlab['ns33']=0
-    pythonNotMatlab['ns35']=0
-    pythonNotMatlab['ns55']=0
-    pythonNotMatlab['ns53']=0
-    pythonNotMatlab['total']=0
-
-    incorrectFaces = []
-
-    pythonTotals = {} 
-    pythonTotals['s33']=0
-    pythonTotals['s35']=0
-    pythonTotals['s55']=0
-    pythonTotals['s53']=0
-    pythonTotals['ns33']=0
-    pythonTotals['ns35']=0
-    pythonTotals['ns55']=0
-    pythonTotals['ns53']=0
-    pythonTotals['total']=0
-
-    matlabTotals = {} 
-    matlabTotals['s33']=0
-    matlabTotals['s35']=0
-    matlabTotals['s55']=0
-    matlabTotals['s53']=0
-    matlabTotals['ns33']=0
-    matlabTotals['ns35']=0
-    matlabTotals['ns55']=0
-    matlabTotals['ns53']=0
-    matlabTotals['total']=0
-
-    matlabNotPython = {} 
-    matlabNotPython['s33']=0
-    matlabNotPython['s35']=0
-    matlabNotPython['s55']=0
-    matlabNotPython['s53']=0
-    matlabNotPython['ns33']=0
-    matlabNotPython['ns35']=0
-    matlabNotPython['ns55']=0
-    matlabNotPython['ns53']=0
-    matlabNotPython['total']=0
     ###############################################################################################################
 
     # plot one instance of each of the pairwise interactions
@@ -540,24 +494,16 @@ if __name__=="__main__":
                         # Python finds an annotation and Matlab also finds an annotation ################
                         confusionMatrix[phosphate][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
-                        #pythonTotals[phosphate] += 1
-                        #matlabTotals[pair_to_Matlab_annotation[pair]] += 1
+
                     elif phosphate != "   " and pair_to_Matlab_annotation[pair] == '':
                         # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[phosphate]['blank'] += 1
                         confusionMatrix['total'] += 1    
-                        # pythonNotMatlab[phosphate] += 1
-                        # pythonNotMatlab['total'] += 1
-                        # pythonTotals[phosphate] += 1
-                     #   pythonNoMatlabMatch.append((pair, phosphate,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["min_distance"],datapoint['normal_Z'], datapoint['url']))
                     elif phosphate == "   " and Matlab_annotation_to_pair != "":  
                         # Python does not find an annotation and matlab does ##################################
                         confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
-                        # matlabNotPython[pair_to_Matlab_annotation[pair]] += 1
-                        # matlabNotPython['total'] += 1
-                        # matlabTotals[pair_to_Matlab_annotation[pair]] += 1
-                      #  matlabNoPythonMatch.append((pair, phosphate, pair_to_Matlab_annotation[pair], datapoint['url']))
+
                     ###########################################################################################
                     # Processing for construction of graphs ###################################################
                     ###########################################################################################
@@ -797,50 +743,67 @@ if __name__=="__main__":
     # plt.savefig(figure_save_file+".pdf")
     # plt.close()
 
-    # print("Plots are in %s" % outputNAPairwiseInteractions)
+    # print("Plots are in %s" % outputNAPairwiseInteractions){0:<10}
 
 
 
 
     ### Construction of confusion matrices ##############################################################################################
     plot_confusion_matrix(confusionMatrix, interaction_list)
-    plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
-    plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
+
     print("Unit ids of pairs that disagree on faces being used. \n ('unit_id_1', 'unit_id_2','PythonAnnotation,MatLabAnnotation) ")
     
 
     ## Create files in pwd to output pairs stored annotations ##########################################################################
     original_stdout = sys.stdout # Save a reference to the original standard output
     if True: 
-        with open('incorrectFaces_phosphate.txt', 'w') as f:
+        with open('confusionMatrix_phosphate.txt', 'w') as f:
             sys.stdout = f # Change the standard output to the file we created.
-            print('Annotations where the faces of the two nucleotides annotated as phosphate or near phosphate dont match')
+            print('Confusion Matrix for Python VS Matlab annotations of base phosphate interactions.')
+            sys.stdout.write("{0:<5}".format("\t"))
+            for category in interaction_list:
+                sys.stdout.write("{0:<5}".format(category))
+                sys.stdout.write("{0:<5}".format("\t"))
+            sys.stdout.write("\n")
+            for row in interaction_list:
+                if row != 'total':
+                    sys.stdout.write("{0:<5}".format(row))
+                    sys.stdout.write("{0:<5}".format("\t"))
+                for col in interaction_list:
+                    if row != 'total' and col != 'total':
+                        if(confusionMatrix[row][col] != 0):
+                            sys.stdout.write("{0:<5}".format(str(confusionMatrix[row][col])))
+                            sys.stdout.write("{0:<5}".format("\t"))
+                        else:
+                            sys.stdout.write("{0:<5}".format("0"))
+                            sys.stdout.write("{0:<5}".format("\t"))                            
+                sys.stdout.write("\n")
             for pair in incorrectFaces:
                 print(pair)
             sys.stdout = original_stdout
 
-    if True: 
-        with open('nearVsTrue_phosphate.txt', 'w') as f:
-            sys.stdout = f # Change the standard output to the file we created.
-            print('Annotations where Python and Matlab phosphate annotations disagree on near and true phosphate')
-            for pair in nearVSTrue:
-                print(pair)
-            sys.stdout = original_stdout
-    if True: 
-        with open('PythonNoMatlabMatch_phosphate.txt', 'w') as f:
-            sys.stdout = f # Change the standard output to the file we created.
-            print('Annotations where Python finds an interaction but Matlab doesnt')
-            for pair in pythonNoMatlabMatch:
-                print(pair)
-            sys.stdout = original_stdout
+    # if True: 
+    #     with open('nearVsTrue_phosphate.txt', 'w') as f:
+    #         sys.stdout = f # Change the standard output to the file we created.
+    #         print('Annotations where Python and Matlab phosphate annotations disagree on near and true phosphate')
+    #         for pair in nearVSTrue:
+    #             print(pair)
+    #         sys.stdout = original_stdout
+    # if True: 
+    #     with open('PythonNoMatlabMatch_phosphate.txt', 'w') as f:
+    #         sys.stdout = f # Change the standard output to the file we created.
+    #         print('Annotations where Python finds an interaction but Matlab doesnt')
+    #         for pair in pythonNoMatlabMatch:
+    #             print(pair)
+    #         sys.stdout = original_stdout
 
-    if True: 
-        with open('MatlabNoPythonMatch_phosphate.txt', 'w') as f:
-            sys.stdout = f # Change the standard output to the file we created.
-            print('Annotations where Matlab finds an interaction but Python doesnt')
-            for pair in matlabNoPythonMatch:
-                print(pair)
-            sys.stdout = original_stdout
+    # if True: 
+    #     with open('MatlabNoPythonMatch_phosphate.txt', 'w') as f:
+    #         sys.stdout = f # Change the standard output to the file we created.
+    #         print('Annotations where Matlab finds an interaction but Python doesnt')
+    #         for pair in matlabNoPythonMatch:
+    #             print(pair)
+    #         sys.stdout = original_stdout
 
     #####################################################################################################################################
     
