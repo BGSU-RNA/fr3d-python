@@ -88,6 +88,7 @@ PDB_list = ['283D']
 PDB_list = ['1BVJ', '1FHK', '1FQZ', '1HS1', '1HS2', '1HS3', '1HS4', '1KAJ', '1NYB', '1XWP', '2KXM', '2U2A']
 PDB_list = ['4V9F']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.256/3.5A/csv']
+PDB_list = ['4V9F']
 
 
 base_seq_list = ['A','U','C','G']      # for RNA
@@ -100,6 +101,7 @@ categories['sO'] = []        # annotate all sO interactions
 categories['basepair'] = []
 categories['stacking'] = []
 categories['coplanar'] = []
+categories['backbone'] = []
 
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
