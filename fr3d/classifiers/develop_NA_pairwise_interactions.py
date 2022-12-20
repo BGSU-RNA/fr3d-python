@@ -19,7 +19,7 @@ from fr3d.localpath import fr3d_pickle_path
 
 from fr3d.data.base import EntitySelector
 
-from fr3d.classifiers.class_limits import basepair_cutoffs
+from fr3d.class_limits import nt_nt_cutoffs as basepair_cutoffs
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
@@ -94,8 +94,8 @@ categories['basepair'] = []
 categories['stacking'] = []
 categories['coplanar'] = []
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
