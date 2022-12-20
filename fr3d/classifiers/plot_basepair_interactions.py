@@ -322,10 +322,10 @@ if __name__=="__main__":
     cyan  = [0,1,1] # cyan
     blue  = [0,0,1] # blue
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
