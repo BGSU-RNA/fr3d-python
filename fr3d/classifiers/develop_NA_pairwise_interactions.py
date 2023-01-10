@@ -2,9 +2,12 @@
 
 # When changes are made to other code in fr3d-python
 # cd fr3d-python
+# cd c:\Users\zirbel\Documents\GitHub\fr3d-python
 # python setup.py install
 # "C:\Program Files\Python38\python" setup.py install
 
+# cd c:\Users\zirbel\Documents\GitHub\fr3d-python\fr3d\classifiers
+# python NA_pairwise_interactions.py -c basepair 4TNA
 # "C:\Program Files\Python38\python" NA_pairwise_interactions.py -c basepair 4TNA
 # "C:\Program Files\Python38\python" develop_NA_pairwise_interactions.py
 
@@ -89,6 +92,7 @@ PDB_list = ['1BVJ', '1FHK', '1FQZ', '1HS1', '1HS2', '1HS3', '1HS4', '1KAJ', '1NY
 PDB_list = ['4V9F']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.256/3.5A/csv']
 PDB_list = ['4V9F']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.261/2.5A/csv']
 
 
 base_seq_list = ['A','U','C','G']      # for RNA
