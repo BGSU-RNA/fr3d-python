@@ -21,8 +21,10 @@ from fr3d.data import Component
 from fr3d.data import Structure
 
 # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-oldStructures = ["6I2N", "4WR6", "6H5Q", "4WRO", "4WZD", "7MSF", "6MSF", "6NUT", "5A79", "5A7A", "5APO", "1VS9", "2I1C", "5AFI", "1FJF", "5AA0", "5MJV", "5MSF", "5Z9W", "4Z92", "5FN1", "6GV4", "5M74"]
-
+if os.path.exists('./oldStructures.py'):
+    from oldStructures import oldStructures
+else: 
+    oldStructures = []
 """ The set of symbols that mark an operator expression as complex """
 COMPLEX_SYMBOLS = set('()-')
 
