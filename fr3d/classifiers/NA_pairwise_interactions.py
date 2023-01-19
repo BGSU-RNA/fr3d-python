@@ -391,7 +391,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     try:
         keys = focused_basepair_cutoffs.keys()
     except:
-        focused_basepair_cutoffs = focus_basepair_cutoffs(basepair_cutoffs,categories['basepair'])
+        focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
         ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     for nt1key in baseCubeList:                         # key to first cube
@@ -2165,7 +2165,7 @@ if __name__=="__main__":
     counter = 0
 
     # restrict dictionary of cutoffs to just the basepairs needed here
-    focused_basepair_cutoffs = focus_basepair_cutoffs(basepair_cutoffs,categories['basepair'])
+    focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
     ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     """
