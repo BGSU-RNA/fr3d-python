@@ -42,8 +42,10 @@ JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
 TEMPLATEPATH = '../search/'
 OUTPUTPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/output/"
 
-def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
-    """ Write the list of candidates in an HTML format that also shows
+def writeHTMLOutputInefficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
+    """
+    Deprecated.
+    Write the list of candidates in an HTML format that also shows
     the coordinate window and a heat map of all-against-all distances.
     """
 
@@ -214,7 +216,7 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     with open(outputfilename, 'w') as myfile:
         myfile.write(template)
 
-def writeHTMLOutputEfficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
+def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     """
     Write the list of candidates in an HTML format that also shows
     the coordinate window and a heat map of all-against-all distances.
@@ -230,33 +232,32 @@ def writeHTMLOutputEfficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) 
 
     htmlfilename = Q['name'].replace(" ","_")
 
-    candidatelist = '<table style="white-space:nowrap;">\n'
+    candidatelist = '<table id="instances" style="white-space:nowrap;">\n'
 
     numPositions = 2
 
     sequence_column = 3
 
-    # write header line
-    candidatelist += "<tr><th>S.</th><th>Show</th>"
+    # write header line, make columns sortable, numeric=true, alpha=false
+    candidatelist += '<tr><th onclick="sortTable(0,\'instances\',\'numeric\')">S.</th><th onclick="sortTable(1,\'instances\',\'checkbox\')">Show</th>'
 
     sequence_column += 1
     for j in range(0,numPositions):
-        candidatelist += "<th>Position %d</th>" % (j+1)
+        candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">Position %d</th>' % (j+2,j+1)
         sequence_column += 1
-    candidatelist += "<th>Python</th>"
-    candidatelist += "<th>Subcat</th>"
-    candidatelist += "<th>New Python</th>"
-    candidatelist += "<th>Matlab</th>"
-
-    candidatelist += "<th>x</th>"
-    candidatelist += "<th>y</th>"
-    candidatelist += "<th>z</th>"
-    candidatelist += "<th>gap12</th>"
-    candidatelist += "<th>angle_in_plane</th>"
-    candidatelist += "<th>normal_z</th>"
-    candidatelist += "<th>max_distance</th>"
-    candidatelist += "<th>min_angle</th>"
-    candidatelist += "<th>max_badness</th>"
+    candidatelist += '<th onclick="sortTable(4,\'instances\',\'alpha\')">Python</th>'
+    candidatelist += '<th onclick="sortTable(5,\'instances\',\'alpha\')">Subcat</th>'
+    candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">New Python</th>'
+    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">Matlab</th>'
+    candidatelist += '<th onclick="sortTable(8,\'instances\',\'numeric\')">x</th>'
+    candidatelist += '<th onclick="sortTable(9,\'instances\',\'numeric\')">y</th>'
+    candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">z</th>'
+    candidatelist += '<th onclick="sortTable(11,\'instances\',\'numeric\')">gap12</th>'
+    candidatelist += '<th onclick="sortTable(12,\'instances\',\'numeric\')">angle_in_plane</th>'
+    candidatelist += '<th onclick="sortTable(13,\'instances\',\'numeric\')">normal_z</th>'
+    candidatelist += '<th onclick="sortTable(14,\'instances\',\'numeric\')">max_distance</th>'
+    candidatelist += '<th onclick="sortTable(15,\'instances\',\'numeric\')">min_angle</th>'
+    candidatelist += '<th onclick="sortTable(16,\'instances\',\'numeric\')">max_badness</th>'
 
     candidatelist += "</tr>\n"
 
@@ -295,27 +296,31 @@ def writeHTMLOutputEfficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) 
         candidatelist += '</tr>\n'
     candidatelist += '</table>\n'
 
-    discrepancydata = '[['              # start a list, start a matrix
+    discrepancydata = ''
 
     if np.size(allvsallmatrix) > 0:
+        # write discrepancy data in new 2022 list format
+        # first element is a reference to the div in which the heatmap should appear
+        discrepancydata = '["#heatmap",['              # start a list, start a matrix
+
+        # second element is a matrix with the numerical values of the discrepancy
+        # writing both upper and lower triangles of the matrix
         s = allvsallmatrix.shape[0]
         for c in range(0,s):
-
             discrepancydata += '['     # start a row of the discrepancy matrix
             ife1 = candidates[c][0]
             for d in range(0,s):
                 ife2 = candidates[d][0]
-
                 discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
-
                 if d < s-1:
                     discrepancydata += ','  # commas between entries in a row
                 else:
                     discrepancydata += '],\n'  # end a row, newline
 
-        discrepancydata += '],\n'             # end the matrix, continue the list
-        discrepancydata += '['              # start list of instances
+        discrepancydata += '],\n'           # end the matrix, continue the list
 
+        # third element is a list of labels of instances
+        discrepancydata += '['              # start list of instances
         for c in range(0,s):
             ife1 = candidates[c][0]
             discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
@@ -323,25 +328,6 @@ def writeHTMLOutputEfficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) 
                 discrepancydata += ","  # commas between instances
             else:
                 discrepancydata += "]]" # end list of instances, end list of data
-
-            """
-            Kind of like this:
-             const data = [
-                [1, 1, 1, 1],
-                [1, 0.8, 1, 0.5],
-                [0, 1, 1, 1],
-                [1, 1, 1, 0],
-              ];
-
-              // Add our labels as an array of strings
-              const rowLabelsData = ["First Row", "Second Row", "Third Row", "Fourth Row"];
-              const columnLabelsData = [
-                "First Column",
-                "Second Column",
-                "Third Column",
-                "Fourth Column",
-              ];
-            """
 
     # read template.html into one string
     with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
@@ -390,7 +376,7 @@ def writeHTMLOutputEfficient(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) 
         #template = template.replace("###DISCREPANCYDATA###","")
         template = template.replace("###JS5###","")    # do not display a heat map
 
-    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+"_efficient.html")
+    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
 
     print("Writing to %s" % outputfilename)
 
@@ -715,7 +701,8 @@ if __name__=="__main__":
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
     PDB_list = ['4V9F','6ZMI','7K00','4TNA']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.248/2.5A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.261/2.5A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.262/2.0A/csv']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -1024,8 +1011,9 @@ if __name__=="__main__":
             print("Plotted %5d points for %s %s" % (c,base_combination,",".join(interaction_list)))
 
             if c > 0 and write_html_pages:
+                # mimic how WebFR3D writes result pages
                 Q = {}
-                Q['name'] = "%s %s" % (",".join(interaction_list),base_combination)
+                Q['name'] = "%s %s %d" % (",".join(interaction_list),base_combination,len(all_PDB_ids))
                 Q['numFilesSearched'] = len(all_PDB_ids)
                 Q['searchFiles'] = all_PDB_ids
                 Q['elapsedCPUTime'] = 0
@@ -1066,10 +1054,10 @@ if __name__=="__main__":
                 for i in range(0,n):
                     # python annotation has changed by new rules
                     if not orderpairs[i][11] == orderpairs[i][13]:
-                        dista[i][i] = maxd
+                        dista[i][i] = -2
                     # new python annotation differs from Matlab annotation
                     if not orderpairs[i][13].lower() == orderpairs[i][14].lower():
-                        dista[i][i] = maxd * 0.5
+                        dista[i][i] = -i
 
                 print("Finding order")
                 order = treePenalizedPathLength(distb,20)
@@ -1086,10 +1074,6 @@ if __name__=="__main__":
                 print("Reordered instances and distance matrix")
 
                 writeHTMLOutput(Q,reorder_pairs,reorder_dista)
-
-                print("Wrote HTML file")
-
-                writeHTMLOutputEfficient(Q,reorder_pairs,reorder_dista)
 
                 print("Wrote efficient HTML file")
 
