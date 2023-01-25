@@ -2,6 +2,9 @@
     plot-basepair-interactions.py reads a data file and plots points to represent
     base pairing interactions.
     Points are colored according to Python and Matlab annotations.
+
+    HTML output is in C:/Users/zirbel/Documents/FR3D/Python FR3D/output
+    PNG output is in C:/Users/zirbel/Documents/FR3D/NAPairwiseInteractions
 """
 
 import pickle
@@ -701,8 +704,8 @@ if __name__=="__main__":
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
     PDB_list = ['4V9F','6ZMI','7K00','4TNA']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.262/2.0A/csv']  # makes 288 list
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.261/2.5A/csv']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.262/2.0A/csv']
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
