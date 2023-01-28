@@ -80,8 +80,10 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/all/csv']
 PDB_list = ['1AJF', '1JTW', '1N66', '1R7W', '1S9S', '1U6P', '1ZIF', '1ZIG', '1ZIH', '2JXV', '2KPV', '2LK3', '2MXJ', '2MXL', '2N1Q', '4BY9', '6MCI', '6VU1', '6VVJ']
 PDB_list = ['2GDI']
 PDB_list = ['4J50']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.261/2.5A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.262/2.0A/csv']
+PDB_list = ['3RG5']  # had a problem annotating U|67 basepairs in Python 3.8
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','8B0X']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -94,8 +96,8 @@ categories['basepair'] = []
 categories['stacking'] = []
 categories['coplanar'] = []
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
