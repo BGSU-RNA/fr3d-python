@@ -398,6 +398,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
                 for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
+
                     if len(nt1.centers["base"]) < 3:
                         print("  Missing base center for %s" % nt1.unit_id())
                         print(nt1.centers["base"])
@@ -1371,7 +1372,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     if dot3 <= 0.7757:
         return pair_data, datapoint
 
-    gap21, base_points1 = calculate_basepair_gap(nt1,nt2,base_points1)
+    gap21, base_points1 = calculate_basepair_gap(nt2,nt1,base_points1)
 
     if datapoint:
         datapoint['gap21'] = gap21
@@ -1444,10 +1445,14 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
 
     return pair_data, datapoint
 
+
 def calculate_basepair_gap(nt1,nt2,base_points2=None):
 
     displacements = []
     distances = []
+
+    atomname = []
+
 
     if base_points2:
         for p in base_points2:
@@ -1459,6 +1464,8 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     else:
         base_points2 = []
         for atom in nt2.atoms():
+            # the technique here is OK for standard bases, but something faster and more reliable
+            # should be done for modified nucleotides
             if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
                 p = [atom.x, atom.y, atom.z]
                 v = np.subtract(p,nt1.centers["base"])
@@ -1466,6 +1473,8 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
                 base_points2.append(p)
                 displacements.append(v)
                 distances.append(d)
+
+                atomname.append(atom.name)
 
     indices = np.argsort(distances)
 
@@ -1475,6 +1484,21 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
         z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
             gap12 = z                 # gap is smallest z value
+            #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
+            #        print("Gap %8.4f at %s" % (gap12,atomname[indices[k]]))
+
+
+    """
+    #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
+    if "B|U|67" in nt1.unit_id():
+        print(base_points2)
+        print(displacements)
+        print(distances)
+        print(nt1.centers["base"])
+        for atom in nt1.atoms():
+            print(nt1.unit_id(),atom.name,atom.x,atom.y,atom.z)
+        print("Compare %-24s %-24s gap %8.4f nt1_x %8.3f nt2_x %8.3f" % (nt1.unit_id(), nt2.unit_id(), gap12, nt1.centers["C1'"][0], nt2.centers["C1'"][0]))
+    """
 
     return gap12, base_points2
 
@@ -1536,10 +1560,27 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     if datapoint and len(possible_interactions) > 0:
         print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
+    angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
+
+    if angle_in_plane <= -90:
+        angle_in_plane += 360
+
+    if datapoint:
+        datapoint['angle_in_plane'] = angle_in_plane
+
+    if not 'gap12' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
+        pair_data["gap12"] = gap12
+        if datapoint:
+            datapoint['gap12'] = gap12
+
+
     # check hydrogen bonds for interactions that are still possible
     # store according to donor and acceptor to disqualify worse acceptors
     atom_set_to_bond_parameters = {}
     donor_hydrogen_to_badness = {}
+    messages = []
     for LW, subcategory in ok_normal_displ:
         if LW in hydrogen_bonds.keys():
             hydrogens_switched = set([])
@@ -1603,16 +1644,22 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
                     if datapoint and result[0]:
                         if result[1]:
-                            print('%s has   %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                            message = '%s has   %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
                         else:
-                            print('%s lacks %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                            message = '%s lacks %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                        #print(message)
+                        messages.append(message)
 
         elif datapoint:
-            print('No hydrogen bonds to check for %s' % LW)
+            message = 'No hydrogen bonds to check for %s' % LW
+            messages.append(message)
+
+    datapoint['hbond_message'] = messages
 
     # count hydrogen bonds for each possible annotation
     ok_hydrogen_bonds = []
     LW_bond_counter = {}
+    messages = []
     for LW, subcategory in ok_normal_displ:
         if LW in hydrogen_bonds.keys():
             checked_counter = 0
@@ -1631,16 +1678,21 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                             bond_counter += 1
                         else:
                             if datapoint:
-                                print('Rejected %3s,%3s,%3s,%3s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4]))
+                                message = 'Rejected %3s,%3s,%3s,%3s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                                #print(message)
+                                messages.append(message)
 
             if datapoint:
-                print('%s,%d has %d out of %s hydrogen bonds' % (LW,subcategory,bond_counter,checked_counter))
+                message = '%s,%d has %d out of %s hydrogen bonds' % (LW,subcategory,bond_counter,checked_counter)
+                #print(message)
+                messages.append(message)
 
             LW_bond_counter[LW] = (bond_counter,checked_counter)
 
             if bond_counter == 0 and checked_counter > 0:
                 if datapoint:
-                    print('Rejecting %s basepair since it has no hydrogen bonds' % LW)
+                    message = 'Rejecting %s basepair since it has no hydrogen bonds' % LW
+                    messages.append(message)
             else:
                 ok_hydrogen_bonds.append((LW,subcategory))
 
@@ -1650,19 +1702,13 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             LW_bond_counter[LW] = (0,0)
             ok_hydrogen_bonds.append((LW,subcategory))
 
-
+    if datapoint:
+        datapoint['hbond_count'] = messages
 
     if len(ok_hydrogen_bonds) == 0:
         return "", "", datapoint
 
 
-    angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
-
-    if angle_in_plane <= -90:
-        angle_in_plane += 360
-
-    if datapoint:
-        datapoint['angle_in_plane'] = angle_in_plane
 
     ok_angle_in_plane = []
 
@@ -1685,11 +1731,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     # (interaction,subcategory) pairs that meet all requirements so far
     ok_gap = []
 
-    if not 'gap12' in pair_data:
-        # calculate gap and standardized atoms from nt2
-        gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
-        pair_data["gap12"] = gap12
-
     for interaction,subcategory in ok_angle_in_plane:
         cut = cutoffs[normal_sgn][interaction][subcategory]
         if cut['gapmax'] > 0.1:
@@ -1697,7 +1738,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 continue
 
         ok_gap.append((interaction,subcategory))
-
 
     # no annotated basepairs
     if len(ok_gap) == 0:
