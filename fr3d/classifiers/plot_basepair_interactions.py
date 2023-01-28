@@ -124,6 +124,12 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         for colnum in range(2,11):
             candidatelist += "<td>%0.2f</td>" % candidate[colnum]
 
+        for message in candidate[15]:
+            ml = message.lower()
+            # write messages pertaining to the annotated basepair
+            if candidate[14].lower() in ml or candidate[11].lower() in ml:
+                candidatelist += "<td>%s</td>" % message   # h-bond message
+
         candidatelist += '</tr>\n'
     candidatelist += '</table>\n'
 
@@ -377,6 +383,30 @@ def check_full_data(datapoint):
             and 'gap12' in datapoint and 'angle_in_plane' in datapoint and 'normal_Z' in datapoint)
 
 
+def make_full_data(datapoint):
+
+    if not 'x' in datapoint:
+        print('Adding x to %s' % datapoint)
+        datapoint['x'] = 1.111
+    if not 'y' in datapoint:
+        print('Adding y to %s' % datapoint)
+        datapoint['y'] = 1.111
+    if not 'z' in datapoint:
+        print('Adding z to %s' % datapoint)
+        datapoint['z'] = 1.111
+    if not 'gap12' in datapoint:
+        print('Adding gap12 to %s' % datapoint)
+        datapoint['gap12'] = 1.111
+    if not 'normal_Z' in datapoint:
+        print('Adding normal_Z to %s' % datapoint)
+        datapoint['normal_Z'] = 1.111
+    if not 'angle_in_plane' in datapoint:
+        print('Adding angle_in_plane to %s' % datapoint)
+        datapoint['angle_in_plane'] = 1.111
+
+    return datapoint
+
+
 def print_datapoint(datapoint):
 
 #    if 'url' in datapoint:
@@ -432,7 +462,7 @@ def plot_basepair_cutoffs(base_combination,lowercase_list,ax,variables):
                             r4 = math.sqrt(xmin**2+ymin**2)
 
                             ax.plot([t1,t2,t3,t4,t1],[r1,r2,r3,r4,r1],color[cc])
-                            ax.text(0,cc*0.7,"%s %d" % (interaction,subcategory),color = color[cc],fontsize=12)
+                            #ax.text(0,cc*0.7,"%s %d" % (interaction,subcategory),color = color[cc],fontsize=12)
                             cc += 1
                         if variables == 3:            # angle and normal
                             xmin = limits['anglemin']
@@ -471,7 +501,6 @@ if __name__=="__main__":
     base_seq_list = ['DA','DC','DG','DT']  # for DNA
     base_seq_list = ['A','C','G','U']      # for RNA
 
-    symmetric_base_combination_list = ['A,A','C,C','G,G','U,U']
     symmetric_basepair_list = ['cWW','tWW','cHH','tHH','cSS','tSS']
 
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
@@ -486,14 +515,19 @@ if __name__=="__main__":
     cyan  = [0,1,1] # cyan
     blue  = [0,0,1] # blue
     orange = [1,165/255,0] # orange
+    purple = [73/255,0,146/255] # purple
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/2.0A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.216/3.0A/csv']
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
     PDB_list = ['4V9F','6ZMI','7K00','4TNA']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.262/2.0A/csv','7K00','8B0X']  # makes 288 list
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.261/2.5A/csv','7K00','8B0X']  # makes 584 list
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','7K00','8B0X']
+    resolution = '2.5A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv','7K00','8B0X']
+    resolution = '2.0A'
 
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -553,16 +587,19 @@ if __name__=="__main__":
         Matlab_pairs = []
         for interaction in interaction_list:
             Matlab_pairs += Matlab_annotation_to_pair[interaction]
+            # add near pairs
+            Matlab_pairs += Matlab_annotation_to_pair["n"+interaction]
+
         Matlab_pairs = set(Matlab_pairs)
 
         # loop over specified base combinations
         for base_combination in base_combination_list:
 
             # don't show AA cHW because AA cWH will be shown, for example
-            if base_combination in symmetric_base_combination_list and interaction in ['cHW','tHW','cSW','tSW','cSH','tSH']:
-                continue
-
             nt1_seq, nt2_seq = base_combination.split(",")
+
+            if nt1_seq == nt2_seq and interaction in ['cHW','tHW','cSW','tSW','cSH','tSH']:
+                continue
 
             # accumulate data specific to this interaction and base combination
             xvalues = []    # x coordinate of the second base
@@ -623,38 +660,49 @@ if __name__=="__main__":
 
                 if pair in Matlab_pairs:
                     Matlab = True
+                    matlab_annotation = pair_to_Matlab_annotation[pair]
                 else:
                     Matlab = False
-
-                have_full_data = check_full_data(datapoint)
+                    matlab_annotation = ""
 
                 if reverse(pair) in pair_to_data:
                     r_datapoint = pair_to_data[reverse(pair)]
+                else:
+                    r_datapoint = {}
 
-                if Matlab and not Python and base_combination in symmetric_base_combination_list \
+                if Matlab and not Python and nt1_seq == nt2_seq \
                    and interaction_list[0] in symmetric_basepair_list \
                    and 'basepair' in r_datapoint and r_datapoint['basepair'].lower().replace("a","") in lowercase_list:
                    skip_this_order = True
                 else:
                     skip_this_order = False
 
-                if Matlab and not have_full_data:
+                have_full_data = check_full_data(datapoint)
+
+                if Matlab and not have_full_data and not skip_this_order:
+
                     if reverse(pair) in pair_to_data:
                         r_datapoint = pair_to_data[reverse(pair)]
 
                         if check_full_data(r_datapoint):
                             have_data_in_other_order = True
                         else:
-                            print('Matlab annotation, data in both orders, but no match %s' % datapoint['url'])
-                            print(pair)
-                            print(reverse(pair))
+                            print('Matlab annotation %s, data in both orders, but no match %s' % (matlab_annotation, datapoint['url']))
+                            #print(pair)
+                            #print(reverse(pair))
+                            print(datapoint)
+                            print(r_datapoint)
+                            print()
                     else:
-                        print('Matlab annotation but missing data in both orders for %s' % datapoint['url'])
-                        print(pair)
+                        print('Matlab annotation %s but missing data in both orders for %s' % (matlab_annotation,datapoint['url']))
                         print(datapoint)
-                        print(reverse(pair))
+                        print(r_datapoint)
+                        print()
 
-                if (Python or Matlab) and have_full_data and not skip_this_order:
+                if (Python or Matlab) and not skip_this_order:
+
+                    if not have_full_data:
+                        datapoint = make_full_data(datapoint)
 
                     c += 1
                     xvalues.append(datapoint['x'])
@@ -666,11 +714,6 @@ if __name__=="__main__":
                     avalues.append(datapoint['angle_in_plane'])
                     nvalues.append(datapoint['normal_Z'])
 
-                    if Matlab:
-                        matlab_annotation = pair_to_Matlab_annotation[pair]
-                    else:
-                        matlab_annotation = ""
-
                     if 'basepair' in datapoint:
                         python_annotation = datapoint['basepair']
                         new_python_annotation = datapoint['basepair']
@@ -679,9 +722,11 @@ if __name__=="__main__":
                     else:
                         basepair = "   "
                         basepair_subcat = '0'
+                        python_annotation = ''
+                        new_python_annotation = ''
 
-                    max_badness = 0
-                    max_distance = 0
+                    max_badness = 1.11
+                    max_distance = 1.11
                     min_angle = 180
                     if 'hbond' in datapoint:
                         for hbond in datapoint['hbond']:
@@ -720,27 +765,34 @@ if __name__=="__main__":
                         met_all_cutoffs = False
                         for subcat in range(0,len(nt_nt_cutoffs_2023[bc][bp])):
                             cutoffs_ok = True
-                            if datapoint['x'] < nt_nt_cutoffs_2023[bc][bp][0]["xmin"]:
+                            if datapoint['x'] < nt_nt_cutoffs_2023[bc][bp][subcat]["xmin"]:
                                 cutoffs_ok = False
-                            if datapoint['x'] > nt_nt_cutoffs_2023[bc][bp][0]["xmax"]:
+                            if datapoint['x'] > nt_nt_cutoffs_2023[bc][bp][subcat]["xmax"]:
                                 cutoffs_ok = False
-                            if datapoint['y'] < nt_nt_cutoffs_2023[bc][bp][0]["ymin"]:
+                            if datapoint['y'] < nt_nt_cutoffs_2023[bc][bp][subcat]["ymin"]:
                                 cutoffs_ok = False
-                            if datapoint['y'] > nt_nt_cutoffs_2023[bc][bp][0]["ymax"]:
+                            if datapoint['y'] > nt_nt_cutoffs_2023[bc][bp][subcat]["ymax"]:
                                 cutoffs_ok = False
-                            if datapoint['z'] < nt_nt_cutoffs_2023[bc][bp][0]["zmin"]:
+                            if datapoint['z'] < nt_nt_cutoffs_2023[bc][bp][subcat]["zmin"]:
                                 cutoffs_ok = False
-                            if datapoint['z'] > nt_nt_cutoffs_2023[bc][bp][0]["zmax"]:
+                            if datapoint['z'] > nt_nt_cutoffs_2023[bc][bp][subcat]["zmax"]:
                                 cutoffs_ok = False
-                            if datapoint['normal_Z'] < nt_nt_cutoffs_2023[bc][bp][0]["normalmin"]:
+                            if datapoint['normal_Z'] < nt_nt_cutoffs_2023[bc][bp][subcat]["normalmin"]:
                                 cutoffs_ok = False
-                            if datapoint['normal_Z'] > nt_nt_cutoffs_2023[bc][bp][0]["normalmax"]:
+                            if datapoint['normal_Z'] > nt_nt_cutoffs_2023[bc][bp][subcat]["normalmax"]:
                                 cutoffs_ok = False
-                            if datapoint['angle_in_plane'] < nt_nt_cutoffs_2023[bc][bp][0]["anglemin"]:
-                                cutoffs_ok = False
-                            if datapoint['angle_in_plane'] > nt_nt_cutoffs_2023[bc][bp][0]["anglemax"]:
-                                cutoffs_ok = False
-                            if datapoint['gap12'] > nt_nt_cutoffs_2023[bc][bp][0]["gapmax"]:
+                            if nt_nt_cutoffs_2023[bc][bp][subcat]["anglemin"] < nt_nt_cutoffs_2023[bc][bp][subcat]["anglemax"]:
+                                # usual order where min < max
+                                if datapoint['angle_in_plane'] < nt_nt_cutoffs_2023[bc][bp][subcat]["anglemin"]:
+                                    cutoffs_ok = False
+                                if datapoint['angle_in_plane'] > nt_nt_cutoffs_2023[bc][bp][subcat]["anglemax"]:
+                                    cutoffs_ok = False
+                            else:
+                                # min might be 260 and max might be -60, looking for angles above 260 or below -60
+                                if datapoint['angle_in_plane'] < nt_nt_cutoffs_2023[bc][bp][subcat]["anglemin"] and \
+                                   datapoint['angle_in_plane'] > nt_nt_cutoffs_2023[bc][bp][subcat]["anglemax"]:
+                                    cutoffs_ok = False
+                            if datapoint['gap12'] > nt_nt_cutoffs_2023[bc][bp][subcat]["gapmax"]:
                                 cutoffs_ok = False
 
                             if cutoffs_ok:
@@ -750,37 +802,48 @@ if __name__=="__main__":
                             new_python_annotation = 'cutoff'
                             disqualified_cutoff = True
 
-                        #if max_distance > 4 or min_angle < 100:
-                        if max_distance > 2.3 or min_angle < 100:
+                        if max_distance > 4 or min_angle < 100:
                             new_python_annotation = 'hbond'
                             disqualified_hbond = True
 
-                    #                0       1          2             3              4              5                 6                            7                       8         9                10                                  11                  12               13                           14
-                    pairs.append((pair[0],pair[1],datapoint['x'],datapoint['y'],datapoint['z'],datapoint['gap12'],datapoint['angle_in_plane'],datapoint['normal_Z'],max_distance,min_angle,max_badness-0.000001*random.uniform(0,1),python_annotation,int(basepair_subcat),new_python_annotation,matlab_annotation))
+
+                    messages = []
+
+                    if 'hbond_message' in datapoint:
+                        messages = messages + datapoint['hbond_message']
+                    if 'hbond_count' in datapoint:
+                        messages = messages + datapoint['hbond_count']
+
+                    #                0       1          2             3              4              5                 6                            7                       8         9                10                                  11                  12               13                           14        15
+                    pairs.append((pair[0],pair[1],datapoint['x'],datapoint['y'],datapoint['z'],datapoint['gap12'],datapoint['angle_in_plane'],datapoint['normal_Z'],max_distance,min_angle,max_badness+0.000001*random.uniform(0,1),python_annotation,int(basepair_subcat),new_python_annotation,matlab_annotation,messages))
 
                     # color and print information about bad examples
-                    if disqualified_hbond:
+                    if disqualified_cutoff:
+                        color = cyan
+                        hcolor = cyan
+                        size = 20
+                        hsize = 20
+                    elif disqualified_hbond:
                         color = orange
                         hcolor = orange
-                        size = 40
-                        hsize = 40
-                    elif disqualified_cutoff:
-                        color = orange
-                        hcolor = orange
-                        size = 40
-                        hsize = 40
+                        size = 20
+                        hsize = 20
                     elif Python and not Matlab:
-                        color = blue
-                        hcolor = blue
-                        size = 40
-                        hsize = 40
-                        #print("blue = only Python:  %s Python: %4s Matlab: %4s\n%s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
+                        color = purple
+                        hcolor = purple
+                        size = 20
+                        hsize = 20
+                        #print("purple = only Python:  %s Python: %4s Matlab: %4s\n%s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
                         #print_datapoint(datapoint)
                     elif not Python and Matlab:
                         color = red
                         hcolor = red
-                        size = 40
-                        hsize = 40
+                        if "n" in matlab_annotation:
+                            size = 5
+                            hsize = 5
+                        else:
+                            size = 20
+                            hsize = 20
                         #print("red = only Matlab: %s Python: %4s Matlab: %4s\n%s" % (base_combination,basepair,pair_to_Matlab_annotation[pair],datapoint['url']))
                         #print_datapoint(datapoint)
                     elif False and max_badness > 2.5:
@@ -796,8 +859,8 @@ if __name__=="__main__":
                         hcolor = color
                         hsize = size
                     else:
-                        color = [0,1,0]
-                        size = 100
+                        color = [0,1,0]  # green
+                        size = 100       # very large
                         hcolor = color
                         hsize = size
                     colors2d.append(color)
@@ -812,7 +875,9 @@ if __name__=="__main__":
                                 hcolors2d.append(hcolor)
                                 hsizes.append(hsize)
 
+
             # make scatterplots for pairwise combinations of data
+            bc = base_combination.replace(",","-")
             if c > 0:
                 fig = plt.figure(figsize=(11.0, 7.0))
 
@@ -826,12 +891,12 @@ if __name__=="__main__":
                 ax = fig.add_subplot(2, 3, 2)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,2)
                 ax.scatter(tvalues,rvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('radius vs theta')
+                ax.set_title('radius vs theta orange=bad hbond')
 
                 ax = fig.add_subplot(2, 3, 3)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,3)
                 ax.scatter(avalues,nvalues,color=colors2d,marker=".",s=sizes)
-                ax.set_title('normal vs angle blue=P only')
+                ax.set_title('normal vs angle purple=P only')
 
                 ax = fig.add_subplot(2, 3, 4)
                 plot_basepair_cutoffs(base_combination,lowercase_list,ax,4)
@@ -849,10 +914,11 @@ if __name__=="__main__":
                 # show all plots for this interaction_list
                 figManager = plt.get_current_fig_manager()
                 figManager.full_screen_toggle()
+
                 if len(all_PDB_ids) == 1:
-                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (interaction_list[0],base_combination,all_PDB_ids[0])
+                    figure_save_file = outputNAPairwiseInteractions + "plots/basepairs_%s_%s_%s.png" % (interaction_list[0],bc,all_PDB_ids[0])
                 else:
-                    figure_save_file = outputNAPairwiseInteractions + "basepairs_%s_%s_%s.png" % (interaction_list[0],base_combination,len(all_PDB_ids))
+                    figure_save_file = outputNAPairwiseInteractions + "plots/basepairs_%s_%s_%s.png" % (interaction_list[0],bc,resolution)
                 plt.savefig(figure_save_file)
                 #plt.show()
                 plt.close()
@@ -862,7 +928,8 @@ if __name__=="__main__":
             if c > 0 and write_html_pages:
                 # mimic how WebFR3D writes result pages
                 Q = {}
-                Q['name'] = "%s %s %d" % (",".join(interaction_list),base_combination,len(all_PDB_ids))
+                Q['name'] = "%s %s %d" % (",".join(interaction_list),bc,len(all_PDB_ids))
+                Q['name'] = "%s %s %s" % (",".join(interaction_list),bc,resolution)
                 Q['numFilesSearched'] = len(all_PDB_ids)
                 Q['searchFiles'] = all_PDB_ids
                 Q['elapsedCPUTime'] = 0
@@ -870,9 +937,12 @@ if __name__=="__main__":
 
                 # if too many pairs, show some good and also the worst ones
                 if len(xvalues) > 300:
-                    pairs = sorted(pairs, key=lambda p: p[9])
+                    # sort by hydrogen bond badness, putting priority on ones that are not Matlab near
+                    pairs = sorted(pairs, key=lambda p: p[10]+10*(len(p[14])==0)+10*(not "n" in p[14]))
+                    # keep 50 of the best pairs, and the 250 worst
                     orderpairs = pairs[0:50] + pairs[-250:]
-                    otherpairs = sorted(pairs[51:-251], key=lambda p: (p[11],p[9]))
+                    # sort the other pairs by Python annotation and then by badness
+                    otherpairs = sorted(pairs[51:-251], key=lambda p: (p[11],p[10]))
                 else:
                     orderpairs = pairs
                     otherpairs = []
@@ -902,11 +972,19 @@ if __name__=="__main__":
                 # color entries on diagonal according to matching annotations
                 for i in range(0,n):
                     # python annotation has changed by new rules
-                    if not orderpairs[i][11] == orderpairs[i][13]:
-                        dista[i][i] = -2
-                    # new python annotation differs from Matlab annotation
-                    if not orderpairs[i][13].lower() == orderpairs[i][14].lower():
-                        dista[i][i] = -i
+                    if orderpairs[i][13] == 'cutoff':
+                        dista[i][i] = -7  # light blue
+                    elif orderpairs[i][13] == 'hbond':
+                        dista[i][i] = -9  # orange
+                    elif len(orderpairs[i][14]) > 0 and len(orderpairs[i][13]) == 0:
+                        # annotated by Matlab but not by Python
+                        dista[i][i] = -1  # reddish
+                    elif len(orderpairs[i][14]) == 0 and len(orderpairs[i][13]) > 0:
+                        # annotated by Python but not by Matlab
+                        dista[i][i] = -4  # purple
+                    elif not orderpairs[i][14].lower() == orderpairs[i][13].lower():
+                        # annotated by Matlab but not by Python
+                        dista[i][i] = -3  # pink
 
                 print("Finding order")
                 order = treePenalizedPathLength(distb,20)
@@ -924,7 +1002,7 @@ if __name__=="__main__":
 
                 writeHTMLOutput(Q,reorder_pairs,reorder_dista)
 
-                print("Wrote efficient HTML file")
+                print("Wrote HTML file")
 
                 """ Write the list of candidates in an HTML format that also shows
                 the coordinate window and a heat map of all-against-all distances.
@@ -934,4 +1012,4 @@ if __name__=="__main__":
 
 
 
-    print("Saved figures in %s" % outputNAPairwiseInteractions)
+    print("Saved figures in %s/plots" % outputNAPairwiseInteractions)
