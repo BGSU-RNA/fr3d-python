@@ -188,7 +188,7 @@ def load_structure(filename):
             structure = PDBStructure(filename).structures()
             message.append("Loaded " + filename)
             return structure, message
-         else:
+         else:    
             from fr3d.cif.reader import Cif
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
@@ -526,14 +526,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             # print(nt2)
                             # print(lastNT2)
                             # print("NEXT")
-                            interaction, datapoint12 = check_base_backbone_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint12)
-                            #self_interaction = check_base_backbone_interactions(nt1, nt1, lastNT, lastNT, parent1, parent1, datapoint)
-                            self_pair_id = (nt1.unit_id(),nt1.unit_id())
-                            if len(interaction) > 0:
-                                count_pair += 1
-                                interaction_to_pair_list[interaction].append(unit_id_pair)
-                                max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
-                                category_to_interactions['backbone'].add(interaction)
+                            # interaction, datapoint12 = check_base_backbone_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint12)
+                            # #self_interaction = check_base_backbone_interactions(nt1, nt1, lastNT, lastNT, parent1, parent1, datapoint)
+                            # self_pair_id = (nt1.unit_id(),nt1.unit_id())
+                            # if len(interaction) > 0:
+                            #     count_pair += 1
+                            #     interaction_to_pair_list[interaction].append(unit_id_pair)
+                            #     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+                                #category_to_interactions['backbone'].add(interaction)
                                 #category_to_interactions['backbone'].add(interaction_reversed)
                             # if len(self_interaction) > 0:
                             #     count_pair += 1
