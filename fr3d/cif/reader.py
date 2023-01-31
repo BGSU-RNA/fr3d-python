@@ -389,39 +389,17 @@ class Cif(object):
         return sorted(list(alt_ids.values()), key=ordering_key)
 
     def __residues__(self, pdb):
-        if sys.version_info[0] < 3:
-            key = op.attrgetter(
-                'pdb',
-                'model',
-                'chain',
-                'component_id',
-                'component_number',
-                'insertion_code',
-                'symmetry',
-        )
-        else:
-            if self.pdb == '1FJF' and sys.version_info[0] >= 3:
-                key = op.attrgetter(
-                    'pdb',
-                    'model',
-                    #'chain', #For the structure 1FJF, the sorted function is not able to sort using the chain. 
-                    'component_id',
-                    'component_number',
-                    #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
-                    'symmetry',
-                )
-            else: 
-                key = op.attrgetter(
-                    'pdb',
-                    'model',
-                    'chain',
-                    'component_id',
-                    'component_number',
-                    #'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
-                    'symmetry',
-                )
-        mapping = it.groupby(sorted(self.__atoms__(pdb), key=key), key)
-
+        key = op.attrgetter(
+            'pdb',
+            'model',
+            'chain',
+            'component_id',
+            'component_number',
+            'insertion_code',
+            'symmetry',
+            )
+        # in Python 3.8, sorted cannot have None values; this also works in 2.7
+        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb,x.model,x.chain,x.component_id,x.component_number,x.insertion_code or '',x.symmetry)), key)
 
         for comp_id, all_atoms in mapping:
             for atoms in self.__group_alt_atoms__(list(all_atoms)):
