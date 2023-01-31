@@ -118,8 +118,9 @@ def focus_basepair_cutoffs(basepair_cutoffs,interactions):
         focused_basepair_cutoffs[combination] = {}
         focused_basepair_cutoffs[combination][1] = {}   # interactions with positive normal
         focused_basepair_cutoffs[combination][-1] = {}  # interactions with negative normal
-        for interaction in basepair_cutoffs[combination]:
+        for interaction in basepair_cutoffs[combination].keys():
             family = interaction.lower()[0:3]   # take off alternative category a, b, etc.
+
             if family in lower_interactions:
                 if basepair_cutoffs[combination][interaction][0]["normalmin"] > 0:
                     focused_basepair_cutoffs[combination][1][interaction] = {}   # interactions with positive normal
@@ -131,8 +132,8 @@ def focus_basepair_cutoffs(basepair_cutoffs,interactions):
                     for subcategory in basepair_cutoffs[combination][interaction]:
                         focused_basepair_cutoffs[combination][-1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
 
-    # check how this worked
     """
+    # check how this worked
     for combination in focused_basepair_cutoffs:
         for normal in focused_basepair_cutoffs[combination]:
             for interaction in focused_basepair_cutoffs[combination][normal]:
@@ -371,7 +372,7 @@ def reverse_edges(inter):
     return rev
 
 
-def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint = False):
+def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, focused_basepair_cutoffs, ideal_hydrogen_bonds, timerData, get_datapoint = False):
     """
     loop through nt cubes, loop through neighboring nt cubes,
     then loop through bases in the two cubes,
@@ -387,12 +388,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
-
-    try:
-        keys = focused_basepair_cutoffs.keys()
-    except:
-        focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
-        ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
@@ -838,7 +833,7 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
     return interaction_to_list_of_tuples, category_to_interactions, timerData
 
 
-def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoint=False):
+def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData=None,get_datapoint=False):
     """
     This function can be called from the pipeline to annotate a structure
     structure is an output from
@@ -854,7 +849,7 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
 
     # annotate nt-nt interactions
     timerData = myTimer("Annotating interactions",timerData)
-    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
+    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, focused_basepair_cutoffs, ideal_hydrogen_bonds, timerData, get_datapoint)
 
     # annotate covalent connections
     interaction_to_list_of_tuples, category_to_interactions, timerData = annotate_covalent_connections(bases, interaction_to_list_of_tuples, category_to_interactions, timerData)
@@ -1447,14 +1442,17 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
 
 
 def calculate_basepair_gap(nt1,nt2,base_points2=None):
+    """
+    Calculate the vertical distance between nearest edges of two bases.
+    From the plane of nt1 to the nearest atom of nt2.
+    """
 
     displacements = []
     distances = []
-
     atomname = []
 
-
     if base_points2:
+        # calculate distances from base atoms of nt2 to center of n1 base
         for p in base_points2:
             v = np.subtract(p,nt1.centers["base"])
             d = np.linalg.norm(v)
@@ -1462,6 +1460,7 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
             distances.append(d)
 
     else:
+        # look up the base atoms in nt2
         base_points2 = []
         for atom in nt2.atoms():
             # the technique here is OK for standard bases, but something faster and more reliable
@@ -1474,7 +1473,7 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
                 displacements.append(v)
                 distances.append(d)
 
-                atomname.append(atom.name)
+                #atomname.append(atom.name)
 
     indices = np.argsort(distances)
 
@@ -1554,34 +1553,85 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
             possible_interactions.add(interaction)  # use exact interaction like cWw
 
-    if len(ok_normal_displ) == 0:
+    # if no matches and we are not collecting data, return now
+    if len(ok_normal_displ) == 0 and not datapoint:
         return "", "", datapoint
 
-    if datapoint and len(possible_interactions) > 0:
-        print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+    #if datapoint and len(possible_interactions) > 0:
+        #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
     angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
 
     if angle_in_plane <= -90:
         angle_in_plane += 360
 
-    if datapoint:
-        datapoint['angle_in_plane'] = angle_in_plane
+    ok_angle_in_plane = []
+
+    for interaction,subcategory in ok_normal_displ:
+        cut = cutoffs[normal_sgn][interaction][subcategory]
+        if cut['anglemin'] < cut['anglemax']:     # for ranges in -90 to 270 like 50 to 120
+            if angle_in_plane <= cut['anglemin']:
+                continue
+            if angle_in_plane >= cut['anglemax']:
+                continue
+        else:                                     # for ranges straddling 270 like 260 to -75
+            if angle_in_plane >= cut['anglemax'] and angle_in_plane <= cut['anglemin']:
+                continue
+
+        ok_angle_in_plane.append((interaction,subcategory))
+
+    # if no matches and we are not collecting data, return now
+    if len(ok_angle_in_plane) == 0 and not datapoint:
+        return "", "", datapoint
 
     if not 'gap12' in pair_data:
         # calculate gap and standardized atoms from nt2
         gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
         pair_data["gap12"] = gap12
-        if datapoint:
-            datapoint['gap12'] = gap12
 
+    if not 'gap21' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap21, base_points1 = calculate_basepair_gap(nt2,nt1)
+        pair_data["gap21"] = gap21
+
+    if datapoint:
+        datapoint['angle_in_plane'] = angle_in_plane
+        datapoint['gap12'] = pair_data["gap12"]
+        datapoint['gap21'] = pair_data["gap21"]
+
+    ok_gap = []
+
+    for interaction,subcategory in ok_angle_in_plane:
+        cut = cutoffs[normal_sgn][interaction][subcategory]
+        if cut['gapmax'] > 0.1:
+            # in the near future, also check gap21
+            if pair_data["gap12"] > cut['gapmax']:
+                continue
+
+        ok_gap.append((interaction,subcategory))
+
+    # no need to check hydrogen bonds if there is no pair this could form
+    if len(ok_gap) == 0:
+        return "", "", datapoint
+
+    # multiple matching interactions from the same family
+    # special treatment if, say, cWW and cWWa
+    if len(ok_gap) == 2:
+        i0 = ok_gap[0][0]  # first interaction
+        i1 = ok_gap[1][0]  # second interaction
+        if len(i1) == 4 and i1[0:3] == i0:
+            ok_gap = [ok_gap[0]]   # just use the main category
+            print("Family %s and alternative category %s" % (i0,i1))
+        elif len(i0) == 4 and i0[0:3] == i1:
+            ok_gap = [ok_gap[1]]   # just use the main category
+            print("Family %s and alternative category %s" % (i1,i0))
 
     # check hydrogen bonds for interactions that are still possible
     # store according to donor and acceptor to disqualify worse acceptors
     atom_set_to_bond_parameters = {}
     donor_hydrogen_to_badness = {}
     messages = []
-    for LW, subcategory in ok_normal_displ:
+    for LW, subcategory in ok_gap:
         if LW in hydrogen_bonds.keys():
             hydrogens_switched = set([])
             for atom_set in hydrogen_bonds[LW]:
@@ -1660,7 +1710,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     ok_hydrogen_bonds = []
     LW_bond_counter = {}
     messages = []
-    for LW, subcategory in ok_normal_displ:
+    for LW, subcategory in ok_gap:
         if LW in hydrogen_bonds.keys():
             checked_counter = 0
             bond_counter = 0
@@ -1708,83 +1758,40 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     if len(ok_hydrogen_bonds) == 0:
         return "", "", datapoint
 
-
-
-    ok_angle_in_plane = []
-
-    for interaction,subcategory in ok_hydrogen_bonds:
-        cut = cutoffs[normal_sgn][interaction][subcategory]
-        if cut['anglemin'] < cut['anglemax']:     # for ranges in -90 to 270 like 50 to 120
-            if angle_in_plane <= cut['anglemin']:
-                continue
-            if angle_in_plane >= cut['anglemax']:
-                continue
-        else:                                     # for ranges straddling 270 like 260 to -75
-            if angle_in_plane >= cut['anglemax'] and angle_in_plane <= cut['anglemin']:
-                continue
-
-        ok_angle_in_plane.append((interaction,subcategory))
-
-    if len(ok_angle_in_plane) == 0:
-        return "", "", datapoint
-
-    # (interaction,subcategory) pairs that meet all requirements so far
-    ok_gap = []
-
-    for interaction,subcategory in ok_angle_in_plane:
-        cut = cutoffs[normal_sgn][interaction][subcategory]
-        if cut['gapmax'] > 0.1:
-            if pair_data["gap12"] > cut['gapmax']:
-                continue
-
-        ok_gap.append((interaction,subcategory))
-
-    # no annotated basepairs
-    if len(ok_gap) == 0:
-        return "", "", datapoint
-
-    # multiple matching interactions from the same family
-    # special treatment if, say, cWW and cWWa
-    if len(ok_gap) == 2:
-        i0 = ok_gap[0][0]  # first interaction
-        i1 = ok_gap[1][0]  # second interaction
-        if len(i1) == 4 and i1[0:3] == i0:
-            ok_gap = [ok_gap[0]]   # just use the main category
-            print("Family %s and alternative category %s" % (i0,i1))
-        elif len(i0) == 4 and i0[0:3] == i1:
-            ok_gap = [ok_gap[1]]   # just use the main category
-            print("Family %s and alternative category %s" % (i1,i0))
-
     # multiple matching interactions
-    if len(ok_gap) > 1:
-        if len(set([i for i,s in ok_gap])) == 1:
+    if len(ok_hydrogen_bonds) > 1:
+        if len(set([i for i,s in ok_hydrogen_bonds])) == 1:
             # one family, mutiple subcategories
             # use the first subcategory
-            ok_gap = [ok_gap[0]]
-            print("Family %s, multiple subcategories, using %d" % (ok_gap[0][0],ok_gap[0][1]))
+            ok_hydrogen_bonds = [ok_hydrogen_bonds[0]]
+            print("Family %s, multiple subcategories, using %d" % (ok_hydrogen_bonds[0][0],ok_hydrogen_bonds[0][1]))
         else:
-            # more than one family, use hydrogen bonds
+            # more than one family, use hydrogen bonds to choose
             print("Multiple matching families with these bond counts:")
-            for LW,subcategory in ok_gap:
+            for LW,subcategory in ok_hydrogen_bonds:
                 print(LW,LW_bond_counter[LW])
+
+            if datapoint:
+                datapoint['hbond_count'].append("Interactions %s has ok hydrogen bonds" % ",".join([LW for (LW,subcat) in ok_hydrogen_bonds]))
+
             # to do:  eliminate using worse hydrogen bonds
 
     # store diagnostic data about this interaction
     if datapoint:
-        datapoint['basepair'] = ok_gap[0][0]
-        datapoint['basepair_subcategory'] = ok_gap[0][1]
+        datapoint['basepair'] = ok_hydrogen_bonds[0][0]
+        datapoint['basepair_subcategory'] = ok_hydrogen_bonds[0][1]
         datapoint['hbond'] = []
-        LW = ok_gap[0][0]
+        LW = ok_hydrogen_bonds[0][0]
         if LW in hydrogen_bonds.keys():
             for atom_set in hydrogen_bonds[LW]:
                 result = atom_set_to_bond_parameters[atom_set]
                 datapoint['hbond'].append((atom_set,result))
 
         # print the basepair classification if one is found, to compare to hydrogen bonds
-        print("Checking cutoffs gives classification %s" % ok_gap)
+        #print("Checking cutoffs gives classification %s" % ok_hydrogen_bonds)
 
     # return just the first interaction type and subcategory
-    return ok_gap[0][0], ok_gap[0][1], datapoint
+    return ok_hydrogen_bonds[0][0], ok_hydrogen_bonds[0][1], datapoint
 
 
 def get_glycosidic_atom_coordinates(nt,parent):
@@ -2247,8 +2254,7 @@ if __name__=="__main__":
                 failed_structures.append((PDB,message))
             continue
 
-
-        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
