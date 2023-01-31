@@ -1,7 +1,7 @@
 # This script is for developing and testing NA_pairwise_interactions.py
 
 # When changes are made to other code in fr3d-python
-# cd fr3d-python
+# As administrator,
 # cd c:\Users\zirbel\Documents\GitHub\fr3d-python
 # python setup.py install
 # "C:\Program Files\Python38\python" setup.py install
