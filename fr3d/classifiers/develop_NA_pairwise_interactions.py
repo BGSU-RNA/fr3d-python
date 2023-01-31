@@ -81,9 +81,10 @@ PDB_list = ['1AJF', '1JTW', '1N66', '1R7W', '1S9S', '1U6P', '1ZIF', '1ZIG', '1ZI
 PDB_list = ['2GDI']
 PDB_list = ['4J50']
 PDB_list = ['3RG5']  # had a problem annotating U|67 basepairs in Python 3.8
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','8B0X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['4M6D']  # to see 4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -134,8 +135,13 @@ if len(PDBs) > 10 and not OverwriteDataFiles:
 else:
     print("Annotating interactions and saving in %s" % outputNAPairwiseInteractions)
 
+# restrict dictionary of cutoffs to just the basepairs needed here
+Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,Leontis_Westhof_basepairs)
+ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
-for PDB in PDBs:
+
+for PDB in sorted(PDBs):
 
     PDB_id = PDB[0:4]
 
@@ -187,7 +193,7 @@ for PDB in PDBs:
 
             # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
             # annotate interactions and return pair_to_data
-            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
+            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData,True)
 
             # turn this off during development and testing
             if True:
