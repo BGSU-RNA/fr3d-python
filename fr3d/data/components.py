@@ -360,7 +360,7 @@ class Component(EntitySelector):
         """
         # try:
 
-        def get_amino_hydrogen_coords(self):
+        def get_amino_hydrogen_coords(self, heavy, amino1, amino2):
             for atom in self._atoms:
                 if atom.name == heavy:
                     heavy = (atom.x, atom.y, atom.z)
@@ -383,21 +383,21 @@ class Component(EntitySelector):
                     amino2 = "H62"
                     dist1 = 0
                     dist2 = 0
-                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self)
+                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self, heavy, amino1, amino2)
                 elif self.sequence == "C" or self.sequence == "DC":
                     heavy = "C5"
                     amino1 = "H41"
                     amino2 = "H42"
                     dist1 = 0
                     dist2 = 0
-                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self)
+                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self, heavy, amino1, amino2)
                 elif self.sequence == "G" or self.sequence == "DG":
                     heavy = "N1"
                     amino1 = "H21"
                     amino2 = "H22"
                     dist1 = 0
                     dist2 = 0
-                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self)
+                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self, heavy, amino1, amino2)
 
                     if amino1coords and amino2coords and heavy:
                         dist1 = (heavy[0]-amino1coords[0])*(heavy[0]-amino1coords[0]) + (heavy[1]-amino1coords[1])*(heavy[1]-amino1coords[1]) + (heavy[1]-amino1coords[1])*(heavy[1]-amino1coords[1])
