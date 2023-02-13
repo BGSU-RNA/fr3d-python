@@ -13,60 +13,88 @@ def load_ideal_basepair_hydrogen_bonds():
 
     hbond = {}
 
-    #with open('H_bonding_Atoms_from_Isostericity_Table.csv', newline='') as csvfile:
     with open('H_bonding_Atoms_from_Isostericity_Table.csv') as csvfile:
         bond_reader = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in bond_reader:
             if len(row) == 9:
-                combination = row[1]+','+row[2]
-                LW = row[0].replace('cis ','c').replace('trans ','t').replace('/','')
-                if combination in ['A,A','A,C','A,G','A,U','C,C','G,C','G,G','G,U','C,U','U,U']:
-                    #print(LW,combination)
-                    #print(row)
+                b1 = row[1]
+                b2 = row[2]
+                if b1 in ['A','C','G','U'] and b2 in ['A','C','G','U']:
+                    combination = b1+','+b2
+                    LW = row[0].replace('cis ','c').replace('trans ','t').replace('/','')
+                    if combination in ['A,A','A,C','A,G','A,U','C,C','G,C','G,G','G,U','C,U','U,U']:
+                        #print(LW,combination)
+                        #print(row)
 
-                    a = row[3].replace('-','').replace('*',"'")
-                    b = row[4].replace('*',"'")
-                    c = row[6].replace('*',"'")
-                    d = row[7].replace('-','').replace('*',"'")
+                        a = row[3].replace('-','').replace('*',"'")
+                        b = row[4].replace('*',"'")
+                        c = row[6].replace('*',"'")
+                        d = row[7].replace('-','').replace('*',"'")
 
-                    if not combination in hbond:
-                        hbond[combination] = {}
+                        if not combination in hbond:
+                            hbond[combination] = {}
 
-                    if not LW in hbond[combination]:
-                        hbond[combination][LW] = []
+                        if not LW in hbond[combination]:
+                            hbond[combination][LW] = []
 
-                    # store as donor, hydrogen, acceptor, and order of nucleotides
-                    if len(a) > 0:
-                        hbond[combination][LW].append((a,b,c,'12'))
-                    else:
-                        hbond[combination][LW].append((d,c,b,'21'))
+                        # store as donor, hydrogen, acceptor, and order of nucleotides
+                        if len(a) > 0:
+                            hbond[combination][LW].append((a,b,c,'12'))
+                        else:
+                            hbond[combination][LW].append((d,c,b,'21'))
 
-                elif combination in ['C,A','G,A','U,A','C,G','U,C','U,G']:
-                    # reverse order of edges, bases, and atoms
-                    #print(LW,combination)
-                    #print(row)
+                    elif combination in ['C,A','G,A','U,A','C,G','U,C','U,G']:
+                        # reverse order of edges, bases, and atoms
+                        #print(LW,combination)
+                        #print(row)
 
-                    LW = LW[0]+LW[2]+LW[1]
-                    combination = row[2]+','+row[1]
+                        LW = LW[0]+LW[2]+LW[1]
+                        combination = row[2]+','+row[1]
 
-                    #print(LW,combination)
+                        #print(LW,combination)
 
-                    a = row[7].replace('-','').replace('*',"'")
-                    b = row[6].replace('*',"'")
-                    c = row[4].replace('*',"'")
-                    d = row[3].replace('-','').replace('*',"'")
+                        a = row[7].replace('-','').replace('*',"'")
+                        b = row[6].replace('*',"'")
+                        c = row[4].replace('*',"'")
+                        d = row[3].replace('-','').replace('*',"'")
 
-                    if not combination in hbond:
-                        hbond[combination] = {}
+                        if not combination in hbond:
+                            hbond[combination] = {}
 
-                    if not LW in hbond[combination]:
-                        hbond[combination][LW] = []
+                        if not LW in hbond[combination]:
+                            hbond[combination][LW] = []
 
-                    # store as donor, hydrogen, acceptor, and order of nucleotides
-                    if len(a) > 0:
-                        hbond[combination][LW].append((a,b,c,'12'))
-                    else:
-                        hbond[combination][LW].append((d,c,b,'21'))
+                        # store as donor, hydrogen, acceptor, and order of nucleotides
+                        if len(a) > 0:
+                            hbond[combination][LW].append((a,b,c,'12'))
+                        else:
+                            hbond[combination][LW].append((d,c,b,'21'))
+
+                    # apply RNA hydrogen bonds to DNA interactions
+                    # sloppy for now, but better as time permits
+                    # will want to remove O2' hbonds from the DNA side
+
+                    RNA_to_DNA = {'A': 'DA', 'C': 'DC', 'G': 'DG', 'U': 'DT'}
+
+                    DNA_pair = RNA_to_DNA[b1] + "," + RNA_to_DNA[b2]
+                    if not DNA_pair in hbond:
+                        hbond[DNA_pair] = {}
+                    hbond[DNA_pair][LW] = hbond[combination][LW]
+
+                    DNA_pair = b1 + "," + RNA_to_DNA[b2]
+                    if not DNA_pair in hbond:
+                        hbond[DNA_pair] = {}
+                    hbond[DNA_pair][LW] = hbond[combination][LW]
+
+                    DNA_pair = RNA_to_DNA[b1] + "," + b2
+                    if not DNA_pair in hbond:
+                        hbond[DNA_pair] = {}
+                    hbond[DNA_pair][LW] = hbond[combination][LW]
+
+
+
+
+
 
     """
     for combination in hbond:
