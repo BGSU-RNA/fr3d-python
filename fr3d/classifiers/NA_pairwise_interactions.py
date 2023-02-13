@@ -67,8 +67,9 @@ from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 from fr3d.data.components import Component
 
-#from fr3d.classifiers.class_limits import nt_nt_cutoffs
-from fr3d.classifiers.class_limits import nt_nt_cutoffs
+from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
+from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from hydrogen_bonds import check_hydrogen_bond
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
@@ -93,6 +94,55 @@ nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
 base_seq_list = []                     # for all nucleic acids, modified or not
 
+
+def focus_basepair_cutoffs(basepair_cutoffs,interactions):
+    """
+    Reduce the dictionary of basepair cutoffs to just the pairs
+    that need to be annotated in this run.
+    """
+
+    focused_basepair_cutoffs = {}
+
+    lower_interactions = set([])
+
+    if interactions:
+        for interaction in interactions:
+            lower_interactions.add(interaction.lower())
+    else:
+        # use all available interactions
+        for combination in basepair_cutoffs.keys():
+            for interaction in basepair_cutoffs[combination]:
+                lower_interactions.add(interaction.lower())
+
+    for combination in basepair_cutoffs.keys():
+        focused_basepair_cutoffs[combination] = {}
+        focused_basepair_cutoffs[combination][1] = {}   # interactions with positive normal
+        focused_basepair_cutoffs[combination][-1] = {}  # interactions with negative normal
+        for interaction in basepair_cutoffs[combination].keys():
+            family = interaction.lower()[0:3]   # take off alternative category a, b, etc.
+
+            if family in lower_interactions:
+                if basepair_cutoffs[combination][interaction][0]["normalmin"] > 0:
+                    focused_basepair_cutoffs[combination][1][interaction] = {}   # interactions with positive normal
+                    for subcategory in basepair_cutoffs[combination][interaction]:
+                        focused_basepair_cutoffs[combination][1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
+
+                else:
+                    focused_basepair_cutoffs[combination][-1][interaction] = {}   # interactions with negative normal
+                    for subcategory in basepair_cutoffs[combination][interaction]:
+                        focused_basepair_cutoffs[combination][-1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
+
+    """
+    # check how this worked
+    for combination in focused_basepair_cutoffs:
+        for normal in focused_basepair_cutoffs[combination]:
+            for interaction in focused_basepair_cutoffs[combination][normal]:
+                for subcategory in focused_basepair_cutoffs[combination][normal][interaction]:
+                    print(combination, normal, interaction, subcategory, focused_basepair_cutoffs[combination][normal][interaction][subcategory])
+                    pass
+    """
+
+    return focused_basepair_cutoffs
 
 def myTimer(state,data={}):
 
@@ -148,7 +198,7 @@ def load_structure(filename):
         elif os.path.exists(filename+".pdb"):
             filename = filename + ".pdb"
             pdb_format = True
-            
+
     # if not available, try to download from PDB and save locally
     if not os.path.exists(filename):
 
@@ -188,7 +238,7 @@ def load_structure(filename):
             structure = PDBStructure(filename).structures()
             message.append("Loaded " + filename)
             return structure, message
-         else:    
+         else:
             from fr3d.cif.reader import Cif
             structure = Cif(raw).structure()
             message.append("Loaded " + filename)
@@ -206,6 +256,7 @@ def load_structure(filename):
             Rotation matrix is calculated for each base.
             Hydrogens are not added automatically.
             """
+            #structure.infer_hydrogens()
             return structure, message
 
     except Exception as ex:
@@ -334,10 +385,12 @@ def reverse_edges(inter):
         rev = inter
     elif len(inter) == 3:
         rev = inter[0] + inter[2] + inter[1]
-    elif len(inter) == 4:
+    elif len(inter) == 4 and inter[0] == 'n':            # like ntSH
         rev = inter[0] + inter[1] + inter[3] + inter[2]
+    elif len(inter) == 4:                                # like tSHa
+        rev = inter[0] + inter[2] + inter[1] + inter[3]
     elif len(inter) == 5:
-        rev = inter[0] + inter[1] + inter[2] + inter[4] + inter[3]
+        rev = inter[0] + inter[1] + inter[3] + inter[2] + inter[4]
     else:
         rev = inter[0:(len(inter)-2)] + inter[len(inter)-1] + inter[len(inter)-2]
 
@@ -355,7 +408,7 @@ def makeListOfNtIndices(baseCubeList, baseCubeNeighbors):
                         lastNT[nt1.index] = nt1
     return(lastNT)
 
-def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint = True):
+def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeList, baseCubeNeighbors, categories, focused_basepair_cutoffs, ideal_hydrogen_bonds, timerData, get_datapoint = False):
     """
     loop through nt cubes, loop through neighboring nt cubes,
     then loop through bases in the two cubes,
@@ -372,6 +425,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     pair_to_data = defaultdict(dict)             # place to record data for diagnostic purposes
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
+
+    basepair_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
 
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
@@ -393,7 +448,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     number1 = nt1.number                 # nucleotide number
 
                     for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
-
                         # only consider each nt1, nt2 pair in one direction
                         # Those in different cubes only occur once
                         # Those from the same cube need a way to select just one pair
@@ -510,14 +564,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             if nt1.index -1 > 0:
                                 try:
                                     lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
-                                except: 
+                                except:
                                     lastNT = ntDict[nt1.index]
                             else:
                                 lastNT = ntDict[nt1.index] # doesn't have one. Will need adjusted
                             if nt2.index - 1 > 0:
-                                try: 
+                                try:
                                     lastNT2 = ntDict[nt2.index-1]
-                                except: 
+                                except:
                                     lastNT2 = ntDict[nt2.index]
                             else:
                                 lastNT2 = ntDict[nt2.index]
@@ -546,27 +600,31 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             print("  Missing glycosidic atom for %s" % nt2.unit_id())
                             continue
 
-                        # always annotate basepairs to be able to calculate crossing numbers
+                        # always annotate cWW basepairs to be able to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
                         # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
-                        # need to add T and have a plan for DNA nucleotides as well
-                        if parent_pair in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
+                        if parent_pair in basepair_set:
 
-                            glycosidic_displacement = np.subtract(gly2,gly1)
+                            pair_data = {}
+                            pair_data["glycosidic_displacement"] = np.subtract(gly2,gly1)
+                            # vector from origin to nt2 when standardized
+                            pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt1.rotation_matrix)
 
-                            timerData = myTimer("Get basepair parameters",timerData)
-                            pair_data, datapoint12 = get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint12)
+                            if 'coplanar' in categories.keys():
+                                timerData = myTimer("Check coplanar",timerData)
+                                pair_data, datapoint12 = check_coplanar(nt1,nt2,pair_data,datapoint12)
 
-                            # annotate coplanar relationship
-                            if 'coplanar' in categories.keys() and pair_data['coplanar']:
-                                count_pair += 1
-                                interaction_to_pair_list['cp'].append(unit_id_pair)
-                                category_to_interactions['coplanar'].add('cp')
-                                marked_coplanar = True
+                                # annotate coplanar relationship
+                                if pair_data['coplanar']:
+                                    count_pair += 1
+                                    interaction_to_pair_list['cp'].append(unit_id_pair)
+                                    category_to_interactions['coplanar'].add('cp')
+                                    marked_coplanar = True
 
                             timerData = myTimer("Check basepairing",timerData)
-                            cutoffs = nt_nt_cutoffs[parent1+","+parent2]
-                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint12)
+                            cutoffs = focused_basepair_cutoffs[parent1+","+parent2]
+                            hydrogen_bonds = ideal_hydrogen_bonds[parent1+","+parent2]
+                            interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint12)
 
                             # record basepairs made by modified nucleotides
                             if False and len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
@@ -593,7 +651,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                                 interaction_to_pair_list[interaction12].append(unit_id_pair)
 
-                                if interaction12[0] in ["c","t","a"] or interaction12[1] in ["c","t","a"]:
+                                if interaction12[0] in ["c","t"] or interaction12[1] in ["c","t"]:
                                     interaction12_reversed = reverse_edges(interaction12)
                                 else:
                                     interaction12_reversed = ""
@@ -612,22 +670,27 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             interaction12_reversed = ""
 
                         # check pair in the other order
-                        if parent_pair_reversed in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
+                        if parent_pair_reversed in basepair_set:
 
-                            glycosidic_displacement = np.subtract(gly1,gly2)
+                            pair_data = {}
+                            pair_data["glycosidic_displacement"] = np.subtract(gly1,gly2)
+                            # vector from origin to nt2 when standardized
+                            pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt2.rotation_matrix)
 
-                            timerData = myTimer("Get basepair parameters",timerData)
-                            pair_data, datapoint21 = get_basepair_parameters(nt2,nt1,glycosidic_displacement,datapoint21)
+                            if 'coplanar' in categories.keys():
+                                timerData = myTimer("Check coplanar",timerData)
+                                pair_data, datapoint21 = check_coplanar(nt2,nt1,pair_data,datapoint21)
 
-                            # annotate coplanar relationship
-                            if 'coplanar' in categories.keys() and pair_data['coplanar'] and not marked_coplanar:
-                                count_pair += 1
-                                interaction_to_pair_list['cp'].append(unit_id_pair)
-                                category_to_interactions['coplanar'].add('cp')
+                                # annotate coplanar relationship
+                                if pair_data['coplanar'] and not marked_coplanar:
+                                    count_pair += 1
+                                    interaction_to_pair_list['cp'].append(unit_id_pair)
+                                    category_to_interactions['coplanar'].add('cp')
 
                             timerData = myTimer("Check basepairing",timerData)
-                            cutoffs = nt_nt_cutoffs[parent2+","+parent1]
-                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,datapoint21)
+                            cutoffs = focused_basepair_cutoffs[parent2+","+parent1]
+                            hydrogen_bonds = ideal_hydrogen_bonds[parent2+","+parent1]
+                            interaction21, subcategory21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,hydrogen_bonds,datapoint21)
 
                             if False and len(interaction21) > 1:
                                 print("  Identified parents as %s and %s" % (parent2,parent1))
@@ -648,9 +711,24 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 new_annotation = False
                                 #print("  Matching annotation: %4s and %4s for %s and %s" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id()))
                             else:
-                                new_annotation = False  # only store one!  Otherwise the database gets two
-                                conflict_message = "  Conflicting annotation: %4s and %4s for %s and %s " % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id())
-                                conflict_message +=  "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+                                if "n" in interaction12 and "n" in interaction21:
+                                    if subcategory12 < subcategory21:
+                                        new_annotation = False  # use interaction12 because max_badness is lower
+                                    else:
+                                        new_annotation = True
+                                elif "n" in interaction21:
+                                    new_annotation = False      # interaction12 is not null and not near, use that
+                                elif "n" in interaction12:
+                                    new_annotation = True
+                                else:
+                                    new_annotation = False      # both are true but they conflict, that would be surprising!
+
+                                conflict_message = "  Conflicting annotation: %4s and %4s for %s and %s\n" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id())
+                                conflict_message += "  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s\n" % (nt1.unit_id(),nt2.unit_id())
+                                if new_annotation:
+                                    conflict_message += "  Using %s\n" % interaction21
+                                else:
+                                    conflict_message += "  Using %s\n" % interaction12_reversed
 
                                 print(conflict_message)
                                 if get_datapoint:
@@ -667,7 +745,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     category_to_interactions['basepair_detail'].add(interaction21)
 
                                     # record certain interactions in reversed direction as well
-                                    if interaction21[0] in ["c","t","a"] or interaction21[1] in ["c","t","a"]:
+                                    if interaction21[0] in ["c","t"] or interaction21[1] in ["c","t"] or interaction21.endswith("a"):
                                         interaction21_reversed = reverse_edges(interaction21)
                                         category_to_interactions['basepair'].add(interaction21_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction21_reversed)
@@ -843,7 +921,7 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
     return interaction_to_list_of_tuples, category_to_interactions, timerData
 
 
-def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoint=False):
+def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData=None,get_datapoint=False):
     """
     This function can be called from the pipeline to annotate a structure
     structure is an output from
@@ -858,7 +936,7 @@ def annotate_nt_nt_in_structure(structure,categories,timerData=None,get_datapoin
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
     # annotate nt-nt interactions
     timerData = myTimer("Annotating interactions",timerData)
-    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, timerData, get_datapoint)
+    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, focused_basepair_cutoffs, ideal_hydrogen_bonds, timerData, get_datapoint)
 
     # annotate covalent connections
     interaction_to_list_of_tuples, category_to_interactions, timerData = annotate_covalent_connections(bases, interaction_to_list_of_tuples, category_to_interactions, timerData)
@@ -1126,14 +1204,14 @@ def check_convex_hull_atoms(x,y,z, parent):
                                 if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
                                     if  1.473113*x +  2.101573*y +  7.865111 > 0:  # Left of H8-H9'
                                         inside = True
-        
+
         elif parent == 'U':
             if -0.960553*x +  2.292490*y +  5.471254 > 0:  # Left of H1'-O2
                 if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
                     if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
                         if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
                             if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
-                                if  1.120783*x +  2.082780*y +  5.621468 > 0:  # Left of H6-H1' 
+                                if  1.120783*x +  2.082780*y +  5.621468 > 0:  # Left of H6-H1'
                                     inside = True
         elif parent == 'DT':
             if -1.125648*x +  2.281277*y +  6.199955 > 0:  # Left of C1'-O2
@@ -1163,7 +1241,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
     minz = 1000 #actual minimum | checks to see if a point of an nt is on both sides of the other nt
     retValue = [-100,-100,-100]
     # min_z shows how close two are together, where as minz shows the actual smallest z value
-    inside = False 
+    inside = False
     overlap = False
 
     #iteratoe over list of atoms of nt2. Check xyz of each atom and see if projection is found.
@@ -1173,10 +1251,10 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
             x,y,z = translate_rotate_point(nt1, point) #put nt1 in standard orientation, apply same transformation to nt2, get back coordinates of atom of nt2 from nt1 center
             inside = check_convex_hull_atoms(x,y,z, parent)
             if abs(z) < abs(min_z):
-                min_z = z 
+                min_z = z
                 retValue = [x,y,z]
 
-            # check to see if a nt has points on both sides of the plane of a nt. See http://rna.bgsu.edu/rna3dhub/display3D/unitid/6ZMI%7C1%7CL5%7CG%7C2605,6ZMI%7C1%7CL5%7CG%7C2668 for an example.    
+            # check to see if a nt has points on both sides of the plane of a nt. See http://rna.bgsu.edu/rna3dhub/display3D/unitid/6ZMI%7C1%7CL5%7CG%7C2605,6ZMI%7C1%7CL5%7CG%7C2668 for an example.
             if z < minz:
                 minz = z
             if z > maxz:
@@ -1184,8 +1262,8 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
 
             if inside:
                 overlap = True # since we're iterating over the whole list of atoms, inside will be set over and over so a second flag overlap will be set that won't be reset if inside is true at least once
-                               # This allows us to check for atoms that may be closer. 
-    if maxz > 0 and minz < 0: 
+                               # This allows us to check for atoms that may be closer.
+    if maxz > 0 and minz < 0:
         return False, [-100, -100, -100] # Don't return true for nts that have atoms on both sides of the other nts
     if overlap:
         return True, retValue
@@ -1258,15 +1336,15 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Returns true if an atom is projected inside the atom (overlap). Also returns the x,y,z coordinates of the nt inside and the minimum z value
 
     nt2on1, coords = return_overlap(nt2baseAtomsList, nt1, nt2, parent1)
-    nt1on2, coords2 = return_overlap(nt1baseAtomsList, nt2, nt1, parent2) 
-    
+    nt1on2, coords2 = return_overlap(nt1baseAtomsList, nt2, nt1, parent2)
+
     #check near stacking
     if nt2on1 or nt1on2:
         # in a near stacking instance where where nt1 projects onto nt2 but nt2 doesnt project onto nt1 its important to make sure that the normal z and min z are calculated correctly
-        # and that you're using the right value. 
+        # and that you're using the right value.
 
         # Extract normal z vector and minimum z value depending on how the nts project onto one another
-        # projection of nt2 onto nt 1 but not nt1 onto nt2 
+        # projection of nt2 onto nt 1 but not nt1 onto nt2
         if nt1on2 and not nt2on1:
             rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
             normal_Z = rotation_2_to_1[2,2]
@@ -1276,18 +1354,18 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         # projection of nt1 onto nt2 but not nt2 onto nt1
         elif not nt1on2 and nt2on1:
             rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
-            normal_Z = rotation_1_to_2[2,2]           
+            normal_Z = rotation_1_to_2[2,2]
             min_vertical_distance = coords[2]
 
-        #projection of both 
+        #projection of both
         elif nt1on2 and nt2on1:
-            if coords[2] != -100 and coords2[2] != -100:   
+            if coords[2] != -100 and coords2[2] != -100:
                 rotation_2_to_1 = np.dot(np.transpose(nt2.rotation_matrix), nt1.rotation_matrix)
-                normal_Z = rotation_2_to_1[2,2]            
+                normal_Z = rotation_2_to_1[2,2]
                 min_vertical_distance = coords[2]
 
 
-        if min_vertical_distance > 0: 
+        if min_vertical_distance > 0:
             if normal_Z > 0:
                 interaction = "ns35" # second base above, pointing up
                 interaction_reversed = "ns53"
@@ -1296,13 +1374,13 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
                 interaction_reversed = "ns33"
 
         elif min_vertical_distance < 0:
-            if normal_Z > 0: 
+            if normal_Z > 0:
                 interaction = "ns53"  #second base below, pointing up
                 interaction_reversed = "ns35"
-            elif normal_Z < 0: 
+            elif normal_Z < 0:
                 interaction =  "ns55" #second base below, pointing down
                 interaction_reversed = "ns55"
-        
+
         # if projection is only found from nt2 onto nt1, the extracted values are backwards and will lead to a backwards annotation. Swap the values
         if reverseAnnotation:
             interactionPH = interaction_reversed
@@ -1314,14 +1392,14 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         min_distance = calculate_min_distances(nt1, nt2, None)[1]
 
         #checks for true stacking. If it meets criteria, strip the n from the annotation
-        if abs(min_distance) < true_z_cutoff and abs(min_distance) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True: 
+        if abs(min_distance) < true_z_cutoff and abs(min_distance) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True:
             interaction = interaction.replace("n","")
             interaction_reversed = interaction_reversed.replace("n", "")
 
         #checks the last of the criteria to make sure its near stacking. All others get no annotation
         #Min z must be greater than 1 and the normal z should be greater than 0.5 to be considered near
 
-        if abs(min_distance) < 1 or abs(normal_Z) < 0.5:    
+        if abs(min_distance) < 1 or abs(normal_Z) < 0.5:
             return "", datapoint, ""
 
 
@@ -1332,7 +1410,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         datapoint['gap12'], base_points2 = calculate_basepair_gap(nt1,nt2)
         try:
             datapoint['angle_in_plane'] = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
-        except: 
+        except:
             datapoint['angle_in_plane'] = math.atan2(rotation_2_to_1[1,1],rotation_2_to_1[1,0])*57.29577951308232 - 90
         datapoint['normal_Z'] = normal_Z
         datapoint['sInteraction'] = interaction
@@ -1362,7 +1440,7 @@ def calculate_min_distances(nt1, nt2, base_points2):
                         min_distance = d
                     if d < base_min_distance:
                         base_min_distance = d
-            else: 
+            else:
                 for atom2 in nt2.atoms():
                     p = [atom2.x, atom2.y, atom2.z]
                     if not "'" in atom2.name and not atom2.name in ["P","OP1","OP2"]:  # exclude backbone atoms
@@ -1377,7 +1455,7 @@ def calculate_min_distances(nt1, nt2, base_points2):
                     d = np.linalg.norm(np.subtract(p,q))
                     if d < min_distance:
                         min_distance = d
-            else: 
+            else:
                 for atom2 in nt2.atoms():
                     p = [atom2.x, atom2.y, atom2.z]
                     d = np.linalg.norm(np.subtract(p,q))
@@ -1385,7 +1463,7 @@ def calculate_min_distances(nt1, nt2, base_points2):
                         min_distance = d
 
     return min_distance, base_min_distance, base_points1
-    
+
 def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
     """Function that will take a nucleotide and the one indexed before it and will create a dictionary of the sugar atoms and one of the phosphaye oxygens"""
     sugars = {}
@@ -1404,7 +1482,7 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
                 elif atom == atoms.name:
                     if atom == "O2'" or atom == "O4'": # sugar oxygens for ribose interactions
                         sOxygens[atom] = atoms
-                    else: 
+                    else:
                         pOxygens[atom] = atoms # phosphate oxygen for phosphate interactions
 
     return sugars, pOxygens, sOxygens
@@ -1474,10 +1552,10 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     # Function to create lists of sugars, phosphate oxygens, and sugar oxygens of each nucleotide (also adds O3' of the last nt to each)
     sugarsNt1, pOxygensNt1, sOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
     sugarsNt2, pOxygensNt2, sOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
-    pOxygens = {} 
+    pOxygens = {}
 
     # Dictionaries that will be used to hold the angle and distance of the base heavy/hydrogen with each oxygen of the ribose or phosphate.
-    # phosphate angle2 and distance2 are used to check for interactions of a nucleotide with its own phosphate. 
+    # phosphate angle2 and distance2 are used to check for interactions of a nucleotide with its own phosphate.
     phosphateAngle = {}
     riboseAngle = {}
     phosphateDistance = {}
@@ -1486,11 +1564,11 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     phosphateDistance2 = {}
     ribose = ""
     phosphate = ""
-    #dictionary with the hydrogens of each types of base. 
-    # Key: Letter of Base 
+    #dictionary with the hydrogens of each types of base.
+    # Key: Letter of Base
     # Values: Tuples of Hydrogens in the base paired with a massive atom
     baseMassiveAndHydrogens = {}
-    baseMassiveAndHydrogens = {'A': [['H2',"C2","2BPh", "2BR"], ['H8',"C8","0BPh", "0BR"],['H61',"N6","6BPh", "6BR"],['H62',"N6","7BPh", "7BR"]], 
+    baseMassiveAndHydrogens = {'A': [['H2',"C2","2BPh", "2BR"], ['H8',"C8","0BPh", "0BR"],['H61',"N6","6BPh", "6BR"],['H62',"N6","7BPh", "7BR"]],
                 'C': [['H6',"C6","0BPh","0BR"], ['H5',"C5","9BPh","9BR"], ['H41',"N4","7BPh","7BR"], ['H42',"N4", "6BPh", "6BR"]],
                 'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
                 'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]],
@@ -1501,28 +1579,28 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     if nt2.sequence in modified_nucleotides:
         baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt2, parent2)
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
-    massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base. 
+    massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base.
     massiveAtomsList = []
     selfPhosphate = ""
     dis = distance_between_vectors(nt1.centers["base"], nt2.centers["base"])
-    if abs(dis) < 16:   # Initial cutoff 
-        # if the displacement between the the phosphate of nt2 is close enough to base of nt1 look for interactions 
-        #phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z] 
+    if abs(dis) < 16:   # Initial cutoff
+        # if the displacement between the the phosphate of nt2 is close enough to base of nt1 look for interactions
+        #phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z]
        # displ = np.subtract(nt2.centers["P"],nt1.centers["base"])
-        if not nt2.centers["P"].any(): 
+        if not nt2.centers["P"].any():
             return "", datapoint
         p_standard = translate_rotate_point(nt1, nt2.centers["P"])
         if abs(p_standard[2]) < 4.5: #phosphorus close to plane
-            for sites in baseMassiveAndHydrogens[nt1.sequence]: #Loop through each massive atom of the base     
+            for sites in baseMassiveAndHydrogens[nt1.sequence]: #Loop through each massive atom of the base
                 baseMassive = nt1.centers[sites[1]] # contains base massive atom name
                 baseHydrogens = nt1.centers[sites[0]] # contains corresponding base hydrogen
                 dis = distance_between_vectors(baseMassive,nt2.centers['P'])
                     #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
-                for oxygens in phosphateOxygens: 
+                for oxygens in phosphateOxygens:
                     oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
                     phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, its corresponding hydrogen, and oxygen
                     phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen) #distance from the oxygen to the base atom
-                    
+
                     #Repeat the same processing but this time do it to check if nt1 on itself
                     # oxygen2 = [pOxygensNt1[oxygens].x,pOxygensNt1[oxygens].y,pOxygensNt1[oxygens].z]#x,y,z coords as vector for nt1 phosphate oxygen
                     # phosphateAngle2[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen2) # angle between base massive, its corresponding hydrogen, and oxygen
@@ -1536,9 +1614,9 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
 
                 # PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
                 # PDist = distance_between_vectors(baseMassive,phosphorus)
-                
+
                 #Set the cutoff distance depending on which atom is the donor
-                if "C" in sites[1]: #atoms[1] is the name of the base massive atom being checked. 
+                if "C" in sites[1]: #atoms[1] is the name of the base massive atom being checked.
                     cutoff = carbonCutoff
                     nCutoff = nCarbonCutoff
                 elif "N" in sites[1]:
@@ -1551,7 +1629,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                         if phosphateAngle[oxygen] > angleLimit and phosphateDistance[oxygen] < cutoff:
                             bPhosphateInteraction.append([sites[2], oxygen]) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
                             true_found_phosphate = True
-                        else: 
+                        else:
                             bPhosphateInteraction.append(["n" + sites[2], oxygen])  #adds near to classification
                             near_found_phosphate = True
 
@@ -1561,7 +1639,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                     #         selfbPhosphateInteraction.append([atoms[2], oxygens]) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
                     #         #phosphateInteraction = atoms[2]
                     #         true_found_self_phosphate = True
-                    #     else: 
+                    #     else:
                     #         selfbPhosphateInteraction.append(["n" + atoms[2], oxygens]) #adds near to classification
                     #         near_found_self_phosphate = True
 
@@ -1578,17 +1656,17 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                             near_found_ribose = True
 
             #If a true annotation is found, remove near classifications
-            if true_found_ribose == True and near_found_ribose == True: 
+            if true_found_ribose == True and near_found_ribose == True:
                 for interaction in bRiboseInteraction:
                     if "n" in interaction:
                         bRiboseInteraction.remove(interaction)
 
-            if true_found_phosphate == True and near_found_phosphate == True: 
+            if true_found_phosphate == True and near_found_phosphate == True:
                 for interaction in bPhosphateInteraction[:]:
                     if "n" in interaction[0]:
                         bPhosphateInteraction.remove(interaction)
 
-            # if true_found_self_phosphate == True and near_found_self_phosphate == True: 
+            # if true_found_self_phosphate == True and near_found_self_phosphate == True:
             #     for interaction in selfbPhosphateInteraction[:]:
             #         if "n" in interaction[0]:
             #             selfbPhosphateInteraction.remove(interaction)
@@ -1601,7 +1679,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
             #     interaction[0] = interaction[0].replace("n","")
             #     riboseList.append(interaction[0])
 
-            # Processing For Classification of interaction 
+            # Processing For Classification of interaction
             # Checks if single or multiple bonds with one or more than one oxygen and recreates classifications
             if len(bPhosphateInteraction) > 1:
                 # processing for situation where self interaction is found (nt1 and nt2 are the same nt)
@@ -1616,19 +1694,19 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                     if interaction[1] != firstOxygen:
                         multipleOxygensPhosphate = True
             #only one interaction was found
-            elif len(bPhosphateInteraction) == 1: 
+            elif len(bPhosphateInteraction) == 1:
                 phosphate = bPhosphateInteraction[0][0]
             if multipleOxygensPhosphate:
                 if '7BPh' in phosphateList and '9BPh' in phosphateList:
                     phosphate = "8BPh" # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
                 elif '3BPh' in phosphateList and '5BPh' in phosphateList:
                     phosphate = " 4BPh" # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
-            else: 
+            else:
                 if '7BPh' in phosphateList and '9BPh' in phosphateList:
                     phosphate = "7BPh" # C N4-1H4 and C5-H5 interact with just one oxygen, called 7BPh
                 elif '3BPh' in phosphateList and '5BPh' in phosphateList:
                     phosphate = "4BPH" # G N2-2H2 and N1-H1 interact with just one oxygen, called 4BPh
-                    
+
             if len(bRiboseInteraction) > 1:
                 firstOxygen = bRiboseInteraction[0][1] # The oxygen of the documented interaction
                 for interaction in bRiboseInteraction:
@@ -1641,17 +1719,17 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                     ribose = "8BR" # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
                 elif '3BR' in riboseList and '5BR' in riboseList:
                     ribose = "4BR" # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
-            else: 
+            else:
                 if '7BR' in riboseList and '9BR' in riboseList:
                     ribose = "7BR" # C N4-1H4 and C5-H5 interact with just one oxygen, called 7BPh
                 elif '3BR' in riboseList and '5BR' in riboseList:
                     ribose = "4BR" # G N2-2H2 and N1-H1 interact with just one oxygen, called 4BPh
-            # print("after") 
+            # print("after")
 
-            #print(bRiboseInteraction) 
+            #print(bRiboseInteraction)
             # for interaction in bPhosphateInteraction:
             #     print(interaction)
-            
+
             if phosphate != "" and True:
                 print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),phosphateInteraction,0,0,0,nt1.unit_id(),nt2.unit_id()))
             # if len(selfbPhosphateInteraction) > 0:
@@ -1664,10 +1742,10 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
 
         datapoint['BPh'] = phosphate
         datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
-    
+
     return phosphate, datapoint
 
-def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
+def check_coplanar(nt1,nt2,pair_data,datapoint):
     """
     Calculate data needed for basepair classification.
     Also, check specific criteria to say that
@@ -1681,14 +1759,10 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
       Angle between normal vectors must be < 39.1315 degrees
     """
 
-    pair_data = {}
     pair_data["coplanar"] = False
     pair_data["coplanar_value"] = None         # 0 to 1 is coplanar, 1 is the best
 
-    # vector from origin to nt2 when standardized
-    displ12 = np.dot(glycosidic_displacement,nt1.rotation_matrix)
-
-    pair_data["displ12"] = displ12
+    displ12 = pair_data["displ12"]
 
     # calculate gap and standardized atoms from nt2
     gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
@@ -1758,7 +1832,7 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
     if dot3 <= 0.7757:
         return pair_data, datapoint
 
-    gap21, base_points1 = calculate_basepair_gap(nt1,nt2,base_points1)
+    gap21, base_points1 = calculate_basepair_gap(nt2,nt1,base_points1)
 
     if datapoint:
         datapoint['gap21'] = gap21
@@ -1831,12 +1905,19 @@ def get_basepair_parameters(nt1,nt2,glycosidic_displacement,datapoint):
 
     return pair_data, datapoint
 
+
 def calculate_basepair_gap(nt1,nt2,base_points2=None):
+    """
+    Calculate the vertical distance between nearest edges of two bases.
+    From the plane of nt1 to the nearest atom of nt2.
+    """
 
     displacements = []
     distances = []
+    atomname = []
 
     if base_points2:
+        # calculate distances from base atoms of nt2 to center of n1 base
         for p in base_points2:
             v = np.subtract(p,nt1.centers["base"])
             d = np.linalg.norm(v)
@@ -1844,8 +1925,11 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
             distances.append(d)
 
     else:
+        # look up the base atoms in nt2
         base_points2 = []
         for atom in nt2.atoms():
+            # the technique here is OK for standard bases, but something faster and more reliable
+            # should be done for modified nucleotides
             if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
                 p = [atom.x, atom.y, atom.z]
                 v = np.subtract(p,nt1.centers["base"])
@@ -1853,6 +1937,8 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
                 base_points2.append(p)
                 displacements.append(v)
                 distances.append(d)
+
+                #atomname.append(atom.name)
 
     indices = np.argsort(distances)
 
@@ -1862,31 +1948,220 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
         z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
             gap12 = z                 # gap is smallest z value
+            #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
+            #        print("Gap %8.4f at %s" % (gap12,atomname[indices[k]]))
+
+
+    """
+    #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
+    if "B|U|67" in nt1.unit_id():
+        print(base_points2)
+        print(displacements)
+        print(distances)
+        print(nt1.centers["base"])
+        for atom in nt1.atoms():
+            print(nt1.unit_id(),atom.name,atom.x,atom.y,atom.z)
+        print("Compare %-24s %-24s gap %8.4f nt1_x %8.3f nt2_x %8.3f" % (nt1.unit_id(), nt2.unit_id(), gap12, nt1.centers["C1'"][0], nt2.centers["C1'"][0]))
+    """
 
     return gap12, base_points2
 
 
-def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
+def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     """
     Given nt1 and nt2 and the dictionary of cutoffs
     for that pair of nucleotides, check cutoffs for each
-    basepair interaction type
+    basepair interaction type.
+    Also compute hydrogen bonds for all basepairs consistent with the normal vector.
+    If no cutoffs are fully met but all hydrogen bonds are met, annotate as near.
     """
 
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
-    if abs(displ[0,2]) > 3.6:                            # too far out of plane
+    if abs(displ[0,2]) > 3.6:         # too far out of plane for a basepair
         return "", "", datapoint
 
-    ok_displacement_screen = []
+    # check sign of normal vector to cut number of possible families in half
+    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
 
-    for interaction in cutoffs:                          # cWW, tWW, etc.
-        for subcategory in cutoffs[interaction].keys():  # 0, 1, etc.
-            cut = cutoffs[interaction][subcategory]
-            if displ[0,2] < cut['zmin']:
-                continue
-            if displ[0,2] > cut['zmax']:
-                continue
+    normal_Z = rotation_1_to_2[2,2]   # z component of normal vector to second base
+
+    if datapoint:
+        datapoint['normal_Z'] = normal_Z
+
+    if normal_Z > 0:
+        normal_sgn = 1
+    else:
+        normal_sgn = -1
+
+    possible_interactions = list(cutoffs[normal_sgn].keys())
+
+    # check hydrogen bonds for interactions that are possible by the normal vector
+    # store according to donor and acceptor to disqualify worse acceptors
+    atom_set_to_bond_parameters = {}
+    donor_hydrogen_to_badness = {}
+    LW_bonds = {}
+    LW_bond_messages = {}
+    for LW in possible_interactions:
+        LW_bonds[LW] = []
+        LW_bond_messages[LW] = []
+        if LW in hydrogen_bonds.keys():
+            hydrogens_switched = set([])
+            for atom_set in hydrogen_bonds[LW]:
+                if atom_set in atom_set_to_bond_parameters:
+                    # this atom_set was already checked for a different LW family
+                    result = atom_set_to_bond_parameters[atom_set]
+
+                else:
+                    # return 0 bond checked, 1 bond made, 2 length, 3 angle, 4 badness
+                    if atom_set[3] == '12':
+                        result = check_hydrogen_bond(nt1,nt2,atom_set)
+                    else:
+                        result = check_hydrogen_bond(nt2,nt1,atom_set)
+
+                    """
+                    This is not the right place to address the problem described below.
+                    That needs to be done before this point in the annotation program.
+
+                    In some structures like 7QI4, H61 and H62 on A are switched relative
+                    to https://www.rcsb.org/ligand/A So if one of these hydrogens is being
+                    checked, it's not already good, and it's plausible,
+                    check both, and take the better hydrogen bond.
+                    Only allow this once on each base, to avoid having it both ways.
+                    """
+                    """
+                    if result[4] > 0 and result[2] < 5 and not atom_set[3] in hydrogens_switched:
+                        atom_set_2 = ()
+                        if atom_set[1] == 'H21':
+                            atom_set_2 = (atom_set[0],'H22',atom_set[2],atom_set[3])
+                        elif atom_set[1] == 'H22':
+                            atom_set_2 = (atom_set[0],'H21',atom_set[2],atom_set[3])
+                        elif atom_set[1] == 'H41':
+                            atom_set_2 = (atom_set[0],'H42',atom_set[2],atom_set[3])
+                        elif atom_set[1] == 'H42':
+                            atom_set_2 = (atom_set[0],'H41',atom_set[2],atom_set[3])
+                        elif atom_set[1] == 'H61':
+                            atom_set_2 = (atom_set[0],'H62',atom_set[2],atom_set[3])
+                        elif atom_set[1] == 'H62':
+                            atom_set_2 = (atom_set[0],'H61',atom_set[2],atom_set[3])
+
+                        if atom_set_2:
+                            if atom_set_2[3] == '12':
+                                result2 = check_hydrogen_bond(nt1,nt2,atom_set_2)
+                            else:
+                                result2 = check_hydrogen_bond(nt2,nt1,atom_set_2)
+
+                            if result2[4] < result[4]:
+                                # use the better result
+                                result = result2
+                                hydrogens_switched.add(atom_set[3])
+                                # but don't change the atom set since those are
+                                # tied to specific basepairs
+                    """
+
+                    atom_set_to_bond_parameters[atom_set] = result
+
+                # store the lowest "badness" for this donor-hydrogen pair
+                # over all acceptors; avoids identifying a worse option
+                if result[0]:  # bond was checked
+                    donor     = atom_set[0]
+                    hydrogen  = atom_set[1]
+                    direction = atom_set[3]
+                    if (donor,hydrogen,direction) in donor_hydrogen_to_badness:
+                        if result[4] < donor_hydrogen_to_badness[(donor,hydrogen,direction)]:
+                            donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result[4]
+                    else:
+                        donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result[4]
+
+                    if datapoint:
+                        if result[1]:   # bond is made
+                            message = '%s has %s, %s, %s, %s bond, distance %0.3f, angle %8.1f, badness %0.3f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                        else:
+                            message = '%s lacks %s, %s, %s, %s bond, distance %0.3f, angle %8.1f, badness %0.3f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                        LW_bonds[LW].append(result)
+                        LW_bond_messages[LW].append(message)
+
+        elif datapoint:
+            message = 'No hydrogen bonds to check for %s %s %s' % (nt1.unit_id(),nt2.unit_id(),LW)
+            LW_bond_messages[LW].append(message)
+            #print(message)
+
+    # count hydrogen bonds for each possible annotation
+    LW_bond_counter = []
+    for LW in possible_interactions:
+        if LW in hydrogen_bonds.keys():
+            checked_counter = 0
+            bond_counter = 0
+            max_badness = 0
+            for atom_set in hydrogen_bonds[LW]:
+                result = atom_set_to_bond_parameters[atom_set]
+
+                if result[0]:  # bond was checked
+                    checked_counter += 1
+                    if result[1]:  # bond is made
+                        donor     = atom_set[0]
+                        hydrogen  = atom_set[1]
+                        direction = atom_set[3]
+                        max_badness = max(max_badness,result[4])
+
+                        # if the badness is not so far from the best that we have seen for this donor
+                        if result[4] < donor_hydrogen_to_badness[(donor,hydrogen,direction)] + 0.5:
+                            bond_counter += 1
+                        else:
+                            if datapoint:
+                                message = 'Rejected %s, %s, %s, %s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                                #print(message)
+                                LW_bond_messages[LW].append(message)
+
+            if datapoint:
+                message = '%s has %d out of %s hydrogen bonds' % (LW,bond_counter,checked_counter)
+                #print(message)
+                LW_bond_messages[LW] = [message] + LW_bond_messages[LW]
+
+            if checked_counter > 0:
+                LW_bond_counter.append((LW,bond_counter,checked_counter,max_badness))
+
+            if bond_counter == 0 and checked_counter > 0:
+                if datapoint:
+                    message = 'Rejecting %s basepair since it has no hydrogen bonds' % LW
+                    LW_bond_messages[LW].append(message)
+
+    # default is that there is no anntation
+    hbond_annotation = ""
+    hbond_badness = 9999
+
+    # if some reasonable hydrogen bonds are present
+    if len(LW_bond_counter) > 0:
+        # sort interactions to find the best hydrogen bonds
+        # sort by number of missing bonds, then by max_badness
+        LW_bond_rank = sorted(LW_bond_counter, key=lambda x : (x[2]-x[1],x[3]))
+        LW = LW_bond_rank[0][0]   # best LW category
+
+        if LW_bond_rank[0][1] == LW_bond_rank[0][2] and LW_bond_rank[0][1] > 0:
+            # one interaction category has all checked hydrogen bonds
+            if LW_bond_rank[0][3] < 2.0:
+                # if max_badness is not horrible
+                # annotate as near in case no family matches all cutoffs
+                hbond_annotation = "n" + LW
+                # record and pass back the badness to break ties over near annotations
+                hbond_badness = LW_bond_rank[0][3]
+
+                if datapoint:
+                    datapoint['basepair'] = "n" + LW
+                    datapoint['basepair_subcategory'] = 0
+
+        if datapoint:
+            #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+            datapoint['best_pair'] = LW
+            datapoint['hbond'] = LW_bonds[LW]
+            datapoint['hbond_messages'] = LW_bond_messages[LW]
+
+    # check cutoffs
+    ok_normal_displ = []              # those that pass the normal and displacement
+
+    for interaction in possible_interactions:
+        for subcategory in cutoffs[normal_sgn][interaction].keys():
+            cut = cutoffs[normal_sgn][interaction][subcategory]
             if displ[0,0] < cut['xmin']:
                 continue
             if displ[0,0] > cut['xmax']:
@@ -1895,43 +2170,33 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
                 continue
             if displ[0,1] > cut['ymax']:
                 continue
-            ok_displacement_screen.append((interaction,subcategory)) # ("cWW",0), etc.
+            if displ[0,2] < cut['zmin']:
+                continue
+            if displ[0,2] > cut['zmax']:
+                continue
+            if normal_Z < cut['normalmin']:
+                continue
+            if normal_Z > cut['normalmax']:
+                continue
+            # all normal and displacement cutoffs are met, record that fact
+            ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
 
-    if len(ok_displacement_screen) == 0:
-        return "", "", datapoint
+    # if not all cutoffs are met and we are not collecting data, return now to save time
+    if len(ok_normal_displ) == 0 and not datapoint:
+        return hbond_annotation, hbond_badness, datapoint
 
-    rotation_1_to_2 = np.dot(np.transpose(nt1.rotation_matrix), nt2.rotation_matrix)
-
-    normal_Z = rotation_1_to_2[2,2]   # z component of normal vector to second base
-
-    if datapoint:
-        datapoint['normal_Z'] = normal_Z
-
-    ok_normal = []
-
-    for interaction,subcategory in ok_displacement_screen:
-        cut = cutoffs[interaction][subcategory]
-        if normal_Z < cut['normalmin']:
-            continue
-        if normal_Z > cut['normalmax']:
-            continue
-        ok_normal.append((interaction,subcategory))
-
-    if len(ok_normal) == 0:
-        return "", "", datapoint
+    if False and datapoint and len(possible_interactions) > 0:
+        print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
     angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
 
     if angle_in_plane <= -90:
         angle_in_plane += 360
 
-    if datapoint:
-        datapoint['angle_in_plane'] = angle_in_plane
-
     ok_angle_in_plane = []
 
-    for interaction,subcategory in ok_normal:
-        cut = cutoffs[interaction][subcategory]
+    for interaction,subcategory in ok_normal_displ:
+        cut = cutoffs[normal_sgn][interaction][subcategory]
         if cut['anglemin'] < cut['anglemax']:     # for ranges in -90 to 270 like 50 to 120
             if angle_in_plane <= cut['anglemin']:
                 continue
@@ -1943,43 +2208,96 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,datapoint):
 
         ok_angle_in_plane.append((interaction,subcategory))
 
-    if len(ok_angle_in_plane) == 0:
-        return "", "", datapoint
+    # if no matches and we are not collecting data, return now
+    if len(ok_angle_in_plane) == 0 and not datapoint:
+        return hbond_annotation, hbond_badness, datapoint
 
-    # (interaction,subcategory) pairs that meet all requirements so far
+    if not 'gap12' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
+        pair_data["gap12"] = gap12
+
+    if not 'gap21' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap21, base_points1 = calculate_basepair_gap(nt2,nt1)
+        pair_data["gap21"] = gap21
+
+    if datapoint:
+        datapoint['angle_in_plane'] = angle_in_plane
+        datapoint['gap12'] = pair_data["gap12"]
+        datapoint['gap21'] = pair_data["gap21"]
+
     ok_gap = []
 
     for interaction,subcategory in ok_angle_in_plane:
-        cut = cutoffs[interaction][subcategory]
+        cut = cutoffs[normal_sgn][interaction][subcategory]
         if cut['gapmax'] > 0.1:
+            # in the near future, also check gap21
             if pair_data["gap12"] > cut['gapmax']:
+                continue
+            if pair_data["gap21"] > cut['gapmax']:
                 continue
 
         ok_gap.append((interaction,subcategory))
 
-    # deal with the possibility of multiple matching interactions
+    # no matches, return
     if len(ok_gap) == 0:
-        return "", "", datapoint
-    elif len(ok_gap) > 1:
-        interactions = sorted(list(set([i for i,s in ok_gap])))
-        if len(ok_gap) == 2:
-            i0 = ok_gap[0][0]  # first interaction
-            i1 = ok_gap[1][0]  # second interaction
-            if "a" + i0 == i1:
-                ok_gap = [ok_gap[0]]   # just use the main category
-            elif "a" + i1 == i0:
-                ok_gap = [ok_gap[1]]   # just use the main category
-        if False and len(set([i for i,s in ok_gap])) > 1:
-            print("Multiple basepair types for %s, using the first one" % datapoint['url'])
-            print(ok_gap)
-            print(datapoint)
+        return hbond_annotation, hbond_badness, datapoint
 
-    if datapoint:
-        datapoint['basepair'] = ok_gap[0][0]
-        datapoint['basepair_subcategory'] = ok_gap[0][1]
+    # multiple matching interactions between family and alternative in the same family
+    if len(ok_gap) == 2:
+        i0 = ok_gap[0][0]  # first interaction
+        i1 = ok_gap[1][0]  # second interaction
+        if len(i1) == 4 and i1[0:3] == i0:
+            ok_gap = [ok_gap[0]]   # just use the main category
+            print("  %s %s met basepair cutoffs for family %s and alternative category %s\n" % (nt1.unit_id(),nt2.unit_id(),i0,i1))
+        elif len(i0) == 4 and i0[0:3] == i1:
+            ok_gap = [ok_gap[1]]   # just use the main category
+            print("  %s %s met basepair cutoffs for family %s and alternative category %s\n" % (nt1.unit_id(),nt2.unit_id(),i1,i0))
 
-    # return just the first interaction type and subcategory
-    return ok_gap[0][0], ok_gap[0][1], datapoint
+    if len(ok_gap) == 1:
+        LW = ok_gap[0][0]
+        if datapoint:
+            datapoint['basepair'] = LW
+            datapoint['basepair_subcategory'] = ok_gap[0][1]
+            datapoint['hbond'] = LW_bonds[LW]
+            datapoint['hbond_messages'] = LW_bond_messages[LW]
+        return LW, ok_gap[0][1], datapoint
+    else:
+        # multiple matching interactions
+        LW_remaining = set([i for i,s in ok_gap])
+        if len(LW_remaining) == 1:
+            # one family, mutiple subcategories, quite OK, they are designed to overlap
+            #print("  Family %s, multiple subcategories, using %d" % (ok_gap[0][0],ok_gap[0][1]))
+            LW = ok_gap[0][0]
+            if datapoint:
+                datapoint['basepair'] = LW
+                datapoint['basepair_subcategory'] = ok_gap[0][1]
+                datapoint['hbond'] = LW_bonds[LW]
+                datapoint['hbond_messages'] = LW_bond_messages[LW]
+            return LW, ok_gap[0][1], datapoint
+
+        else:
+            print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+            print("  Multiple families meet all cutoffs, %s" % LW_remaining)
+            for LW,bond_counter,checked_counter,max_badness in LW_bond_rank:
+                for LW2,subcategory in ok_gap:
+                    if LW == LW2:
+                        if datapoint:
+                            datapoint['basepair'] = LW
+                            datapoint['basepair_subcategory'] = subcategory
+                            datapoint['hbond'] = LW_bonds[LW]
+                            datapoint['hbond_messages'] = LW_bond_messages[LW]
+                        print("  Using %s\n" % LW)
+                        return LW, subcategory, datapoint
+
+            print("No match between all cutoffs and all hydrogen bonds")
+            LW = ok_gap[0][0]
+            datapoint['basepair'] = LW
+            datapoint['basepair_subcategory'] = ok_gap[0][1]
+            datapoint['hbond'] = LW_bonds[LW]
+            datapoint['hbond_messages'] = LW_bond_messages[LW]
+            return ok_gap[0][0], ok_gap[0][1], datapoint
 
 
 def get_glycosidic_atom_coordinates(nt,parent):
@@ -2221,7 +2539,7 @@ def write_unit_data_file(PDB,unit_data_path,structure):
             rttns = []
 
             # sort by symmetry and index
-            for symmetry,index,nt in sorted(all_nts[id]):
+            for symmetry,index,nt in sorted(all_nts[id], key=lambda p: (p[0],p[1])):
                 units.append(nt.unit_id())
                 order.append(nt.index)
                 cntrs.append(nt.centers["glycosidic"])
@@ -2314,8 +2632,10 @@ def simplify_basepair(interaction):
 
     if len(interaction) == 3:
         inter = interaction[0] + interaction[1:3].upper()
-    elif len(interaction) == 4:
+    elif len(interaction) == 4 and interaction[0] == "n":
         inter = interaction[0:2] + interaction[2:4].upper()
+    elif len(interaction) == 4 and interaction[3] == "a":
+        inter = interaction[0] + interaction[1:3].upper() + interaction[3]
     else:
         inter = interaction
 
@@ -2370,6 +2690,8 @@ if __name__=="__main__":
     # only output true basepairs in these main categories
     if 'basepair' in categories:
         categories['basepair'] = Leontis_Westhof_basepairs
+    else:
+        categories['basepair'] = ['cWW']  # only annotate cWW, for crossing number
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
@@ -2396,6 +2718,16 @@ if __name__=="__main__":
     timerData = myTimer("start")
     failed_structures = []
     counter = 0
+
+    # restrict dictionary of cutoffs to just the basepairs needed here
+    focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
+    ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
+
+    """
+    for combination in ideal_hydrogen_bonds:
+        for LW in ideal_hydrogen_bonds[combination]:
+            print(combination, LW, ideal_hydrogen_bonds[combination][LW])
+    """
 
     for path, PDB in PDBs:
         counter += 1
@@ -2433,7 +2765,7 @@ if __name__=="__main__":
                 failed_structures.append((PDB,message))
             continue
 
-        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData)
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)

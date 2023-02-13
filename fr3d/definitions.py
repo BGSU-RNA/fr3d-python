@@ -595,12 +595,12 @@ NAbasecoordinates['DT']['H72'] = [-2.882094, 1.068812,-0.906410]
 NAbasecoordinates['DT']['H73'] = [-3.153579, 0.548710, 0.569770]
 
 # Coordinates of atoms as defined by the matlab FR3D code in zStackingOverlap.m
-# NTs are all translated to try to match the C1' x,y coordinates to work with Draw Base Method from draw_residues 
+# NTs are all translated to try to match the C1' x,y coordinates to work with Draw Base Method from draw_residues
 # These coordinates are used to create checks in generate_location_checks which are then used in checkconvexhull.py
 # The M is stands for Matlab and the second letter stands for the RNA base
-# The indeces can probably be renamed to atoms 
+# The indeces can probably be renamed to atoms
 NAbasecoordinates['MA'] = {}
-NAbasecoordinates['MA']['0'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.000000] 
+NAbasecoordinates['MA']['0'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.000000]
 NAbasecoordinates['MA']['1'] = [(0.000000 - 1.110515), (-1.009320 - 2.293999) , 0.000000]
 NAbasecoordinates['MA']['2'] = [(4.271447 - 1.110515), (1.317924 - 2.293999) ,0.000000]
 NAbasecoordinates['MA']['3'] = [(1.920945 - 1.110515), (5.150733 - 2.293999) ,0.000000]
@@ -608,8 +608,8 @@ NAbasecoordinates['MA']['4'] = [(0.230436 - 1.110515), (4.699718 - 2.293999) ,0.
 NAbasecoordinates['MA']['5'] = [(-2.100463 - 1.110515), (0.447145 - 2.293999) ,0.00000]
 
 NAbasecoordinates['MC'] = {}
-NAbasecoordinates['MC']['0'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324), 0.000000] 
-NAbasecoordinates['MC']['1'] = [(0.000000 - 0.380579), (-1.010259 - 1.954324), 0.000000] 
+NAbasecoordinates['MC']['0'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324), 0.000000]
+NAbasecoordinates['MC']['1'] = [(0.000000 - 0.380579), (-1.010259 - 1.954324), 0.000000]
 NAbasecoordinates['MC']['2'] = [(2.269450 - 0.380579), (-0.120783 - 1.954324), 0.000000]
 NAbasecoordinates['MC']['3'] = [(1.203833 - 0.380579), (4.41199 - 1.954324) , 0.000000]
 NAbasecoordinates['MC']['4'] = [(-0.527970 - 0.380579), (4.602202 - 1.954324) , 0.000000]
@@ -617,7 +617,7 @@ NAbasecoordinates['MC']['5'] = [(-2.036772 - 0.380579), (2.647095 - 1.954324) , 
 NAbasecoordinates['MC']['6'] = [(-2.082733 - 0.380579), (0.123632 - 1.954324) , 0.000000]
 
 NAbasecoordinates['MG'] = {}
-NAbasecoordinates['MG']['0'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000] 
+NAbasecoordinates['MG']['0'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000]
 NAbasecoordinates['MG']['1'] = [(0.000000 - 1.456680), (-1.009529 - 2.182359), 0.000000]
 NAbasecoordinates['MG']['2'] = [(4.872516 - 1.456680), (0.0977814 - 2.182359), 0.000000]
 NAbasecoordinates['MG']['3'] = [(5.295175 - 1.456680), (1.782283 - 2.182359), 0.000000]
@@ -627,7 +627,7 @@ NAbasecoordinates['MG']['6'] = [(-0.751391 - 1.456680), (2.120132 - 2.182359), 0
 NAbasecoordinates['MG']['7'] = [(-2.101572 - 1.456680), (0.463584 - 2.182359), 0.000000]
 
 NAbasecoordinates['MU'] = {}
-NAbasecoordinates['MU']['0'] = [(-2.082780 - 0.326420), (0.111836 - 1.985475), 0.000000] 
+NAbasecoordinates['MU']['0'] = [(-2.082780 - 0.326420), (0.111836 - 1.985475), 0.000000]
 NAbasecoordinates['MU']['1'] = [(0.000000 - 0.326420), (-1.008947 - 1.985475), 0.000000]
 NAbasecoordinates['MU']['2'] = [(2.292490 - 0.326420), (-0.048394 - 1.985475), 0.000000]
 NAbasecoordinates['MU']['3'] = [(2.092152 - 0.326420), (2.445179 - 1.985475), 0.000000]
@@ -666,7 +666,7 @@ NAconnections[ 'U'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','O4','C4','C5
 NAconnections['DA'] =['N1','C6','C6','N6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N1']
 NAconnections['DC'] =['N1','C2','C2','O2','C2','N3','N3','C4','C4','N4','C4','C5','C5','C6','C6','N1']
 NAconnections['DG'] =['N1','C6','C6','O6','C6','C5','C5','C4','C5','N7','N7','C8','C8','N9','N9','C4','C4','C5','C4','N3','N3','C2','C2','N2','C2','N1']
-NAconnections['DT'] =['N1','C2','C2','N3','N3','C4','C3','O4','C4','C5','C5','C7','C5','C6','C6','N1']
+NAconnections['DT'] =['N1','C2','C2','N3','N3','C4','C4','O4','C4','C5','C5','C7','C5','C6','C6','N1']
 
 #NAhydrogenconnections = {}
 #NAhydrogenconnections[ 'A'] =[]

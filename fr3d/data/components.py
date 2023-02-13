@@ -138,11 +138,11 @@ class Component(EntitySelector):
         # calculate and store base_center; especially for modified nt without all heavy atoms
         self.calculate_rotation_matrix()
 
-        # initialize centers so they can be used to infer hydrogens
-        self.centers = AtomProxy(self._atoms)
-
         # add hydrogen atoms to standard bases and amino acids
         self.infer_NA_hydrogens()
+
+        # initialize centers so they can be used to infer hydrogens
+        self.centers = AtomProxy(self._atoms)
 
         # do not routinely add hydrogen atoms to amino acids
         # self.infer_amino_acid_hydrogens()

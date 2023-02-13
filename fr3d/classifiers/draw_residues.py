@@ -3,7 +3,6 @@ from fr3d.definitions import NAconnections
 from fr3d.definitions import NAbasecoordinates
 from fr3d.definitions import NAbasecolor
 
-
 def draw_base(base_seq,colorscheme,dimensions,ax,zorder=1):
     """
     Connects atoms to draw one base in the specified number of dimensions

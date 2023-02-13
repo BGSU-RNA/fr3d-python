@@ -126,9 +126,11 @@ FR3D Python uses case-sensitive file names because chain identifiers in PDB are 
 
 For FR3D Python, you need to enable case sensitivity in filenames in the ```units``` folder. See https://docs.microsoft.com/en-us/windows/wsl/case-sensitivity to read about how to enable case sensitivity for a specific directory.
 
-The key steps seem to be:
-	- `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux`
-	- `fsutil.exe file setCaseSensitiveInfo <path to folder> enable`
+The key steps seem to be to open PowerShell as administrator, then enter the following two commands:
+```
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+fsutil.exe file setCaseSensitiveInfo <path to folder> enable
+```
 
 Note that the first step is not mentioned in the Microsoft documentation.
 </details>

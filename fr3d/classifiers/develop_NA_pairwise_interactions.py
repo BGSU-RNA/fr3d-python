@@ -36,6 +36,9 @@ else:
     # default is to annotate and write just "true" basepairs
     categories['basepair'] = Leontis_Westhof_basepairs
 
+from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from hydrogen_bonds import check_hydrogen_bond
+
 PDB_list = ['5AJ3']
 PDB_list = ['6hiv']
 PDB_list = ['3QRQ','5J7L']
@@ -67,11 +70,9 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
 PDB_list = ['4V9F']
 PDB_list = ['203D']
 PDB_list = ['7k00']
-PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['6CFJ']
 PDB_list = ['7K00']
 PDB_list = ['4V9F']
-from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 # list needed for a WebFR3D query
 PDB_list = ['7MKY', '4JF2', '5VGW', '4ENC', '5XTM', '2R8S', '4PQV', '3RW6', '4BW0', '6CB3', '4K27', '5U3G', '7OF0', '4LVW', '5D5L', '2NZ4', '3NKB', '6TFG', '2Z75', '4YAZ', '5X2G', '4V9F', '7OZQ', '4Y4O', '4WFL', '1M5K', '7K16', '5FJC', '7O7Y', '6JQ5', '6S0Z', '3P22', '7OX9', '1Q96', '6KWQ', '3LQX', '6U8D', '6SVS', '3E5C', '7RQB', '2EZ6', '6DMC', '2V3C', '5M0I', '3MXH', '4YBB', '5B2P', '4P95', '7KKV', '3NPQ', '5DDP', '4NLF', '7P7Q', '6AZ3', '7D7W', '6S0X', '7RYG', '3AM1', '4PCJ', '5UZ6', '5B2T']
 PDB_list += ['5AH5', '4ENC', '7EOG', '1QU2', '2ZUE', '2QUW', '2QUS', '5KPY', '7OF0', '7EQJ', '1U0B', '5AOX', '3FOZ', '2DRA', '4YCO', '7C79', '4V9F', '4Y4O', '4WFL', '3RG5', '5UD5', '7K16', '7O7Y', '6S0Z', '4JXZ', '4J50', '3B31', '3ADD', '7RQB', '3OVB', '6UGG', '4PRF', '4YBB', '3VJR', '1QTQ', '7K98', '4P95', '2GDI', '7DCO', '7P7Q', '6AZ3', '4YYE', '6S0X', '5HR7', '7RYG', '3AM1', '2OEU', '3D2V', '1J1U']
@@ -84,16 +85,33 @@ PDB_list = ['4RKV','4J50','3AM1']
 
 PDB_list = ['4TNA.cif']
 PDB_list = ['5T2A']  # has a conflicting cBW annotation
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
 PDB_list = ['5UED']
 PDB_list = ['4TNA']
-PDB_list = ['283D']
-PDB_list = ['1BVJ', '1FHK', '1FQZ', '1HS1', '1HS2', '1HS3', '1HS4', '1KAJ', '1NYB', '1XWP', '2KXM', '2U2A']
-PDB_list = ['4V9F']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.256/3.5A/csv']
-PDB_list = ['4V9F']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.261/2.5A/csv']
+PDB_list = ['4V9F','6ZMI','7K00','4TNA']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.248/2.5A/csv']
+PDB_list = ['4TNA','7QI4']
+PDB_list = ['4K27']
+PDB_list = ['5B2R']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/all/csv']
+PDB_list = ['1AJF', '1JTW', '1N66', '1R7W', '1S9S', '1U6P', '1ZIF', '1ZIG', '1ZIH', '2JXV', '2KPV', '2LK3', '2MXJ', '2MXL', '2N1Q', '4BY9', '6MCI', '6VU1', '6VVJ']
+PDB_list = ['2GDI']
+PDB_list = ['4J50']
+PDB_list = ['3RG5']  # had a problem annotating U|67 basepairs in Python 3.8
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','8B0X']
+PDB_list = ['4M6D']  # to see 4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
+PDB_list = ['124D']  # RNA-DNA duplex
+PDB_list = ['1A1L']  # DNA-DNA duplex
+PDB_list = ['7JQQ']  # Five RNA chains and a DNA-DNA duplex
+PDB_list = ['7K00','8B0X']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','7JQQ','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv']
 
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -106,9 +124,6 @@ categories['basepair'] = []
 categories['stacking'] = []
 categories['coplanar'] = []
 categories['backbone'] = []
-
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 ShowStructureReadingErrors = False
 ShowStructureReadingErrors = True
@@ -139,13 +154,19 @@ count_pair = 0
 PDBs = PDB_IFE_Dict.keys()
 #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
 
-if len(PDBs) > 1 and not OverwriteDataFiles:
+# If just a few files are requested, overwrite data files
+if len(PDBs) > 10 and not OverwriteDataFiles:
     print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
 else:
     print("Annotating interactions and saving in %s" % outputNAPairwiseInteractions)
 
+# restrict dictionary of cutoffs to just the basepairs needed here
+Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,Leontis_Westhof_basepairs)
+ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
-for PDB in PDBs:
+
+for PDB in sorted(PDBs):
 
     PDB_id = PDB[0:4]
 
@@ -162,7 +183,7 @@ for PDB in PDBs:
         pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
         pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
-        if not os.path.exists(pair_to_data_output_file) or len(PDBs) == 1 or OverwriteDataFiles:
+        if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles:
 
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
@@ -197,7 +218,7 @@ for PDB in PDBs:
 
             # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
             # annotate interactions and return pair_to_data
-            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
+            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData,True)
 
 
             # turn this off during development and testing
@@ -255,7 +276,7 @@ for PDB in PDBs:
             else:
                 if structure:
                     bases = structure.residues(chain = chain_ids)  # load all bases
-                else: 
+                else:
                     continue
 
         # ??? record which RNA/DNA chains are actually present
