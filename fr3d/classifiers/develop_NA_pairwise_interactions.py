@@ -62,11 +62,6 @@ PDB_list = ['4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['2N1Q']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/1.5A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/2.5A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.220/3.0A/csv']
 PDB_list = ['4V9F']
 PDB_list = ['203D']
 PDB_list = ['7k00']
@@ -88,30 +83,26 @@ PDB_list = ['5T2A']  # has a conflicting cBW annotation
 PDB_list = ['5UED']
 PDB_list = ['4TNA']
 PDB_list = ['4V9F','6ZMI','7K00','4TNA']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.248/2.5A/csv']
 PDB_list = ['4TNA','7QI4']
 PDB_list = ['4K27']
 PDB_list = ['5B2R']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.221/all/csv']
 PDB_list = ['1AJF', '1JTW', '1N66', '1R7W', '1S9S', '1U6P', '1ZIF', '1ZIG', '1ZIH', '2JXV', '2KPV', '2LK3', '2MXJ', '2MXL', '2N1Q', '4BY9', '6MCI', '6VU1', '6VVJ']
 PDB_list = ['2GDI']
 PDB_list = ['4J50']
 PDB_list = ['3RG5']  # had a problem annotating U|67 basepairs in Python 3.8
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','8B0X']
 PDB_list = ['4M6D']  # to see 4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
 PDB_list = ['124D']  # RNA-DNA duplex
 PDB_list = ['1A1L']  # DNA-DNA duplex
 PDB_list = ['7JQQ']  # Five RNA chains and a DNA-DNA duplex
 PDB_list = ['7K00','8B0X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','7JQQ','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -216,10 +207,8 @@ for PDB in sorted(PDBs):
             # need to be able to identify each chain that is available
             write_unit_data_file(PDB,fr3d_pickle_path,structure)
 
-            # interaction_to_list_of_tuples, pair_to_interaction, pair_to_data, timerData = annotate_nt_nt_in_structure(structure,timerData)
             # annotate interactions and return pair_to_data
-            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData,True)
-
+            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,[],timerData,True)
 
             # turn this off during development and testing
             if True:
@@ -295,7 +284,7 @@ for PDB in sorted(PDBs):
         timerData = myTimer("Annotating interactions",timerData)
 
         # annotate interactions and return pair_to_data
-        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,timerData,True)
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData,True)
 
         # used to return Python_pairs, pair_to_data, timerData
 
