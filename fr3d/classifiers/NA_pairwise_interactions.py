@@ -67,7 +67,7 @@ from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 from fr3d.modified_parent_mapping import modified_nucleotides
 
-from fr3d.classifiers.class_limits import nt_nt_cutoffs
+from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
@@ -362,7 +362,9 @@ def reverse_edges(inter):
         rev = inter
     elif len(inter) == 3:
         rev = inter[0] + inter[2] + inter[1]
-    elif len(inter) == 4:
+    elif len(inter) == 4 and inter[0] == 'n':            # like ntSH
+        rev = inter[0] + inter[1] + inter[3] + inter[2]
+    elif len(inter) == 4:                                # like tSHa
         rev = inter[0] + inter[2] + inter[1] + inter[3]
     elif len(inter) == 5:
         rev = inter[0] + inter[1] + inter[3] + inter[2] + inter[4]
@@ -389,6 +391,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
+    basepair_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
+
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
@@ -409,7 +413,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     number1 = nt1.number                 # nucleotide number
 
                     for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
-
                         # only consider each nt1, nt2 pair in one direction
                         # Those in different cubes only occur once
                         # Those from the same cube need a way to select just one pair
@@ -529,8 +532,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         # always annotate cWW basepairs to be able to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
                         # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
-                        # need to add T and have a plan for DNA nucleotides as well
-                        if parent_pair in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
+                        if parent_pair in basepair_set:
 
                             pair_data = {}
                             pair_data["glycosidic_displacement"] = np.subtract(gly2,gly1)
@@ -597,7 +599,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             interaction12_reversed = ""
 
                         # check pair in the other order
-                        if parent_pair_reversed in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
+                        if parent_pair_reversed in basepair_set:
 
                             pair_data = {}
                             pair_data["glycosidic_displacement"] = np.subtract(gly1,gly2)
@@ -638,9 +640,24 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 new_annotation = False
                                 #print("  Matching annotation: %4s and %4s for %s and %s" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id()))
                             else:
-                                new_annotation = False  # only store one!  Otherwise the database gets two
-                                conflict_message = "  Conflicting annotation: %4s and %4s for %s and %s " % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id())
-                                conflict_message +=  "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+                                if "n" in interaction12 and "n" in interaction21:
+                                    if subcategory12 < subcategory21:
+                                        new_annotation = False  # use interaction12 because max_badness is lower
+                                    else:
+                                        new_annotation = True
+                                elif "n" in interaction21:
+                                    new_annotation = False      # interaction12 is not null and not near, use that
+                                elif "n" in interaction12:
+                                    new_annotation = True
+                                else:
+                                    new_annotation = False      # both are true but they conflict, that would be surprising!
+
+                                conflict_message = "  Conflicting annotation: %4s and %4s for %s and %s\n" % (interaction21,interaction12_reversed,nt2.unit_id(),nt1.unit_id())
+                                conflict_message += "  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s\n" % (nt1.unit_id(),nt2.unit_id())
+                                if new_annotation:
+                                    conflict_message += "  Using %s\n" % interaction21
+                                else:
+                                    conflict_message += "  Using %s\n" % interaction12_reversed
 
                                 print(conflict_message)
                                 if get_datapoint:
@@ -657,7 +674,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     category_to_interactions['basepair_detail'].add(interaction21)
 
                                     # record certain interactions in reversed direction as well
-                                    if interaction21[0] in ["c","t","a"] or interaction21[1] in ["c","t","a"]:
+                                    if interaction21[0] in ["c","t"] or interaction21[1] in ["c","t"] or interaction21.endswith("a"):
                                         interaction21_reversed = reverse_edges(interaction21)
                                         category_to_interactions['basepair'].add(interaction21_reversed)
                                         category_to_interactions['basepair_detail'].add(interaction21_reversed)
@@ -1506,7 +1523,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     """
     Given nt1 and nt2 and the dictionary of cutoffs
     for that pair of nucleotides, check cutoffs for each
-    basepair interaction type
+    basepair interaction type.
+    Also compute hydrogen bonds for all basepairs consistent with the normal vector.
+    If no cutoffs are fully met but all hydrogen bonds are met, annotate as near.
     """
 
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
@@ -1527,129 +1546,42 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     else:
         normal_sgn = -1
 
-    ok_normal_displ = []              # those that pass the normal and displacement
-    possible_interactions = set([])   # list of possible interactions from normal vector,
-                                      # for checking hydrogen bonds and near pairs
+    possible_interactions = list(cutoffs[normal_sgn].keys())
 
-    for interaction in cutoffs[normal_sgn].keys():
-        for subcategory in cutoffs[normal_sgn][interaction].keys():
-            cut = cutoffs[normal_sgn][interaction][subcategory]
-            if displ[0,0] < cut['xmin']:
-                continue
-            if displ[0,0] > cut['xmax']:
-                continue
-            if displ[0,1] < cut['ymin']:
-                continue
-            if displ[0,1] > cut['ymax']:
-                continue
-            if displ[0,2] < cut['zmin']:
-                continue
-            if displ[0,2] > cut['zmax']:
-                continue
-            if normal_Z < cut['normalmin']:
-                continue
-            if normal_Z > cut['normalmax']:
-                continue
-            ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
-            possible_interactions.add(interaction)  # use exact interaction like cWw
-
-    # if no matches and we are not collecting data, return now
-    if len(ok_normal_displ) == 0 and not datapoint:
-        return "", "", datapoint
-
-    #if datapoint and len(possible_interactions) > 0:
-        #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-
-    angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
-
-    if angle_in_plane <= -90:
-        angle_in_plane += 360
-
-    ok_angle_in_plane = []
-
-    for interaction,subcategory in ok_normal_displ:
-        cut = cutoffs[normal_sgn][interaction][subcategory]
-        if cut['anglemin'] < cut['anglemax']:     # for ranges in -90 to 270 like 50 to 120
-            if angle_in_plane <= cut['anglemin']:
-                continue
-            if angle_in_plane >= cut['anglemax']:
-                continue
-        else:                                     # for ranges straddling 270 like 260 to -75
-            if angle_in_plane >= cut['anglemax'] and angle_in_plane <= cut['anglemin']:
-                continue
-
-        ok_angle_in_plane.append((interaction,subcategory))
-
-    # if no matches and we are not collecting data, return now
-    if len(ok_angle_in_plane) == 0 and not datapoint:
-        return "", "", datapoint
-
-    if not 'gap12' in pair_data:
-        # calculate gap and standardized atoms from nt2
-        gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
-        pair_data["gap12"] = gap12
-
-    if not 'gap21' in pair_data:
-        # calculate gap and standardized atoms from nt2
-        gap21, base_points1 = calculate_basepair_gap(nt2,nt1)
-        pair_data["gap21"] = gap21
-
-    if datapoint:
-        datapoint['angle_in_plane'] = angle_in_plane
-        datapoint['gap12'] = pair_data["gap12"]
-        datapoint['gap21'] = pair_data["gap21"]
-
-    ok_gap = []
-
-    for interaction,subcategory in ok_angle_in_plane:
-        cut = cutoffs[normal_sgn][interaction][subcategory]
-        if cut['gapmax'] > 0.1:
-            # in the near future, also check gap21
-            if pair_data["gap12"] > cut['gapmax']:
-                continue
-
-        ok_gap.append((interaction,subcategory))
-
-    # no need to check hydrogen bonds if there is no pair this could form
-    if len(ok_gap) == 0:
-        return "", "", datapoint
-
-    # multiple matching interactions from the same family
-    # special treatment if, say, cWW and cWWa
-    if len(ok_gap) == 2:
-        i0 = ok_gap[0][0]  # first interaction
-        i1 = ok_gap[1][0]  # second interaction
-        if len(i1) == 4 and i1[0:3] == i0:
-            ok_gap = [ok_gap[0]]   # just use the main category
-            print("Family %s and alternative category %s" % (i0,i1))
-        elif len(i0) == 4 and i0[0:3] == i1:
-            ok_gap = [ok_gap[1]]   # just use the main category
-            print("Family %s and alternative category %s" % (i1,i0))
-
-    # check hydrogen bonds for interactions that are still possible
+    # check hydrogen bonds for interactions that are possible by the normal vector
     # store according to donor and acceptor to disqualify worse acceptors
     atom_set_to_bond_parameters = {}
     donor_hydrogen_to_badness = {}
-    messages = []
-    for LW, subcategory in ok_gap:
+    LW_bonds = {}
+    LW_bond_messages = {}
+    for LW in possible_interactions:
+        LW_bonds[LW] = []
+        LW_bond_messages[LW] = []
         if LW in hydrogen_bonds.keys():
             hydrogens_switched = set([])
             for atom_set in hydrogen_bonds[LW]:
-                if not atom_set in atom_set_to_bond_parameters:
-                    # return bond checked, bond made, length, angle, badness
+                if atom_set in atom_set_to_bond_parameters:
+                    # this atom_set was already checked for a different LW family
+                    result = atom_set_to_bond_parameters[atom_set]
+
+                else:
+                    # return 0 bond checked, 1 bond made, 2 length, 3 angle, 4 badness
                     if atom_set[3] == '12':
                         result = check_hydrogen_bond(nt1,nt2,atom_set)
                     else:
                         result = check_hydrogen_bond(nt2,nt1,atom_set)
 
                     """
+                    This is not the right place to address the problem described below.
+                    That needs to be done before this point in the annotation program.
+
                     In some structures like 7QI4, H61 and H62 on A are switched relative
                     to https://www.rcsb.org/ligand/A So if one of these hydrogens is being
                     checked, it's not already good, and it's plausible,
                     check both, and take the better hydrogen bond.
                     Only allow this once on each base, to avoid having it both ways.
                     """
-
+                    """
                     if result[4] > 0 and result[2] < 5 and not atom_set[3] in hydrogens_switched:
                         atom_set_2 = ()
                         if atom_set[1] == 'H21':
@@ -1677,121 +1609,247 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                                 hydrogens_switched.add(atom_set[3])
                                 # but don't change the atom set since those are
                                 # tied to specific basepairs
+                    """
 
                     atom_set_to_bond_parameters[atom_set] = result
 
-                    # store the lowest "badness" for this donor-hydrogen pair
-                    # over all acceptors; avoids identifying a worse option
-                    if result[0]:
-                        donor     = atom_set[0]
-                        hydrogen  = atom_set[1]
-                        direction = atom_set[3]
-                        if (donor,hydrogen,direction) in donor_hydrogen_to_badness:
-                            if result[4] < donor_hydrogen_to_badness[(donor,hydrogen,direction)]:
-                                donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result[4]
-                        else:
+                # store the lowest "badness" for this donor-hydrogen pair
+                # over all acceptors; avoids identifying a worse option
+                if result[0]:  # bond was checked
+                    donor     = atom_set[0]
+                    hydrogen  = atom_set[1]
+                    direction = atom_set[3]
+                    if (donor,hydrogen,direction) in donor_hydrogen_to_badness:
+                        if result[4] < donor_hydrogen_to_badness[(donor,hydrogen,direction)]:
                             donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result[4]
+                    else:
+                        donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result[4]
 
-                    if datapoint and result[0]:
-                        if result[1]:
-                            message = '%s has   %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                    if datapoint:
+                        if result[1]:   # bond is made
+                            message = '%s has %s, %s, %s, %s bond, distance %0.3f, angle %8.1f, badness %0.3f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
                         else:
-                            message = '%s lacks %3s,%3s,%3s,%3s bond with distance %0.4f, angle %8.4f, badness %0.4f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
-                        #print(message)
-                        messages.append(message)
+                            message = '%s lacks %s, %s, %s, %s bond, distance %0.3f, angle %8.1f, badness %0.3f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                        LW_bonds[LW].append(result)
+                        LW_bond_messages[LW].append(message)
 
         elif datapoint:
-            message = 'No hydrogen bonds to check for %s' % LW
-            messages.append(message)
-
-    datapoint['hbond_message'] = messages
+            message = 'No hydrogen bonds to check for %s %s %s' % (nt1.unit_id(),nt2.unit_id(),LW)
+            LW_bond_messages[LW].append(message)
+            #print(message)
 
     # count hydrogen bonds for each possible annotation
-    ok_hydrogen_bonds = []
-    LW_bond_counter = {}
-    messages = []
-    for LW, subcategory in ok_gap:
+    LW_bond_counter = []
+    for LW in possible_interactions:
         if LW in hydrogen_bonds.keys():
             checked_counter = 0
             bond_counter = 0
+            max_badness = 0
             for atom_set in hydrogen_bonds[LW]:
                 result = atom_set_to_bond_parameters[atom_set]
 
-                if result[0]:
+                if result[0]:  # bond was checked
                     checked_counter += 1
-                    if result[1]:
+                    if result[1]:  # bond is made
                         donor     = atom_set[0]
                         hydrogen  = atom_set[1]
                         direction = atom_set[3]
-                        # if the badness is not so far from the best
+                        max_badness = max(max_badness,result[4])
+
+                        # if the badness is not so far from the best that we have seen for this donor
                         if result[4] < donor_hydrogen_to_badness[(donor,hydrogen,direction)] + 0.5:
                             bond_counter += 1
                         else:
                             if datapoint:
-                                message = 'Rejected %3s,%3s,%3s,%3s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
+                                message = 'Rejected %s, %s, %s, %s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result[2],result[3],result[4])
                                 #print(message)
-                                messages.append(message)
+                                LW_bond_messages[LW].append(message)
 
             if datapoint:
-                message = '%s,%d has %d out of %s hydrogen bonds' % (LW,subcategory,bond_counter,checked_counter)
+                message = '%s has %d out of %s hydrogen bonds' % (LW,bond_counter,checked_counter)
                 #print(message)
-                messages.append(message)
+                LW_bond_messages[LW] = [message] + LW_bond_messages[LW]
 
-            LW_bond_counter[LW] = (bond_counter,checked_counter)
+            if checked_counter > 0:
+                LW_bond_counter.append((LW,bond_counter,checked_counter,max_badness))
 
             if bond_counter == 0 and checked_counter > 0:
                 if datapoint:
                     message = 'Rejecting %s basepair since it has no hydrogen bonds' % LW
-                    messages.append(message)
-            else:
-                ok_hydrogen_bonds.append((LW,subcategory))
+                    LW_bond_messages[LW].append(message)
 
-        else:
-            if datapoint:
-                print('No hydrogen bonds to check for %s' % LW)
-            LW_bond_counter[LW] = (0,0)
-            ok_hydrogen_bonds.append((LW,subcategory))
+    # default is that there is no anntation
+    hbond_annotation = ""
+    hbond_badness = 9999
+
+    # if some reasonable hydrogen bonds are present
+    if len(LW_bond_counter) > 0:
+        # sort interactions to find the best hydrogen bonds
+        # sort by number of missing bonds, then by max_badness
+        LW_bond_rank = sorted(LW_bond_counter, key=lambda x : (x[2]-x[1],x[3]))
+        LW = LW_bond_rank[0][0]   # best LW category
+
+        if LW_bond_rank[0][1] == LW_bond_rank[0][2] and LW_bond_rank[0][1] > 0:
+            # one interaction category has all checked hydrogen bonds
+            if LW_bond_rank[0][3] < 2.0:
+                # if max_badness is not horrible
+                # annotate as near in case no family matches all cutoffs
+                hbond_annotation = "n" + LW
+                # record and pass back the badness to break ties over near annotations
+                hbond_badness = LW_bond_rank[0][3]
+
+                if datapoint:
+                    datapoint['basepair'] = "n" + LW
+                    datapoint['basepair_subcategory'] = 0
+
+        if datapoint:
+            #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+            datapoint['best_pair'] = LW
+            datapoint['hbond'] = LW_bonds[LW]
+            datapoint['hbond_messages'] = LW_bond_messages[LW]
+
+    # check cutoffs
+    ok_normal_displ = []              # those that pass the normal and displacement
+
+    for interaction in possible_interactions:
+        for subcategory in cutoffs[normal_sgn][interaction].keys():
+            cut = cutoffs[normal_sgn][interaction][subcategory]
+            if displ[0,0] < cut['xmin']:
+                continue
+            if displ[0,0] > cut['xmax']:
+                continue
+            if displ[0,1] < cut['ymin']:
+                continue
+            if displ[0,1] > cut['ymax']:
+                continue
+            if displ[0,2] < cut['zmin']:
+                continue
+            if displ[0,2] > cut['zmax']:
+                continue
+            if normal_Z < cut['normalmin']:
+                continue
+            if normal_Z > cut['normalmax']:
+                continue
+            # all normal and displacement cutoffs are met, record that fact
+            ok_normal_displ.append((interaction,subcategory)) # ("cWW",0), etc.
+
+    # if not all cutoffs are met and we are not collecting data, return now to save time
+    if len(ok_normal_displ) == 0 and not datapoint:
+        return hbond_annotation, hbond_badness, datapoint
+
+    if False and datapoint and len(possible_interactions) > 0:
+        print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+
+    angle_in_plane = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
+
+    if angle_in_plane <= -90:
+        angle_in_plane += 360
+
+    ok_angle_in_plane = []
+
+    for interaction,subcategory in ok_normal_displ:
+        cut = cutoffs[normal_sgn][interaction][subcategory]
+        if cut['anglemin'] < cut['anglemax']:     # for ranges in -90 to 270 like 50 to 120
+            if angle_in_plane <= cut['anglemin']:
+                continue
+            if angle_in_plane >= cut['anglemax']:
+                continue
+        else:                                     # for ranges straddling 270 like 260 to -75
+            if angle_in_plane >= cut['anglemax'] and angle_in_plane <= cut['anglemin']:
+                continue
+
+        ok_angle_in_plane.append((interaction,subcategory))
+
+    # if no matches and we are not collecting data, return now
+    if len(ok_angle_in_plane) == 0 and not datapoint:
+        return hbond_annotation, hbond_badness, datapoint
+
+    if not 'gap12' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap12, base_points2 = calculate_basepair_gap(nt1,nt2)
+        pair_data["gap12"] = gap12
+
+    if not 'gap21' in pair_data:
+        # calculate gap and standardized atoms from nt2
+        gap21, base_points1 = calculate_basepair_gap(nt2,nt1)
+        pair_data["gap21"] = gap21
 
     if datapoint:
-        datapoint['hbond_count'] = messages
+        datapoint['angle_in_plane'] = angle_in_plane
+        datapoint['gap12'] = pair_data["gap12"]
+        datapoint['gap21'] = pair_data["gap21"]
 
-    if len(ok_hydrogen_bonds) == 0:
-        return "", "", datapoint
+    ok_gap = []
 
-    # multiple matching interactions
-    if len(ok_hydrogen_bonds) > 1:
-        if len(set([i for i,s in ok_hydrogen_bonds])) == 1:
-            # one family, mutiple subcategories
-            # use the first subcategory
-            ok_hydrogen_bonds = [ok_hydrogen_bonds[0]]
-            print("Family %s, multiple subcategories, using %d" % (ok_hydrogen_bonds[0][0],ok_hydrogen_bonds[0][1]))
-        else:
-            # more than one family, use hydrogen bonds to choose
-            print("Multiple matching families with these bond counts:")
-            for LW,subcategory in ok_hydrogen_bonds:
-                print(LW,LW_bond_counter[LW])
+    for interaction,subcategory in ok_angle_in_plane:
+        cut = cutoffs[normal_sgn][interaction][subcategory]
+        if cut['gapmax'] > 0.1:
+            # in the near future, also check gap21
+            if pair_data["gap12"] > cut['gapmax']:
+                continue
+            if pair_data["gap21"] > cut['gapmax']:
+                continue
 
+        ok_gap.append((interaction,subcategory))
+
+    # no matches, return
+    if len(ok_gap) == 0:
+        return hbond_annotation, hbond_badness, datapoint
+
+    # multiple matching interactions between family and alternative in the same family
+    if len(ok_gap) == 2:
+        i0 = ok_gap[0][0]  # first interaction
+        i1 = ok_gap[1][0]  # second interaction
+        if len(i1) == 4 and i1[0:3] == i0:
+            ok_gap = [ok_gap[0]]   # just use the main category
+            print("  %s %s met basepair cutoffs for family %s and alternative category %s\n" % (nt1.unit_id(),nt2.unit_id(),i0,i1))
+        elif len(i0) == 4 and i0[0:3] == i1:
+            ok_gap = [ok_gap[1]]   # just use the main category
+            print("  %s %s met basepair cutoffs for family %s and alternative category %s\n" % (nt1.unit_id(),nt2.unit_id(),i1,i0))
+
+    if len(ok_gap) == 1:
+        LW = ok_gap[0][0]
+        if datapoint:
+            datapoint['basepair'] = LW
+            datapoint['basepair_subcategory'] = ok_gap[0][1]
+            datapoint['hbond'] = LW_bonds[LW]
+            datapoint['hbond_messages'] = LW_bond_messages[LW]
+        return LW, ok_gap[0][1], datapoint
+    else:
+        # multiple matching interactions
+        LW_remaining = set([i for i,s in ok_gap])
+        if len(LW_remaining) == 1:
+            # one family, mutiple subcategories, quite OK, they are designed to overlap
+            #print("  Family %s, multiple subcategories, using %d" % (ok_gap[0][0],ok_gap[0][1]))
+            LW = ok_gap[0][0]
             if datapoint:
-                datapoint['hbond_count'].append("Interactions %s has ok hydrogen bonds" % ",".join([LW for (LW,subcat) in ok_hydrogen_bonds]))
+                datapoint['basepair'] = LW
+                datapoint['basepair_subcategory'] = ok_gap[0][1]
+                datapoint['hbond'] = LW_bonds[LW]
+                datapoint['hbond_messages'] = LW_bond_messages[LW]
+            return LW, ok_gap[0][1], datapoint
 
-            # to do:  eliminate using worse hydrogen bonds
+        else:
+            print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+            print("  Multiple families meet all cutoffs, %s" % LW_remaining)
+            for LW,bond_counter,checked_counter,max_badness in LW_bond_rank:
+                for LW2,subcategory in ok_gap:
+                    if LW == LW2:
+                        if datapoint:
+                            datapoint['basepair'] = LW
+                            datapoint['basepair_subcategory'] = subcategory
+                            datapoint['hbond'] = LW_bonds[LW]
+                            datapoint['hbond_messages'] = LW_bond_messages[LW]
+                        print("  Using %s\n" % LW)
+                        return LW, subcategory, datapoint
 
-    # store diagnostic data about this interaction
-    if datapoint:
-        datapoint['basepair'] = ok_hydrogen_bonds[0][0]
-        datapoint['basepair_subcategory'] = ok_hydrogen_bonds[0][1]
-        datapoint['hbond'] = []
-        LW = ok_hydrogen_bonds[0][0]
-        if LW in hydrogen_bonds.keys():
-            for atom_set in hydrogen_bonds[LW]:
-                result = atom_set_to_bond_parameters[atom_set]
-                datapoint['hbond'].append((atom_set,result))
-
-        # print the basepair classification if one is found, to compare to hydrogen bonds
-        #print("Checking cutoffs gives classification %s" % ok_hydrogen_bonds)
-
-    # return just the first interaction type and subcategory
-    return ok_hydrogen_bonds[0][0], ok_hydrogen_bonds[0][1], datapoint
+            print("No match between all cutoffs and all hydrogen bonds")
+            LW = ok_gap[0][0]
+            datapoint['basepair'] = LW
+            datapoint['basepair_subcategory'] = ok_gap[0][1]
+            datapoint['hbond'] = LW_bonds[LW]
+            datapoint['hbond_messages'] = LW_bond_messages[LW]
+            return ok_gap[0][0], ok_gap[0][1], datapoint
 
 
 def get_glycosidic_atom_coordinates(nt,parent):
@@ -2126,8 +2184,10 @@ def simplify_basepair(interaction):
 
     if len(interaction) == 3:
         inter = interaction[0] + interaction[1:3].upper()
-    elif len(interaction) == 4:
+    elif len(interaction) == 4 and interaction[0] == "n":
         inter = interaction[0:2] + interaction[2:4].upper()
+    elif len(interaction) == 4 and interaction[3] == "a":
+        inter = interaction[0] + interaction[1:3].upper() + interaction[3]
     else:
         inter = interaction
 
