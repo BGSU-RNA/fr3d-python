@@ -622,6 +622,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     marked_coplanar = True
 
                             timerData = myTimer("Check basepairing",timerData)
+
                             cutoffs = focused_basepair_cutoffs[parent1+","+parent2]
                             hydrogen_bonds = ideal_hydrogen_bonds[parent1+","+parent2]
                             interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint12)
@@ -921,13 +922,16 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
     return interaction_to_list_of_tuples, category_to_interactions, timerData
 
 
-def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData=None,get_datapoint=False):
+def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains=[],timerData=None,get_datapoint=False):
     """
     This function can be called from the pipeline to annotate a structure
     structure is an output from
     """
 
-    bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+    if chains:
+        bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+    else:
+        bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
 
     if not timerData:
         timerData = myTimer("start")
@@ -2654,8 +2658,10 @@ if __name__=="__main__":
     parser.add_argument('-i', "--input", help='Input Path')
     parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,coplanar,basepair_detail,covalent)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
+    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
     # process command line arguments
+    problem = False
     args = parser.parse_args()
 
     if args.input:
@@ -2707,7 +2713,8 @@ if __name__=="__main__":
     PDBs = []  # list of (path,filename) entries
     entries = args.PDBfiles
     for entry in entries:
-        path_split = os.path.split(entry)
+        # identify path to the PDB file, if any
+        path_split = os.path.split(entry)   # produces a tuple
 
         if len(path_split[0]) > 0:
             PDBs.append(path_split)
@@ -2718,6 +2725,15 @@ if __name__=="__main__":
     timerData = myTimer("start")
     failed_structures = []
     counter = 0
+
+    if args.chain:
+        if len(args.PDBfiles) > 1:
+            print("chain argument can only be used with a single PDB file")
+            PDBs = []
+        else:
+            chains = args.chain.split(",")
+    else:
+        chains = []
 
     # restrict dictionary of cutoffs to just the basepairs needed here
     focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
@@ -2765,15 +2781,19 @@ if __name__=="__main__":
                 failed_structures.append((PDB,message))
             continue
 
-        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData)
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
 
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
         if outputFormat == 'txt':
-            write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions)
+            write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions)
         elif outputFormat == 'ebi_json':
-            bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+            if chains:
+                bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+            else:
+                bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+
             chain_unit_id_to_sequence_position = {}
             chain_modified = {}
             for base in bases:
