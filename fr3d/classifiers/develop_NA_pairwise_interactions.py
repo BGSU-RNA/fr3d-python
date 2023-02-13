@@ -56,7 +56,6 @@ PDB_list = ['7k00']
 PDB_list = ['6CFJ']
 PDB_list = ['7K00']
 PDB_list = ['4V9F']
-from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 # list needed for a WebFR3D query
 PDB_list = ['7MKY', '4JF2', '5VGW', '4ENC', '5XTM', '2R8S', '4PQV', '3RW6', '4BW0', '6CB3', '4K27', '5U3G', '7OF0', '4LVW', '5D5L', '2NZ4', '3NKB', '6TFG', '2Z75', '4YAZ', '5X2G', '4V9F', '7OZQ', '4Y4O', '4WFL', '1M5K', '7K16', '5FJC', '7O7Y', '6JQ5', '6S0Z', '3P22', '7OX9', '1Q96', '6KWQ', '3LQX', '6U8D', '6SVS', '3E5C', '7RQB', '2EZ6', '6DMC', '2V3C', '5M0I', '3MXH', '4YBB', '5B2P', '4P95', '7KKV', '3NPQ', '5DDP', '4NLF', '7P7Q', '6AZ3', '7D7W', '6S0X', '7RYG', '3AM1', '4PCJ', '5UZ6', '5B2T']
 PDB_list += ['5AH5', '4ENC', '7EOG', '1QU2', '2ZUE', '2QUW', '2QUS', '5KPY', '7OF0', '7EQJ', '1U0B', '5AOX', '3FOZ', '2DRA', '4YCO', '7C79', '4V9F', '4Y4O', '4WFL', '3RG5', '5UD5', '7K16', '7O7Y', '6S0Z', '4JXZ', '4J50', '3B31', '3ADD', '7RQB', '3OVB', '6UGG', '4PRF', '4YBB', '3VJR', '1QTQ', '7K98', '4P95', '2GDI', '7DCO', '7P7Q', '6AZ3', '4YYE', '6S0X', '5HR7', '7RYG', '3AM1', '2OEU', '3D2V', '1J1U']
@@ -83,8 +82,19 @@ PDB_list = ['4J50']
 PDB_list = ['3RG5']  # had a problem annotating U|67 basepairs in Python 3.8
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','8B0X']
 PDB_list = ['4M6D']  # to see 4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
+PDB_list = ['124D']  # RNA-DNA duplex
+PDB_list = ['1A1L']  # DNA-DNA duplex
+PDB_list = ['7JQQ']  # Five RNA chains and a DNA-DNA duplex
+PDB_list = ['7K00','8B0X']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','7JQQ','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv']
+
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -96,9 +106,6 @@ categories['sO'] = []        # annotate all sO interactions
 categories['basepair'] = []
 categories['stacking'] = []
 categories['coplanar'] = []
-
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
