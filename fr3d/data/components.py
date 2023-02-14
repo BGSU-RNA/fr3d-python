@@ -8,6 +8,11 @@ import numpy as np
 import sys
 from fr3d.unit_ids import encode
 
+from fr3d.data.mapping import parent_atom_to_modified
+from fr3d.data.mapping import modified_atom_to_parent
+from fr3d.data.mapping import modified_base_to_parent
+from fr3d.data.mapping import modified_base_atom_list
+
 NHBondLength=1
 
 def unit_vector(v):
@@ -180,7 +185,7 @@ class Component(EntitySelector):
             self.centers.define('nt_phosphate', atoms)
 
         # attempt to add sugar and phosphate centers for all modified nucleotides
-        if self.sequence in defs.modified_nucleotides:
+        if self.sequence in modified_base_to_parent.keys():
             atoms = defs.nt_sugar['A']
             self.centers.define('nt_sugar', atoms)
             atoms = defs.nt_phosphate['A']
@@ -270,7 +275,7 @@ class Component(EntitySelector):
         """
 
         if self.sequence not in defs.NAbaseheavyatoms and \
-                self.sequence not in defs.modified_nucleotides:
+                self.sequence not in modified_base_to_parent.keys():
             return None
 
         R = []   # 3d coordinates of observed base
@@ -283,15 +288,19 @@ class Component(EntitySelector):
                 R.append(atom.coordinates())
                 S.append(standard_coords[atom.name])
 
-        elif self.sequence in defs.modified_nucleotides:
+        elif self.sequence in modified_base_to_parent.keys():
             # get the mapping from this modified nucleotide to its parent
-            mod_to_parent = defs.modified_nucleotides[self.sequence]
+            #mod_to_parent = defs.modified_nucleotides[self.sequence]
+            # print(mod_to_parent)
             # get the standard coordinates for the parent nucleotide
-            standard_coords = defs.NAbasecoordinates[mod_to_parent["standard"]]
+            standard_coords = defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]
             # loop over mapped base atoms in the modified nucleotide
-            for atom in self.atoms(name=list(mod_to_parent["atoms"].keys())):
-                R.append(atom.coordinates())
-                S.append(standard_coords[mod_to_parent["atoms"][atom.name]])
+            for atom in self.atoms(name=list(modified_base_atom_list[self.sequence])):
+                #redundant. Last check should be sufficient. 
+                if "P" not in atom.name and "H" not in atom.name and "'" not in atom.name and 'M' not in atom.name and atom.name in defs.NAbasecoordinates[modified_base_to_parent[self.sequence]].keys():
+                    R.append(atom.coordinates())
+                    #print(self.sequence)
+                    S.append(standard_coords[parent_atom_to_modified[self.sequence][atom.name]])
 
             """
             for mod_atom_name, parent_atom_name in mod_to_parent["atoms"].items():
@@ -302,9 +311,9 @@ class Component(EntitySelector):
             """
 
         R = np.array(R)
-        R = R.astype(float)
+        R = R.astype(np.float)
         S = np.array(S)
-        S = S.astype(float)
+        S = S.astype(np.float)
 
         try:
             rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
@@ -349,29 +358,93 @@ class Component(EntitySelector):
         does not have the full unit ID of the atom, unlike the heavy atoms
         taken from the CIF file.
         """
-        try:
-            if self.sequence in defs.NAbasehydrogens:
-                hydrogens = set(defs.NAbasehydrogens[self.sequence])
+        # try:
 
-                # skip any hydrogens that are already defined
-                already = set([atom.name for atom in self._atoms])
+        def get_amino_hydrogen_coords(self, heavy, amino1, amino2):
+            for atom in self._atoms:
+                if atom.name == heavy:
+                    heavy = (atom.x, atom.y, atom.z)
+                elif atom.name == amino1:
+                    amino1coords = (atom.x, atom.y, atom.z)
+                elif atom.name == amino2:
+                    amino2coords = (atom.x, atom.y, atom.z)
+            return heavy, amino1coords, amino2coords
 
-                hydrogens = hydrogens - already
+        if self.sequence in defs.NAbasehydrogens:
+            hydrogens = set(defs.NAbasehydrogens[self.sequence])
+            already = set([atom.name for atom in self._atoms])
+            hydrogens = hydrogens - already
 
-                if len(hydrogens) > 0:
-                    coordinates = defs.NAbasecoordinates[self.sequence]
+            if len(hydrogens) == 0: #that means high enough resolution that hydrogens don't need infered
+                #check distances depending on sequence to make sure labelled correct.
+                if self.sequence == "A" or self.sequence == "DA":
+                    heavy = "N7"
+                    amino1 = "H61"
+                    amino2 = "H62"
+                    dist1 = 0
+                    dist2 = 0
+                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self, heavy, amino1, amino2)
+                elif self.sequence == "C" or self.sequence == "DC":
+                    heavy = "C5"
+                    amino1 = "H41"
+                    amino2 = "H42"
+                    dist1 = 0
+                    dist2 = 0
+                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self, heavy, amino1, amino2)
+                elif self.sequence == "G" or self.sequence == "DG":
+                    heavy = "N1"
+                    amino1 = "H21"
+                    amino2 = "H22"
+                    dist1 = 0
+                    dist2 = 0
+                    heavy, amino1coords, amino2coords = get_amino_hydrogen_coords(self, heavy, amino1, amino2)
 
-                    for hydrogenatom in hydrogens:
-                        hydrogencoordinates = coordinates[hydrogenatom]
-                        newcoordinates = self.base_center + \
-                            np.dot(self.rotation_matrix, hydrogencoordinates)
-                        self._atoms.append(Atom(name=hydrogenatom,
-                                                x=newcoordinates[0, 0],
-                                                y=newcoordinates[0, 1],
-                                                z=newcoordinates[0, 2]))
+                    if amino1coords and amino2coords and heavy:
+                        dist1 = (heavy[0]-amino1coords[0])*(heavy[0]-amino1coords[0]) + (heavy[1]-amino1coords[1])*(heavy[1]-amino1coords[1]) + (heavy[1]-amino1coords[1])*(heavy[1]-amino1coords[1])
+                        dist2 = (heavy[0]-amino2coords[0])*(heavy[0]-amino2coords[0]) + (heavy[1]-amino2coords[1])*(heavy[1]-amino2coords[1]) + (heavy[1]-amino2coords[1])*(heavy[1]-amino2coords[1])
+                        if dist1 < dist2: #H62 should be closer to N7 than H61, H42 should be closer to C5 than H41
+                            for atom in self._atoms:
+                                if atom.name == amino1:
+                                    atom.x = amino2coords[0]
+                                    atom.y = amino2coords[1]
+                                    atom.z = amino2coords[2]
 
-        except:
-                print("%s Adding hydrogens failed" % self.unit_id())
+                                elif atom.name == amino2:
+                                    atom.x = amino1coords[0]
+                                    atom.y = amino1coords[1] 
+                                    atom.z = amino1coords[2]
+
+            if len(hydrogens) > 0:
+                coordinates = defs.NAbasecoordinates[self.sequence]
+
+                for hydrogenatom in hydrogens:
+                    hydrogencoordinates = coordinates[hydrogenatom]
+                    newcoordinates = self.base_center + \
+                        np.dot(self.rotation_matrix, hydrogencoordinates)
+                    self._atoms.append(Atom(name=hydrogenatom,
+                                            x=newcoordinates[0, 0],
+                                            y=newcoordinates[0, 1],
+                                            z=newcoordinates[0, 2]))
+        else: 
+            if self.type == 'RNA Linking' and self.sequence not in defs.NAbasehydrogens: #self.sequence not in defs.aa_backbone and self.type != 'non-polymer' and self.type == 'RNA Linking': 
+                from fr3d.data.mapping import modified_atom_map
+                from fr3d.data.mapping import modified_hydrogens
+                from fr3d.data.mapping import modified_hydrogens_coordinates
+                hydrogens = modified_hydrogens[self.sequence]
+                coordinates = modified_hydrogens_coordinates[self.sequence]
+                print(hydrogens)
+                print("\n\n\n\n")
+                for hydrogenatom in hydrogens:
+                    hydrogencoordinates = coordinates[hydrogenatom]
+                    newcoordinates = self.base_center + \
+                        np.dot(self.rotation_matrix, hydrogencoordinates)
+                    self._atoms.append(Atom(name=hydrogenatom,
+                                            x=newcoordinates[0, 0],
+                                            y=newcoordinates[0, 1],
+                                            z=newcoordinates[0, 2]))
+
+        # except:
+        #         print("%s Adding hydrogens failed" % self.unit_id())
 
 
     def infer_amino_acid_hydrogens(self):
