@@ -71,14 +71,7 @@ from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cuto
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
-# read input and output paths from localpath.py
-# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-try:
-    from fr3d.localpath import outputNAPairwiseInteractions
-    from fr3d.localpath import inputPath
-except:
-    inputPath = ""
-    outputNAPairwiseInteractions = ""
+
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
@@ -2646,10 +2639,15 @@ def simplify_basepair(interaction):
     return inter
 
 #=======================================================================
-
-
-
-if __name__=="__main__":
+def main():
+    # read input and output paths from localpath.py
+    # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
+    try:
+        from fr3d.localpath import outputNAPairwiseInteractions
+        from fr3d.localpath import inputPath
+    except:
+        inputPath = ""
+        outputNAPairwiseInteractions = ""
 
     # allow user to specify input and output paths
     parser = argparse.ArgumentParser()
@@ -2663,16 +2661,17 @@ if __name__=="__main__":
     # process command line arguments
     problem = False
     args = parser.parse_args()
-
     if args.input:
         inputPath = args.input
-    elif not inputPath:
-        inputPath = ""
+    else:
+        if not inputPath:
+            inputPath = ""
 
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
-    elif not outputNAPairwiseInteractions:
-        outputNAPairwiseInteractions = ""
+    else:
+        if not outputNAPairwiseInteractions:
+            outputNAPairwiseInteractions = ""
 
     if args.format:
         outputFormat = args.format
@@ -2831,3 +2830,6 @@ if __name__=="__main__":
 
     if 'basepair' in categories:
         print("Basepair annotations are not yet finalized")
+
+if __name__=="__main__":
+    main()
