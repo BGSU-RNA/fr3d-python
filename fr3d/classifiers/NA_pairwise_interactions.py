@@ -71,6 +71,7 @@ from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cuto
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
+from fr3d.data.mapping import modified_base_atom_list
 
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
@@ -1266,11 +1267,13 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
         return True, retValue
     return False, [-100,-100,-100]
 
-def create_modified_base_atoms_list(nt):
+def create_modified_base_atoms_list(nt, parent_base_atoms):
     """Function to create a list of all base atoms for modified nucleotides.
     Goes through all atoms in a nucleotide and parses out atoms that have "'" in them or OP1/2 or P.
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
+    #print(parent_base_atoms)
+    # Go through mappings if the name is in parent base atoms.
     for atom in nt.atoms():
         if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:
             atomList.append(atom.name)
@@ -1298,29 +1301,23 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
 
     baseAtoms = {}
-    baseAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4', "H9"] #9/6/2022 took out "C1'",
-    baseAtoms['DA'] = baseAtoms['A']
-    baseAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6', "H1"] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
-    baseAtoms['DC'] = baseAtoms['C']
-    baseAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4',"H9"]
-    baseAtoms['DG'] = baseAtoms['G']
-    baseAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2', "H1"]
-    baseAtoms['DT'] = ['N1','C6', 'H6','C5','C7','H71','H72','H73','C4','O4','N3','H3','C2','O2']
-
+    for seq in NAbaseheavyatoms.keys():
+        baseAtoms[seq] = NAbaseheavyatoms[seq] + NAbasehydrogens[seq]
+ 
     #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
-    if nt1.sequence in baseAtoms and modified_nucleotides: #standard base
+    if nt1.sequence in baseAtoms: #standard base
         nt1baseAtomsList = baseAtoms[parent1]
-    elif nt1.sequence in modified_nucleotides: #modified base
-        nt1baseAtomsList = create_modified_base_atoms_list(nt1)
+    elif nt1.sequence in modified_base_atom_list: #modified base
+        nt1baseAtomsList = create_modified_base_atoms_list(nt1, baseAtoms[parent1])
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
     if nt2.sequence in baseAtoms:
         nt2baseAtomsList = baseAtoms[parent2]
-    elif nt2.sequence in modified_nucleotides:
-        nt2baseAtomsList = create_modified_base_atoms_list(nt2)
+    elif nt2.sequence in modified_base_atom_list:
+        nt2baseAtomsList = create_modified_base_atoms_list(nt2, baseAtoms[parent2])
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
