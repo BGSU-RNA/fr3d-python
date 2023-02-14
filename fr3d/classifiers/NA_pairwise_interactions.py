@@ -2639,44 +2639,7 @@ def simplify_basepair(interaction):
     return inter
 
 #=======================================================================
-def main():
-    # read input and output paths from localpath.py
-    # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-    try:
-        from fr3d.localpath import outputNAPairwiseInteractions
-        from fr3d.localpath import inputPath
-    except:
-        inputPath = ""
-        outputNAPairwiseInteractions = ""
-
-    # allow user to specify input and output paths
-    parser = argparse.ArgumentParser()
-    parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
-    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
-    parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,coplanar,basepair_detail,covalent)')
-    parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
-    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
-
-    # process command line arguments
-    problem = False
-    args = parser.parse_args()
-    if args.input:
-        inputPath = args.input
-    else:
-        if not inputPath:
-            inputPath = ""
-
-    if args.output:
-        outputNAPairwiseInteractions = args.output     # set output path
-    else:
-        if not outputNAPairwiseInteractions:
-            outputNAPairwiseInteractions = ""
-
-    if args.format:
-        outputFormat = args.format
-    else:
-        outputFormat = 'txt'
+def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, output_format):
 
     # dictionary to control what specific annotations are output, in a file named for the key
     # empty list means to output all interactions in that category
@@ -2685,8 +2648,8 @@ def main():
 
     Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
 
-    if args.category:
-        for category in args.category.split(","):
+    if category:
+        for category in category.split(","):
             categories[category] = []
     else:
         # default is to annotate and write just "true" basepairs
@@ -2710,7 +2673,7 @@ def main():
 
     # process additional arguments as PDB files
     PDBs = []  # list of (path,filename) entries
-    entries = args.PDBfiles
+    entries = entry_id
     for entry in entries:
         # identify path to the PDB file, if any
         path_split = os.path.split(entry)   # produces a tuple
@@ -2725,12 +2688,12 @@ def main():
     failed_structures = []
     counter = 0
 
-    if args.chain:
-        if len(args.PDBfiles) > 1:
+    if chain_id:
+        if len(entry_id) > 1:
             print("chain argument can only be used with a single PDB file")
             PDBs = []
         else:
-            chains = args.chain.split(",")
+            chains = chain_id.split(",")
     else:
         chains = []
 
@@ -2785,9 +2748,9 @@ def main():
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
-        if outputFormat == 'txt':
+        if output_format == 'txt':
             write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions)
-        elif outputFormat == 'ebi_json':
+        elif output_format == 'ebi_json':
             if chains:
                 bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
             else:
@@ -2832,4 +2795,55 @@ def main():
         print("Basepair annotations are not yet finalized")
 
 if __name__=="__main__":
-    main()
+
+    # allow user to specify input and output paths
+    parser = argparse.ArgumentParser()
+    parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
+    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
+    parser.add_argument('-i', "--input", help='Input Path')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,coplanar,basepair_detail,covalent)')
+    parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
+    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
+
+    # read input and output paths from localpath.py
+    # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
+    try:
+        from fr3d.localpath import outputNAPairwiseInteractions
+        from fr3d.localpath import inputPath
+    except:
+        inputPath = ""
+        outputNAPairwiseInteractions = ""
+    problem = False
+    args = parser.parse_args()
+
+    # Following if statements deal with command line arguments. 
+    if args.input:
+        inputPath = args.input
+    else:
+        if not inputPath:
+            inputPath = ""
+
+    if args.output:
+        outputNAPairwiseInteractions = args.output     # set output path
+    else:
+        if not outputNAPairwiseInteractions:
+            outputNAPairwiseInteractions = ""
+
+    if args.format:
+        outputFormat = args.format
+    else:
+        outputFormat = 'txt'
+
+    if args.chain:
+        chain_id = args.chain
+    else: 
+        chain_id = None
+
+    if args.category:
+        category = args.category
+    else: 
+        category = 'basepair'
+
+    entry_id = args.PDBfiles
+
+    generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, format)
