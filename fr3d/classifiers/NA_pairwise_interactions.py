@@ -72,8 +72,8 @@ from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
 from fr3d.data.mapping import modified_base_atom_list
-
-
+from fr3d.data.mapping import parent_atom_to_modified
+from fr3d.data.mapping import modified_atom_to_parent
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
 HB_donor_hydrogens = {}
@@ -1269,14 +1269,13 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
 
 def create_modified_base_atoms_list(nt, parent_base_atoms):
     """Function to create a list of all base atoms for modified nucleotides.
-    Goes through all atoms in a nucleotide and parses out atoms that have "'" in them or OP1/2 or P.
+    Go through atoms of the parents base, and create a list of atom names that are mapped to its parents base. 
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
-    #print(parent_base_atoms)
-    # Go through mappings if the name is in parent base atoms.
-    for atom in nt.atoms():
-        if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:
-            atomList.append(atom.name)
+    for atom in parent_base_atoms:
+        print(atom)
+        if(modified_atom_to_parent[nt.sequence][atom]):
+            atomList.append(modified_atom_to_parent[nt.sequence][atom])
     return atomList
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
@@ -1300,10 +1299,11 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
 
+    # TODO: This adds C1'....need to take that out. 
     baseAtoms = {}
     for seq in NAbaseheavyatoms.keys():
         baseAtoms[seq] = NAbaseheavyatoms[seq] + NAbasehydrogens[seq]
- 
+
     #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
