@@ -367,6 +367,8 @@ class Component(EntitySelector):
             If modified nucleotide has a mapping, checks to see if the atom maps to the name of the passed in parent.
             Returns 3 triples of atom coordinates of a (heavy_atom, amino_hydrogen_#1, amino_hydrogen_#2)
             """
+            amino1coords = None
+            amino2coords = None
             # Standard base
             if self.sequence in defs.NAbasehydrogens:         
                 for atom in self._atoms:
@@ -395,7 +397,7 @@ class Component(EntitySelector):
         dist2 = 0
 
         try:
-        # going to add or fix hydrogens for standard bases (only on base)
+            # going to add or fix hydrogens for standard bases (only on base)
             if self.sequence in defs.NAbasehydrogens:
                 hydrogens = set(defs.NAbasehydrogens[self.sequence]) # All hydrogens that should be present on this base
                 already = set([atom.name for atom in self._atoms]) # hydrogens that are already observed in the 3D structure
