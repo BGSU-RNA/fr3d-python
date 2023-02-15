@@ -237,8 +237,9 @@ def load_structure(filename):
             message.append("Loaded " + filename)
             """
             Rotation matrix is calculated for each base.
-            Hydrogens are not added automatically.
+            Hydrogens are added automatically.
             """
+
             return structure, message
     except TypeError:
         with open(filename, 'r') as raw:           # needed on Ubuntu
@@ -258,18 +259,15 @@ def load_structure(filename):
             message.append("See suggestions in the fr3d-python Readme file")
             return None, message
 
-        else:
-            status = urllib.request.urlretrieve(url, filename)  # python 3
-
     with open(filename, 'rb') as raw:
         print("  Loading " + filename)
         structure = Cif(raw).structure()
         """
         Rotation matrix is calculated for each base.
-        Hydrogens are not added automatically.
-        """
+        Hydrogens are added automatically.
         if 'backbone' in categories:
             structure.infer_NA_hydrogens()
+        """
 
     return structure
 
