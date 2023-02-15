@@ -978,6 +978,7 @@ nt_nt_cutoffs["A,A"]["cWS"][0]["normalmax"] = -0.60
 nt_nt_cutoffs["A,A"]["cWS"][0]["anglemin"] = 0.00
 nt_nt_cutoffs["A,A"]["cWS"][0]["anglemax"] = 50.00
 nt_nt_cutoffs["A,A"]["cWS"][0]["gapmax"] = 1.60
+
 nt_nt_cutoffs["A,A"]["cWS"][1] = {}
 nt_nt_cutoffs["A,A"]["cWS"][1]["xmin"] = 4.60
 nt_nt_cutoffs["A,A"]["cWS"][1]["xmax"] = 6.60
@@ -990,6 +991,7 @@ nt_nt_cutoffs["A,A"]["cWS"][1]["normalmax"] = -0.60
 nt_nt_cutoffs["A,A"]["cWS"][1]["anglemin"] = -5.00
 nt_nt_cutoffs["A,A"]["cWS"][1]["anglemax"] = 25.00
 nt_nt_cutoffs["A,A"]["cWS"][1]["gapmax"] = 1.60
+
 nt_nt_cutoffs["A,C"]["cWS"] = {}
 nt_nt_cutoffs["A,C"]["cWS"][0] = {}
 nt_nt_cutoffs["A,C"]["cWS"][0]["xmin"] = 3.00
