@@ -319,7 +319,9 @@ class Cif(object):
             current_chain = row['pdb_strand_id']
             insertion_code = row['pdb_ins_code']
             if insertion_code == '.':
-                insertion_code = "" #Should this be empty string or none
+                insertion_code = None
+                # Should this be empty string or None?
+                # None, to match the key you get above
 
             number = row['pdb_seq_num']
             if number == '?':
