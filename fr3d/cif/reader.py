@@ -22,11 +22,22 @@ from fr3d.data import Component
 from fr3d.data import Structure
 
 # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
+# Try this way:
+try:
+    # if this .py file exists, it will be used
+    from fr3d.cif.oldStructures import oldStructures
+except:
+    # otherwise, use an empty list
+    oldStructures = []
+
+"""
+# This did not seem to work, maybe because of trying to rely on a relative path, which is fragile
 if os.path.exists('./oldStructures.py'):
     from oldStructures import oldStructures
-else: 
+else:
     oldStructures = []
-""" The set of symbols that mark an operator expression as complex """
+"""
+
 COMPLEX_SYMBOLS = set('()-')
 
 
