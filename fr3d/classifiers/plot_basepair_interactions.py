@@ -700,6 +700,7 @@ if __name__=="__main__":
     PDB_list = ['4V9F','7K00']
     PDB_list = ['4TNA']
     PDB_list = ['4V9F','6ZMI','7K00','4TNA']
+    PDB_list = ['8B0X','4P5J','6PMO','1NBS']  # Eric's list for the basepair group
 
     # look at  4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
     # look at 3IWN|1|A|A|51  cSH    3IWN|1|A|A|52
