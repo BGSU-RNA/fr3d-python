@@ -1273,7 +1273,6 @@ def create_modified_base_atoms_list(nt, parent_base_atoms):
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
     for atom in parent_base_atoms:
-        print(atom)
         if(modified_atom_to_parent[nt.sequence][atom]):
             atomList.append(modified_atom_to_parent[nt.sequence][atom])
     return atomList
@@ -1299,25 +1298,24 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
 
-    # TODO: This adds C1'....need to take that out. 
-    baseAtoms = {}
-    for seq in NAbaseheavyatoms.keys():
-        baseAtoms[seq] = NAbaseheavyatoms[seq] + NAbasehydrogens[seq]
+    parentBaseAtoms = {}
+    parentBaseAtoms[parent1] = NAbasehydrogens[parent1] + NAbaseheavyatoms[parent1]
+    parentBaseAtoms[parent2] = NAbasehydrogens[parent2] + NAbaseheavyatoms[parent2]
 
     #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
-    if nt1.sequence in baseAtoms: #standard base
-        nt1baseAtomsList = baseAtoms[parent1]
+    if nt1.sequence in parentBaseAtoms: #standard base
+        nt1baseAtomsList = parentBaseAtoms[parent1]
     elif nt1.sequence in modified_base_atom_list: #modified base
-        nt1baseAtomsList = create_modified_base_atoms_list(nt1, baseAtoms[parent1])
+        nt1baseAtomsList = create_modified_base_atoms_list(nt1, parentBaseAtoms[parent1])
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
-    if nt2.sequence in baseAtoms:
-        nt2baseAtomsList = baseAtoms[parent2]
+    if nt2.sequence in parentBaseAtoms:
+        nt2baseAtomsList = parentBaseAtoms[parent2]
     elif nt2.sequence in modified_base_atom_list:
-        nt2baseAtomsList = create_modified_base_atoms_list(nt2, baseAtoms[parent2])
+        nt2baseAtomsList = create_modified_base_atoms_list(nt2, parentBaseAtoms[parent2])
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
