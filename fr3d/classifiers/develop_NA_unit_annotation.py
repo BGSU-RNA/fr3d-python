@@ -1362,7 +1362,7 @@ def draw_base(base_seq, ax):
             plt.setp(base_lines, 'color', 'g', 'linewidth', 1.0)
             #ax.text(9, 1, 1, base_residue)
         except:
-            print "Missing residues"
+            print("Missing residues")
             continue
 
 
