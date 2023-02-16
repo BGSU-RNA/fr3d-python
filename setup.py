@@ -6,6 +6,7 @@ setup(
     name='fr3d',
     version='0.0.1',
     packages=find_packages(include=['fr3d', 'fr3d.*']),
+    include_package_data=True,
     url='',
     license='LICENSE.txt',
     install_requires=["numpy", "scipy"],
