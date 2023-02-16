@@ -166,10 +166,10 @@ class Component(EntitySelector):
                 self.centers.define('glycosidic',['N9'])
             elif self.sequence in ['C','U','DC','DT']:
                 self.centers.define('glycosidic',['N1'])
-            elif self.sequence in defs.modified_nucleotides:
-                if defs.modified_nucleotides[self.sequence]['standard'] in ['A','G','DA','DG']:
+            elif self.sequence in modified_base_to_parent.keys():
+                if modified_base_to_parent[self.sequence] in ['A','G','DA','DG']:
                     self.centers.define('glycosidic',['N9'])
-                elif defs.modified_nucleotides[self.sequence]['standard'] in ['C','U','DC','DT']:
+                elif modified_base_to_parent[self.sequence] in ['C','U','DC','DT']:
                     self.centers.define('glycosidic',['N1'])
             elif 'N9' in self.centers:
                 self.centers.define('glycosidic',['N9'])
@@ -504,6 +504,7 @@ class Component(EntitySelector):
                     coordinates = modified_hydrogens_coordinates[self.sequence]
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
+                        print(self.base_center)
                         newcoordinates = self.base_center + \
                             np.dot(self.rotation_matrix, hydrogencoordinates)
                         self._atoms.append(Atom(name=hydrogenatom,
