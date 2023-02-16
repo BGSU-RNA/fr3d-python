@@ -2,6 +2,7 @@
 
 import csv
 import numpy as np
+import os
 
 def load_ideal_basepair_hydrogen_bonds():
     """
@@ -13,7 +14,11 @@ def load_ideal_basepair_hydrogen_bonds():
 
     hbond = {}
 
-    with open('H_bonding_Atoms_from_Isostericity_Table.csv') as csvfile:
+    current_path,current_program = os.path.split(os.path.abspath(__file__))
+
+    filename = os.path.join(current_path,'H_bonding_Atoms_from_Isostericity_Table.csv')
+
+    with open(filename) as csvfile:
         bond_reader = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in bond_reader:
             if len(row) == 9:
