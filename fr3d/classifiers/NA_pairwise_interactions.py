@@ -68,10 +68,8 @@ from fr3d.modified_parent_mapping import modified_nucleotides
 from fr3d.data.components import Component
 
 from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
-from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
-from hydrogen_bonds import check_hydrogen_bond
-
-
+from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
@@ -2639,6 +2637,9 @@ def simplify_basepair(interaction):
 #=======================================================================
 def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, output_format):
 
+    if isinstance(entry_id,str):
+        entry_id = [entry_id]
+
     # dictionary to control what specific annotations are output, in a file named for the key
     # empty list means to output all interactions in that category
     # non-empty list specifies which interactions to output in that category
@@ -2775,6 +2776,8 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
             for chain in list(chain_unit_id_to_sequence_position.keys()):
                 write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
 
+        else:
+            print('Output format %s not recognized' % output_format)
 
     myTimer("summary",timerData)
 
@@ -2844,4 +2847,4 @@ if __name__=="__main__":
 
     entry_id = args.PDBfiles
 
-    generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, format)
+    generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
