@@ -76,6 +76,16 @@ from hydrogen_bonds import check_hydrogen_bond
 from fr3d.data.mapping import modified_base_atom_list
 from fr3d.data.mapping import parent_atom_to_modified
 from fr3d.data.mapping import modified_atom_to_parent
+from fr3d.data.mapping import modified_base_to_parent
+
+# read input and output paths from localpath.py
+# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
+try:
+    from fr3d.localpath import outputNAPairwiseInteractions
+    from fr3d.localpath import inputPath
+except:
+    inputPath = ""
+    outputNAPairwiseInteractions = ""
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
@@ -753,8 +763,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                                 print(conflict_message)
                                 if get_datapoint:
-                                    with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
-                                        conf.write(conflict_message+"\n")
+                                    if(outputNAPairwiseInteractions):
+                                        with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
+                                            conf.write(conflict_message+"\n")
                             if new_annotation:
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
@@ -979,8 +990,8 @@ def get_parent(sequence):
         return sequence[1]
     elif sequence == 'DT':
         return sequence
-    elif sequence in modified_nucleotides.keys():
-        return modified_nucleotides[sequence]["standard"]
+    elif sequence in modified_base_to_parent.keys():
+        return modified_base_to_parent[sequence]
     else:
         return None
 
@@ -1301,7 +1312,7 @@ def create_modified_base_atoms_list(nt, parent_base_atoms):
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
     for atom in parent_base_atoms:
-        if(modified_atom_to_parent[nt.sequence][atom]):
+        if(atom in modified_atom_to_parent[nt.sequence]):
             atomList.append(modified_atom_to_parent[nt.sequence][atom])
     return atomList
 
@@ -2328,11 +2339,11 @@ def get_glycosidic_atom_coordinates(nt,parent):
         gly = nt.centers["N9"]
     elif nt.sequence in ['C','U','DC','DT']:
         gly = nt.centers["N1"]
-    elif nt.sequence in modified_nucleotides:
+    elif nt.sequence in modified_base_to_parent.keys():
         if parent in ['A','G','DA','DG']:
-            gly = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["N9"]]
+            gly = nt.centers[modified_atom_to_parent[nt.sequence]["N9"]]
         elif parent in ['C','U','DC','DT']:
-            gly = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["N1"]]
+            gly = nt.centers[modified_atom_to_parent[nt.sequence]["N1"]]
 
     return gly
 
@@ -2816,14 +2827,6 @@ if __name__=="__main__":
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
-    # read input and output paths from localpath.py
-    # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-    try:
-        from fr3d.localpath import outputNAPairwiseInteractions
-        from fr3d.localpath import inputPath
-    except:
-        inputPath = ""
-        outputNAPairwiseInteractions = ""
     problem = False
     args = parser.parse_args()
 
