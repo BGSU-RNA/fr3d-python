@@ -22,6 +22,8 @@ from fr3d.localpath import fr3d_pickle_path
 
 from fr3d.data.base import EntitySelector
 
+from fr3d.pdb import pdb_reader
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
 args = parser.parse_args()
@@ -98,8 +100,8 @@ PDB_list = ['7K00','8B0X']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','7JQQ','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv']
 
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
@@ -116,8 +118,8 @@ categories['stacking'] = []
 categories['coplanar'] = []
 categories['backbone'] = []
 
-ShowStructureReadingErrors = False
 ShowStructureReadingErrors = True
+ShowStructureReadingErrors = False
 
 experimental = True          # save interactions in pairs_exp folder so they can be compared to ones from the server
 
@@ -126,6 +128,7 @@ experimental = True          # save interactions in pairs_exp folder so they can
 
 # annotate all nucleotides in all chains, even when a representative set is used
 annotate_entire_PDB_files = False
+annotate_entire_PDB_files = True
 
 timerData = myTimer("start")
 lastwritetime = time()
@@ -179,23 +182,7 @@ for PDB in sorted(PDBs):
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
 
-            if ShowStructureReadingErrors:
-                # do this to make sure to see any error messages
-                if not '.cif' in PDB.lower() and not '.pdb' in PDB.lower():
-                    fname = os.path.join(inputPath,PDB+'.cif')
-                else:
-                    fname = os.path.join(inputPath,PDB)
-                with open(fname, 'rb') as raw:
-                    structure = Cif(raw).structure()
-            else:
-                # do it this way to suppress error messages
-                try:
-                    structure, messages = load_structure(os.path.join(inputPath,PDB))
-                except:
-                    print("  Could not load structure %s" % PDB)
-                    print(inputPath)
-
-                    continue
+            structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
 
             if not structure:
                 for message in messages:
@@ -237,7 +224,7 @@ for PDB in sorted(PDBs):
 
         if ShowStructureReadingErrors:
             # do this to make sure to see any error messages
-            structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
+            structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'),PDB)
         else:
             # do it this way to suppress error messages
             try:
