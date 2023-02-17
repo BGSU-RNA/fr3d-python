@@ -20,20 +20,19 @@
     When fr3d is changed, python setup.py install
 """
 
-import numpy as np
+import argparse
+from collections import defaultdict
 import csv
-import urllib
-import pickle
-import math
-import sys
 from datetime import datetime
-from math import floor
+import gzip
+import math
+import numpy as np
+import pickle
+import sys
 import os
 from os import path
-from collections import defaultdict
-
 from time import time
-import argparse
+import urllib
 
 if sys.version_info[0] > 2:
     from urllib import request
@@ -42,10 +41,13 @@ if sys.version_info[0] > 2:
 if sys.version_info[0] < 3:
     from urllib import urlretrieve as urlretrieve
     from urllib import urlopen
+    read_mode = 'rb'
+    write_mode = 'w'
 else:
     from urllib.request import urlretrieve as urlretrieve
     from urllib.request import urlopen
-
+    read_mode = 'rt'
+    write_mode = 'wt'   # write as text
 
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
@@ -175,103 +177,128 @@ def myTimer(state,data={}):
     return data
 
 
-def load_structure(filename):
+def load_structure(filename,pdbid=""):
     """
     filename is the full path to a .pdb or .cif file
-    If the file is not found and the filename is four characters,
-    try to download from PDB.
+    pdbid is like a 4-character PDB identifier, but could be other lengths
     """
-    pdb_format = False
+
+    if not pdbid:
+        path,pdbid = os.path.split(filename)
+        pdbid = pdbid.replace(".cif","").replace(".pdb","").replace(".gz","")
+
     message = []
     original_filename = filename
 
+    # look for the file, possibly with extensions
+    if os.path.exists(filename):
+        pass
+    elif os.path.exists(filename+".cif.gz"):
+        filename = filename + ".cif.gz"
+    elif os.path.exists(filename+".cif"):
+        filename = filename + ".cif"
+    elif os.path.exists(filename+".pdb.gz"):
+        filename = filename + ".pdb.gz"
+    elif os.path.exists(filename+".pdb"):
+        filename = filename + ".pdb"
 
-    # if not available, try other extensions
+    # if still not available, try to download from PDB and save locally
+    # download .gz version when possible for speed and to save disk space
     if not os.path.exists(filename):
-        if os.path.exists(filename+".cif"):
-            filename = filename + ".cif"
-        elif os.path.exists(filename+".pdb"):
-            filename = filename + ".pdb"
-            pdb_format = True
-
-    # if not available, try to download from PDB and save locally
-    if not os.path.exists(filename):
-
-        # try to identify a PDB id in the filename
-        if filename.lower().endswith('.cif'):
-            pdbid = filename[-8:-4] + '.cif'
+        if filename.lower().endswith('.cif.gz'):
+            download_id = pdbid + '.cif.gz'
+        elif filename.lower().endswith('.cif'):
+            download_id = pdbid + '.cif.gz'
+            filename = filename + ".gz"
+        elif filename.lower().endswith('.pdb.gz'):
+            download_id = pdbid + '.pdb'
+            filename = filename.rstrip('.gz')  # remove .gz because *.pdb.gz is not availble from PDB
         elif filename.lower().endswith('.pdb'):
-            pdbid = filename[-8:-4] + '.pdb'
+            download_id = pdbid + '.pdb'
         else:
-            pdbid = filename[-4:].upper() + '.cif'
-            filename = filename + '.cif'
+            download_id = pdbid + '.cif.gz'
+            filename = filename + '.cif.gz'
 
-        url = "http://files.rcsb.org/download/%s" % pdbid
+        url = "http://files.rcsb.org/download/%s" % download_id
 
         try:
             urlretrieve(url, filename)
-            # TODO: detect when this is not successful and downloads an error file instead
-            # current code is clumsy
-            with open(filename,"r") as f:
-                lines = f.read()
-            if "404 Not Found" in lines:
-                message.append("Not able to download %s from %s" % (pdbid,url))
-                if os.path.exists(filename):
-                    os.remove(filename)
-            else:
-                message.append("Downloaded %s from %s" % (pdbid,url))
-
         except:
             message.append("Code is not clever enough to find or download %s" % original_filename)
             return None, message
 
+        # TODO: detect when this downloads an error file instead; current code is clumsy
+        try:
+            with open(filename,read_mode) as f:
+                lines = f.read()
 
+            if "404 Not Found" in lines:
+                message.append("Not able to download %s from %s" % (download_id,url))
+                if os.path.exists(filename):
+                    os.remove(filename)
+                message.append("Code is not clever enough to find or download %s" % original_filename)
+                return None, message
+        except:
+            message.append("Downloaded %s from %s" % (download_id,url))
+
+    # read the file from the disk
     try:
-        with open(filename, 'rb') as raw:          # needed for Python 3 on Windows
-         if pdb_format:
-            from fr3d.pdb.pdb_reader import PDBStructure
-            structure = PDBStructure(filename).structures()
-            message.append("Loaded " + filename)
-            return structure, message
-         else:
-            from fr3d.cif.reader import Cif
-            structure = Cif(raw).structure()
-            message.append("Loaded " + filename)
-            """
-            Rotation matrix is calculated for each base.
-            Hydrogens are added automatically.
-            """
+        rm = read_mode
+        if filename.lower().endswith('.cif.gz'):
+            with gzip.open(filename, rm) as raw:
+                from fr3d.cif.reader import Cif
+                structure = Cif(raw).structure()
+        elif filename.lower().endswith('.cif'):
+            with open(filename, rm) as raw:
+                from fr3d.cif.reader import Cif
+                structure = Cif(raw).structure()
+        elif filename.lower().endswith('.pdb.gz'):
+            with gzip.open(filename, rm) as raw:
+                from fr3d.pdb.pdb_reader import PDBStructure
+                structure = PDBStructure(pdbid,raw).structures()
+                message.append("No symmetry operators applied to .pdb files")
+        elif filename.lower().endswith('.pdb'):
+            with open(filename, rm) as raw:
+                from fr3d.pdb.pdb_reader import PDBStructure
+                structure = PDBStructure(pdbid,raw).structures()
+                message.append("No symmetry operators applied to .pdb files")
 
-            return structure, message
+        message.append("Loaded " + filename)
+        return structure, message
+
     except TypeError:
-        with open(filename, 'r') as raw:           # needed on Ubuntu
-            from fr3d.cif.reader import Cif
-            structure = Cif(raw).structure()
-            message.append("Loaded " + filename)
-            """
-            Rotation matrix is calculated for each base.
-            Hydrogens are not added automatically.
-            """
-            #structure.infer_hydrogens()
-            return structure, message
+        rm = 'r'      # needed on Ubuntu
+        if filename.lower().endswith('.cif.gz'):
+            with gzip.open(filename, rm) as raw:
+                from fr3d.cif.reader import Cif
+                structure = Cif(raw).structure()
+        elif filename.lower().endswith('.cif'):
+            with open(filename, rm) as raw:
+                from fr3d.cif.reader import Cif
+                structure = Cif(raw).structure()
+        elif filename.lower().endswith('.pdb.gz'):
+            with gzip.open(filename, rm) as raw:
+                from fr3d.pdb.pdb_reader import PDBStructure
+                structure = PDBStructure(pdbid,raw).structures()
+                print("  No symmetry operators applied to .pdb files")
+        elif filename.lower().endswith('.pdb'):
+            with open(filename, rm) as raw:
+                from fr3d.pdb.pdb_reader import PDBStructure
+                structure = PDBStructure(pdbid,raw).structures()
+                print("  No symmetry operators applied to .pdb files")
+
+        message.append("Loaded " + filename)
+        return structure, message
 
     except Exception as ex:
-        message.append("Could not load structure %s due to exception %s: %s" % (filename,type(ex).__name__,ex))
+        message.append("Could not load %s due to exception %s: %s" % (filename,type(ex).__name__,ex))
         if type(ex).__name__ == "TypeError":
             message.append("See suggestions in the fr3d-python Readme file")
-            return None, message
+        return None, message
 
-    with open(filename, 'rb') as raw:
-        print("  Loading " + filename)
-        structure = Cif(raw).structure()
-        """
-        Rotation matrix is calculated for each base.
-        Hydrogens are added automatically.
-        if 'backbone' in categories:
-            structure.infer_NA_hydrogens()
-        """
+    message.append("Could not load %s" % (filename))
+    return None, message
 
-    return structure
 
 def build_atom_to_unit_part_list():
 
@@ -317,9 +344,9 @@ def make_nt_cubes_full(bases, screen_distance_cutoff, nt_reference="base"):
     for base in bases:
         center = base.centers[nt_reference]  # chosen reference point
         if len(center) == 3:
-            x = floor(center[0]/screen_distance_cutoff)
-            y = floor(center[1]/screen_distance_cutoff)
-            z = floor(center[2]/screen_distance_cutoff)
+            x = math.floor(center[0]/screen_distance_cutoff)
+            y = math.floor(center[1]/screen_distance_cutoff)
+            z = math.floor(center[2]/screen_distance_cutoff)
             model = base.model
             key = "%d,%d,%d,%s" % (x,y,z,model)
             if key in baseCubeList:
@@ -353,9 +380,9 @@ def make_nt_cubes_half(bases, screen_distance_cutoff, nt_reference="base"):
     for base in bases:
         center = base.centers[nt_reference]  # chosen reference point
         if len(center) == 3:
-            x = floor(center[0]/screen_distance_cutoff)
-            y = floor(center[1]/screen_distance_cutoff)
-            z = floor(center[2]/screen_distance_cutoff)
+            x = math.floor(center[0]/screen_distance_cutoff)
+            y = math.floor(center[1]/screen_distance_cutoff)
+            z = math.floor(center[2]/screen_distance_cutoff)
             model = base.model
             key = "%d,%d,%d,%s" % (x,y,z,model)
             if key in baseCubeList:
@@ -942,7 +969,8 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,id
 
 
 def get_parent(sequence):
-    """ Look up parent sequence for RNA, DNA, and modified nucleotides
+    """
+    Look up parent sequence for RNA, DNA, and modified nucleotides
     """
 
     if sequence in ['A','C','G','U']:
@@ -955,6 +983,7 @@ def get_parent(sequence):
         return modified_nucleotides[sequence]["standard"]
     else:
         return None
+
 
 def translate_rotate_point(nt,point):
     """
@@ -2545,7 +2574,7 @@ def write_unit_data_file(PDB,unit_data_path,structure):
             print("  Wrote unit data file %s" % filename)
 
 
-def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions):
+def write_txt_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions):
     """
     Write interactions according to category, and within each
     category, write by annotation.
@@ -2554,7 +2583,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list
 
     # loop over types of output files requested
     for category in categories.keys():
-        filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + category + ".txt")
+        filename = os.path.join(outputNAPairwiseInteractions,pdbid + "_" + category + ".txt")
         with open(filename,'w') as f:
             # loop over all interactions found in this category
             for interaction in category_to_interactions[category]:
@@ -2566,7 +2595,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list
                     for a,b,c in interaction_to_list_of_tuples[interaction]:
                         f.write("%s\t%s\t%s\t%s\n" % (a,inter,b,c))
 
-def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified):
+def write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified):
     """
     For each chain, write interactions according to category,
     and within each category, write by annotation.
@@ -2577,10 +2606,10 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to
 
     # loop over types of output files requested
     for category in categories.keys():
-        filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + chain + "_" + category + ".json")
+        filename = os.path.join(outputNAPairwiseInteractions,pdbid + "_" + chain + "_" + category + ".json")
 
         output = {}
-        output["pdb_id"] = PDBid
+        output["pdb_id"] = pdbid
         output["chain_id"] = chain
         output["modified"] = modified
 
@@ -2707,37 +2736,20 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
     for path, PDB in PDBs:
         counter += 1
 
-        if PDB.lower().endswith('.cif') or PDB.lower().endswith('.pdb'):
-            PDBid = PDB[:-4]
-            path_PDB = os.path.join(path,PDB)         # extension given
-        elif len(PDB) == 4:
-            PDBid = PDB
-            path_PDB = os.path.join(path,PDB+".cif")  # default to .cif
-        else:
-            PDBid = PDB
-            path_PDB = os.path.join(path,PDB)         # use given filename
+        # attempt to identify the main file identifier, could be a 4-character pdb id
+        pdbid = PDB.replace(".cif","").replace(".pdb","").replace(".gz","")
 
-        print("Reading file %s, which is number %d out of %d" % (path_PDB, counter, len(PDBs)))
+        filename = os.path.join(path,PDB)
+
+        print("Reading file %s, which is number %d out of %d" % (filename, counter, len(PDBs)))
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
-        structure, messages = load_structure(path_PDB)
-        for message in messages:
-            print("  %s" % message)
-        try:
-            structure, messages = load_structure(path_PDB)
-
-        except Exception as ex:
-            message = "Could not load structure %s due to exception %s: %s" % (PDB,type(ex).__name__,ex)
-            failed_structures.append((PDB,message))
-            if type(ex).__name__ == "TypeError":
-                failed_structures.append((PDB,"See suggestions in the fr3d-python Readme file"))
-            continue
+        structure, messages = load_structure(filename,pdbid)
 
         if not structure:
-            print("  Could not load structure %s" % (PDB))
             for message in messages:
-                failed_structures.append((PDB,message))
+                failed_structures.append((pdbid,message))
             continue
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
@@ -2746,7 +2758,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
         if output_format == 'txt':
-            write_txt_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories,category_to_interactions)
+            write_txt_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions)
         elif output_format == 'ebi_json':
             if chains:
                 bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
@@ -2772,7 +2784,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
                     chain_modified[chain].append(modif)
 
             for chain in list(chain_unit_id_to_sequence_position.keys()):
-                write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
+                write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
 
         else:
             print('Output format %s not recognized' % output_format)

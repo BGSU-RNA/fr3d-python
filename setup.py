@@ -9,7 +9,7 @@ setup(
     include_package_data=True,
     url='',
     license='LICENSE.txt',
-    install_requires=["numpy", "scipy"],
+    install_requires=["numpy", "scipy", "mmcif-pdbx; python_version >= '3.0'"],
     description='Python implementation of FR3D',
     long_description="",
     data_files=[('fr3d/classifiers', ['fr3d/classifiers/template.html','fr3d/classifiers/H_bonding_Atoms_from_Isostericity_Table.csv'])]
