@@ -74,6 +74,7 @@ from hydrogen_bonds import check_hydrogen_bond
 from fr3d.data.mapping import modified_base_atom_list
 from fr3d.data.mapping import parent_atom_to_modified
 from fr3d.data.mapping import modified_atom_to_parent
+
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
 HB_donor_hydrogens = {}
@@ -238,8 +239,9 @@ def load_structure(filename):
             message.append("Loaded " + filename)
             """
             Rotation matrix is calculated for each base.
-            Hydrogens are not added automatically.
+            Hydrogens are added automatically.
             """
+
             return structure, message
     except TypeError:
         with open(filename, 'r') as raw:           # needed on Ubuntu
@@ -259,18 +261,15 @@ def load_structure(filename):
             message.append("See suggestions in the fr3d-python Readme file")
             return None, message
 
-        else:
-            status = urllib.request.urlretrieve(url, filename)  # python 3
-
     with open(filename, 'rb') as raw:
         print("  Loading " + filename)
         structure = Cif(raw).structure()
         """
         Rotation matrix is calculated for each base.
-        Hydrogens are not added automatically.
-        """
+        Hydrogens are added automatically.
         if 'backbone' in categories:
             structure.infer_NA_hydrogens()
+        """
 
     return structure
 
@@ -2636,6 +2635,9 @@ def simplify_basepair(interaction):
 #=======================================================================
 def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, output_format):
 
+    if isinstance(entry_id,str):
+        entry_id = [entry_id]
+
     # dictionary to control what specific annotations are output, in a file named for the key
     # empty list means to output all interactions in that category
     # non-empty list specifies which interactions to output in that category
@@ -2772,6 +2774,8 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
             for chain in list(chain_unit_id_to_sequence_position.keys()):
                 write_ebi_json_output_file(outputNAPairwiseInteractions,PDBid,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
 
+        else:
+            print('Output format %s not recognized' % output_format)
 
     myTimer("summary",timerData)
 
@@ -2841,4 +2845,4 @@ if __name__=="__main__":
 
     entry_id = args.PDBfiles
 
-    generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, format)
+    generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)

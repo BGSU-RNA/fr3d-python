@@ -50,7 +50,7 @@ def draw_base(base_seq,colorscheme,dimensions,ax,zorder=1):
                 ax.plot([p[0],m[0]],[p[1],m[1]], color=c1, linewidth=2.0, zorder=zorder)
                 ax.plot([q[0],m[0]],[q[1],m[1]], color=c2, linewidth=2.0, zorder=zorder)
             else:
-                ax.plot([q[0],m[0]],[q[1],m[1]][q[2],m[2]], color=NAbasecolor[base_seq], linewidth=2.0)
+                ax.plot([q[0],m[0]],[q[1],m[1]],[q[2],m[2]], color=NAbasecolor[base_seq], linewidth=2.0)
 
 
 
