@@ -5,9 +5,19 @@ Preliminary Reader for PDB formatted files using the BioPython PDBParser and cre
 07-27-2022: Does not support complex symmetries yet (or any symmetries other than identity) 
 This reader works for common structure files but may be error prone to structure files that are not typical
 """
-from importlib.resources import path
+#from importlib.resources import path
+
 from Bio.PDB import PDBParser
 from Bio.PDB.PDBParser import PDBParser
+
+import collections as coll
+import copy
+import itertools as it
+import logging
+import operator as op
+import os
+import re
+import sys
 
 # import necessary fr3d classes
 from fr3d.data import Atom
@@ -15,33 +25,24 @@ from fr3d.data import Component
 from fr3d.data import Structure
 from fr3d.modified_parent_mapping import modified_nucleotides
 
-import sys
-import operator as op
-import itertools as it
-import collections as coll
-import copy
-import logging
-import os 
-import re
-
 ###################################################################
 # PDBStructure Class ##############################################
 ###################################################################
 class PDBStructure(object):
-    """Container for data extracted from PDB Files. Uses PDBParser 
-    by BioPython to extract relevant information from PDB files. """
-    def __init__(self, filename):
+    """
+    Container for data extracted from PDB Files. Uses PDBParser
+    by BioPython to extract relevant information from PDB files.
+    fileid is like a pdb id, could be four characters
+    fh is a file handle for reading the file, could be a gzip file for example
+    """
+    def __init__(self, fileid, fh):
         p = PDBParser(PERMISSIVE=1) # Call BioPython Method to read cif file
-        self.structure = p.get_structure(filename, filename) # biopython method (What the file will be referred to as, what the file is named in your local path)
+        self.structure = p.get_structure(fileid, fh) # biopython method (What the file will be referred to as, what the file is named in your local path)
         self.name = self.structure.header['idcode']
+
         if self.name == " " or not self.name: # if it's an experimental file such as a rosetta file, it might not have a pdb name.
-                                              # Makes sure unit id's for fr3d python are formatted good
-            path = os.path.split(filename)
-            name=path[-1] #should just be the filename
-            name = name.replace(".pdb", '') #strip pdb from it
-            name = name.replace("|", "") 
-            name = name.replace(" ", "_") # remove pipes and white spaces from the name
-            self.name = name
+            self.name = fileid
+
         self.residues = self.__residues__(self.name)
 
     def __generate_atoms__(self, pdb):
@@ -62,15 +63,16 @@ class PDBStructure(object):
             for residue in residues:
                 full_id = residue.get_full_id()
                 ins_code = full_id[3][2] 
-                this_model = int(full_id[1]) + 1 # BioPython starts at 0 and Fr3d-Python starts at 1. Add 1 to each model so unit ids match 
+                this_model = str(int(full_id[1]) + 1) # BioPython starts at 0 and fr3d-python starts at 1. Add 1 to each model so unit ids match
                 this_chain = full_id[2]
                 component_number = full_id[3][1]
                 if 'H' in full_id[3][0][0]:
                     res_group = 'HETATM'
                 else:
                     res_group = 'ATOM'
-                res = residue.get_resname(),
-                res=res[0]
+
+                res = residue.get_resname().replace(" ","")
+
                 if ins_code == " ":
                     ins_code = None
 
@@ -118,28 +120,19 @@ class PDBStructure(object):
     
     # TODO: See if we can import the same method in the Cif class of reader.py here.
     def __residues__(self, pdb):
-        """Originally written for the Cif reader. Code adapted to parse relevant information from PDB files that was Parsed by BioPython"""
-        if sys.version_info[0] < 3:
-            key = op.attrgetter(
-                'pdb',
-                'model',
-                'chain',
-                'component_id',
-                'component_number',
-                'insertion_code',
-                'symmetry',
+        key = op.attrgetter(
+            'pdb',
+            'model',
+            'chain',
+            'component_id',
+            'component_number',
+            'insertion_code',
+            'symmetry',
             )
-        else:
-            key = op.attrgetter(
-                    'pdb',
-                    'model',
-                    'chain',
-                    'component_id',
-                    'component_number',
-                   # 'insertion_code', #in python 3, the sorted function below cannot accept None values, which sometimes there are in insertion code
-                    'symmetry',
-            ) 
-        mapping = it.groupby(sorted(self.__generate_atoms__(self.name), key=key), key)
+        # in Python 3.8, sorted cannot have None values; this also works in 2.7
+        mapping = it.groupby(sorted(self.__generate_atoms__(self.name), key=lambda x: (x.pdb,x.model,x.chain,x.component_id,x.component_number,x.insertion_code or '',x.symmetry)), key)
+
+        #mapping = it.groupby(sorted(self.__generate_atoms__(self.name), key=key), key)
          
         for comp_id, all_atoms in mapping:
             for atoms in self.__group_alt_atoms__(all_atoms):
@@ -198,11 +191,13 @@ class PDBStructure(object):
         return Structure(list(residues), pdb=pdb)
 
 def check_linking(seq):  
-    """Function to return the type of linking present
+    """
+    Function to return the type of linking present
     Cif files contain information that declares if the type is RNA linking, DNA linking, L-peptide linking
     This information isn't listed in this writing in a PDB file. So in order to match how our cif reader
     deals with this, this function will check to see if it's an RNA nt, a DNA nt, an amino acid, or a
-    modified nt and return the correct linkage to be used."""
+    modified nt and return the correct linkage to be used.
+    """
 
     if seq in ['A', 'C', 'G', 'U']: 
         type = "RNA linking"
@@ -211,7 +206,8 @@ def check_linking(seq):
     elif seq in ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"]:
         type = "L-peptide linking"
     elif seq in list(modified_nucleotides.keys()):
-        if modified_nucleotides[seq]['standard'] in ['A', 'C', 'G', 'U']: type = 'RNA linking'
+        if modified_nucleotides[seq]['standard'] in ['A', 'C', 'G', 'U']:
+            type = 'RNA linking'
     else:
         type = "Unknown"
     return type
