@@ -504,7 +504,7 @@ class Component(EntitySelector):
                     coordinates = modified_hydrogens_coordinates[self.sequence]
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
-                        print(self.base_center)
+                        # print(self.base_center)
                         newcoordinates = self.base_center + \
                             np.dot(self.rotation_matrix, hydrogencoordinates)
                         self._atoms.append(Atom(name=hydrogenatom,
