@@ -938,11 +938,18 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
     return interaction_to_list_of_tuples, category_to_interactions, timerData
 
 
-def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains=[],timerData=None,get_datapoint=False):
+def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={},ideal_hydrogen_bonds={},chains=[],timerData=None,get_datapoint=False):
     """
     This function can be called from the pipeline to annotate a structure
     structure is an output from
     """
+
+    if not focused_basepair_cutoffs:
+        focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
+
+    if not ideal_hydrogen_bonds:
+        ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
+
 
     if chains:
         bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
@@ -2814,7 +2821,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,coplanar,basepair_detail,covalent)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,backbone,coplanar,basepair_detail,covalent)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
@@ -2860,3 +2867,4 @@ if __name__=="__main__":
     entry_id = args.PDBfiles
 
     generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
+
