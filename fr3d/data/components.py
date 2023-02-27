@@ -143,9 +143,6 @@ class Component(EntitySelector):
         # calculate and store base_center; especially for modified nt without all heavy atoms
         self.calculate_rotation_matrix()
 
-        # initialize centers so they can be used to infer hydrogens
-        self.centers = AtomProxy(self._atoms)
-
         # add hydrogen atoms to standard bases and amino acids
         self.infer_NA_hydrogens()
 
@@ -166,15 +163,12 @@ class Component(EntitySelector):
                 self.centers.define('glycosidic',['N9'])
             elif self.sequence in ['C','U','DC','DT']:
                 self.centers.define('glycosidic',['N1'])
-            elif self.sequence in modified_base_to_parent.keys():
+            elif self.sequence in modified_base_to_parent:
                 if modified_base_to_parent[self.sequence] in ['A','G','DA','DG']:
-                    self.centers.define('glycosidic',['N9'])
+                    self.centers.define('glycosidic',[parent_atom_to_modified[self.sequence]['N9']])
                 elif modified_base_to_parent[self.sequence] in ['C','U','DC','DT']:
-                    self.centers.define('glycosidic',['N1'])
-            elif 'N9' in self.centers:
-                self.centers.define('glycosidic',['N9'])
-            elif 'N1' in self.centers:
-                self.centers.define('glycosidic',['N1'])
+                    self.centers.define('glycosidic',[parent_atom_to_modified[self.sequence]['N1']])
+
 
         if self.sequence in defs.nt_sugar:
             atoms = defs.nt_sugar[self.sequence]
@@ -185,7 +179,7 @@ class Component(EntitySelector):
             self.centers.define('nt_phosphate', atoms)
 
         # attempt to add sugar and phosphate centers for all modified nucleotides
-        if self.sequence in modified_base_to_parent.keys():
+        if self.sequence in modified_base_to_parent:
             atoms = defs.nt_sugar['A']
             self.centers.define('nt_sugar', atoms)
             atoms = defs.nt_phosphate['A']
@@ -274,9 +268,6 @@ class Component(EntitySelector):
         Crick edge in the positive x and y quadrant.
         """
 
-        if self.sequence not in defs.NAbaseheavyatoms and \
-                self.sequence not in modified_base_to_parent.keys():
-            return None
 
         R = []   # 3d coordinates of observed base
         S = []   # 3d coordinates of standard base in xy plane
@@ -288,7 +279,7 @@ class Component(EntitySelector):
                 R.append(atom.coordinates())
                 S.append(standard_coords[atom.name])
 
-        elif self.sequence in modified_base_to_parent.keys():
+        elif self.sequence in modified_base_to_parent:
             # get the mapping from this modified nucleotide to its parent
             #mod_to_parent = defs.modified_nucleotides[self.sequence]
             # print(mod_to_parent)
@@ -296,12 +287,16 @@ class Component(EntitySelector):
             standard_coords = defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]
             # loop over mapped base atoms in the modified nucleotide
             # parent base atom
-            for atom in self.atoms(name=list(modified_base_atom_list[self.sequence])):
-                #redundant. Last check should be sufficient. 
-                if "P" not in atom.name and "H" not in atom.name and "'" not in atom.name and 'M' not in atom.name and atom.name in defs.NAbasecoordinates[modified_base_to_parent[self.sequence]].keys():
-                    R.append(atom.coordinates())
-                    #print(self.sequence)
-                    S.append(standard_coords[parent_atom_to_modified[self.sequence][atom.name]])
+            # Make list of modified base atoms only for modifieds that are needed
+            # for atom in self.atoms(name=list(modified_base_atom_list[self.sequence])):
+            #     #redundant. Last check should be sufficient. 
+            for parent_atom in defs.NAbaseheavyatoms[modified_base_to_parent[self.sequence]]:
+                modified_atom_name = parent_atom_to_modified[self.sequence][parent_atom]
+                atom = self.atoms(name=[modified_atom_name])
+                R.append(atom.coordinates())
+                S.append(standard_coords[parent_atom_to_modified[self.sequence][atom.name]])
+        else: 
+            return None
 
             """
             for mod_atom_name, parent_atom_name in mod_to_parent["atoms"].items():
@@ -342,13 +337,12 @@ class Component(EntitySelector):
             # this comes out as a numpy matrix?  different than meanR above
             base_center = np.subtract(meanR,np.dot(rotation_matrix,meanS))
             self.base_center = np.array([base_center[0,0],base_center[0,1],base_center[0,2]])
-
-        """ For the life of me, I could not figure out any other way of
-        converting base_center from a 2d array to a 1d array.
-        Taking a slice did not work, reshape did not work, etc.
-        This is crucially important; a 2d array won't be written to the
-        unit_centers table in the database.
-        """
+            """ For the life of me, I could not figure out any other way of
+            converting base_center from a 2d array to a 1d array.
+            Taking a slice did not work, reshape did not work, etc.
+            This is crucially important; a 2d array won't be written to the
+            unit_centers table in the database.
+            """
 
 
     def infer_NA_hydrogens(self):
@@ -504,7 +498,6 @@ class Component(EntitySelector):
                     coordinates = modified_hydrogens_coordinates[self.sequence]
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
-                        # print(self.base_center)
                         newcoordinates = self.base_center + \
                             np.dot(self.rotation_matrix, hydrogencoordinates)
                         self._atoms.append(Atom(name=hydrogenatom,
