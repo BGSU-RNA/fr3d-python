@@ -241,6 +241,14 @@ class Cif(object):
         if hasattr(self, 'entity'):
             for entity in self.entity:
                 entities[entity['id']] = entity
+        elif hasattr(self, 'atom_site'):
+            for line in self.atom_site:
+                entity_id = line['label_entity_id']
+                if not entity_id in entities:
+                    entities[entity_id] = {}
+                    entities[entity_id]['type'] = 'non-polymer'
+                if line['label_seq_id'] != '.':
+                    entities[entity_id]['type'] = 'polymer'
         return entities
 
     def __load_chem_comp__(self):
