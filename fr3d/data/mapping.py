@@ -23,6 +23,10 @@ import sys
 import pickle
 from fr3d.localpath import fr3d_pickle_path
 
+#Deals with opening csv file
+if sys.version_info[0] < 3:
+    from io import open as open
+    
 # See if pickle files already exist that contain mapped dictionaries
 paths = []
 if fr3d_pickle_path: 
