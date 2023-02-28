@@ -1312,8 +1312,8 @@ def create_modified_base_atoms_list(nt, parent_base_atoms):
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
     for atom in parent_base_atoms:
-        if(atom in modified_atom_to_parent[nt.sequence]):
-            atomList.append(modified_atom_to_parent[nt.sequence][atom])
+        if(atom in parent_atom_to_modified[nt.sequence]):
+            atomList.append(parent_atom_to_modified[nt.sequence][atom])
     return atomList
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
@@ -2341,9 +2341,9 @@ def get_glycosidic_atom_coordinates(nt,parent):
         gly = nt.centers["N1"]
     elif nt.sequence in modified_base_to_parent.keys():
         if parent in ['A','G','DA','DG']:
-            gly = nt.centers[modified_atom_to_parent[nt.sequence]["N9"]]
+            gly = nt.centers[parent_atom_to_modified[nt.sequence]["N9"]]
         elif parent in ['C','U','DC','DT']:
-            gly = nt.centers[modified_atom_to_parent[nt.sequence]["N1"]]
+            gly = nt.centers[parent_atom_to_modified[nt.sequence]["N1"]]
 
     return gly
 
