@@ -706,11 +706,11 @@ if __name__=="__main__":
     # look at 3IWN|1|A|A|51  cSH    3IWN|1|A|A|52
     # 7JQQ is 4.1A resolution but has both RNA and DNA coordinates in the server, so we can see DNA pairs
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv','7K00','8B0X']
-    resolution = '2.0A'
-
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','7K00','8B0X','4M6D','7JQQ']
     resolution = '2.5A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv','7K00','8B0X']
+    resolution = '2.0A'
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv','7K00','8B0X','4M6D','7JQQ']
     resolution = '1.5A'
@@ -1057,7 +1057,7 @@ if __name__=="__main__":
                         datapoint = make_full_data(datapoint)
 
                     # only keep pairs if their parameters are somewhat close to the cutoffs for some category
-                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 100) or (matlab_annotation and not "n" in matlab_annotation):
+                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 10) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 10):
 
                         c += 1
                         xvalues.append(datapoint['x'])
