@@ -568,7 +568,7 @@ def generate_LW_family_table(LW,DNA=False):
 
                             break
 
-                # When on C,A cHS, look for A,C cSH because that's how it's stored
+                # When on C,A cHS, look for A,C cSH because that's how it's stored but print C,A cHS
                 elif b1 != b2:
                     base_combination = b2 + "," + b1
 
@@ -576,8 +576,9 @@ def generate_LW_family_table(LW,DNA=False):
                         for interaction in nt_nt_cutoffs[base_combination].keys():
 
                             # reverse interaction since we're looking at the lower part of the family
-                            inter = interaction.replace("n","").replace("a","").lower()[0:3]
-                            interaction_lower = inter[0] + inter[2] + inter[1]
+                            inter = interaction.replace("n","").replace("a","")[0:3]
+                            interaction_reverse = inter[0] + inter[2] + inter[1]
+                            interaction_lower = interaction_reverse.lower()
 
                             if interaction_lower == LW_lower:
                                 if DNA:
@@ -586,7 +587,7 @@ def generate_LW_family_table(LW,DNA=False):
                                     link = "%s_%s-%s_%s.html" % (interaction,b2,b1,resolution)
 
                                 #output += '<a href="%s">%s,%s %s %s</a>' % (link,b1,b2,LW,resolution)
-                                output += '<a href="%s">%s,%s %s</a>' % (link,b1,b2,interaction)
+                                output += '<a href="%s">%s,%s %s</a>' % (link,b1,b2,interaction_reverse)
 
                                 break
                 output += "</td>"
@@ -671,10 +672,7 @@ def load_dssr_basepairs(pdb_id):
 if __name__=="__main__":
 
     # test
-    #print(generate_LW_family_table('cWWa'))
-
-
-    load_dssr_basepairs('4M6D')
+    #print(generate_LW_family_table('cWS'))
     #print(crashmenow)
 
     write_html_pages = True
@@ -704,18 +702,19 @@ if __name__=="__main__":
 
     # look at  4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
     # look at 3IWN|1|A|A|51  cSH    3IWN|1|A|A|52
+    # look at 4V88 cSH
     # 7JQQ is 4.1A resolution but has both RNA and DNA coordinates in the server, so we can see DNA pairs
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','7K00','8B0X','4M6D','7JQQ']
-    resolution = '2.5A'
-
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv','7K00','8B0X']
-    resolution = '2.0A'
-
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv','7K00','8B0X','4M6D','7JQQ']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/1.5A/csv','7K00','8B0X']
     resolution = '1.5A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','7K00','8B0X','4M6D','7JQQ']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/2.0A/csv','7K00','8B0X']
+    resolution = '2.0A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/2.5A/csv','7K00','8B0X']
+    resolution = '2.5A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/3.0A/csv','7K00','8B0X','4M6D','3IWN','4V88']
     resolution = '3.0A'
 
     # zzz
