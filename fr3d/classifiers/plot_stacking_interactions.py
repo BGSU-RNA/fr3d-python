@@ -13,7 +13,6 @@ import sys
 import os
 from collections import defaultdict
 import urllib
-import __builtin__
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -29,9 +28,11 @@ from draw_residues import draw_base
 
 
 if sys.version_info[0] < 3:
+    import __builtin__
     from urllib import urlopen
 else:
     from urllib.request import urlopen 
+    import builtins as __builtin__
 
 
 def load_basepair_annotations(filename,all_pair_types):
@@ -859,7 +860,7 @@ if __name__=="__main__":
         test = pythonTotals['near']/pythonTotals['total']
         print(pythonTotals['total'])
 
-        if pythonTotals > matlabTotals:
+        if pythonTotals['total'] > matlabTotals['total']:
             larger = "PYTHON"
         else:
             larger = "MATLAB"

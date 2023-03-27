@@ -23,34 +23,15 @@ import sys
 import pickle
 from fr3d.localpath import fr3d_pickle_path
 
-#Deals with opening csv file
+# import the version of urlretrieve appropriate to the Python version
 if sys.version_info[0] < 3:
+    write_mode = 'w'
+    #Deals with opening csv file
     from io import open as open
-    
-# See if pickle files already exist that contain mapped dictionaries
-paths = []
-if fr3d_pickle_path: 
-    if not os.path.exists(fr3d_pickle_path + '\parent_atom_to_modified.pickle'):
-        parent_atom_to_modified_pickle_path = fr3d_pickle_path + '\parent_atom_to_modified.pickle'
-        paths.append(parent_atom_to_modified_pickle_path)
-    if not os.path.exists(fr3d_pickle_path + '\modified_atom_to_parent.pickle'):
-        modified_atom_to_parent_pickle_path = fr3d_pickle_path + '\modified_atom_to_parent.pickle'
-        paths.append(modified_atom_to_parent_pickle_path)
-    if not os.path.exists(fr3d_pickle_path + '\modified_base_atom_list.pickle'):
-        modified_base_atom_list_pickle_path = fr3d_pickle_path + '\modified_base_atom_list.pickle'
-        paths.append(modified_base_atom_list_pickle_path)    
-    if not os.path.exists(fr3d_pickle_path + '\modified_base_to_parent.pickle'):
-        modified_base_to_parent_pickle_path = fr3d_pickle_path + '\modified_base_to_parent.pickle'
-        paths.append(modified_base_to_parent_pickle_path)
-    if not os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'):
-        modified_base_to_hydrogens_pickle_path = fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'
-        paths.append(modified_base_to_hydrogens_pickle_path)       
-    if not os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'):
-        modified_base_to_hydrogens_coordinates_pickle_path = fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'
-        paths.append(modified_base_to_hydrogens_coordinates_pickle_path)   
+else:
+    write_mode = 'wb'   # write as text
 
-# If no pickle file already exist, then read the text file and create the mapping dictionaries
-if len(paths) > 0:  
+def create_modified_nucleotide_to_parent_mappings():
     # Read in mapping file wherever its located on system in python path. Read file line by line and create mapping.
     modified_atom_map = {}
     path =  os.path.dirname(os.path.abspath(__file__))
@@ -86,41 +67,74 @@ if len(paths) > 0:
                     modified_base_atom_list[modified_nucleotide].append(atom[2])
                     modified_base_to_hydrogens[modified_nucleotide].append(atom[2])
                     modified_base_to_hydrogens_coordinates[modified_nucleotide][atom[2]] = (defs.NAbasecoordinates[atom[0]][atom[1]])
-    # Dump those dictionaries to pickle files now so we don't have to process the file again
-    print("Writing serialized files of modified nucleotide mappings...")
-    for file in paths:
-        with open(file, 'wb') as handle:
-            name = file.replace(fr3d_pickle_path + '\\', '')
-            end_name = name.replace('.pickle', '')
-            pickle.dump(end_name, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        print("Serialized modified mapping file written at: " + file)
 
-# if the pickles exist, load the pickles to fill data
-elif len(paths) == 0: 
-    print("Serialized files for mappings found. Loading serialized mappings.")
-    if fr3d_pickle_path:
-        if os.path.exists(fr3d_pickle_path + '\parent_atom_to_modified.pickle'):
+    return modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates
+# See if pickle files already exist that contain mapped dictionaries
+paths = []
+try:
+    if fr3d_pickle_path: 
+        unf = unf
+        if not os.path.exists(fr3d_pickle_path + '\parent_atom_to_modified.pickle'):
             parent_atom_to_modified_pickle_path = fr3d_pickle_path + '\parent_atom_to_modified.pickle'
-            with open(parent_atom_to_modified_pickle_path, 'rb') as handle:
-                parent_atom_to_modified = pickle.load(handle)
-        if os.path.exists(fr3d_pickle_path + '\modified_atom_to_parent.pickle'):
+            paths.append(parent_atom_to_modified_pickle_path)
+        if not os.path.exists(fr3d_pickle_path + '\modified_atom_to_parent.pickle'):
             modified_atom_to_parent_pickle_path = fr3d_pickle_path + '\modified_atom_to_parent.pickle'
-            with open(modified_atom_to_parent_pickle_path, 'rb') as handle:
-                modified_atom_to_parent = pickle.load(handle)
-        if os.path.exists(fr3d_pickle_path + '\modified_base_atom_list.pickle'):
+            paths.append(modified_atom_to_parent_pickle_path)
+        if not os.path.exists(fr3d_pickle_path + '\modified_base_atom_list.pickle'):
             modified_base_atom_list_pickle_path = fr3d_pickle_path + '\modified_base_atom_list.pickle'
-            with open(modified_base_atom_list_pickle_path, 'rb') as handle:
-                modified_base_atom_list = pickle.load(handle)
-        if os.path.exists(fr3d_pickle_path + '\modified_base_to_parent.pickle'):
+            paths.append(modified_base_atom_list_pickle_path)    
+        if not os.path.exists(fr3d_pickle_path + '\modified_base_to_parent.pickle'):
             modified_base_to_parent_pickle_path = fr3d_pickle_path + '\modified_base_to_parent.pickle'
-            with open(modified_base_to_parent_pickle_path, 'rb') as handle:
-                modified_base_to_parent = pickle.load(handle)
-        if os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'):
+            paths.append(modified_base_to_parent_pickle_path)
+        if not os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'):
             modified_base_to_hydrogens_pickle_path = fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'
-            with open(modified_base_to_hydrogens_pickle_path, 'rb') as handle:
-                modified_base_to_hydrogens = pickle.load(handle)
-        if os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'):
+            paths.append(modified_base_to_hydrogens_pickle_path)       
+        if not os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'):
             modified_base_to_hydrogens_coordinates_pickle_path = fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'
-            with open(modified_base_to_hydrogens_coordinates_pickle_path, 'rb') as handle:
-                modified_base_to_hydrogens_coordinates = pickle.load(handle)
-    print("Serialized mappings for modified nucleotides loaded.")
+            paths.append(modified_base_to_hydrogens_coordinates_pickle_path)   
+
+    # if the pickles exist, load the pickles to fill data
+    if len(paths) == 0: 
+        print("Serialized files for mappings found. Loading serialized mappings.")
+        if fr3d_pickle_path:
+            if os.path.exists(fr3d_pickle_path + '\parent_atom_to_modified.pickle'):
+                parent_atom_to_modified_pickle_path = fr3d_pickle_path + '\parent_atom_to_modified.pickle'
+                with open(parent_atom_to_modified_pickle_path, 'rb') as handle:
+                    parent_atom_to_modified = pickle.load(handle)
+            if os.path.exists(fr3d_pickle_path + '\modified_atom_to_parent.pickle'):
+                modified_atom_to_parent_pickle_path = fr3d_pickle_path + '\modified_atom_to_parent.pickle'
+                with open(modified_atom_to_parent_pickle_path, 'rb') as handle:
+                    modified_atom_to_parent = pickle.load(handle)
+            if os.path.exists(fr3d_pickle_path + '\modified_base_atom_list.pickle'):
+                modified_base_atom_list_pickle_path = fr3d_pickle_path + '\modified_base_atom_list.pickle'
+                with open(modified_base_atom_list_pickle_path, 'rb') as handle:
+                    modified_base_atom_list = pickle.load(handle)
+            if os.path.exists(fr3d_pickle_path + '\modified_base_to_parent.pickle'):
+                modified_base_to_parent_pickle_path = fr3d_pickle_path + '\modified_base_to_parent.pickle'
+                with open(modified_base_to_parent_pickle_path, 'rb') as handle:
+                    modified_base_to_parent = pickle.load(handle)
+            if os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'):
+                modified_base_to_hydrogens_pickle_path = fr3d_pickle_path + '\modified_base_to_hydrogens.pickle'
+                with open(modified_base_to_hydrogens_pickle_path, 'rb') as handle:
+                    modified_base_to_hydrogens = pickle.load(handle)
+            if os.path.exists(fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'):
+                modified_base_to_hydrogens_coordinates_pickle_path = fr3d_pickle_path + '\modified_base_to_hydrogens_coordinates.pickle'
+                with open(modified_base_to_hydrogens_coordinates_pickle_path, 'rb') as handle:
+                    modified_base_to_hydrogens_coordinates = pickle.load(handle)
+        print("Serialized mappings for modified nucleotides loaded.")
+
+    # If no pickle file already exist, then read the text file and create the mapping dictionaries
+    if len(paths) > 0:  
+        modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
+        # Dump those dictionaries to pickle files now so we don't have to process the file again
+        print("Writing serialized files of modified nucleotide mappings...")
+        for file in paths:
+            with open(file, 'wb') as handle:
+                name = file.replace(fr3d_pickle_path + '\\', '')
+                end_name = name.replace('.pickle', '')
+                pickle.dump(end_name, handle, 2)
+            print("Serialized modified mapping file written at: " + file)
+except: 
+    print("Not able to load or write serialized file for mappings. Reading mapping file instead.")
+    modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
+    print("Modified nucleotide mappings read successfully.")
