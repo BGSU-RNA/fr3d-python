@@ -73,7 +73,7 @@ from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
 #old modified nucleotide mappings
-#from fr3d.modified_parent_mapping import modified_nucleotides
+from fr3d.modified_parent_mapping import modified_nucleotides
 #Updated modified nucleotide mappings from atom_mappings_refined.txt
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
