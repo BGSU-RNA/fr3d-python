@@ -66,17 +66,16 @@ from fr3d.definitions import planar_atoms
 from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
-from fr3d.modified_parent_mapping import modified_nucleotides
 from fr3d.data.components import Component
 
 from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from hydrogen_bonds import check_hydrogen_bond
 
-from fr3d.data.mapping import modified_base_atom_list
-from fr3d.data.mapping import parent_atom_to_modified
-from fr3d.data.mapping import modified_atom_to_parent
-from fr3d.data.mapping import modified_base_to_parent
+#old modified nucleotide mappings
+#from fr3d.modified_parent_mapping import modified_nucleotides
+#Updated modified nucleotide mappings from atom_mappings_refined.txt
+from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure

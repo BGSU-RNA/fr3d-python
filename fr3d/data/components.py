@@ -452,11 +452,11 @@ class Component(EntitySelector):
                                                 z=newcoordinates[0, 2]))
 
             # repeat similar logic but for modified nucleotides. Written out twice so that modified nucleotides logic doesn't slow down normal bases as they're much less frequent.
-            elif self.sequence in modified_base_to_parent:   
+            elif self.sequence in modified_base_to_parent:  
                 already = []
                 from fr3d.data.mapping import modified_atom_map
-                from fr3d.data.mapping import modified_hydrogens
-                from fr3d.data.mapping import modified_hydrogens_coordinates
+                from fr3d.data.mapping import modified_base_to_hydrogens
+                from fr3d.data.mapping import modified_base_to_hydrogens_coordinates
                 for atom in self._atoms:
                     if 'H' in atom.name: 
                         already.append(atom)
@@ -496,8 +496,8 @@ class Component(EntitySelector):
                                             atom.y = amino1coords[1] 
                                             atom.z = amino1coords[2]
                 else: # hydrogens aren't observed already. If the heavy atom has a mapping to the parent, infer hydrogen with parent hydrogens coordinates with modified hydrogens name
-                    hydrogens = modified_hydrogens[self.sequence]
-                    coordinates = modified_hydrogens_coordinates[self.sequence]
+                    hydrogens = modified_base_to_hydrogens[self.sequence]
+                    coordinates = modified_base_to_hydrogens_coordinates[self.sequence]
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
                         newcoordinates = self.base_center + \
