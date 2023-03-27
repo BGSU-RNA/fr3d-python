@@ -147,36 +147,36 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
     discrepancydata = ''
 
-    if np.size(allvsallmatrix) > 0:
-        # write discrepancy data in new 2022 list format
-        # first element is a reference to the div in which the heatmap should appear
-        discrepancydata = '["#heatmap",['              # start a list, start a matrix
+    # if np.size(allvsallmatrix) > 0:
+    #     # write discrepancy data in new 2022 list format
+    #     # first element is a reference to the div in which the heatmap should appear
+    #     discrepancydata = '["#heatmap",['              # start a list, start a matrix
 
-        # second element is a matrix with the numerical values of the discrepancy
-        # writing both upper and lower triangles of the matrix
-        s = allvsallmatrix.shape[0]
-        for c in range(0,s):
-            discrepancydata += '['     # start a row of the discrepancy matrix
-            ife1 = candidates[c][0]
-            for d in range(0,s):
-                ife2 = candidates[d][0]
-                discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
-                if d < s-1:
-                    discrepancydata += ','  # commas between entries in a row
-                else:
-                    discrepancydata += '],\n'  # end a row, newline
+    #     # second element is a matrix with the numerical values of the discrepancy
+    #     # writing both upper and lower triangles of the matrix
+    #     s = allvsallmatrix.shape[0]
+    #     for c in range(0,s):
+    #         discrepancydata += '['     # start a row of the discrepancy matrix
+    #         ife1 = candidates[c][0]
+    #         for d in range(0,s):
+    #             ife2 = candidates[d][0]
+    #             discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
+    #             if d < s-1:
+    #                 discrepancydata += ','  # commas between entries in a row
+    #             else:
+    #                 discrepancydata += '],\n'  # end a row, newline
 
-        discrepancydata += '],\n'           # end the matrix, continue the list
+    #     discrepancydata += '],\n'           # end the matrix, continue the list
 
-        # third element is a list of labels of instances
-        discrepancydata += '['              # start list of instances
-        for c in range(0,s):
-            ife1 = candidates[c][0]
-            discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
-            if c < s-1:
-                discrepancydata += ","  # commas between instances
-            else:
-                discrepancydata += "]]" # end list of instances, end list of data
+    #     # third element is a list of labels of instances
+    #     discrepancydata += '['              # start list of instances
+    #     for c in range(0,s):
+    #         ife1 = candidates[c][0]
+    #         discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
+    #         if c < s-1:
+    #             discrepancydata += ","  # commas between instances
+    #         else:
+    #             discrepancydata += "]]" # end list of instances, end list of data
 
     # read template.html into one string
     with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
