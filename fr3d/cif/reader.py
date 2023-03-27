@@ -252,10 +252,40 @@ class Cif(object):
         return entities
 
     def __load_chem_comp__(self):
+        """
+        Record the type of each chemical component,
+        such as 'RNA linking' and 'DNA linking'
+        """
+
         chem = {}
         if hasattr(self, 'chem_comp'):
             for obj in self.chem_comp:
                 chem[obj['id']] = obj
+        else:
+            # create an exhaustive listing of common components in case they are needed
+            for base in ['A','C','G','U']:
+                chem[base] = {'type':'RNA linking'}
+            for base in ['DA','DC','DG','DT']:
+                chem[base] = {'type':'DNA linking'}
+
+            # look for other components like modified nucleotides
+            chain_to_chem = {}  # track known chain types
+            comp_id_to_chain = {}  # track unknown chem types
+            for line in self.atom_site:
+                chain_id = line['label_asym_id']  # current chain
+                comp_id = line['label_comp_id']   # current component
+                if comp_id in chem and not chain_id in chain_to_chem:
+                    chain_to_chem[chain_id] = chem[comp_id] # this chain is this type
+
+                # record the chain that an unknown component resides in, resolve it later
+                if not comp_id in chem:
+                    comp_id_to_chain[comp_id] = chain_id
+
+            # inherit the type from other components in the same chain
+            for comp_id, chain in comp_id_to_chain.items():
+                if chain_id in chain_to_chem:
+                    chem[comp_id] = chain_to_chem[chain_id]
+
         return chem
 
     def structure(self):

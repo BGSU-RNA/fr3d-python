@@ -761,10 +761,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     conflict_message += "  Using %s\n" % interaction12_reversed
 
                                 print(conflict_message)
-                                if get_datapoint:
-                                    if(outputNAPairwiseInteractions):
-                                        with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
-                                            conf.write(conflict_message+"\n")
+                                if False and get_datapoint:
+                                    with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
+                                        conf.write(conflict_message+"\n")
+
                             if new_annotation:
                                 count_pair += 1
                                 max_center_center_distance = max(max_center_center_distance,center_center_distance)
@@ -1979,8 +1979,15 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
 
     indices = np.argsort(distances)
 
+    m = min(3,len(indices))
+
+    #print(len(indices))
+    #print(displacements)
+    #print(nt1.unit_id())
+    #print(nt2.unit_id())
+
     gap12 = 100
-    for k in range(0,3):              # 3 nearest points
+    for k in range(0,m):              # 3 nearest points
         p = displacements[indices[k]]
         z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
