@@ -103,14 +103,18 @@ PDB_list = ['124D']  # RNA-DNA duplex
 PDB_list = ['1A1L']  # DNA-DNA duplex
 PDB_list = ['7JQQ']  # Five RNA chains and a DNA-DNA duplex
 PDB_list = ['7K00','8B0X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/3.0A/csv','8B0X','4M6D','7JQQ','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/2.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.267/1.5A/csv']
+PDB_list = ['1NBS','6PMO']
+PDB_list = ['1Q96']
+PDB_list = ['6DVK']
+PDB_list = ['4V9F']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','8B0X','4M6D','3IWN','4V88','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv']
 
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -118,11 +122,11 @@ base_seq_list = []                     # for all nucleic acids, modified or not
 
 # tell which types of interactions to annotate
 categories = {}
-categories['sO'] = []        # annotate all sO interactions
+#categories['sO'] = []        # annotate all sO interactions
+categories['coplanar'] = []   # necessary to get all data for datapoint
 categories['basepair'] = []
-categories['stacking'] = []
-categories['coplanar'] = []
-categories['backbone'] = []
+#categories['stacking'] = []
+#categories['backbone'] = []
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
@@ -189,6 +193,13 @@ for PDB in sorted(PDBs):
             timerData = myTimer("Reading CIF files",timerData)
 
             structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
+
+            """
+            for base in structure.residues(type = ["RNA linking","DNA linking"]):
+                print(base.unit_id())
+                print(base.centers['glycosidic'])
+                print(base.centers['base'])
+            """
 
             if not structure:
                 for message in messages:
