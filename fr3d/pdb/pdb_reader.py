@@ -38,7 +38,10 @@ class PDBStructure(object):
     def __init__(self, fileid, fh):
         p = PDBParser(PERMISSIVE=1) # Call BioPython Method to read cif file
         self.structure = p.get_structure(fileid, fh) # biopython method (What the file will be referred to as, what the file is named in your local path)
-        self.name = self.structure.header['idcode']
+        try:
+            self.name = self.structure.header['idcode']
+        except:
+            self.name = fileid
 
         if self.name == " " or not self.name: # if it's an experimental file such as a rosetta file, it might not have a pdb name.
             self.name = fileid

@@ -415,16 +415,19 @@ def make_full_data(datapoint):
 
     if not 'x' in datapoint:
         print('Adding x to %s' % datapoint)
-        datapoint['x'] = 1.111
+        datapoint['x'] = 0.000
     if not 'y' in datapoint:
         print('Adding y to %s' % datapoint)
-        datapoint['y'] = 1.111
+        datapoint['y'] = 0.000
     if not 'z' in datapoint:
         print('Adding z to %s' % datapoint)
-        datapoint['z'] = 1.111
+        datapoint['z'] = 0.000
     if not 'gap12' in datapoint:
         print('Adding gap12 to %s' % datapoint)
-        datapoint['gap12'] = 1.111
+        datapoint['gap12'] = 0.0
+    if not 'gap21' in datapoint:
+        print('Adding gap21 to %s' % datapoint)
+        datapoint['gap21'] = 0.0
     if not 'normal_Z' in datapoint:
         print('Adding normal_Z to %s' % datapoint)
         datapoint['normal_Z'] = 0.0
@@ -537,7 +540,7 @@ def generate_LW_family_table(LW,DNA=False):
 
     if DNA:
         bases = ['DA','DC','DG','DT']
-        resolutions = ['2286']           # number of structures for now
+        resolutions = [str(len(PDB_list))]           # number of structures for now, part of the hyperlinks!
         output += "<tr><td>2.0A</td><td></td><td></td><td></td><td></td></tr>\n"
     else:
         bases = ['A','C','G','U']
@@ -616,20 +619,20 @@ def load_dssr_basepairs(pdb_id):
         keep_trying = True
         while keep_trying:
 
-            url = 'http://www-dev-2.nakb.org/x3dssr/%s_%d.json' % (pdb_id,j)
+            url = 'http://west.nakb.org/x3dssr/%s_%d.json' % (pdb_id,j)
 
             time.sleep(0.1)
             try:
                 url_data = requests.get(url)
             except:
-                print('Pause to re-establish connection')
+                print('Pause to re-establish connection for %s' % pdb_id)
                 time.sleep(5)
                 url_data = requests.get(url)
 
             if '404 Not Found' in url_data.text:
                 keep_trying = False
             else:
-                print('Downloading DSSR annotations for %s with j=%d' % (pdb_id,j))
+                print('Downloading DSSR annotations for %s on try #%d' % (pdb_id,j))
                 j += 1
                 dssr = json.loads(url_data.text)
 
@@ -705,17 +708,20 @@ if __name__=="__main__":
     # look at 4V88 cSH
     # 7JQQ is 4.1A resolution but has both RNA and DNA coordinates in the server, so we can see DNA pairs
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/1.5A/csv','7K00','8B0X']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv','7K00','8B0X']
     resolution = '1.5A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/2.0A/csv','7K00','8B0X']
-    resolution = '2.0A'
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','7K00','8B0X','4M6D','3IWN','4V88']
+    resolution = '3.0A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/2.5A/csv','7K00','8B0X']
+    PDB_list = ['1NBS','6PMO']
+    resolution = '1NBS_6PMO'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv','7K00','8B0X']
     resolution = '2.5A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.272/3.0A/csv','7K00','8B0X','4M6D','3IWN','4V88']
-    resolution = '3.0A'
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','7K00','8B0X']
+    resolution = '2.0A'
 
     # zzz
 
@@ -723,7 +729,7 @@ if __name__=="__main__":
     DNA = False
     if DNA:
         from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-        PDB_list.append('7JQQ')
+        PDB_list.remove('5G35')        # has AG pairs that overlap
         PDB_list = sorted(PDB_list)
         base_combination_list = ['DA,DA','DA,DC','DA,DG','DA,DT','DC,DC','DG,DC','DC,DT','DG,DG','DG,DT','DT,DT']
 
@@ -731,6 +737,16 @@ if __name__=="__main__":
 
     # load all datapoints on pairs of bases, whether annotated as paired or not
     all_PDB_ids = sorted(PDB_IFE_Dict.keys())
+
+    if '1VQO' in all_PDB_ids:
+        all_PDB_ids.remove('1VQO')
+    if '1VQN' in all_PDB_ids:
+        all_PDB_ids.remove('1VQN')  # essentially the same as 4V9F, here because of 2 nt chains
+    if '4V8D' in all_PDB_ids:
+        all_PDB_ids.remove('4V8D')
+    if '8AYE' in all_PDB_ids:
+        all_PDB_ids.remove('8AYE')
+
     print("Working on %d PDB files" % len(all_PDB_ids))
 
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
@@ -757,7 +773,7 @@ if __name__=="__main__":
         #print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
         #print("Found Matlab annotations in %s files" % (len(all_PDB_ids)-len(PDB_skip_set))
 
-    print('Loading DSSR annotations')
+    print('Loading DSSR annotations to %s' % dssr_basepair_path)
     for PDB_id in all_PDB_ids:
         interaction_to_triples = load_dssr_basepairs(PDB_id)
         for interaction in interaction_to_triples.keys():
@@ -921,6 +937,9 @@ if __name__=="__main__":
 
                 if (Python or Matlab or dssr) and not skip_this_order:
 
+                    if not have_full_data:
+                        datapoint = make_full_data(datapoint)
+
                     if not 'gap21' in datapoint:
                         datapoint['gap21'] = 0
 
@@ -959,91 +978,94 @@ if __name__=="__main__":
                     bc = base_combination
                     best_cutoff_distance = 9999
 
-                    for alt in ["","a"]:
-                        bp = interaction + alt
-                        if not bp in nt_nt_cutoffs[bc]:
-                            continue
+                    new_python_subcat = -1
 
-                        subcats = sorted(nt_nt_cutoffs[bc][bp].keys())
+                    # try all variations of this basepair type
+                    for near in ["","n"]:
+                        bp = near + interaction
+                        for alt in ["","a"]:
+                            bp = bp + alt
+                            if not bp in nt_nt_cutoffs[bc]:
+                                continue
 
-                        new_python_subcat = -1
+                            subcats = sorted(nt_nt_cutoffs[bc][bp].keys())
 
-                        for subcat in subcats:
-                            reasons = []  # keep track of reasons for losing a classification
-                            cutoff_distance = 0
+                            for subcat in subcats:
+                                reasons = []  # keep track of reasons for losing a classification
+                                cutoff_distance = 0
 
-                            bpc = bp
-                            bpsc = subcat
+                                bpc = bp
+                                bpsc = subcat
 
-                            #print('857: ',subcat,subcats,bc,bp,nt_nt_cutoffs[bc][bp].keys())
+                                #print('857: ',subcat,subcats,bc,bp,nt_nt_cutoffs[bc][bp].keys())
 
-                            cutoff = nt_nt_cutoffs[bc][bp][subcat]
+                                cutoff = nt_nt_cutoffs[bc][bp][subcat]
 
-                            if datapoint['x'] < cutoff["xmin"]:
-                                cutoff_distance += cutoff["xmin"] - datapoint['x']
-                                reasons.append("xmin")
-                            elif datapoint['x'] > cutoff["xmax"]:
-                                cutoff_distance +=  datapoint['x'] - cutoff["xmax"]
-                                reasons.append("xmax")
+                                if datapoint['x'] < cutoff["xmin"]:
+                                    cutoff_distance += cutoff["xmin"] - datapoint['x']
+                                    reasons.append("xmin")
+                                elif datapoint['x'] > cutoff["xmax"]:
+                                    cutoff_distance +=  datapoint['x'] - cutoff["xmax"]
+                                    reasons.append("xmax")
 
-                            if datapoint['y'] < cutoff["ymin"]:
-                                cutoff_distance += cutoff["ymin"] - datapoint['y']
-                                reasons.append("ymin")
-                            elif datapoint['y'] > cutoff["ymax"]:
-                                cutoff_distance +=  datapoint['y'] - cutoff["ymax"]
-                                reasons.append("ymax")
+                                if datapoint['y'] < cutoff["ymin"]:
+                                    cutoff_distance += cutoff["ymin"] - datapoint['y']
+                                    reasons.append("ymin")
+                                elif datapoint['y'] > cutoff["ymax"]:
+                                    cutoff_distance +=  datapoint['y'] - cutoff["ymax"]
+                                    reasons.append("ymax")
 
-                            if datapoint['z'] < cutoff["zmin"]:
-                                cutoff_distance += cutoff["zmin"] - datapoint['z']
-                                reasons.append("zmin")
-                            elif datapoint['z'] > cutoff["zmax"]:
-                                cutoff_distance +=  datapoint['z'] - cutoff["zmax"]
-                                reasons.append("zmax")
+                                if datapoint['z'] < cutoff["zmin"]:
+                                    cutoff_distance += cutoff["zmin"] - datapoint['z']
+                                    reasons.append("zmin")
+                                elif datapoint['z'] > cutoff["zmax"]:
+                                    cutoff_distance +=  datapoint['z'] - cutoff["zmax"]
+                                    reasons.append("zmax")
 
-                            if 'normal_Z' in datapoint:
-                                if np.sign(datapoint['normal_Z']) * np.sign(cutoff["normalmax"]) < 0:
-                                    # normals point in different directions entirely
-                                    cutoff_distance += 100
-                                elif datapoint['normal_Z'] < cutoff["normalmin"]:
-                                    cutoff_distance += 3*(cutoff["normalmin"] - datapoint['normal_Z'])
-                                    reasons.append("nmin")
-                                elif datapoint['normal_Z'] > cutoff["normalmax"]:
-                                    cutoff_distance += 3*(datapoint['normal_Z'] - cutoff["normalmax"])
-                                    reasons.append("nmax")
-                            else:
-                                cutoff_distance += 3
-                                reasons.append("nmax")
-
-                            if 'angle_in_plane' in datapoint:
-                                if cutoff["anglemin"] < cutoff["anglemax"]:
-                                    # usual order where min < max
-                                    if datapoint['angle_in_plane'] < cutoff["anglemin"]:
-                                        cutoff_distance += (cutoff["anglemin"] - datapoint['angle_in_plane'])/10.0
-                                        reasons.append("angle")
-                                    if datapoint['angle_in_plane'] > cutoff["anglemax"]:
-                                        cutoff_distance += (datapoint['angle_in_plane'] - cutoff["anglemin"])/10.0
-                                        reasons.append("angle")
+                                if 'normal_Z' in datapoint:
+                                    if np.sign(datapoint['normal_Z']) * np.sign(cutoff["normalmax"]) < 0:
+                                        # normals point in different directions entirely
+                                        cutoff_distance += 100
+                                    elif datapoint['normal_Z'] < cutoff["normalmin"]:
+                                        cutoff_distance += 3*(cutoff["normalmin"] - datapoint['normal_Z'])
+                                        reasons.append("nmin")
+                                    elif datapoint['normal_Z'] > cutoff["normalmax"]:
+                                        cutoff_distance += 3*(datapoint['normal_Z'] - cutoff["normalmax"])
+                                        reasons.append("nmax")
                                 else:
-                                    # min might be 260 and max might be -60, looking for angles above 260 or below -60
-                                    if datapoint['angle_in_plane'] < cutoff["anglemin"] and \
-                                       datapoint['angle_in_plane'] > cutoff["anglemax"]:
-                                        cutoff_distance += min(cutoff["anglemin"]-datapoint["angle_in_plane"],datapoint['angle_in_plane']-cutoff["anglemax"])/10.0
-                                        reasons.append("angle")
-                            else:
-                                cutoff_distance += 3
-                                reasons.append("angle")
+                                    cutoff_distance += 3
+                                    reasons.append("nmax")
 
-                            if datapoint['maxgap'] > cutoff["gapmax"]:
-                                cutoff_distance += 5*(datapoint['maxgap'] - cutoff["gapmax"])
-                                reasons.append('gap')
+                                if 'angle_in_plane' in datapoint:
+                                    if cutoff["anglemin"] < cutoff["anglemax"]:
+                                        # usual order where min < max
+                                        if datapoint['angle_in_plane'] < cutoff["anglemin"]:
+                                            cutoff_distance += (cutoff["anglemin"] - datapoint['angle_in_plane'])/10.0
+                                            reasons.append("angle")
+                                        if datapoint['angle_in_plane'] > cutoff["anglemax"]:
+                                            cutoff_distance += (datapoint['angle_in_plane'] - cutoff["anglemin"])/10.0
+                                            reasons.append("angle")
+                                    else:
+                                        # min might be 260 and max might be -60, looking for angles above 260 or below -60
+                                        if datapoint['angle_in_plane'] < cutoff["anglemin"] and \
+                                           datapoint['angle_in_plane'] > cutoff["anglemax"]:
+                                            cutoff_distance += min(cutoff["anglemin"]-datapoint["angle_in_plane"],datapoint['angle_in_plane']-cutoff["anglemax"])/10.0
+                                            reasons.append("angle")
+                                else:
+                                    cutoff_distance += 3
+                                    reasons.append("angle")
 
-                            if cutoff_distance < best_cutoff_distance:
-                                # met cutoffs better than with previous subcategory
-                                keep_reasons = reasons
-                                new_python_annotation = bp
-                                new_python_subcat = bpsc
+                                if datapoint['maxgap'] > cutoff["gapmax"]:
+                                    cutoff_distance += 5*(datapoint['maxgap'] - cutoff["gapmax"])
+                                    reasons.append('gap')
 
-                                best_cutoff_distance = cutoff_distance
+                                if cutoff_distance < best_cutoff_distance:
+                                    # met cutoffs better than with previous subcategory
+                                    keep_reasons = reasons
+                                    new_python_annotation = bp
+                                    new_python_subcat = bpsc
+
+                                    best_cutoff_distance = cutoff_distance
 
                     if best_cutoff_distance > 0:
                         new_python_annotation = ",".join(keep_reasons)
@@ -1052,11 +1074,8 @@ if __name__=="__main__":
                         disqualified_hbond = True
                         new_python_annotation += ',hbond'
 
-                    if not have_full_data:
-                        datapoint = make_full_data(datapoint)
-
                     # only keep pairs if their parameters are somewhat close to the cutoffs for some category
-                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 10) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 10):
+                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 20) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 10):
 
                         c += 1
                         xvalues.append(datapoint['x'])

@@ -65,8 +65,10 @@ def create_modified_nucleotide_to_parent_mappings():
 
     return modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates
 
+
 try:
     modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
     print("Modified nucleotide mappings read successfully.")
-except:
+except Exception as e:
     print("Unable to load mappings for modified nucleotides.")
+    print('Error message: %s' % str(e))

@@ -161,8 +161,9 @@ trans W/S,U,U,-,O4,---,H2',O2',
 trans W/S,U,U,N3,H3,---,O2,-,
 cis H/H,A,G,N6,H62,---,O6,-,
 cis H/H,G,C,-,O6,---,H6,C6,
+cis H/Ha,G,C,-,O6,---,H42,N4,          *** plausible alternate set of hydrogen bonds ***
+cis H/Ha,G,C,-,N7,---,H5,C5,           *** plausible alternate set of hydrogen bonds ***
 cis H/h,G,G,-,O6,---,H8,C8,
-tHH,C,A; tHH,U,A; tHH,G,A; tHH,C,G; tHH,U,C
 trans H/H,A,A,-,N7,---,H62,N6,
 trans H/H,A,A,N6,H62,---,N7,-,
 trans H/H,A,C,-,N7,---,H42,N4,
