@@ -13,7 +13,7 @@ import sys
 import os
 from collections import defaultdict
 import urllib
-import __builtin__
+import numpy as np
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -27,11 +27,23 @@ from class_limits import nt_nt_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
 
+from orderBySimilarityTemp import treePenalizedPathLength
+
+JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
+JS2 = '  <script src="./js/jquery.jmolTools.js"></script>'
+JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
+JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
+JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+TEMPLATEPATH = 'C:/Users/jimitch/Documents/FR3D/WebPages/'
+OUTPUTPATH = "C:/Users/jimitch/Documents/FR3D/WebPages/output/"
+
 
 if sys.version_info[0] < 3:
+    import __builtin__
     from urllib import urlopen
 else:
     from urllib.request import urlopen 
+    import builtins as __builtin__
 
 
 def load_basepair_annotations(filename,all_pair_types):
@@ -50,6 +62,188 @@ def load_basepair_annotations(filename,all_pair_types):
 #         pair_to_interaction[(u1,u2)]=near_bp_type
 
     return pair_to_interaction
+
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
+    """
+    Write the list of candidates in an HTML format that also shows
+    the coordinate window and a heat map of all-against-all distances.
+    Write the heatmap data in an efficient way.
+    """
+
+    pairTypes = ['pairsStacks']
+    pairsToPrint = defaultdict(list)
+
+    pairsToPrint['pairsStacks'] = [(1,2)]
+
+    pagetitle = "%s" % Q['name']
+
+    htmlfilename = Q['name'].replace(" ","_")
+
+    candidatelist = '<table id="instances" style="white-space:nowrap;">\n'
+
+    numPositions = 2
+
+    sequence_column = 3
+
+    # write header line, make columns sortable, numeric=true, alpha=false
+    candidatelist += '<tr><th onclick="sortTable(0,\'instances\',\'numeric\')">S.</th><th onclick="sortTable(1,\'instances\',\'checkbox\')">Show</th>'
+
+    sequence_column += 1
+    for j in range(0,numPositions):
+        candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">Position %d</th>' % (j+2,j+1)
+        sequence_column += 1
+    candidatelist += '<th onclick="sortTable(4,\'instances\',\'alpha\')">Python</th>'
+    candidatelist += '<th onclick="sortTable(5,\'instances\',\'alpha\')">Subcat</th>'
+    candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">New Python</th>'
+    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">Matlab</th>'
+    candidatelist += '<th onclick="sortTable(8,\'instances\',\'numeric\')">x</th>'
+    candidatelist += '<th onclick="sortTable(9,\'instances\',\'numeric\')">y</th>'
+    candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">z</th>'
+    # candidatelist += '<th onclick="sortTable(11,\'instances\',\'numeric\')">gap12</th>'
+    # candidatelist += '<th onclick="sortTable(12,\'instances\',\'numeric\')">angle_in_plane</th>'
+    # candidatelist += '<th onclick="sortTable(13,\'instances\',\'numeric\')">normal_z</th>'
+    # candidatelist += '<th onclick="sortTable(14,\'instances\',\'numeric\')">max_distance</th>'
+    # candidatelist += '<th onclick="sortTable(15,\'instances\',\'numeric\')">min_angle</th>'
+    # candidatelist += '<th onclick="sortTable(16,\'instances\',\'numeric\')">max_badness</th>'
+
+    candidatelist += "</tr>\n"
+
+    # write one row for each candidate
+    for i in range(0,len(candidates)):
+        candidate = candidates[i]
+        candidatelist += '<tr><td>'+str(i+1)+'.</td><td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
+        for j in range(0,numPositions):
+            candidatelist += candidate[j]
+            if j < numPositions-1:
+                candidatelist += ','
+        candidatelist += '">&nbsp</label></td>'
+
+        PDB_id = candidate[0][0:4]
+
+        """
+        if PDB_id in Q["PDB_data_file"]:
+            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][PDB_id])
+        else:
+            candidatelist += "<td>NA</td>"
+        """
+
+        # write unit ids
+        for j in range(0,numPositions):
+            candidatelist += "<td>"+candidate[j]+"</td>"
+
+        # write Python, Matlab interactions
+        candidatelist += "<td>%s</td>" % candidate[11]  # python
+        # candidatelist += "<td>%d</td>" % candidate[12]  # python subcategory
+        # candidatelist += "<td>%s</td>" % candidate[13]  # new python
+        # candidatelist += "<td>%s</td>" % candidate[14]  # matlab
+
+        # for colnum in range(2,8):
+        #     candidatelist += "<td>%0.2f</td>" % candidate[colnum]
+
+        candidatelist += '</tr>\n'
+    candidatelist += '</table>\n'
+
+    discrepancydata = ''
+
+    # if np.size(allvsallmatrix) > 0:
+    #     # write discrepancy data in new 2022 list format
+    #     # first element is a reference to the div in which the heatmap should appear
+    #     discrepancydata = '["#heatmap",['              # start a list, start a matrix
+
+    #     # second element is a matrix with the numerical values of the discrepancy
+    #     # writing both upper and lower triangles of the matrix
+    #     s = allvsallmatrix.shape[0]
+    #     for c in range(0,s):
+    #         discrepancydata += '['     # start a row of the discrepancy matrix
+    #         ife1 = candidates[c][0]
+    #         for d in range(0,s):
+    #             ife2 = candidates[d][0]
+    #             discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
+    #             if d < s-1:
+    #                 discrepancydata += ','  # commas between entries in a row
+    #             else:
+    #                 discrepancydata += '],\n'  # end a row, newline
+
+    #     discrepancydata += '],\n'           # end the matrix, continue the list
+
+    #     # third element is a list of labels of instances
+    #     discrepancydata += '['              # start list of instances
+    #     for c in range(0,s):
+    #         ife1 = candidates[c][0]
+    #         discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
+    #         if c < s-1:
+    #             discrepancydata += ","  # commas between instances
+    #         else:
+    #             discrepancydata += "]]" # end list of instances, end list of data
+
+    # read template.html into one string
+    with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
+        template = myfile.read()
+
+    # replace ###PAGETITLE### with pagetitle
+    template = template.replace("###PAGETITLE###",pagetitle)
+
+    sequence_column = 0   # column to set in fixed width font
+    template = template.replace("###sequencecolumn###",str(sequence_column))
+
+    queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedCPUTime"])
+    queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedCPUTime"])
+
+    if "moreCandidatesThanHeatMap" in Q:
+        queryNote += " " + Q["moreCandidatesThanHeatMap"] + "\n"
+    else:
+        queryNote += "\n"
+
+    template = template.replace("###QUERYNAME###",str(queryNote.encode('ascii','ignore')))
+
+    seeModifyQuery = ''
+    template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
+
+    template = template.replace("###seeCSVOutput###","")
+
+    # replace ###CANDIDATELIST### with candidatelist
+    template = template.replace("###CANDIDATELIST###",candidatelist)
+
+    template = template.replace("###JS1###",JS1)
+    template = template.replace("###JS2###",JS2)
+    template = template.replace("###JS3###",JS3)
+    template = template.replace("###JS4###",JS4)
+
+    refresh = ""
+    if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
+        refresh = '<meta http-equiv="refresh" content="%d">' % REFRESHTIME
+    template = template.replace("###REFRESH###",refresh)
+
+    if np.size(allvsallmatrix) > 0:
+        template = template.replace("###JS5###",JS5)    # include heatmap.js code
+        discrepancydata = "var data =  " + discrepancydata
+        discrepancydata = '<script type="text/javascript">\n' + discrepancydata + '\n</script>'
+        template = template.replace("###DISCREPANCYDATA###",discrepancydata)
+    else:
+        #template = template.replace("###DISCREPANCYDATA###","")
+        template = template.replace("###JS5###","")    # do not display a heat map
+
+    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
+
+    print("Writing to %s" % outputfilename)
+
+    messages = ""
+
+    messages += "\n<br>"
+    if len(Q["userMessage"]) > 0:
+        messages += "User messages:<br>\n"
+        for line in Q["userMessage"]:
+            messages += line + "<br>\n"
+    else:
+        messages += "No error or warning messages.<br>\n"
+
+    template = template.replace("###MESSAGES###",messages)
+
+    with open(outputfilename, 'w') as myfile:
+        myfile.write(template)
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #=======================================================================
 def load_Matlab_FR3D_pairs(PDBID):
@@ -240,6 +434,8 @@ def check_for_matching_pairs(Matlab_pairs, pair_to_data, not_loaded):
 
 if __name__=="__main__":
 
+    write_html_pages_for_modified = True
+
     base_seq_list = ['DA','DC','DG','DT']  # for DNA
     base_seq_list = ['A','C','G','U']      # for RNA
 
@@ -414,7 +610,20 @@ if __name__=="__main__":
 
     for interaction_list in interaction_lists:
         lowercase_list = [i.lower() for i in interaction_list]
+        modified_pair = []
+        modified_pairs = []
+        for pair,datapoint in pair_to_data.items():
+            nt1 = pair[0]
+            nt2 = pair[1]
 
+            nt1_seq = nt1.split("|")[3]
+            nt2_seq = nt2.split("|")[3]
+            if nt1_seq in base_seq_list and nt2_seq not in base_seq_list:
+                modified_pair.append(pair)
+                if 'sInteraction' in datapoint:
+                    modified_annotation = datapoint['sInteraction']
+                    modified_pairs.append((pair[0],pair[1],nt1_seq, nt2_seq, datapoint['xStack'],datapoint['yStack'],datapoint['zStack'],datapoint['gap12'],datapoint['angle_in_plane'],datapoint['normal_Z'],datapoint['min_distance'],modified_annotation))
+     
         # identify unit id pairs that are annotated as basepairing by Matlab code
         Matlab_pairs = []
         for interaction in interaction_list:
@@ -440,7 +649,7 @@ if __name__=="__main__":
             sizes = []
 
             c = 0
-
+ 
             for pair,datapoint in pair_to_data.items():
                 # restrict to the current base combination
                 if not datapoint['nt1_seq'] == nt1_seq:
@@ -859,7 +1068,7 @@ if __name__=="__main__":
         test = pythonTotals['near']/pythonTotals['total']
         print(pythonTotals['total'])
 
-        if pythonTotals > matlabTotals:
+        if pythonTotals['total'] > matlabTotals['total']:
             larger = "PYTHON"
         else:
             larger = "MATLAB"
@@ -890,3 +1099,102 @@ if __name__=="__main__":
         print("MATCHING: " + str(matching))
         if total != 0: 
             print("Percent Matching: " + str(float(matching)/float(total)))
+
+        standard_bases = ['A', 'C', 'G', 'U', 'DA', 'DC', 'DG', 'DT']
+        for first_base in standard_bases:
+            for pair in modified_pairs:
+                if pair[2] == first_base: 
+
+                    if write_html_pages_for_modified:
+
+                            xvalues = []    # x coordinate of the second base
+                            yvalues = []    # y coordinate of the second base
+                            rvalues = []    # radius of second base
+                            tvalues = []    # angle of second base relative to first
+                            zvalues = []    # z coordinate of the second base
+                            avalues = []    # rotation angle of second base
+                            gvalues = []    # gap
+                            nvalues = []    # third component of normal vector of second base
+                            dvalues = []    # worst hydrogen bond distance
+                            colors2d  = []  # store the color to use
+                            sizes = []      # store the size of dot to use
+
+                            pairs = []      # list of data to print in a table
+
+                            hdvalues = []   # hydrogen bond distances
+                            havalues = []   # hydrogen bond angles
+                            hbvalues = []   # hydrogen bond badness measures
+                            hcolors2d = []  # store color to use for hydrogen bond dots
+                            hsizes    = []  # store size of dot to use for hydrogen bonds
+
+                            c = 0           # count points
+
+                            # mimic how WebFR3D writes result pages
+                            Q = {}
+                            Q['name'] = "%s %s %d" % (",".join(interaction_list),first_base,len(all_PDB_ids))
+                            Q['numFilesSearched'] = len(all_PDB_ids)
+                            Q['searchFiles'] = all_PDB_ids
+                            Q['elapsedCPUTime'] = 0
+                            Q['userMessage'] = []
+
+                            # if too many pairs, show some good and also the worst ones
+                            if len(xvalues) > 300:
+                                pairs = sorted(modified_pairs, key=lambda p: p[11])
+                                orderpairs = modified_pairs[0:50] + pairs[-250:]
+                                otherpairs = sorted(modified_pairs[51:-251], key=lambda p: (p[13],p[11]))
+                            else:
+                                orderpairs = modified_pairs
+                                otherpairs = []
+
+                            n = len(orderpairs)  # number of pairs to order by similarity
+
+                            dista = np.zeros((n,n))  # matrix to display
+                            distb = np.zeros((n,n))  # matrix to order by
+                            maxd = 0
+                            for i in range(0,n):
+                                for j in range(i+1,n):
+                                    d = 0.0
+                                    d += (orderpairs[i][4]-orderpairs[j][4])**2
+                                    d += (orderpairs[i][5]-orderpairs[j][5])**2
+                                    d += (orderpairs[i][6]-orderpairs[j][7])**2
+                                    d += (orderpairs[i][7]-orderpairs[j][7])**2
+                                    d += 0.01*(min(abs(orderpairs[i][8]-orderpairs[j][8]),360-abs(orderpairs[i][8]-orderpairs[j][8])))**2
+                                    d += (orderpairs[i][9]-orderpairs[j][9])**2
+                                    dista[i][j] = math.sqrt(d)
+                                    dista[j][i] = dista[i][j]
+                                    maxd = max(maxd,dista[i][j])
+
+                                    d += 100*(orderpairs[i][10]-orderpairs[j][10])**2
+                                    distb[i][j] = math.sqrt(d)
+                                    distb[j][i] = math.sqrt(d)
+
+                            # color entries on diagonal according to matching annotations
+                            # for i in range(0,n):
+                            #     # python annotation has changed by new rules
+                            #     if not orderpairs[i][11] == orderpairs[i][13]:
+                            #         dista[i][i] = -2
+                            #     # new python annotation differs from Matlab annotation
+                            #     if not orderpairs[i][13].lower() == orderpairs[i][14].lower():
+                            #         dista[i][i] = -i
+
+                            print("Finding order")
+                            order = treePenalizedPathLength(distb,20)
+                            print("Found order")
+                            #print(order)
+
+                            reorder_pairs = [orderpairs[o] for o in order] + otherpairs
+
+                            reorder_dista = np.zeros((n,n))
+                            for i in range(0,n):
+                                for j in range(0,n):
+                                    reorder_dista[i][j] = dista[order[i]][order[j]]
+
+                            print("Reordered instances and distance matrix")
+
+                            writeHTMLOutput(Q,reorder_pairs,reorder_dista)
+
+                            print("Wrote efficient HTML file")
+
+                            """ Write the list of candidates in an HTML format that also shows
+                            the coordinate window and a heat map of all-against-all distances.
+                            """

@@ -66,12 +66,25 @@ from fr3d.definitions import planar_atoms
 from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
-from fr3d.modified_parent_mapping import modified_nucleotides
 from fr3d.data.components import Component
 
 from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
-from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
-from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
+from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from hydrogen_bonds import check_hydrogen_bond
+
+#old modified nucleotide mappings
+from fr3d.modified_parent_mapping import modified_nucleotides
+#Updated modified nucleotide mappings from atom_mappings_refined.txt
+from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+
+# read input and output paths from localpath.py
+# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
+try:
+    from fr3d.localpath import outputNAPairwiseInteractions
+    from fr3d.localpath import inputPath
+except:
+    inputPath = ""
+    outputNAPairwiseInteractions = ""
 
 nt_nt_screen_distance = 12  # maximum center-center distance to check
 
@@ -983,8 +996,8 @@ def get_parent(sequence):
         return sequence[1]
     elif sequence == 'DT':
         return sequence
-    elif sequence in modified_nucleotides.keys():
-        return modified_nucleotides[sequence]["standard"]
+    elif sequence in modified_base_to_parent.keys():
+        return modified_base_to_parent[sequence]
     else:
         return None
 
@@ -1299,14 +1312,14 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
         return True, retValue
     return False, [-100,-100,-100]
 
-def create_modified_base_atoms_list(nt):
+def create_modified_base_atoms_list(nt, parent_base_atoms):
     """Function to create a list of all base atoms for modified nucleotides.
-    Goes through all atoms in a nucleotide and parses out atoms that have "'" in them or OP1/2 or P.
+    Go through atoms of the parents base, and create a list of atom names that are mapped to its parents base. 
     created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
     atomList = []
-    for atom in nt.atoms():
-        if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:
-            atomList.append(atom.name)
+    for atom in parent_base_atoms:
+        if(atom in parent_atom_to_modified[nt.sequence]):
+            atomList.append(parent_atom_to_modified[nt.sequence][atom])
     return atomList
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
@@ -1330,30 +1343,24 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
 
-    baseAtoms = {}
-    baseAtoms['A'] = ['N9','C8','H8','N7','C5','C6','N6','H62','H61','N1','C2','H2','N3','C4', "H9"] #9/6/2022 took out "C1'",
-    baseAtoms['DA'] = baseAtoms['A']
-    baseAtoms['C'] = ['N1','C2','O2','N3','C4','N4','H41','H42','C5','H5','C6','H6', "H1"] #Using Hydrogens H41 and H42 cause the program to not find inside the C ring. Use N4 instead
-    baseAtoms['DC'] = baseAtoms['C']
-    baseAtoms['G'] = ['N9','C8','H8','N7','C5','C6','O6','N1','H1','C2','N2','H22','H21','N3','C4',"H9"]
-    baseAtoms['DG'] = baseAtoms['G']
-    baseAtoms['U'] = ['N1','C6','H6','C5','H5','C4','O4','N3','H3','C2','O2', "H1"]
-    baseAtoms['DT'] = ['N1','C6', 'H6','C5','C7','H71','H72','H73','C4','O4','N3','H3','C2','O2']
+    parentBaseAtoms = {}
+    parentBaseAtoms[parent1] = NAbasehydrogens[parent1] + NAbaseheavyatoms[parent1]
+    parentBaseAtoms[parent2] = NAbasehydrogens[parent2] + NAbaseheavyatoms[parent2]
 
     #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
-    if nt1.sequence in baseAtoms and modified_nucleotides: #standard base
-        nt1baseAtomsList = baseAtoms[parent1]
-    elif nt1.sequence in modified_nucleotides: #modified base
-        nt1baseAtomsList = create_modified_base_atoms_list(nt1)
+    if nt1.sequence in parentBaseAtoms: #standard base
+        nt1baseAtomsList = parentBaseAtoms[parent1]
+    elif nt1.sequence in modified_base_atom_list: #modified base
+        nt1baseAtomsList = create_modified_base_atoms_list(nt1, parentBaseAtoms[parent1])
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
-    if nt2.sequence in baseAtoms:
-        nt2baseAtomsList = baseAtoms[parent2]
-    elif nt2.sequence in modified_nucleotides:
-        nt2baseAtomsList = create_modified_base_atoms_list(nt2)
+    if nt2.sequence in parentBaseAtoms:
+        nt2baseAtomsList = parentBaseAtoms[parent2]
+    elif nt2.sequence in modified_base_atom_list:
+        nt2baseAtomsList = create_modified_base_atoms_list(nt2, parentBaseAtoms[parent2])
     else:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
@@ -2345,11 +2352,11 @@ def get_glycosidic_atom_coordinates(nt,parent):
         gly = nt.centers["N9"]
     elif nt.sequence in ['C','U','DC','DT']:
         gly = nt.centers["N1"]
-    elif nt.sequence in modified_nucleotides:
+    elif nt.sequence in modified_base_to_parent.keys():
         if parent in ['A','G','DA','DG']:
-            gly = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["N9"]]
+            gly = nt.centers[parent_atom_to_modified[nt.sequence]["N9"]]
         elif parent in ['C','U','DC','DT']:
-            gly = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["N1"]]
+            gly = nt.centers[parent_atom_to_modified[nt.sequence]["N1"]]
 
     return gly
 
@@ -2833,14 +2840,6 @@ if __name__=="__main__":
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
-    # read input and output paths from localpath.py
-    # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-    try:
-        from fr3d.localpath import outputNAPairwiseInteractions
-        from fr3d.localpath import inputPath
-    except:
-        inputPath = ""
-        outputNAPairwiseInteractions = ""
     problem = False
     args = parser.parse_args()
 
