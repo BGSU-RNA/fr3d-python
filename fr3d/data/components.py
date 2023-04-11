@@ -289,15 +289,18 @@ class Component(EntitySelector):
             #mod_to_parent = defs.modified_nucleotides[self.sequence]
             # print(mod_to_parent)
             # get the standard coordinates for the parent nucleotide
+            baseheavy = defs.NAbaseheavyatoms[modified_base_to_parent[self.sequence]]
             standard_coords = defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]
             # loop over mapped base atoms in the modified nucleotide
             # parent base atom
             for atom in self.atoms(name=list(modified_base_atom_list[self.sequence])):
                 #redundant. Last check should be sufficient. 
-                if atom.name in defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]:
+                parent_atom_name = modified_atom_to_parent[self.sequence][atom.name]
+                #if atom.name in defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]:
+                if parent_atom_name in baseheavy:
                     R.append(atom.coordinates())
                     #print(self.sequence)
-                    S.append(standard_coords[parent_atom_to_modified[self.sequence][atom.name]])
+                    S.append(standard_coords[parent_atom_name])
 
             """
             for mod_atom_name, parent_atom_name in mod_to_parent["atoms"].items():
@@ -437,6 +440,7 @@ class Component(EntitySelector):
                                         atom.x = amino1coords[0]
                                         atom.y = amino1coords[1] 
                                         atom.z = amino1coords[2]
+
 
                 # If hydrogens are missing, add missing hydrogens
                 if len(hydrogens) > 0: 
