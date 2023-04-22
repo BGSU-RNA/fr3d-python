@@ -704,24 +704,23 @@ if __name__=="__main__":
     PDB_list = ['8B0X','4P5J','6PMO','1NBS']  # Eric's list for the basepair group
 
     # look at  4M6D|1|H|G|28  cSH  4M6D|1|H|U|29
-    # look at 3IWN|1|A|A|51  cSH    3IWN|1|A|A|52
     # look at 4V88 cSH
     # 7JQQ is 4.1A resolution but has both RNA and DNA coordinates in the server, so we can see DNA pairs
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv','7K00','8B0X']
     resolution = '1.5A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','7K00','8B0X','4M6D','3IWN','4V88']
-    resolution = '3.0A'
-
     PDB_list = ['1NBS','6PMO']
     resolution = '1NBS_6PMO'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','7K00','8B0X']
+    resolution = '2.0A'
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv','7K00','8B0X']
     resolution = '2.5A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','7K00','8B0X']
-    resolution = '2.0A'
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','7K00','8B0X','4M6D','4V88']
+    resolution = '3.0A'
 
     # zzz
 
