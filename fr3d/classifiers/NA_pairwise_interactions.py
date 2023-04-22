@@ -1954,7 +1954,7 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     atomname = []
 
     if base_points2:
-        # calculate distances from base atoms of nt2 to center of n1 base
+        # calculate distances from base atoms of nt2 to center of nt1 base
         for p in base_points2:
             v = np.subtract(p,nt1.centers["base"])
             d = np.linalg.norm(v)
@@ -1965,6 +1965,9 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
         # look up the base atoms in nt2
         base_points2 = []
         for atom in nt2.atoms():
+
+
+
             # the technique here is OK for standard bases, but something faster and more reliable
             # should be done for modified nucleotides
             if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
@@ -1975,8 +1978,10 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
                 displacements.append(v)
                 distances.append(d)
 
-                #atomname.append(atom.name)
+                # only needed for diagnostics:
+                atomname.append(atom.name)
 
+    # sort indices of atoms in nt2 by distance to center of nt1
     indices = np.argsort(distances)
 
     m = min(3,len(indices))
@@ -1986,19 +1991,21 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     #print(nt1.unit_id())
     #print(nt2.unit_id())
 
+    #units = ["7O7Y|1|A2|A|1081","7O7Y|1|A2|PSU|1082"]
+    #units = ["8BUU|1|a|A|76","8BUU|1|a|U|77"]
+
     gap12 = 100
     for k in range(0,m):              # 3 nearest points
         p = displacements[indices[k]]
         z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
             gap12 = z                 # gap is smallest z value
-            #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
-            #        print("Gap %8.4f at %s" % (gap12,atomname[indices[k]]))
 
+        #if nt1.unit_id() in units and nt2.unit_id() in units:
+        #    print("Atom %s of %s is %8.4f from plane of %s" % (atomname[indices[k]],nt2.unit_id(),z,nt1.unit_id()))
 
     """
-    #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
-    if "B|U|67" in nt1.unit_id():
+    if nt1.unit_id() in units and nt2.unit_id() in units:
         print(base_points2)
         print(displacements)
         print(distances)
