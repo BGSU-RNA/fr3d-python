@@ -394,6 +394,33 @@ def plot_confusion_matrix(confusionMatrix, interaction_list):
     print_function(*interaction_list, sep='\t')
     print_function(*border, sep = "\t")
     for rows in row:
+        print_function(*rows, sep='\t')    
+    
+    #### 
+    #row = [['s33'],['s35'],['s55'],['ns33'],['ns35'],['ns55'],['blank']]
+    border = ['----','----','----','----','----','----','----','----']
+    col = 0 
+    #interaction_list.append('blank')
+    for interaction in interaction_list:
+        for interaction2 in interaction_list:
+                if interaction == 's53':
+                    interaction = 's35'
+                if interaction2 == 's53':
+                    interaction2 = 's35'
+                if interaction == "ns53":
+                    interaction = 'ns35'
+                if interaction2 == 'ns53':
+                    interaction2 = 'ns35'
+                row[col].append(confusionMatrix[interaction][interaction2])
+        col+=1
+
+    interaction_list = ['s33', 's35','s55', 'ns33', 'ns35','ns55']
+    print("\n\nConfusion Matrix of Annotations. \nColumns Represent Matlab found annotations and Rows Represent Python")
+    print_function = getattr(__builtin__, 'print')
+    print_function("\t", end = "")
+    print_function(*interaction_list, sep='\t')
+    print_function(*border, sep = "\t")
+    for rows in row:
         print_function(*rows, sep='\t')
 
 def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
@@ -560,7 +587,6 @@ if __name__=="__main__":
     print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
 
-    pair_to_data = defaultdict(dict)\
     
     #Loading MatLAB Annotations for Stacking##################################
     print('Loading Matlab annotations of these files')
@@ -607,6 +633,37 @@ if __name__=="__main__":
             # Not very Efficient way but checking to see if pairs are listed in both python and matlab
             # For whatever reason, this isn't being found accurately where the other processing is.
 
+    ml = {}
+    index = '0'
+    for interaction in ['s35','s53','s33','s55','ns33','ns53','ns55', 'ns35']:
+        for pair in Matlab_annotation_to_pair[interaction]:
+            if pair[0][0:4] not in not_loaded:
+                if not pair in pair_to_data:
+                    print(pair)
+                    ml[index] = {}
+                    ml[index]['interaction'] = ''   # no Python annotation
+                    ml[index]['stacking'] = interaction
+                    ml[index]['id'] = pair[0][0:4]
+                    ml[index]['pair'] = pair
+            index = str(int(index)+1)
+
+
+
+
+
+
+
+
+
+
+    Matlab_pairs = {}
+
+
+
+
+
+
+
 
     for interaction_list in interaction_lists:
         lowercase_list = [i.lower() for i in interaction_list]
@@ -624,15 +681,15 @@ if __name__=="__main__":
                     modified_annotation = datapoint['sInteraction']
                     modified_pairs.append((pair[0],pair[1],nt1_seq, nt2_seq, datapoint['xStack'],datapoint['yStack'],datapoint['zStack'],datapoint['gap12'],datapoint['angle_in_plane'],datapoint['normal_Z'],datapoint['min_distance'],modified_annotation))
      
-        # identify unit id pairs that are annotated as basepairing by Matlab code
-        Matlab_pairs = []
+        # identify unit id pairs that are annotated as basestacking by Matlab code
         for interaction in interaction_list:
-            Matlab_pairs += Matlab_annotation_to_pair[interaction]
-        Matlab_pairs = set(Matlab_pairs)
-
-        if False:
-            check_for_matching_pairs(Matlab_pairs, pair_to_data, not_loaded)
-
+            Matlab_pairs[interaction] = []
+            Matlab_pairs[interaction] += Matlab_annotation_to_pair[interaction]
+        # Matlab_pairs = set(Matlab_pairs)
+        # print(Matlab_pairs[interaction])        
+        # if True:
+        check_for_matching_pairs(Matlab_pairs, pair_to_data, not_loaded)
+        index='0'
         for base_combination in base_combination_list:
             nt1_seq, nt2_seq = base_combination.split(",")
          
@@ -685,7 +742,7 @@ if __name__=="__main__":
                 else:
                     Python = False
 
-                if pair in Matlab_pairs:
+                if pair in Matlab_pairs[interaction]:
                     Matlab = True
                 else:
                     Matlab = False
@@ -743,6 +800,7 @@ if __name__=="__main__":
                         if stacking != pair_to_Matlab_annotation[pair]:
                             nearVSTrue.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["min_distance"],datapoint['normal_Z'], datapoint['url']))
                     elif stacking != "   " and pair_to_Matlab_annotation[pair] == '':
+                        print(pair)
                         # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[stacking]['blank'] += 1
                         confusionMatrix['total'] += 1    
@@ -783,6 +841,18 @@ if __name__=="__main__":
                     sizes.append(size)
 
             print("Plotted %5d points for %s %s" % (c,base_combination,",".join(interaction_list)))
+
+            for pair in ml:
+                if ml[pair]['id'] not in not_loaded:
+                    if '_' not in ml[pair]['pair'][0] and '_' not in ml[pair]['pair'][1]: 
+                        confusionMatrix['blank'][pair_to_Matlab_annotation[ml[pair]['pair']]] += 1
+                        confusionMatrix['total'] += 1
+                        matlabNotPython[pair_to_Matlab_annotation[ml[pair]['pair']]] += 1
+                        matlabNotPython['total'] += 1
+                        matlabTotals[pair_to_Matlab_annotation[ml[pair]['pair']]] += 1
+                        matlabNoPythonMatch.append((ml[pair]['pair'], pair_to_Matlab_annotation[ml[pair]['pair']]))
+                        
+                index = str(int(index)+1)
 
             if c > 0:
                 fig = plt.figure(figsize=(11.0, 6.0))
