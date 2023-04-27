@@ -112,9 +112,11 @@ PDB_list = ['1Q96']
 PDB_list = ['6DVK']
 PDB_list = ['4V9F']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','8B0X','4M6D','3IWN','4V88','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv']
+PDB_list = ['7QI4']
+PDB_list = ['7O7Y']
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -193,19 +195,28 @@ for PDB in sorted(PDBs):
             timerData = myTimer("Reading CIF files",timerData)
 
             structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
+            print(messages)
+
+            """
+            print('Loading directly with the cif reader')
+            rm = read_mode
+            filename = os.path.join(inputPath,PDB+".cif.gz")
+            if filename.lower().endswith('.cif.gz'):
+                with gzip.open(filename, rm) as raw:
+                    from fr3d.cif.reader import Cif
+                    structure = Cif(raw).structure()
+            """
 
             """
             for base in structure.residues(type = ["RNA linking","DNA linking"]):
-                print(base.unit_id())
-                print(base.centers['glycosidic'])
-                print(base.centers['base'])
+                # print(base.unit_id())
+                # print(base.centers['glycosidic'])
+                # print(base.centers['base'])
+
+                if base.unit_id() == '7QI4|1|AA|G|1355':
+                    print('7QI4|1|AA|G|1355 H21 %s' % base.centers['H21'])
+                    print('7QI4|1|AA|G|1355 H22 %s' % base.centers['H22'])
             """
-
-            if not structure:
-                for message in messages:
-                    print(message)
-
-                continue
 
             # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
             # need to be able to identify each chain that is available

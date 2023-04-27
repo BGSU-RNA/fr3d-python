@@ -52,6 +52,7 @@ else:
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
+from fr3d.definitions import NAbaseatoms
 from fr3d.definitions import nt_sugar
 from fr3d.definitions import nt_phosphate
 from fr3d.definitions import nt_backbone
@@ -94,6 +95,8 @@ HB_donor_hydrogens['G'] = {"N1":["H1"], "N2":["2H2","1H2"], "C8":["H8"], "O2'":[
 HB_donor_hydrogens['C'] = {"N4":["1H4","2H4"], "C5":["H5"], "C6":["H6"], "O2'":[]}
 HB_donor_hydrogens['U'] = {"N3":["H3"], "C5":["H5"], "C6":["H6"], "O2'":[]}
 
+standard_bases = ['A','C','G','U','DA','DC','DG','DT']
+
 fr3d_classification_version = 'v1'   # temporary, for changes here
 
 nt_reference_point = "base"
@@ -128,7 +131,8 @@ def focus_basepair_cutoffs(basepair_cutoffs,interactions):
             family = interaction.lower()[0:3]   # take off alternative category a, b, etc.
 
             if family in lower_interactions:
-                if basepair_cutoffs[combination][interaction][0]["normalmin"] > 0:
+                subcat = list(basepair_cutoffs[combination][interaction].keys())[0]
+                if basepair_cutoffs[combination][interaction][subcat]["normalmin"] > 0:
                     focused_basepair_cutoffs[combination][1][interaction] = {}   # interactions with positive normal
                     for subcategory in basepair_cutoffs[combination][interaction]:
                         focused_basepair_cutoffs[combination][1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
@@ -657,7 +661,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             interaction12, subcategory12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint12)
 
                             # record basepairs made by modified nucleotides
-                            if False and len(interaction) > 0 and not (nt1.sequence in ['A','C','G','U'] and nt2.sequence in ['A','C','G', 'U']):
+                            if False and len(interaction) > 0 and not (nt1.sequence in standard_bases and nt2.sequence in standard_bases):
                                 print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
                                 try:
                                     with open('C:/Users/zirbel/Documents/FR3D/Modified Nucleotides/list.txt','a') as file:
@@ -996,7 +1000,7 @@ def get_parent(sequence):
         return sequence[1]
     elif sequence == 'DT':
         return sequence
-    elif sequence in modified_base_to_parent.keys():
+    elif sequence in modified_base_to_parent:
         return modified_base_to_parent[sequence]
     else:
         return None
@@ -1312,18 +1316,38 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
         return True, retValue
     return False, [-100,-100,-100]
 
-def create_modified_base_atoms_list(nt, parent_base_atoms):
-    """Function to create a list of all base atoms for modified nucleotides.
-    Go through atoms of the parents base, and create a list of atom names that are mapped to its parents base. 
-    created for use in check_base_base_stacking function to create a list of base atoms to check for stacking overlap in modified bases"""
-    atomList = []
-    for atom in parent_base_atoms:
-        if(atom in parent_atom_to_modified[nt.sequence]):
-            atomList.append(parent_atom_to_modified[nt.sequence][atom])
-    return atomList
+
+def get_base_atoms(sequence):
+    """
+    For standard bases, look up the base heavy and hydrogen atoms.
+    For modified bases, map the parent base heavy and hydrogen atoms
+    to the corresponding atoms on the modified base.
+    Return a set.
+    """
+
+    if sequence in NAbaseheavyatoms:
+        # standard base
+        base_atoms = NAbaseatoms[sequence]
+
+    elif sequence in modified_base_to_parent:
+        # modified base
+        parent_atoms = NAbaseatoms[modified_base_to_parent[sequence]]
+
+        base_atoms = set()
+        for parent_atom in parent_atoms:
+            if parent_atom in parent_atom_to_modified[sequence]:
+                base_atoms.add(parent_atom_to_modified[sequence][parent_atom])
+
+    else:
+        print('Not able to identify base atoms for %s' % sequence)
+        base_atoms = set()
+
+    return base_atoms
+
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
-    """Checks for nucleotide base stacking.
+    """
+    Checks for nucleotide base stacking.
     Two nucleotides and their parents passed in.
     Creates a list of their outermost atoms.
     Projects nucleotides onto one another to find overlap.
@@ -1335,7 +1359,9 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         Overlap is found both ways
         Displacement of z coord is less than 4 and greater than 1
         Normal line z value is greater than 0.6
-    No annotation is generated if the criterion for near stacking or true stacking aren't met."""
+    No annotation is generated if the criterion for near stacking or true stacking aren't met.
+    """
+
     true_z_cutoff = 4 #angstroms, near stacking of 4.5 angstroms checked in check_convex_hull_atoms function
 
     interaction = ""
@@ -1343,25 +1369,23 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     reverseAnnotation = False
     #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
 
-    parentBaseAtoms = {}
-    parentBaseAtoms[parent1] = NAbasehydrogens[parent1] + NAbaseheavyatoms[parent1]
-    parentBaseAtoms[parent2] = NAbasehydrogens[parent2] + NAbaseheavyatoms[parent2]
+    # these sets are already defined
+    parent1BaseAtoms = NAbaseatoms[parent1]
+    parent2BaseAtoms = NAbaseatoms[parent2]
 
     #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
-    if nt1.sequence in parentBaseAtoms: #standard base
-        nt1baseAtomsList = parentBaseAtoms[parent1]
-    elif nt1.sequence in modified_base_atom_list: #modified base
-        nt1baseAtomsList = create_modified_base_atoms_list(nt1, parentBaseAtoms[parent1])
-    else:
+
+    nt1baseAtomsList = get_base_atoms(nt1.sequence)
+
+    if len(nt1baseAtomsList) == 0:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
-    if nt2.sequence in parentBaseAtoms:
-        nt2baseAtomsList = parentBaseAtoms[parent2]
-    elif nt2.sequence in modified_base_atom_list:
-        nt2baseAtomsList = create_modified_base_atoms_list(nt2, parentBaseAtoms[parent2])
-    else:
+
+    nt2baseAtomsList = get_base_atoms(nt2.sequence)
+
+    if len(nt2baseAtomsList) == 0:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
 
@@ -1462,15 +1486,32 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
 
     return interaction, datapoint, interaction_reversed
 
+
 def calculate_min_distances(nt1, nt2, base_points2):
+    """
+    Calculate minimum distances between two nucleotides.
+    Return the minimum distance between base 1 and base 2 as base_min_distance
+    Return the minimum distance between
+    """
+
     base_min_distance = 1000
     min_distance = 1000
     base_points1 = []
-    for atom in nt1.atoms():                  # nt1 atoms
+
+    base1_atoms = get_base_atoms(nt1.sequence)
+    base2_atoms = get_base_atoms(nt2.sequence)
+
+    if base_points2:
+        base_points2_local = [p for p in base_points2]
+    else:
+        base_points2_local = []
+
+    for atom in nt1.atoms():              # nt1 atoms
         q = [atom.x, atom.y, atom.z]      # nt1 base atoms
-        if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
+        if atom.name in base1_atoms:
             base_points1.append(q)                 # save for later gap21 calculation
-            if(base_points2):
+
+            if base_points2:
                 for p in base_points2:                 # nt2 atoms
                     d = np.linalg.norm(np.subtract(p,q))
                     if d < min_distance:
@@ -1479,15 +1520,16 @@ def calculate_min_distances(nt1, nt2, base_points2):
                         base_min_distance = d
             else:
                 for atom2 in nt2.atoms():
-                    p = [atom2.x, atom2.y, atom2.z]
-                    if not "'" in atom2.name and not atom2.name in ["P","OP1","OP2"]:  # exclude backbone atoms
+                    if atom2.name in base2_atoms:
+                        p = [atom2.x, atom2.y, atom2.z]
+                        base_points2_local.append(p)
                         d = np.linalg.norm(np.subtract(p,q))
                         if d < min_distance:
                             min_distance = d
                         if d < base_min_distance:
                             base_min_distance = d
         else:
-            if(base_points2):
+            if base_points2:
                 for p in base_points2:                 # nt2 atoms
                     d = np.linalg.norm(np.subtract(p,q))
                     if d < min_distance:
@@ -1500,6 +1542,39 @@ def calculate_min_distances(nt1, nt2, base_points2):
                         min_distance = d
 
     return min_distance, base_min_distance, base_points1
+
+
+def calculate_base_min_distances(nt1, nt2, base_points2 = []):
+    """
+    Calculate minimum distances between the bases of two nucleotides
+    Return the minimum distance between base 1 and base 2 as base_min_distance
+    Also return the points in base 1
+    """
+
+    base_min_distance = 9999
+    base_points1 = []
+
+    base1_atoms = get_base_atoms(nt1.sequence)
+
+    if not base_points2:
+        base2_atoms = get_base_atoms(nt2.sequence)
+        for atom2 in nt2.atoms():
+            if atom2.name in base2_atoms:
+                p = [atom2.x, atom2.y, atom2.z]
+                base_points2_local.append(p)
+
+    for atom in nt1.atoms():              # nt1 atoms
+        if atom.name in base1_atoms:
+            q = [atom.x, atom.y, atom.z]      # nt1 base atoms
+            base_points1.append(q)                 # save for later gap21 calculation
+
+            for p in base_points2:                 # nt2 atoms
+                d = np.linalg.norm(np.subtract(p,q))
+                if d < base_min_distance:
+                    base_min_distance = d
+
+    return base_min_distance, base_points1
+
 
 def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
     """Function that will take a nucleotide and the one indexed before it and will create a dictionary of the sugar atoms and one of the phosphaye oxygens"""
@@ -1610,6 +1685,9 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                 'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
                 'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]],
                 'DT': [['H6',"C6","0BPh","0BR"], ['H71', 'C5', '7BPh', '7BR'], ['H72', 'C5', '8BPh', '8BR'], ['H73', 'C5', '9BPh', '9BR'],['H3','N3','5BPh','5BR']]}
+    baseMassiveAndHydrogens['DA'] = baseMassiveAndHydrogens['A']
+    baseMassiveAndHydrogens['DC'] = baseMassiveAndHydrogens['C']
+    baseMassiveAndHydrogens['DG'] = baseMassiveAndHydrogens['G']
 
     if nt1.sequence in modified_nucleotides:
         baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt1, parent1)
@@ -1786,7 +1864,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     """
     Calculate data needed for basepair classification.
     Also, check specific criteria to say that
-    they are enough in the same plane to be called coplanar.
+    the bases are enough in the same plane to be called coplanar.
     If so, return a number from 0 to 1 to measure the
     degree of coplanarity with 1 being best.
     Criteria for being coplanar or near coplanar:
@@ -1814,30 +1892,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     if gap12 >= 1.5179:
         return pair_data, datapoint
 
-    # calculate minimum distance between nt1 base and base atoms of nt2
-    base_min_distance = 1000
-    min_distance = 1000
-    base_points1 = []
-
-    # for atom in nt1.atoms():                  # nt1 atoms
-    #     q = [atom.x, atom.y, atom.z]      # nt1 base atoms
-    #     if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
-    #         base_points1.append(q)                 # save for later gap21 calculation
-    #         for p in base_points2:                 # nt2 atoms
-    #             d = np.linalg.norm(np.subtract(p,q))
-    #             if d < min_distance:
-    #                 min_distance = d
-    #             if d < base_min_distance:
-    #                 base_min_distance = d
-
-    #     else:
-    #         for p in base_points2:                 # nt2 atoms
-    #             d = np.linalg.norm(np.subtract(p,q))
-    #             if d < min_distance:
-    #                 min_distance = d
-
-
-    base_min_distance, min_distance, base_points1 = calculate_min_distances(nt1, nt2, base_points2)
+    min_distance, base_points1 = calculate_base_min_distances(nt1, nt2, base_points2)
 
     pair_data["min_distance"] = min_distance
 
@@ -1945,8 +2000,8 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
 
 def calculate_basepair_gap(nt1,nt2,base_points2=None):
     """
-    Calculate the vertical distance between nearest edges of two bases.
-    From the plane of nt1 to the nearest atom of nt2.
+    Calculate the vertical distance between nearest edges of two bases,
+    from the plane of nt1 to the nearest atom of nt2.
     """
 
     displacements = []
@@ -1954,7 +2009,7 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     atomname = []
 
     if base_points2:
-        # calculate distances from base atoms of nt2 to center of n1 base
+        # calculate distances from base atoms of nt2 to center of nt1 base
         for p in base_points2:
             v = np.subtract(p,nt1.centers["base"])
             d = np.linalg.norm(v)
@@ -1964,10 +2019,11 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     else:
         # look up the base atoms in nt2
         base_points2 = []
+
+        base_atoms = get_base_atoms(nt2.sequence)
+
         for atom in nt2.atoms():
-            # the technique here is OK for standard bases, but something faster and more reliable
-            # should be done for modified nucleotides
-            if not "'" in atom.name and not atom.name in ["P","OP1","OP2"]:  # exclude backbone atoms
+            if atom.name in base_atoms:
                 p = [atom.x, atom.y, atom.z]
                 v = np.subtract(p,nt1.centers["base"])
                 d = np.linalg.norm(v)
@@ -1975,8 +2031,10 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
                 displacements.append(v)
                 distances.append(d)
 
-                #atomname.append(atom.name)
+                # only needed for diagnostics:
+                atomname.append(atom.name)
 
+    # sort indices of atoms in nt2 by distance to center of nt1
     indices = np.argsort(distances)
 
     m = min(3,len(indices))
@@ -1986,19 +2044,21 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     #print(nt1.unit_id())
     #print(nt2.unit_id())
 
+    #units = ["7O7Y|1|A2|A|1081","7O7Y|1|A2|PSU|1082"]
+    #units = ["8BUU|1|a|A|76","8BUU|1|a|U|77"]
+
     gap12 = 100
     for k in range(0,m):              # 3 nearest points
         p = displacements[indices[k]]
         z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
             gap12 = z                 # gap is smallest z value
-            #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
-            #        print("Gap %8.4f at %s" % (gap12,atomname[indices[k]]))
 
+        #if nt1.unit_id() in units and nt2.unit_id() in units:
+        #    print("Atom %s of %s is %8.4f from plane of %s" % (atomname[indices[k]],nt2.unit_id(),z,nt1.unit_id()))
 
     """
-    #if "B|U|67" in nt1.unit_id() and "B|U|6" in nt2.unit_id():
-    if "B|U|67" in nt1.unit_id():
+    if nt1.unit_id() in units and nt2.unit_id() in units:
         print(base_points2)
         print(displacements)
         print(distances)
@@ -2050,7 +2110,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         LW_bonds[LW] = []
         LW_bond_messages[LW] = []
         if LW in hydrogen_bonds.keys():
-            hydrogens_switched = set([])
             for atom_set in hydrogen_bonds[LW]:
                 if atom_set in atom_set_to_bond_parameters:
                     # this atom_set was already checked for a different LW family
@@ -2062,46 +2121,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                         result = check_hydrogen_bond(nt1,nt2,atom_set)
                     else:
                         result = check_hydrogen_bond(nt2,nt1,atom_set)
-
-                    """
-                    This is not the right place to address the problem described below.
-                    That needs to be done before this point in the annotation program.
-
-                    In some structures like 7QI4, H61 and H62 on A are switched relative
-                    to https://www.rcsb.org/ligand/A So if one of these hydrogens is being
-                    checked, it's not already good, and it's plausible,
-                    check both, and take the better hydrogen bond.
-                    Only allow this once on each base, to avoid having it both ways.
-                    """
-                    """
-                    if result[4] > 0 and result[2] < 5 and not atom_set[3] in hydrogens_switched:
-                        atom_set_2 = ()
-                        if atom_set[1] == 'H21':
-                            atom_set_2 = (atom_set[0],'H22',atom_set[2],atom_set[3])
-                        elif atom_set[1] == 'H22':
-                            atom_set_2 = (atom_set[0],'H21',atom_set[2],atom_set[3])
-                        elif atom_set[1] == 'H41':
-                            atom_set_2 = (atom_set[0],'H42',atom_set[2],atom_set[3])
-                        elif atom_set[1] == 'H42':
-                            atom_set_2 = (atom_set[0],'H41',atom_set[2],atom_set[3])
-                        elif atom_set[1] == 'H61':
-                            atom_set_2 = (atom_set[0],'H62',atom_set[2],atom_set[3])
-                        elif atom_set[1] == 'H62':
-                            atom_set_2 = (atom_set[0],'H61',atom_set[2],atom_set[3])
-
-                        if atom_set_2:
-                            if atom_set_2[3] == '12':
-                                result2 = check_hydrogen_bond(nt1,nt2,atom_set_2)
-                            else:
-                                result2 = check_hydrogen_bond(nt2,nt1,atom_set_2)
-
-                            if result2[4] < result[4]:
-                                # use the better result
-                                result = result2
-                                hydrogens_switched.add(atom_set[3])
-                                # but don't change the atom set since those are
-                                # tied to specific basepairs
-                    """
 
                     atom_set_to_bond_parameters[atom_set] = result
 
@@ -2323,7 +2342,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
         else:
             print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-            print("  Multiple families meet all cutoffs, %s" % LW_remaining)
+            print("  Multiple annotations meet all cutoffs, %s" % LW_remaining)
             for LW,bond_counter,checked_counter,max_badness in LW_bond_rank:
                 for LW2,subcategory in ok_gap:
                     if LW == LW2:
