@@ -285,6 +285,10 @@ NAbasehydrogens['DC'] = ['H6','H5','H41','H42']
 NAbasehydrogens['DG'] = ['H1','H8','H21','H22']
 NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
+NAbaseatoms = {}
+for base, atoms in NAbaseheavyatoms.items():
+	NAbaseatoms[base] = set(atoms + NAbasehydrogens[base])
+
 #Amino acid computation definitions
 
 #Defining center-to-center and tilt cutoffs for stacking
