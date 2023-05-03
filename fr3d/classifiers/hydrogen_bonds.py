@@ -3,6 +3,7 @@
 import csv
 import numpy as np
 import os
+from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 def load_ideal_basepair_hydrogen_bonds():
     """
@@ -136,9 +137,54 @@ def check_hydrogen_bond(nt1,nt2,atoms):
       A measure of the "badness" of the bond
     """
 
-    donor    = nt1.centers[atoms[0]]
-    hydrogen = nt1.centers[atoms[1]]
-    acceptor = nt2.centers[atoms[2]]
+    seq = nt1.sequence
+    if seq in ['A','C','G','U','DA','DC','DG','DT']:
+        donor    = nt1.centers[atoms[0]]
+        hydrogen = nt1.centers[atoms[1]]
+    else:
+        #print('Checking hydrogen bond for %s, mapping atoms' % nt1.unit_id())
+
+        if seq in parent_atom_to_modified:
+            # map the atom name
+            if atoms[0] in parent_atom_to_modified[seq]:
+                donor    = nt1.centers[parent_atom_to_modified[seq][atoms[0]]]
+                #print('Parent atom %s modified atom %s length %d' % (atoms[0],parent_atom_to_modified[seq][atoms[0]],len(donor)))
+            else:
+                donor    = nt1.centers[atoms[0]]
+
+            if atoms[1] in parent_atom_to_modified[seq]:
+                hydrogen = nt1.centers[parent_atom_to_modified[seq][atoms[1]]]
+                #print('Parent atom %s modified atom %s length %d' % (atoms[1],parent_atom_to_modified[seq][atoms[1]],len(hydrogen)))
+            else:
+                hydrogen = nt1.centers[atoms[1]]
+
+
+        else:
+            # uknown modified nucleotide, just try for the named atom
+            print('%s is not a known modified nucleotide' % nt1.unit_id())
+            donor    = nt1.centers[atoms[0]]
+            hydrogen = nt1.centers[atoms[1]]
+
+
+    seq = nt2.sequence
+    if seq in ['A','C','G','U','DA','DC','DG','DT']:
+        acceptor = nt2.centers[atoms[2]]
+    else:
+        #print('Checking hydrogen bond for %s, mapping atoms' % nt2.unit_id())
+
+        if seq in parent_atom_to_modified:
+            # map the atom name
+            if atoms[2] in parent_atom_to_modified[seq]:
+                acceptor = nt2.centers[parent_atom_to_modified[seq][atoms[2]]]
+                #print('Parent atom %s modified atom %s length %d' % (atoms[2],parent_atom_to_modified[seq][atoms[2]],len(acceptor)))
+            else:
+                acceptor = nt2.centers[atoms[2]]
+
+        else:
+            # uknown modified nucleotide, just try for the named atom
+            print('%s is not a known modified nucleotide' % nt2.unit_id())
+            acceptor = nt2.centers[atoms[2]]
+
 
     if atoms[1] == "H2'" or len(hydrogen) < 3:
         # hydrogen coordinates are not available, check donor-acceptor distance

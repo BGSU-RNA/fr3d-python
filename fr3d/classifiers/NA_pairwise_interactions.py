@@ -70,8 +70,8 @@ from fr3d.definitions import HB_acceptors
 from fr3d.data.components import Component
 
 from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
-from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
-from hydrogen_bonds import check_hydrogen_bond
+from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
 
 #old modified nucleotide mappings
 from fr3d.modified_parent_mapping import modified_nucleotides
