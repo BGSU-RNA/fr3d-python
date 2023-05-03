@@ -5,6 +5,9 @@
 
     HTML output is in C:/Users/zirbel/Documents/FR3D/Python FR3D/output
     PNG output is in C:/Users/zirbel/Documents/FR3D/NAPairwiseInteractions
+
+    cd "C:/Users/zirbel/Documents/FR3D/Python FR3D/output"
+    python -m SimpleHTTPServer
 """
 
 from collections import defaultdict
@@ -131,7 +134,7 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         candidatelist += "<td>%s</td>" % candidate['python_annotation']  # python
         candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # new python
         candidatelist += "<td>%d</td>" % candidate['basepair_subcat']  # python subcategory
-        candidatelist += "<td>%0.2f</td>" % candidate['best_cutoff_distance']  #
+        candidatelist += "<td>%0.4f</td>" % candidate['best_cutoff_distance']  #
         candidatelist += "<td>%0.2f</td>" % candidate['x']  #
         candidatelist += "<td>%0.2f</td>" % candidate['y']  #
         candidatelist += "<td>%0.2f</td>" % candidate['z']  #
@@ -525,6 +528,38 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables):
                             ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             cc += 1
 
+                        if variables == 5:            # angle and x
+                            xmin = limits['anglemin']
+                            xmax = limits['anglemax']
+                            ymin = limits['xmin']
+                            ymax = limits['xmax']
+
+                            if xmin < xmax:
+                                # angle does not wrap around 270 degrees
+                                ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                            else:
+                                # angle wraps around 270 degrees
+                                ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
+                                ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
+
+                            cc += 1
+
+                        if variables == 6:            # angle and y
+                            xmin = limits['anglemin']
+                            xmax = limits['anglemax']
+                            ymin = limits['ymin']
+                            ymax = limits['ymax']
+
+                            if xmin < xmax:
+                                # angle does not wrap around 270 degrees
+                                ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                            else:
+                                # angle wraps around 270 degrees
+                                ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
+                                ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
+
+                            cc += 1
+
 
 def generate_LW_family_table(LW,DNA=False):
     """
@@ -707,20 +742,20 @@ if __name__=="__main__":
     # look at 4V88 cSH
     # 7JQQ is 4.1A resolution but has both RNA and DNA coordinates in the server, so we can see DNA pairs
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv','7K00','8B0X']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
     resolution = '1.5A'
 
     PDB_list = ['1NBS','6PMO']
     resolution = '1NBS_6PMO'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','7K00','8B0X']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','8GLP','8B0X']
     resolution = '2.0A'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv','7K00','8B0X']
-    resolution = '2.5A'
-
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','7K00','8B0X','4M6D','4V88']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8GLP','8B0X','4M6D','4V88']
     resolution = '3.0A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv','8GLP','8B0X']
+    resolution = '2.5A'
 
     # zzz
 
@@ -810,6 +845,12 @@ if __name__=="__main__":
 
         # loop over interactions for that base combination for which cutoffs are defined
         for interaction in nt_nt_cutoffs[base_combination].keys():
+
+
+            # faster re-check when working on a specific category
+            if not interaction in ['tHS','tSH','ntHS','ntSH','tHSa','tSHa']:
+                continue
+
 
             # make base edges uppercase since that's all we get from the pipeline
             inter = interaction.replace("n","").replace("a","")
@@ -1074,7 +1115,7 @@ if __name__=="__main__":
                         new_python_annotation += ',hbond'
 
                     # only keep pairs if their parameters are somewhat close to the cutoffs for some category
-                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 20) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 10):
+                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 7) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 7):
 
                         c += 1
                         xvalues.append(datapoint['x'])
@@ -1195,6 +1236,17 @@ if __name__=="__main__":
                 ax.set_title('z versus maxgap')
 
                 ax = fig.add_subplot(2, 3, 5)
+                plot_basepair_cutoffs(base_combination,[interaction],ax,5)
+                ax.scatter(avalues,xvalues,color=hcolors2d,marker=".",s=hsizes)
+                ax.set_title('x vs angle')
+
+                ax = fig.add_subplot(2, 3, 6)
+                plot_basepair_cutoffs(base_combination,[interaction],ax,6)
+                ax.scatter(avalues,yvalues,color=hcolors2d,marker=".",s=hsizes)
+                ax.set_title('y vs angle')
+
+                """
+                ax = fig.add_subplot(2, 3, 5)
                 ax.scatter(hdvalues,havalues,color=hcolors2d,marker=".",s=hsizes)
                 ax.set_title('h-angle vs h-dist')
 
@@ -1209,6 +1261,7 @@ if __name__=="__main__":
                 ax.text(0.1,2.5, 'green=bad gap')
                 ax.text(0.1,3, 'orange=bad hbond')
                 ax.text(0.1,3.5, 'cyan=bad cutoffs')
+                """
 
                 # show all plots for this interaction
                 figManager = plt.get_current_fig_manager()
@@ -1302,24 +1355,24 @@ if __name__=="__main__":
                         maxd = max(maxd,dista[i][j])
 
                 #print("Finding order")
-                order = treePenalizedPathLength(dista,20)
+                order = treePenalizedPathLength(dista,100)
                 #print("Found order")
                 #print(order)
 
                 # color entries on diagonal according to matching annotations
                 for i in range(0,n):
                     if "gap" in order_pair_data[i]['new_python_annotation']:
-                        dista[i][i] = -3  # pink for bad gap
+                        dista[i][i] = -2  # dark pink for bad gap
                     elif "x" in order_pair_data[i]['new_python_annotation'] or "y" in order_pair_data[i]['new_python_annotation'] or "angle" in order_pair_data[i]['new_python_annotation'] or "normal" in order_pair_data[i]['new_python_annotation'] or "gap" in order_pair_data[i]['new_python_annotation']:
-                        dista[i][i] = -7  # light blue for other cutoff problem
-                    elif 'hbond' in order_pair_data[i]['new_python_annotation']:
-                        dista[i][i] = -9  # orange for bad h-bond
-                    elif len(order_pair_data[i]['matlab_annotation']) > 0 and len(order_pair_data[i]['python_annotation']) == 0:
-                        dista[i][i] = -1  # reddish when matlab annotates but Python does not
-                    elif len(order_pair_data[i]['python_annotation']) > 0 and not "n" in order_pair_data[i]['python_annotation'] and len(order_pair_data[i]['matlab_annotation']) == 0:
-                        dista[i][i] = -4  # purple when Python is true and Matlab is nothing
-                    elif order_pair_data[i]['matlab_annotation'].lower() == "n" + order_pair_data[i]['python_annotation'].lower():
-                        dista[i][i] = -2  # dark pink when Matlab is near and Python is true
+                        dista[i][i] = -1  # reddish for other cutoff problem
+                    #elif 'hbond' in order_pair_data[i]['new_python_annotation']:
+                    #    dista[i][i] = -9  # orange for bad h-bond
+                    #elif len(order_pair_data[i]['matlab_annotation']) > 0 and len(order_pair_data[i]['python_annotation']) == 0:
+                    #    dista[i][i] = -1  # reddish when matlab annotates but Python does not
+                    #elif len(order_pair_data[i]['python_annotation']) > 0 and not "n" in order_pair_data[i]['python_annotation'] and len(order_pair_data[i]['matlab_annotation']) == 0:
+                    #    dista[i][i] = -4  # purple when Python is true and Matlab is nothing
+                    #elif order_pair_data[i]['matlab_annotation'].lower() == "n" + order_pair_data[i]['python_annotation'].lower():
+                    #    dista[i][i] = -2  # dark pink when Matlab is near and Python is true
 
                 reorder_pairs = [order_pair_data[o] for o in order] + other_pair_data
 

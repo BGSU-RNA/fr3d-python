@@ -7,7 +7,7 @@
 # "C:\Program Files\Python38\python" setup.py install
 
 # cd c:\Users\zirbel\Documents\GitHub\fr3d-python\fr3d\classifiers
-# python NA_pairwise_interactions.py -c basepair 4TNA
+# python NA_pairwise_interactions.py -c basepair,stacking 4TNA
 # "C:\Program Files\Python38\python" NA_pairwise_interactions.py -c basepair 4TNA
 # "C:\Program Files\Python38\python" develop_NA_pairwise_interactions.py
 
@@ -103,17 +103,19 @@ PDB_list = ['124D']  # RNA-DNA duplex
 PDB_list = ['1A1L']  # DNA-DNA duplex
 PDB_list = ['7JQQ']  # Five RNA chains and a DNA-DNA duplex
 PDB_list = ['7K00','8B0X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 PDB_list = ['1NBS','6PMO']
-PDB_list = ['1Q96']
 PDB_list = ['6DVK']
 PDB_list = ['4V9F']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/3.0A/csv','8B0X','4M6D','3IWN','4V88','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.277/1.5A/csv']
 PDB_list = ['7QI4']
 PDB_list = ['7O7Y']
+PDB_list = ['1Q96']
+PDB_list = ['7QI4','6S0Z','4C8Z','5FQ5','5D5L','5AOX','7K16','5CCB','4V8Y','8D28','4AL5','7OZQ','6YL5','4NLF','7LO9','7QIW','7QIZ','4C8Y','5F4Q','8D28']  # have hydrogens that are named wrong
+PDB_list = ['7O7Y','7O7Z','8A3D']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8B0X','4M6D','3IWN','4V88','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
 
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
@@ -127,7 +129,7 @@ categories = {}
 #categories['sO'] = []        # annotate all sO interactions
 categories['coplanar'] = []   # necessary to get all data for datapoint
 categories['basepair'] = []
-#categories['stacking'] = []
+categories['stacking'] = []
 #categories['backbone'] = []
 
 ShowStructureReadingErrors = True
@@ -209,11 +211,16 @@ for PDB in sorted(PDBs):
 
             """
             for base in structure.residues(type = ["RNA linking","DNA linking"]):
-                # print(base.unit_id())
-                # print(base.centers['glycosidic'])
-                # print(base.centers['base'])
+                #print(base.unit_id())
+                #print(base.centers['glycosidic'])
+                #print(base.centers['base'])
 
-                if base.unit_id() == '7QI4|1|AA|G|1355':
+                if base.unit_id() in ['1Q96|1|B|A|20','1Q96|1|A|A|9']:
+                    print(base.unit_id())
+                    print(base.centers['glycosidic'])
+                    print(base.centers['base'])
+
+                if base.unit_id() in ['7QI4|1|AA|G|1355']:
                     print('7QI4|1|AA|G|1355 H21 %s' % base.centers['H21'])
                     print('7QI4|1|AA|G|1355 H22 %s' % base.centers['H22'])
             """
