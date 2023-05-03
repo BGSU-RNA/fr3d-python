@@ -461,6 +461,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     basepair_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
 
+    # only do this once, for all nucleotides
+    ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
+
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
@@ -593,7 +596,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'backbone' in categories.keys(): #annotate base phosphate and base ribose interactions
                             timerData = myTimer("Check backbone interactions", timerData)
-                            ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
                             if nt1.index -1 > 0:
                                 try:
                                     lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
