@@ -639,7 +639,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             if interactionbR and len(interactionbR) > 0:
                                 count_pair += 1
                                 interaction_to_pair_list[interactionbR].append(unit_id_pair)
-                                category_to_interactions['backbone'].add(interactionbPh)
+                                category_to_interactions['backbone'].add(interactionbR)
 
                             #     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
@@ -1886,10 +1886,8 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
             #     selfPhosphate = "0BPh"
             #print(bRiboseInteraction)
             #print(phosphateInteraction)
-
     if datapoint and len(phosphate) > 0:
         datapoint['gap12'], base_points2 = calculate_basepair_gap(nt1,nt2)
-
         datapoint['BPh'] = phosphate
         datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
     return phosphate, ribose, datapoint
