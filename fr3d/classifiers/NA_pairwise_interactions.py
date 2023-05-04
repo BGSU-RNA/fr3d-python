@@ -67,7 +67,9 @@ from fr3d.definitions import planar_atoms
 from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
+from fr3d.definitions import NAbaseMassiveAndHydrogens
 from fr3d.data.components import Component
+
 
 from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
@@ -461,6 +463,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     basepair_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
 
+    #used to identify last nt in chain for backbone interactions
+    ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
+
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
             if nt2key in baseCubeList:                  # if this cube was actually made
@@ -593,40 +598,33 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         if 'backbone' in categories.keys(): #annotate base phosphate and base ribose interactions
                             timerData = myTimer("Check backbone interactions", timerData)
-                            ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
-                            if nt1.index -1 > 0:
-                                try:
-                                    lastNT = ntDict[nt1.index-1] #you need the O3' atom of the last nucleotide and this dict will help you get that component.
-                                except:
-                                    lastNT = ntDict[nt1.index]
-                            else:
-                                lastNT = ntDict[nt1.index] # doesn't have one. Will need adjusted
-                            if nt2.index - 1 > 0:
-                                try:
+                            #you need the O3' atom of the last nucleotide and this dict will help you get that component.
+                            try:
+                                if nt1.index - 1 > 0:
+                                    lastNT = ntDict[nt1.index-1] 
+                                else:
+                                    lastNT = None # doesn't have one. Will need adjusted
+                                if nt2.index - 1 > 0:
                                     lastNT2 = ntDict[nt2.index-1]
-                                except:
-                                    lastNT2 = ntDict[nt2.index]
-                            else:
-                                lastNT2 = ntDict[nt2.index]
-                            # print(nt1)
-                            # print(lastNT)
-                            # print(nt2)
-                            # print(lastNT2)
-                            # print("NEXT")
-                            # interaction, datapoint12 = check_base_backbone_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint12)
-                            # #self_interaction = check_base_backbone_interactions(nt1, nt1, lastNT, lastNT, parent1, parent1, datapoint)
-                            # self_pair_id = (nt1.unit_id(),nt1.unit_id())
-                            # if len(interaction) > 0:
+                                else:
+                                    lastNT2 = None
+                            except: 
+                                lastNT2 = None
+                            
+                            # this is not checking for self interactions, but is capable of doing that. Should be done in NA_unit_annotation.py
+                            interactionbPh, interactionbR, datapoint12 = check_base_backbone_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint12)
+                            # maybe self interactions should be checked here, or maybe in unit_annotation
+                            if interactionbPh and len(interactionbPh) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interactionbPh].append(unit_id_pair)
+                                category_to_interactions['bPh'].add(interactionbPh)
+                            # if len(interactionbR) > 0:
                             #     count_pair += 1
-                            #     interaction_to_pair_list[interaction].append(unit_id_pair)
+                            #     interaction_to_pair_list[interactionbR].append(unit_id_pair)
+                            #     category_to_interactions['backbone'].add(interactionbPh)
+
                             #     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
-                                #category_to_interactions['backbone'].add(interaction)
-                                #category_to_interactions['backbone'].add(interaction_reversed)
-                            # if len(self_interaction) > 0:
-                            #     count_pair += 1
-                            #     interaction_to_pair_list[self_interaction].append(self_pair_id)
-                            #     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
-                            #     category_to_interactions['backbone'].add(self_interaction)
+
 
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
                         if len(gly2) < 3:
@@ -1450,7 +1448,8 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         if datapoint:
             datapoint['normal_Z'] = normal_Z
 
-        min_distance = calculate_min_distances(nt1, nt2, None)[1]
+        # min_distance = calculate_min_distances(nt1, nt2, None)[1]
+        min_distance, = calculate_base_min_distances(nt1, nt2)
 
         #checks for true stacking. If it meets criteria, strip the n from the annotation
         if abs(min_distance) < true_z_cutoff and abs(min_distance) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True:
@@ -1581,15 +1580,16 @@ def create_list_of_sugar_atoms_phosphate_interactions(nt, lastO3):
     sugars = {}
     pOxygens = {}
     sOxygens = {}
-    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
+    # 4-23-2023 Took out O3'
+    sugarAtoms = ["C1'","C2'","O2'","C3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of prev']
     for atom in sugarAtoms:
         for atoms in nt.atoms():
             if atom == atoms.name:
                 sugars[atom] = atoms
-            elif atom == 'O3 of next':
+            elif atom == 'O3 of prev':
                 sugars[atom] = lastO3
             if 'O' in atom and 'O' in atoms.name:
-                if atom == 'O3 of next':
+                if atom == 'O3 of prev':
                     pOxygens[atom] = lastO3
                 elif atom == atoms.name:
                     if atom == "O2'" or atom == "O4'": # sugar oxygens for ribose interactions
@@ -1619,7 +1619,9 @@ def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrog
     return baseMassiveAndHydrogens
 
 def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,datapoint):
-    """Function to check base phosphate interactions"""
+    """Function to check base phosphate interactions
+    Nt1 base checked against phosphate and ribose of nt2 
+    """
     bPhosphateInteraction = [] # List to store lists of preliminary phosphate interactions before processing
     bRiboseInteraction = []
     selfbPhosphateInteraction = []
@@ -1649,83 +1651,91 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
     nAngleLimit = 110           # near
 
     # Define Basic Data #########################################
-    #isolates the O3' atom of the last nucleotide
-    for atom in lastNT.atoms():
-        if atom.name == "O3'":
-            lastO3ofnt1 = atom
-    for atom in lastNT2.atoms():
-        if atom.name == "O3'":
-            lastO3ofnt2 = atom
 
-    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of next']
-    phosphateOxygens = [sugarAtoms[8], sugarAtoms[4],sugarAtoms[10], sugarAtoms[11]] # "O5'", "O3'", 'OP1', 'OP2'
-    riboseOxygens = [sugarAtoms[2], sugarAtoms[6]] #"O2'","O4'"
+
+    # 04-27-2023 - I think O3' can be taken out of this list, but O3 of prev should stay. 
+    sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of prev']
+    #isolates the O3' atom of the last nucleotide
+    if lastNT2: 
+        for atom in lastNT2.atoms():
+            if atom.name == "O3'":
+                lastO3ofnt2 = atom
+                # 04-27-2023 Should this actually be O3 of prev and O3 removed
+                # phosphateOxygens = [sugarAtoms[8], sugarAtoms[4],sugarAtoms[10], sugarAtoms[11]] # "O5'", "O3'", 'OP1', 'OP2'
+                # phosphateOxygens = [sugarAtoms[8],sugarAtoms[10], sugarAtoms[11], sugarAtoms[12]]  # "O5'", 'OP1', 'OP2', O3' of prev
+                phosphateOxygens = [ "O5'", 'OP1', 'OP2', "O3 of prev"]
+    else: 
+        lastO3ofnt2 = None
+        # No O3' should be observed
+        #phosphateOxygens = [sugarAtoms[8],sugarAtoms[10], sugarAtoms[11]] # "O5'", 'OP1', 'OP2'
+        phosphateOxygens = [ "O5'", 'OP1', 'OP2']
+
+    # 04-27-2023 O3' shouldn't be checked, its considered phosphate, see JAR3D paper for this
+    #riboseOxygens = [sugarAtoms[2], sugarAtoms[6]] #"O2'","O4'"
+    riboseOxygens = ["O2'","O4'"] #"O2'","O4'"
 
     # Function to create lists of sugars, phosphate oxygens, and sugar oxygens of each nucleotide (also adds O3' of the last nt to each)
-    sugarsNt1, pOxygensNt1, sOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
+    # sugarsNt1, pOxygensNt1, sOxygensNt1 = create_list_of_sugar_atoms_phosphate_interactions(nt1, lastO3ofnt1)
+
+    # 4-27-2023 phosphate of nt2 is being checked, so the same processing shouldn't need done for nt1
     sugarsNt2, pOxygensNt2, sOxygensNt2 = create_list_of_sugar_atoms_phosphate_interactions(nt2, lastO3ofnt2)
     pOxygens = {}
 
     # Dictionaries that will be used to hold the angle and distance of the base heavy/hydrogen with each oxygen of the ribose or phosphate.
-    # phosphate angle2 and distance2 are used to check for interactions of a nucleotide with its own phosphate.
     phosphateAngle = {}
     riboseAngle = {}
     phosphateDistance = {}
     riboseDistance = {}
-    phosphateAngle2 = {}
-    phosphateDistance2 = {}
     ribose = ""
     phosphate = ""
-    #dictionary with the hydrogens of each types of base.
-    # Key: Letter of Base
-    # Values: Tuples of Hydrogens in the base paired with a massive atom
-    baseMassiveAndHydrogens = {}
-    baseMassiveAndHydrogens = {'A': [['H2',"C2","2BPh", "2BR"], ['H8',"C8","0BPh", "0BR"],['H61',"N6","6BPh", "6BR"],['H62',"N6","7BPh", "7BR"]],
-                'C': [['H6',"C6","0BPh","0BR"], ['H5',"C5","9BPh","9BR"], ['H41',"N4","7BPh","7BR"], ['H42',"N4", "6BPh", "6BR"]],
-                'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
-                'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]],
-                'DT': [['H6',"C6","0BPh","0BR"], ['H71', 'C5', '7BPh', '7BR'], ['H72', 'C5', '8BPh', '8BR'], ['H73', 'C5', '9BPh', '9BR'],['H3','N3','5BPh','5BR']]}
-    baseMassiveAndHydrogens['DA'] = baseMassiveAndHydrogens['A']
-    baseMassiveAndHydrogens['DC'] = baseMassiveAndHydrogens['C']
-    baseMassiveAndHydrogens['DG'] = baseMassiveAndHydrogens['G']
 
     if nt1.sequence in modified_nucleotides:
-        baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt1, parent1)
+        return None, None, None
+        for atom in NAbaseatoms[parent1]:
+            print(atom)
+        baseMassiveAndHydrogens[nt1.sequence]
+        baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(NAbaseMassiveAndHydrogens,nt1, parent1)
+        # write function to map base 
+        # when making this mapping, make sure hydrogen doesn't map to a heavy atom, if it does a hydrogen bond doesn't exist 
     if nt2.sequence in modified_nucleotides:
-        baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt2, parent2)
+        return None, None, None
+        baseMassiveAndHydrogens = base_backbone_modified_nucleotide_dictionary_processing(NAbaseMassiveAndHydrogens,nt2, parent2)
+        # write function to map phosphate
     #List of Massive atoms to be used to get a list of each nt specific bases heavy atoms
-    massiveAtoms = ['O', 'N','C'] # I don't think I should include P here. It is a massive atom but it's not found in the base.
-    massiveAtomsList = []
-    selfPhosphate = ""
+
     dis = distance_between_vectors(nt1.centers["base"], nt2.centers["base"])
     if abs(dis) < 16:   # Initial cutoff
+
         # if the displacement between the the phosphate of nt2 is close enough to base of nt1 look for interactions
-        #phosphorus =  [sugarsNt2['P'].x,  sugarsNt2['P'].y, sugarsNt2['P'].z]
-       # displ = np.subtract(nt2.centers["P"],nt1.centers["base"])
         if not nt2.centers["P"].any():
-            return "", datapoint
-        p_standard = translate_rotate_point(nt1, nt2.centers["P"])
+            phosphateOxygens = [] # Just don't loop over any oxygens 
+            # return "", "", datapoint
+        try:
+            p_standard = translate_rotate_point(nt1, nt2.centers["P"])
+        except:
+            print("Calculation failed for ")
+            return None, None, None
         if abs(p_standard[2]) < 4.5: #phosphorus close to plane
-            for sites in baseMassiveAndHydrogens[nt1.sequence]: #Loop through each massive atom of the base
+            for sites in NAbaseMassiveAndHydrogens[nt1.sequence]: #Loop through each massive atom of the base
                 baseMassive = nt1.centers[sites[1]] # contains base massive atom name
                 baseHydrogens = nt1.centers[sites[0]] # contains corresponding base hydrogen
                 dis = distance_between_vectors(baseMassive,nt2.centers['P'])
                     #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
                 for oxygens in phosphateOxygens:
-                    oxygen = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
-                    phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen) # angle between base massive, its corresponding hydrogen, and oxygen
-                    phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen) #distance from the oxygen to the base atom
+                    # check to make sure three points here 
+                    oxygen_coordinates = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
+                    phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen_coordinates) # angle between base massive, its corresponding hydrogen, and oxygen
+                    phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen_coordinates) #distance from the oxygen to the base atom
 
                     #Repeat the same processing but this time do it to check if nt1 on itself
                     # oxygen2 = [pOxygensNt1[oxygens].x,pOxygensNt1[oxygens].y,pOxygensNt1[oxygens].z]#x,y,z coords as vector for nt1 phosphate oxygen
                     # phosphateAngle2[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen2) # angle between base massive, its corresponding hydrogen, and oxygen
                     # phosphateDistance2[oxygens] =  distance_between_vectors(baseMassive,oxygen2) #distance from the oxygen to the base atom
-
                 #Loop through oxygens in ribose to extract info about angle and distance
                 for oxygens in riboseOxygens:
-                    riboseOxygen = [sOxygensNt2[oxygens].x,sOxygensNt2[oxygens].y,sOxygensNt2[oxygens].z]
-                    riboseAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen)
-                    riboseDistance[oxygens] = distance_between_vectors(baseMassive, riboseOxygen)
+                    riboseOxygen_coordinates = [sOxygensNt2[oxygens].x,sOxygensNt2[oxygens].y,sOxygensNt2[oxygens].z]
+                    riboseAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,riboseOxygen_coordinates)
+                    riboseDistance[oxygens] = distance_between_vectors(baseMassive, riboseOxygen_coordinates)
 
                 # PAngle = calculate_hb_angle(baseMassive,baseHydrogens,phosphorus)
                 # PDist = distance_between_vectors(baseMassive,phosphorus)
@@ -1846,7 +1856,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
             #     print(interaction)
 
             if phosphate != "" and True:
-                print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),phosphateInteraction,0,0,0,nt1.unit_id(),nt2.unit_id()))
+                print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),phosphate,0,0,0,nt1.unit_id(),nt2.unit_id()))
             # if len(selfbPhosphateInteraction) > 0:
             #     selfPhosphate = "0BPh"
             #print(bRiboseInteraction)
@@ -1857,8 +1867,7 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
 
         datapoint['BPh'] = phosphate
         datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
-
-    return phosphate, datapoint
+    return phosphate, ribose, datapoint
 
 def check_coplanar(nt1,nt2,pair_data,datapoint):
     """
