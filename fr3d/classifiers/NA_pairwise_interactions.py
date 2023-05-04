@@ -1739,6 +1739,8 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                     #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
                 for oxygens in phosphateOxygens:
                     # check to make sure three points here 
+                    if not oxygens in pOxygensNt2:
+                        continue
                     oxygen_coordinates = [pOxygensNt2[oxygens].x,pOxygensNt2[oxygens].y,pOxygensNt2[oxygens].z] #x,y,z coords as vector for nt2 phosphate oxygen
                     phosphateAngle[oxygens] = calculate_hb_angle(baseMassive,baseHydrogens,oxygen_coordinates) # angle between base massive, its corresponding hydrogen, and oxygen
                     phosphateDistance[oxygens] =  distance_between_vectors(baseMassive,oxygen_coordinates) #distance from the oxygen to the base atom
@@ -1768,7 +1770,11 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                 #Loop for classification of potential base - phosphate interactions
                 for oxygen in phosphateOxygens:
                     # Check if Nt1 base is within limits of nt2 phosphate oxygens
+                    if not oxygen in phosphateAngle:
+                        continue
                     if not phosphateAngle[oxygen]:
+                        continue
+                    if not oxygen in phosphateDistance:
                         continue
                     if not phosphateDistance[oxygen]:
                         continue
@@ -2204,15 +2210,10 @@ def check_sugar_ribose(nt1,nt2,parent1,datapoint):
         print('Not able to calculate orientation of SR annotation for %s-%s' % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint
 
-    """
-    if abs(angle) > 90:
-        print('cSR %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
-    else:
-        print('tSR %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
-    """
-
     if datapoint:
         datapoint['sugar_ribose'] = annotation
+
+    #print('%s %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (annotation,o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
 
     return annotation, datapoint
 
