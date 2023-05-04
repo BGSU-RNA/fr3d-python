@@ -590,7 +590,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if 'stacking' in categories.keys():
                             timerData = myTimer("Check base base stack", timerData)
                             interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint12)
-
                             if len(interaction) > 0:
                                 count_pair += 1
                                 interaction_to_pair_list[interaction].append(unit_id_pair)
@@ -631,11 +630,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             if interactionbPh and len(interactionbPh) > 0:
                                 count_pair += 1
                                 interaction_to_pair_list[interactionbPh].append(unit_id_pair)
-                                category_to_interactions['bPh'].add(interactionbPh)
-                            # if len(interactionbR) > 0:
-                            #     count_pair += 1
-                            #     interaction_to_pair_list[interactionbR].append(unit_id_pair)
-                            #     category_to_interactions['backbone'].add(interactionbPh)
+                                category_to_interactions['backbone'].add(interactionbPh)
+                            if interactionbR and len(interactionbR) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interactionbR].append(unit_id_pair)
+                                category_to_interactions['backbone'].add(interactionbR)
 
                             #     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
@@ -811,6 +810,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     # calculate and save crossing numbers for each annoated interaction
     timerData = myTimer("Calculate crossing",timerData)
     interaction_to_list_of_tuples = calculate_crossing_numbers(bases,interaction_to_pair_list)
+
 
     return interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data
 
@@ -1891,10 +1891,8 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
             #     selfPhosphate = "0BPh"
             #print(bRiboseInteraction)
             #print(phosphateInteraction)
-
     if datapoint and len(phosphate) > 0:
         datapoint['gap12'], base_points2 = calculate_basepair_gap(nt1,nt2)
-
         datapoint['BPh'] = phosphate
         datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
     return phosphate, ribose, datapoint
@@ -2985,7 +2983,6 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
             continue
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
-
         timerData = myTimer("Recording interactions",timerData)
         print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
