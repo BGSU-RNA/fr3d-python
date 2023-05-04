@@ -618,17 +618,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if 'backbone' in categories.keys():
                             timerData = myTimer("Check backbone interactions", timerData)
                             #you need the O3' atom of the last nucleotide and this dict will help you get that component.
-                            try:
-                                if nt1.index - 1 > 0:
-                                    lastNT = ntDict[nt1.index-1] 
-                                else:
-                                    lastNT = None # doesn't have one. Will need adjusted
-                                if nt2.index - 1 > 0:
-                                    lastNT2 = ntDict[nt2.index-1]
-                                else:
-                                    lastNT2 = None
-                            except: 
-                                lastNT2 = None
+                            lastNT = None
+                            lastNT2 = None
+                            if nt1.index - 1 > 0 and (nt1.index-1) in ntDict:
+                                lastNT = ntDict[nt1.index-1]
+                            if nt2.index - 1 > 0 and (nt2.index-1) in ntDict:
+                                lastNT2 = ntDict[nt2.index-1]
                             
                             # this is not checking for self interactions, but is capable of doing that. Should be done in NA_unit_annotation.py
                             interactionbPh, interactionbR, datapoint12 = check_base_backbone_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint12)
@@ -1772,7 +1767,11 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                     nCutoff = nNitrogenCutoff
                 #Loop for classification of potential base - phosphate interactions
                 for oxygen in phosphateOxygens:
-                    #Check if Nt1 base is within limits of nt2 phosphate oxygens
+                    # Check if Nt1 base is within limits of nt2 phosphate oxygens
+                    if not phosphateAngle[oxygen]:
+                        continue
+                    if not phosphateDistance[oxygen]:
+                        continue
                     if phosphateAngle[oxygen] > nAngleLimit and phosphateDistance[oxygen] < nCutoff:
                         if phosphateAngle[oxygen] > angleLimit and phosphateDistance[oxygen] < cutoff:
                             bPhosphateInteraction.append([sites[2], oxygen]) #atoms[2]  holds phosphate classification code | 0BPh, 7BPh, etc.
@@ -1794,6 +1793,12 @@ def check_base_backbone_interactions(nt1,nt2,lastNT, lastNT2,parent1,parent2,dat
                 #check if nt1 base is interacting with nt2 ribose
                 for oxygens in riboseOxygens:
                     if not oxygens in riboseAngle:
+                        continue
+                    if not riboseAngle[oxygens]:
+                        continue
+                    if not oxygens in riboseDistance:
+                        continue
+                    if not riboseDistance[oxygens]:
                         continue
                     if riboseAngle[oxygens] > nAngleLimit and riboseDistance[oxygens] < nCutoff:
                         if riboseAngle[oxygens] > angleLimit and riboseDistance[oxygens] < cutoff:
