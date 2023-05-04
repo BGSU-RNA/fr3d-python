@@ -256,6 +256,13 @@ NAbasehydrogens['C'] = ['H6','H5','H41','H42']
 NAbasehydrogens['G'] = ['H1','H8','H21','H22']
 NAbasehydrogens['U'] = ['H5','H3','H6']
 
+# classifications for ribose and phosphate interactions 
+NAbaseMassiveAndHydrogens = {}
+NAbaseMassiveAndHydrogens = {'A': [['H2',"C2","2BPh", "2BR"], ['H8',"C8","0BPh", "0BR"],['H61',"N6","6BPh", "6BR"],['H62',"N6","7BPh", "7BR"]],
+			'C': [['H6',"C6","0BPh","0BR"], ['H5',"C5","9BPh","9BR"], ['H41',"N4","7BPh","7BR"], ['H42',"N4", "6BPh", "6BR"]],
+			'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
+			'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]]}
+
 """Defining the parts of DNA nucleotides"""
 
 DNAribose = ["C1'","C2'","C3'","O3'","C4'","O4'","C5'"]
@@ -284,6 +291,12 @@ NAbasehydrogens['DA'] = ['H2','H8','H61','H62']
 NAbasehydrogens['DC'] = ['H6','H5','H41','H42']
 NAbasehydrogens['DG'] = ['H1','H8','H21','H22']
 NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
+
+# classifications for ribose and phosphate interactions 
+NAbaseMassiveAndHydrogens['DT'] = [['H6',"C6","0BPh","0BR"], ['H71', 'C5', '7BPh', '7BR'], ['H72', 'C5', '8BPh', '8BR'], ['H73', 'C5', '9BPh', '9BR'],['H3','N3','5BPh','5BR']]
+NAbaseMassiveAndHydrogens['DA'] = NAbaseMassiveAndHydrogens['A']
+NAbaseMassiveAndHydrogens['DC'] = NAbaseMassiveAndHydrogens['C']
+NAbaseMassiveAndHydrogens['DG'] = NAbaseMassiveAndHydrogens['G']
 
 NAbaseatoms = {}
 for base, atoms in NAbaseheavyatoms.items():
