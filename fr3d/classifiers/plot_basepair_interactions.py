@@ -45,7 +45,8 @@ from fr3d.localpath import storeMatlabFR3DPairs
 
 dssr_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_dssr'
 
-from fr3d.modified_parent_mapping import modified_nucleotides
+#Updated modified nucleotide mappings from atom_mappings_refined.txt
+from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 from orderBySimilarityTemp import treePenalizedPathLength
 
@@ -104,6 +105,10 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">h ang</th>'
     candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">h bad</th>'
 
+    if 'css' in Q['name'].lower():
+        candidatelist += '<th onclick="sortTable(19,\'instances\',\'alpha\')">SR12</th>'
+        candidatelist += '<th onclick="sortTable(20,\'instances\',\'alpha\')">SR21</th>'
+
     candidatelist += "</tr>\n"
 
     # write one row for each candidate
@@ -144,6 +149,10 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         candidatelist += "<td>%0.2f</td>" % candidate['max_distance']  #
         candidatelist += "<td>%0.2f</td>" % candidate['min_angle']  #
         candidatelist += "<td>%0.2f</td>" % candidate['max_badness']  #
+
+        if 'css' in Q['name'].lower():
+            candidatelist += "<td>%s</td>" % candidate['sugar_ribose']
+            candidatelist += "<td>%s</td>" % candidate['r_sugar_ribose']
 
         if 'hbond_messages' in candidate:
             for message in candidate['hbond_messages']:
@@ -256,7 +265,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         for line in Q["userMessage"]:
             messages += line + "<br>\n"
     else:
-        messages += "No error or warning messages.<br>\n"
+        #messages += "No error or warning messages.<br>\n"
+        pass
 
     template = template.replace("###MESSAGES###",messages)
 
@@ -417,25 +427,25 @@ def check_full_data(datapoint):
 def make_full_data(datapoint):
 
     if not 'x' in datapoint:
-        print('Adding x to %s' % datapoint)
+        #print('Adding x to %s' % datapoint)
         datapoint['x'] = 0.000
     if not 'y' in datapoint:
-        print('Adding y to %s' % datapoint)
+        #print('Adding y to %s' % datapoint)
         datapoint['y'] = 0.000
     if not 'z' in datapoint:
-        print('Adding z to %s' % datapoint)
+        #print('Adding z to %s' % datapoint)
         datapoint['z'] = 0.000
     if not 'gap12' in datapoint:
-        print('Adding gap12 to %s' % datapoint)
+        #print('Adding gap12 to %s' % datapoint)
         datapoint['gap12'] = 0.0
     if not 'gap21' in datapoint:
-        print('Adding gap21 to %s' % datapoint)
+        #print('Adding gap21 to %s' % datapoint)
         datapoint['gap21'] = 0.0
     if not 'normal_Z' in datapoint:
-        print('Adding normal_Z to %s' % datapoint)
+        #print('Adding normal_Z to %s' % datapoint)
         datapoint['normal_Z'] = 0.0
     if not 'angle_in_plane' in datapoint:
-        print('Adding angle_in_plane to %s' % datapoint)
+        #print('Adding angle_in_plane to %s' % datapoint)
         datapoint['angle_in_plane'] = 0.0
 
     return datapoint
@@ -588,7 +598,7 @@ def generate_LW_family_table(LW,DNA=False):
             for b2 in bases:
                 output += "<td>"
                 base_combination = b1 + "," + b2
-                if base_combination in nt_nt_cutoffs.keys():
+                if base_combination in nt_nt_cutoffs:
                     for interaction in nt_nt_cutoffs[base_combination].keys():
 
                         # make base edges uppercase since that's all we get from the pipeline
@@ -596,10 +606,9 @@ def generate_LW_family_table(LW,DNA=False):
                         interaction_lower = interaction_clean.lower()
 
                         if interaction_lower == LW_lower:
+                            link = "%s_%s-%s_%s.html" % (interaction_clean,b1,b2,resolution)
                             if DNA:
-                                link = "DNA_%s_%s-%s_%s.html" % (interaction_clean,b1,b2,resolution)
-                            else:
-                                link = "%s_%s-%s_%s.html" % (interaction_clean,b1,b2,resolution)
+                                link = "DNA_" + link
 
                             #output += '<a href="%s">%s,%s %s %s</a>' % (link,b1,b2,interaction,resolution)
                             output += '<a href="%s">%s,%s %s</a>' % (link,b1,b2,interaction_clean)
@@ -610,7 +619,7 @@ def generate_LW_family_table(LW,DNA=False):
                 elif b1 != b2:
                     base_combination = b2 + "," + b1
 
-                    if base_combination in nt_nt_cutoffs.keys():
+                    if base_combination in nt_nt_cutoffs:
                         for interaction in nt_nt_cutoffs[base_combination].keys():
 
                             # reverse interaction since we're looking at the lower part of the family
@@ -619,10 +628,9 @@ def generate_LW_family_table(LW,DNA=False):
                             interaction_lower = interaction_reverse.lower()
 
                             if interaction_lower == LW_lower:
+                                link = "%s_%s-%s_%s.html" % (interaction,b1,b2,resolution)
                                 if DNA:
-                                    link = "DNA_%s_%s-%s_%s.html" % (interaction,b2,b1,resolution)
-                                else:
-                                    link = "%s_%s-%s_%s.html" % (interaction,b2,b1,resolution)
+                                    link = "DNA_" + link
 
                                 #output += '<a href="%s">%s,%s %s %s</a>' % (link,b1,b2,LW,resolution)
                                 output += '<a href="%s">%s,%s %s</a>' % (link,b1,b2,interaction_reverse)
@@ -710,7 +718,7 @@ def load_dssr_basepairs(pdb_id):
 if __name__=="__main__":
 
     # test
-    #print(generate_LW_family_table('cWS'))
+    #print(generate_LW_family_table('cSS'))
     #print(crashmenow)
 
     write_html_pages = True
@@ -748,11 +756,11 @@ if __name__=="__main__":
     PDB_list = ['1NBS','6PMO']
     resolution = '1NBS_6PMO'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','8GLP','8B0X']
-    resolution = '2.0A'
-
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8GLP','8B0X','4M6D','4V88']
     resolution = '3.0A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','8GLP','8B0X']
+    resolution = '2.0A'
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv','8GLP','8B0X']
     resolution = '2.5A'
@@ -771,6 +779,11 @@ if __name__=="__main__":
 
     # load all datapoints on pairs of bases, whether annotated as paired or not
     all_PDB_ids = sorted(PDB_IFE_Dict.keys())
+
+    representative_chains = set(['8GLP|1|L5','8GLP|1|L8','8GLP|1|S2','8B0X|1|a','8B0X|1|A'])
+    for PDB, chains in PDB_IFE_Dict.items():
+        for chain in chains.split("+"):
+            representative_chains.add(chain)
 
     if '1VQO' in all_PDB_ids:
         all_PDB_ids.remove('1VQO')
@@ -820,21 +833,21 @@ if __name__=="__main__":
 
     print("Loading Python annotations from %d PDB files" % len(all_PDB_ids))
 
-    pair_to_data = defaultdict(dict)
+    pair_to_datapoint = defaultdict(dict)
 
     # load output files from NA_pairwise_interactions
     for PDB in all_PDB_ids:
-        pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
+        pair_to_datapoint_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
         try:
             if sys.version_info[0] < 3:
-                new_dict = pickle.load(open(pair_to_data_file,'rb'))
+                new_dict = pickle.load(open(pair_to_datapoint_file,'rb'))
             else:
-                new_dict = pickle.load(open(pair_to_data_file,'rb'),encoding = 'latin1')
-            pair_to_data.update(new_dict)
+                new_dict = pickle.load(open(pair_to_datapoint_file,'rb'),encoding = 'latin1')
+            pair_to_datapoint.update(new_dict)
             if len(new_dict.keys()) == 0:
                 print("No Python-annotated pairs in %s" % PDB)
         except:
-            print("Not able to load Python annotations for %s from %s" % (PDB,pair_to_data_file))
+            print("Not able to load Python annotations for %s from %s" % (PDB,pair_to_datapoint_file))
 
         interaction_to_pair_dssr = load_dssr_basepairs(PDB)
 
@@ -846,9 +859,12 @@ if __name__=="__main__":
         # loop over interactions for that base combination for which cutoffs are defined
         for interaction in nt_nt_cutoffs[base_combination].keys():
 
+            print('Thinking about %s %s' % (base_combination,interaction))
+
 
             # faster re-check when working on a specific category
-            if not interaction in ['tHS','tSH','ntHS','ntSH','tHSa','tSHa']:
+            #if not interaction in ['tHS','tSH','ntHS','ntSH','tHSa','tSHa']:
+            if not interaction.lower() in ['css','cssa','ncss']:
                 continue
 
 
@@ -857,10 +873,10 @@ if __name__=="__main__":
             interaction_upper = inter[0] + inter[1:3].upper()
             interaction_lower = inter.lower()
 
-            if interaction_upper in interactions_processed:
+            if inter in interactions_processed:
                 continue
             else:
-                interactions_processed.add(interaction_upper)
+                interactions_processed.add(inter)
 
             # don't show AA cHW because AA cWH will be shown, for example
             nt1_seq, nt2_seq = base_combination.split(",")
@@ -893,15 +909,24 @@ if __name__=="__main__":
             c = 0           # count points
 
             # loop over pairs for which we have data, finding those with the interaction and base combination
-            for pair,datapoint in pair_to_data.items():
+            for pair,datapoint in pair_to_datapoint.items():
+
+                # only keep pairs from representative chains
+                chain1 = "|".join(pair[0].split("|")[0:3])
+                if not chain1 in representative_chains:
+                    continue
+
+                chain2 = "|".join(pair[1].split("|")[0:3])
+                if not chain2 in representative_chains:
+                    continue
 
                 # restrict to the current base combination
                 b1 = datapoint['nt1_seq']
-                if not (b1 == nt1_seq or (b1 in modified_nucleotides.keys() and modified_nucleotides[b1]['standard'] == nt1_seq)):
+                if not (b1 == nt1_seq or (b1 in modified_base_to_parent and modified_base_to_parent[b1] == nt1_seq)):
                     continue
 
                 b2 = datapoint['nt2_seq']
-                if not (b2 == nt2_seq or (b2 in modified_nucleotides.keys() and modified_nucleotides[b2]['standard'] == nt2_seq)):
+                if not (b2 == nt2_seq or (b2 in modified_base_to_parent and modified_base_to_parent[b2] == nt2_seq)):
                     continue
 
                 fields1 = pair[0].split("|")
@@ -921,7 +946,7 @@ if __name__=="__main__":
                 have_data_in_other_order = False
 
                 # check different annotation schemes to decide how to show this datapoint
-                # check Python annotation that generated pair_to_data
+                # check Python annotation that generated pair_to_datapoint
                 if 'basepair' in datapoint and interaction in datapoint['basepair']:
                     Python = True
                 else:
@@ -939,8 +964,8 @@ if __name__=="__main__":
                 else:
                     dssr = False
 
-                if reverse(pair) in pair_to_data:
-                    r_datapoint = pair_to_data[reverse(pair)]
+                if reverse(pair) in pair_to_datapoint:
+                    r_datapoint = pair_to_datapoint[reverse(pair)]
                 else:
                     r_datapoint = {}
 
@@ -957,8 +982,8 @@ if __name__=="__main__":
 
                 if (Matlab or dssr) and not have_full_data and not skip_this_order:
 
-                    if reverse(pair) in pair_to_data:
-                        r_datapoint = pair_to_data[reverse(pair)]
+                    if reverse(pair) in pair_to_datapoint:
+                        r_datapoint = pair_to_datapoint[reverse(pair)]
 
                         if check_full_data(r_datapoint):
                             have_data_in_other_order = True
@@ -1115,7 +1140,7 @@ if __name__=="__main__":
                         new_python_annotation += ',hbond'
 
                     # only keep pairs if their parameters are somewhat close to the cutoffs for some category
-                    if best_cutoff_distance < 4 or (dssr and best_cutoff_distance < 7) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 7):
+                    if best_cutoff_distance < 2 or (dssr and best_cutoff_distance < 2) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 2):
 
                         c += 1
                         xvalues.append(datapoint['x'])
@@ -1144,6 +1169,16 @@ if __name__=="__main__":
                         pdata['matlab_annotation'] = matlab_annotation
                         pdata['dssr_annotation'] = dssr_annotation
                         pdata['best_cutoff_distance'] = best_cutoff_distance
+
+                        if 'sugar_ribose' in datapoint:
+                            pdata['sugar_ribose'] = datapoint['sugar_ribose']
+                        else:
+                            pdata['sugar_ribose'] = ''
+
+                        if 'sugar_ribose' in r_datapoint:
+                            pdata['r_sugar_ribose'] = r_datapoint['sugar_ribose']
+                        else:
+                            pdata['r_sugar_ribose'] = ''
 
                         pair_data.append(pdata)
 
@@ -1388,8 +1423,6 @@ if __name__=="__main__":
                 the coordinate window and a heat map of all-against-all distances.
                 """
                 writeHTMLOutput(Q,reorder_pairs,reorder_dista)
-
-                print("Wrote HTML file")
 
     print("Saved figures in %s/plots" % outputNAPairwiseInteractions)
     print("Saved HTML files in %s" % OUTPUTPATH)

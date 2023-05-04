@@ -117,8 +117,8 @@ PDB_list = ['7QI4','6S0Z','4C8Z','5FQ5','5D5L','5AOX','7K16','5CCB','4V8Y','8D28
 PDB_list = ['7O7Y','7O7Z','8A3D']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8B0X','4M6D','3IWN','4V88','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
 
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -129,7 +129,8 @@ categories = {}
 #categories['sO'] = []        # annotate all sO interactions
 categories['coplanar'] = []   # necessary to get all data for datapoint
 categories['basepair'] = []
-categories['stacking'] = []
+#categories['stacking'] = []
+categories['sugar_ribose']   = []
 #categories['backbone'] = []
 
 ShowStructureReadingErrors = True
@@ -198,6 +199,9 @@ for PDB in sorted(PDBs):
 
             structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
             print(messages)
+
+            if not structure:
+                continue
 
             """
             print('Loading directly with the cif reader')
