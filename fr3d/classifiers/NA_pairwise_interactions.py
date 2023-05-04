@@ -450,7 +450,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     """
 
     count_pair = 0
-    ntDict = []
 
     interaction_to_pair_list = defaultdict(list) # map interaction to list of pairs
     category_to_interactions = defaultdict(set)  # map category to list of observed interactions
@@ -461,8 +460,11 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     basepair_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
 
-    # only do this once, for all nucleotides
-    ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
+    # For base-backbone interactions, we need to know
+    if 'backbone' in categories.keys():
+        ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
+    else:
+        ntDict = []
 
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
@@ -594,7 +596,24 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction)
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
-                        if 'backbone' in categories.keys(): #annotate base phosphate and base ribose interactions
+                        # annotate sugar ribose interactions;
+                        if 'sugar_ribose' in categories.keys():
+                            timerData = myTimer("Check sugar ribose", timerData)
+                            if not parent1 in ['DA','DC','DG','DT'] and not parent2 in ['DA','DC','DG','DT']:
+                                interaction, datapoint12 = check_sugar_ribose(nt1, nt2, parent1, datapoint12)
+                                if len(interaction) > 0:
+                                    count_pair += 1
+                                    interaction_to_pair_list[interaction].append(unit_id_pair)
+                                    category_to_interactions['sugar_ribose'].add(interaction)
+
+                                interaction, datapoint21 = check_sugar_ribose(nt2, nt1, parent2, datapoint21)
+                                if len(interaction) > 0:
+                                    count_pair += 1
+                                    interaction_to_pair_list[interaction].append(reversed_pair)
+                                    category_to_interactions['sugar_ribose'].add(interaction)
+
+                        # annotate base phosphate and base ribose interactions
+                        if 'backbone' in categories.keys():
                             timerData = myTimer("Check backbone interactions", timerData)
                             if nt1.index -1 > 0:
                                 try:
@@ -2073,6 +2092,115 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
     return gap12, base_points2
 
 
+def get_atom_coordinates(nt,atom_name):
+    """
+    Get coordinates of the specified atom,
+    mapping to a modified nucleotide if necessary.
+    """
+
+    # default
+    coordinates = nt.centers[atom_name]
+
+    # check if there is a mapping
+    seq = nt.sequence
+    if not seq in ['A','C','G','U','DA','DC','DG','DT']:
+        if seq in parent_atom_to_modified:
+            # map the atom name
+            if atom_name in parent_atom_to_modified[seq]:
+                coordinates = nt.centers[parent_atom_to_modified[seq][atom_name]]
+
+    return coordinates
+
+def check_sugar_ribose(nt1,nt2,parent1,datapoint):
+    """
+    Check for O2'-O2' distance being compatible with a hydrogen bond.
+    When nt1 is C or U, check O2-O2' distance and O2' being near the plane of base 1
+    When nt2 is A or G, check N3-O2' distance and O2' being near the plane of base 1
+
+    """
+
+    nt1_o2p = get_atom_coordinates(nt1,"O2'")
+
+    if not len(nt1_o2p) == 3:
+        # nt1 has no identified O2' atom
+        return "", datapoint
+
+    nt2_o2p = get_atom_coordinates(nt2,"O2'")
+
+    if not len(nt2_o2p) == 3:
+        # nt2 has no identified O2' atom
+        return "", datapoint
+
+    o2p_o2p_displ = np.subtract(nt1_o2p,nt2_o2p)
+    o2p_o2p_distance = np.linalg.norm(o2p_o2p_displ)
+
+    if o2p_o2p_distance > 4.0:
+        # O2' atoms are too far apart
+        return "", datapoint
+
+    if datapoint:
+        datapoint['o2p_o2p_distance'] = o2p_o2p_distance
+
+    if parent1 in ['A', 'G']:
+        base_point = get_atom_coordinates(nt1,'N3')
+    elif parent1 in ['C','U']:
+        base_point = get_atom_coordinates(nt1,'O2')
+    else:
+        base_point = None
+
+    if not len(base_point) == 3:
+        # nt1 does not have the appropriate base atom
+        return "", datapoint
+
+    base_o2p_displ = np.subtract(base_point,nt2_o2p)
+    base_o2p_distance = np.linalg.norm(base_o2p_displ)
+
+    if base_o2p_distance > 4.0:
+        # nt1 base atom is too far from nt2 O2' atom
+        return "", datapoint
+
+    if datapoint:
+        datapoint['base_o2p_distance'] = base_o2p_distance
+
+    z = abs(np.dot(base_o2p_displ,nt1.rotation_matrix[:,2])[0,0])  # distance of nt2 O2' out of plane of nt1
+
+    if z > 2.0:
+        # nt2 O2' atom is too far above or below the plane of base of nt1
+        return "", datapoint
+
+    if datapoint:
+        datapoint['nt2_o2p_height'] = z
+
+    p0 = get_atom_coordinates(nt1,"C1'")
+    p1 = get_atom_coordinates(nt1,"C2'")
+    p2 = get_atom_coordinates(nt2,"C2'")
+    p3 = get_atom_coordinates(nt2,"C1'")
+
+    if len(p0) == 3 and len(p1) == 3 and len(p2) == 3 and len(p3) == 3:
+        angle = torsion_angle(p0,p1,p2,p3)
+        if abs(angle) > 90:
+            # cis case, as in cSS
+            annotation = 'cSR'
+        else:
+            # trans case, base flipped over compared to cSS
+            annotation = 'tSR'
+    else:
+        print('Not able to calculate orientation of SR annotation for %s-%s' % (nt1.unit_id(),nt2.unit_id()))
+        return "", datapoint
+
+    """
+    if abs(angle) > 90:
+        print('cSR %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+    else:
+        print('tSR %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+    """
+
+    if datapoint:
+        datapoint['sugar_ribose'] = annotation
+
+    return annotation, datapoint
+
+
 def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     """
     Given nt1 and nt2 and the dictionary of cutoffs
@@ -2373,13 +2501,14 @@ def get_glycosidic_atom_coordinates(nt,parent):
         gly = nt.centers["N9"]
     elif nt.sequence in ['C','U','DC','DT']:
         gly = nt.centers["N1"]
-    elif nt.sequence in modified_base_to_parent.keys():
+    elif nt.sequence in parent_atom_to_modified:
         if parent in ['A','G','DA','DG']:
             gly = nt.centers[parent_atom_to_modified[nt.sequence]["N9"]]
         elif parent in ['C','U','DC','DT']:
             gly = nt.centers[parent_atom_to_modified[nt.sequence]["N1"]]
 
     return gly
+
 
 def get_axis_angle_from_rotation_matrix(rotation):
     """
@@ -2457,10 +2586,12 @@ def normal_vector_calculation(residue):
     else:
         return []
 
+
 # this function calculates the angle made from A to B to C from 0 to 180 degrees
 def calculate_hb_angle(A,B,C):
     if len(A) == 3 and len(B) == 3 and len(C) == 3:
         return angle_between_vectors(np.subtract(A,B),np.subtract(C,B))
+
 
 # This function calculates an angle from 0 to 90 degrees between two vectors
 def smaller_angle_between_vectors(vec1, vec2):
@@ -2472,8 +2603,9 @@ def smaller_angle_between_vectors(vec1, vec2):
     else:
         return None
 
-# This function calculates an angle from 0 to 180 degrees between two vectors
+
 def angle_between_vectors(vec1, vec2):
+    # Calculate an angle from 0 to 180 degrees between two vectors
     if len(vec1) == 3 and len(vec2) == 3:
         cosang = np.dot(vec1, vec2)
         sinang = np.linalg.norm(np.cross(vec1, vec2))
@@ -2482,15 +2614,17 @@ def angle_between_vectors(vec1, vec2):
     else:
         return None
 
-# This function calculates an angle from 0 to 180 degrees between two vectors
+
 def angle_between_three_points(P1,P2,P3):
+    # Calculate an angle from 0 to 180 degrees between vector P2-P1 and P2-P3
     if len(P1) == 3 and len(P2) == 3 and len(P3) == 3:
         return angle_between_vectors(P1-P2,P3-P2)
     else:
         return None
 
-# This function calculates an angle from 0 to 180 degrees between two vectors
+
 def distance_between_vectors(vec1, vec2):
+    # Calculate the distance between two vectors
     if len(vec1) == 3 and len(vec2) == 3:
         return np.linalg.norm(np.subtract(vec1,vec2))
     else:
@@ -2501,10 +2635,39 @@ def unit_vector(v):
     return v / np.linalg.norm(v)
 
 
+def torsion_angle(p0,p1,p2,p3):
+    """
+    From https://stackoverflow.com/questions/20305272/dihedral-torsion-angle-from-four-points-in-cartesian-coordinates-in-python
+    Pass in four vectors.
+    """
+
+    b0 = -1.0*(p1 - p0)
+    b1 = p2 - p1
+    b2 = p3 - p2
+
+    # normalize b1 so that it does not influence magnitude of vector
+    # rejections that come next
+    b1 /= np.linalg.norm(b1)
+
+    # vector rejections
+    # v = projection of b0 onto plane perpendicular to b1
+    #   = b0 minus component that aligns with b1
+    # w = projection of b2 onto plane perpendicular to b1
+    #   = b2 minus component that aligns with b1
+    v = b0 - np.dot(b0, b1)*b1
+    w = b2 - np.dot(b2, b1)*b1
+
+    # angle between v and w in a plane is the torsion angle
+    # v and w may not be normalized but that's fine since tan is y/x
+    x = np.dot(v, w)
+    y = np.dot(np.cross(b1, v), w)
+    return np.degrees(np.arctan2(y, x))
+
 def map_PDB_list_to_PDB_IFE_dict(PDB_list):
     """
     map a list of PDB ids or IFEs or URLs to a dictionary whose keys
-    are PDB ids and whose values are IFEs in that PDB
+    are PDB ids and whose values are representative chains in that PDB.
+    If one PDB has a lot of representative chains, several chains will be joined with +.
     """
 
     PDB_IFE_Dict = defaultdict(str)   # accumulate PDB-IFE pairs
@@ -2559,6 +2722,12 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
                 PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
         except:
             print("Not able to process %s" % PDB)
+
+    # remove leading + signs
+    for PDB in PDB_IFE_Dict:
+        if PDB_IFE_Dict[PDB].startswith("+"):
+            PDB_IFE_Dict[PDB] = PDB_IFE_Dict[PDB][1:]
+
     return PDB_IFE_Dict
 
 
