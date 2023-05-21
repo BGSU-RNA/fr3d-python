@@ -2156,7 +2156,7 @@ def check_sugar_ribose(nt1,nt2,parent1,datapoint):
     o2p_o2p_displ = np.subtract(nt1_o2p,nt2_o2p)
     o2p_o2p_distance = np.linalg.norm(o2p_o2p_displ)
 
-    if o2p_o2p_distance > 4.0:
+    if o2p_o2p_distance > 3.8:
         # O2' atoms are too far apart
         return "", datapoint
 
@@ -2177,7 +2177,7 @@ def check_sugar_ribose(nt1,nt2,parent1,datapoint):
     base_o2p_displ = np.subtract(base_point,nt2_o2p)
     base_o2p_distance = np.linalg.norm(base_o2p_displ)
 
-    if base_o2p_distance > 4.0:
+    if base_o2p_distance > 3.8:
         # nt1 base atom is too far from nt2 O2' atom
         return "", datapoint
 
