@@ -311,9 +311,9 @@ class Component(EntitySelector):
             """
 
         R = np.array(R)
-        R = R.astype(np.float)
+        R = R.astype(float)
         S = np.array(S)
-        S = S.astype(np.float)
+        S = S.astype(float)
 
         try:
             rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
