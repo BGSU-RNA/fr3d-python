@@ -16,28 +16,56 @@
     # modified_base_to_hydrogens_coordinates['PSU']['HN1']: triple of coordinates of H5, the hydrogen of U that PSU HN1 is mapped to
     # modified_base_atom_list['PSU']: list of names of all atoms in PSU
 import csv
-from traceback import print_exception
 from fr3d import definitions as defs
 import os 
 import sys
 
-if sys.version_info[0] < 3:
-    #Deals with opening csv file
-    from io import open as open
+from fr3d.data.atom_mappings_refined import mapping_text
 
+#from traceback import print_exception
+# if sys.version_info[0] < 3:
+#     #Deals with opening csv file
+#     from io import open as open
+
+if sys.version_info[0] < 3:
+    read_mode = 'rb'
+else:
+    read_mode = 'rt'
 
 def create_modified_nucleotide_to_parent_mappings():
     # Read in mapping file wherever its located on system in python path. Read file line by line and create mapping.
     modified_atom_map = {}
+
+    """
+    # this seemed like a good idea, but caused problems on a user's system
     path =  os.path.dirname(os.path.abspath(__file__))
-    subject = csv.reader(open(os.path.join(path, "atom_mappings_refined.txt"), "r", encoding="utf8"), delimiter="\t")
-    for line in subject:
-        lastline = ""
-        if len(line) > 3:
-            if line[2] not in modified_atom_map.keys():
-                modified_atom_map[line[2]] = []
-            modified_atom_map[line[2]].append((line[0], line[1], line[3]))
+
+    with open(os.path.join(path, "atom_mappings_refined.txt"), read_mode) as fid:
+        lines = fid.readlines()
+
+    for line in lines:
+        fields = line.split()
+        if len(fields) == 4:
+            if not fields[2] in modified_atom_map:
+                modified_atom_map[fields[2]] = []
+            modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
+    """
+
+    # subject = csv.reader(open(os.path.join(path, "atom_mappings_refined.txt"), "r", encoding="utf8"), delimiter="\t")
+    # for line in subject:
+    #     lastline = ""
+    #     if len(line) > 3:
+    #         if line[2] not in modified_atom_map.keys():
+    #             modified_atom_map[line[2]] = []
+    #         modified_atom_map[line[2]].append((line[0], line[1], line[3]))
                                             #parent,    parentAtom, mapped modified atom
+    for line in mapping_text.split("\n"):
+        fields = line.split()
+        if len(fields) == 4:
+            if not fields[2] in modified_atom_map:
+                modified_atom_map[fields[2]] = []
+            modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
+
     modified_base_to_hydrogens = {}
     modified_atom_to_parent = {}
     parent_atom_to_modified = {}
@@ -63,12 +91,12 @@ def create_modified_nucleotide_to_parent_mappings():
                     modified_base_to_hydrogens[modified_nucleotide].append(atom[2])
                     modified_base_to_hydrogens_coordinates[modified_nucleotide][atom[2]] = (defs.NAbasecoordinates[atom[0]][atom[1]])
 
-    return modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates
+    return modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates
 
 
 try:
-    modified_atom_map, modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
-    print("Modified nucleotide mappings read successfully.")
+    modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
+    # print("Modified nucleotide mappings read successfully.")
 except Exception as e:
     print("Unable to load mappings for modified nucleotides.")
     print('Error message: %s' % str(e))
