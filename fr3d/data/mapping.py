@@ -20,7 +20,7 @@ from fr3d import definitions as defs
 import os 
 import sys
 
-from fr3d.data.atom_mappings_refined import mapping_text
+#from fr3d.data.atom_mappings_refined import mapping_text
 
 #from traceback import print_exception
 # if sys.version_info[0] < 3:
@@ -36,11 +36,15 @@ def create_modified_nucleotide_to_parent_mappings():
     # Read in mapping file wherever its located on system in python path. Read file line by line and create mapping.
     modified_atom_map = {}
 
-    """
-    # this seemed like a good idea, but caused problems on a user's system
-    path =  os.path.dirname(os.path.abspath(__file__))
+    # the next line caused problems on a user's system
+    #path =  os.path.dirname(os.path.abspath(__file__))
 
-    with open(os.path.join(path, "atom_mappings_refined.txt"), read_mode) as fid:
+    # this works better in the hydrogen_bonds.py program, maybe it will work here:
+    current_path,current_program = os.path.split(os.path.abspath(__file__))
+
+    filename = os.path.join(current_path,"atom_mappings_refined.txt")
+
+    with open(filename, read_mode) as fid:
         lines = fid.readlines()
 
     for line in lines:
@@ -49,7 +53,6 @@ def create_modified_nucleotide_to_parent_mappings():
             if not fields[2] in modified_atom_map:
                 modified_atom_map[fields[2]] = []
             modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
-    """
 
     # subject = csv.reader(open(os.path.join(path, "atom_mappings_refined.txt"), "r", encoding="utf8"), delimiter="\t")
     # for line in subject:
@@ -59,12 +62,15 @@ def create_modified_nucleotide_to_parent_mappings():
     #             modified_atom_map[line[2]] = []
     #         modified_atom_map[line[2]].append((line[0], line[1], line[3]))
                                             #parent,    parentAtom, mapped modified atom
+
+    """
     for line in mapping_text.split("\n"):
         fields = line.split()
         if len(fields) == 4:
             if not fields[2] in modified_atom_map:
                 modified_atom_map[fields[2]] = []
             modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
+    """
 
     modified_base_to_hydrogens = {}
     modified_atom_to_parent = {}
