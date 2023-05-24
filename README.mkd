@@ -71,7 +71,7 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
 ### Understanding the output
 
 Note that as of April 2022, NA_pairwise_interactions.py outputs annotations of RNA basepairs, including basepairs made by some modified nucleotides, but this is in a test phase, and not all basepairs are being annotated.
-Work to refine the basepair annotations will continue in Summer 2022.
+Work to refine the basepair annotations will continue in Spring 2023; nearly done!
 
 The program `NA_pairwise_interactions.py` generates tab-separated files called `<pdb_id>_basepairs.txt` that list basepair interactions between pairs of nucleotides (an RNA 3D structure can contain 0 or more basepairs). The files contain the following fields:
 
@@ -94,10 +94,10 @@ For example:
 ```
 git clone https://github.com/BGSU-RNA/fr3d-python
 cd fr3d-python
-python setup.py install
+python -m pip install .
 ```
 
-:warning: Any time files such as `fr3d/cif/reader.py` get edited, you need to rerun the `python setup.py install` command.
+:warning: Any time files such as `fr3d/cif/reader.py` get edited, you need to rerun the `python -m pip install .` command.
 
 ### Set up on Python 2.7
 
