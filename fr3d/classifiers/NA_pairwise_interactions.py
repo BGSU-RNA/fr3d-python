@@ -75,9 +75,7 @@ from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cuto
 from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
 
-#old modified nucleotide mappings
-#from fr3d.modified_parent_mapping import modified_base_to_parent
-#Updated modified nucleotide mappings from atom_mappings_refined.txt
+# Modified nucleotide mappings from atom_mappings_refined.py
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 # read input and output paths from localpath.py
