@@ -42,7 +42,11 @@ def create_modified_nucleotide_to_parent_mappings():
     # this works better in the hydrogen_bonds.py program, maybe it will work here:
     current_path,current_program = os.path.split(os.path.abspath(__file__))
 
+    print('mapping.py is being run in path %s' % current_path)
+
     filename = os.path.join(current_path,"atom_mappings_refined.txt")
+
+    print('mapping.py is trying to open %s' % filename)
 
     with open(filename, read_mode) as fid:
         lines = fid.readlines()
@@ -100,9 +104,12 @@ def create_modified_nucleotide_to_parent_mappings():
     return modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates
 
 
+modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
+
+
 try:
-    modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
+    pass
     # print("Modified nucleotide mappings read successfully.")
 except Exception as e:
-    print("Unable to load mappings for modified nucleotides.")
+    print("mapping.py is unable to load mappings for modified nucleotides.")
     print('Error message: %s' % str(e))
