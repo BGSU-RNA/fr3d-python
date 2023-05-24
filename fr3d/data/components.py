@@ -8,10 +8,16 @@ import numpy as np
 import sys
 from fr3d.unit_ids import encode
 
-from fr3d.data.mapping import parent_atom_to_modified
-from fr3d.data.mapping import modified_atom_to_parent
-from fr3d.data.mapping import modified_base_to_parent
-from fr3d.data.mapping import modified_base_atom_list
+
+from fr3d.data.mapping import *
+
+# from fr3d.data.mapping import parent_atom_to_modified
+# from fr3d.data.mapping import parent_atom_to_modified
+# from fr3d.data.mapping import modified_atom_to_parent
+# from fr3d.data.mapping import modified_base_to_parent
+# from fr3d.data.mapping import modified_base_atom_list
+# from fr3d.data.mapping import modified_base_to_hydrogens
+# from fr3d.data.mapping import modified_base_to_hydrogens_coordinates
 
 NHBondLength=1
 
@@ -458,8 +464,6 @@ class Component(EntitySelector):
             # repeat similar logic but for modified nucleotides. Written out twice so that modified nucleotides logic doesn't slow down normal bases as they're much less frequent.
             elif self.sequence in modified_base_to_parent:
                 already = []
-                from fr3d.data.mapping import modified_base_to_hydrogens
-                from fr3d.data.mapping import modified_base_to_hydrogens_coordinates
                 for atom in self._atoms:
                     if 'H' in atom.name:
                         already.append(atom)
