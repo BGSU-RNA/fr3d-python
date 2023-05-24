@@ -6,6 +6,7 @@ CLZ removed reversible cases cWW,C,G; cWW,U,A; cWW,U,G; cWW,G,A; tWW,C,A; tWW,U,
 cHH,C,G; cHH,G,A
 CLZ changed the case of the edges in non-symmetric, non-reversible cases like cWw,A,A
 CLZ swapped the roles of H41 and H42 because H41 is on the Watson-Crick edge
+CLZ removed cis S/s,G,A,N2,H21,---,N1,-, on 2023-05-16 on advice of Eric Westhof because the geometry is not good and also one does not need four hydrogen bonds
 Do not put commas in the comment lines, the code counts commas on each line!
 
 TYPE,Bases,,ATOM 1,ATOM 2 ,H-bond,ATOM 3 ,ATOM 4,
@@ -216,6 +217,7 @@ cis S/s,A,U,-,O2',---,H2',O2',
 cis S/s,A,U,O2',H2',---,O2,-,
 cis S/s,C,A,-,O2',---,H2',O2',
 cis S/s,C,A,O2',H2',---,N3,-,
+cis S/s,C,A,-,O2,---,H2,C2,              *** added 2023-05-16 CLZ to resemble UA cSS ***
 cis S/s,C,C,-,O2',---,H2',O2',
 cis S/s,C,C,O2',H2',---,O2,-,
 cis S/s,C,G,O2',H2',---,N3,-,
@@ -225,7 +227,6 @@ cis S/s,C,U,-,O2',---,H2',O2',
 cis S/s,C,U,O2',H2',---,O2,-,
 cis S/s,G,A,O2',H2',---,N3,-,
 cis S/s,G,A,-,N3,---,H2,C2,
-cis S/s,G,A,N2,H21,---,N1,-,
 cis S/s,G,A,-,O2',---,H2',O2',
 cis S/s,G,C,-,O2',---,H2',O2',
 cis S/s,G,C,O2',H2',---,O2,-,
