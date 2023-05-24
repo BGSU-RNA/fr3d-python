@@ -3040,7 +3040,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,backbone,coplanar,basepair_detail,covalent)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,backbone,coplanar,basepair_detail,covalent,sugar_ribose)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
