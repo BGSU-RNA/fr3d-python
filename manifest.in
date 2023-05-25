@@ -1,0 +1,3 @@
+include fr3d/data/*.txt
+include fr3d/classifiers/*.html
+include fr3d/classifiers/*.csv

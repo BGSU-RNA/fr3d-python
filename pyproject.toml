@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fr3d"
+version = "0.0.1"
+description = "Python implementation of FR3D"
+authors = [{name="Craig L. Zirbel and others", email="zirbel@bgsu.edu"}]
+
+dependencies = [
+	"numpy",
+	"scipy",
+	"mmcif-pdbx; python_version>='3.0'"
+]
+
+
