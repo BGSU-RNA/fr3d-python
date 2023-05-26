@@ -44,6 +44,8 @@ from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
 
 dssr_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_dssr'
+rnaview_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_rnaview'
+pdb_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_pdb'
 
 #Updated modified nucleotide mappings from atom_mappings_refined.txt
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
@@ -90,24 +92,26 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">Position %d</th>' % (j+2,j+1)
         sequence_column += 1
     candidatelist += '<th onclick="sortTable(4,\'instances\',\'alpha\')">DSSR</th>'
-    candidatelist += '<th onclick="sortTable(5,\'instances\',\'alpha\')">Matlab</th>'
-    candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">Python</th>'
-    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">Python check</th>'
-    candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">Subcat</th>'
-    candidatelist += '<th onclick="sortTable(9,\'instances\',\'numeric\')">cut dist</th>'
-    candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">x</th>'
-    candidatelist += '<th onclick="sortTable(11,\'instances\',\'numeric\')">y</th>'
-    candidatelist += '<th onclick="sortTable(12,\'instances\',\'numeric\')">z</th>'
-    candidatelist += '<th onclick="sortTable(13,\'instances\',\'numeric\')">maxgap</th>'
-    candidatelist += '<th onclick="sortTable(14,\'instances\',\'numeric\')">plane ang</th>'
-    candidatelist += '<th onclick="sortTable(15,\'instances\',\'numeric\')">normal_z</th>'
-    candidatelist += '<th onclick="sortTable(16,\'instances\',\'numeric\')">h dist</th>'
-    candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">h ang</th>'
-    candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">h bad</th>'
+    candidatelist += '<th onclick="sortTable(5,\'instances\',\'alpha\')">RNAview</th>'
+    candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">pdb</th>'
+    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">FR3D</th>'
+    candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">New FR3D</th>'
+    candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">Newest FR3D</th>'
+    candidatelist += '<th onclick="sortTable(10,\'instances\',\'alpha\')">Subcat</th>'
+    candidatelist += '<th onclick="sortTable(11,\'instances\',\'numeric\')">cut dist</th>'
+    candidatelist += '<th onclick="sortTable(12,\'instances\',\'numeric\')">x</th>'
+    candidatelist += '<th onclick="sortTable(13,\'instances\',\'numeric\')">y</th>'
+    candidatelist += '<th onclick="sortTable(14,\'instances\',\'numeric\')">z</th>'
+    candidatelist += '<th onclick="sortTable(15,\'instances\',\'numeric\')">maxgap</th>'
+    candidatelist += '<th onclick="sortTable(16,\'instances\',\'numeric\')">plane ang</th>'
+    candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">normal_z</th>'
+    candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">h dist</th>'
+    candidatelist += '<th onclick="sortTable(19,\'instances\',\'numeric\')">h ang</th>'
+    candidatelist += '<th onclick="sortTable(20,\'instances\',\'numeric\')">h bad</th>'
 
     if 'css' in Q['name'].lower():
-        candidatelist += '<th onclick="sortTable(19,\'instances\',\'alpha\')">SR12</th>'
-        candidatelist += '<th onclick="sortTable(20,\'instances\',\'alpha\')">SR21</th>'
+        candidatelist += '<th onclick="sortTable(21,\'instances\',\'alpha\')">SR12</th>'
+        candidatelist += '<th onclick="sortTable(22,\'instances\',\'alpha\')">SR21</th>'
 
     candidatelist += "</tr>\n"
 
@@ -135,6 +139,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
         # write Python, Matlab interactions
         candidatelist += "<td>%s</td>" % candidate['dssr_annotation']  # dssr
+        candidatelist += "<td>%s</td>" % candidate['rnaview_annotation']  # rnaview
+        candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
         candidatelist += "<td>%s</td>" % candidate['matlab_annotation']  # matlab
         candidatelist += "<td>%s</td>" % candidate['python_annotation']  # python
         candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # new python
@@ -444,9 +450,10 @@ def make_full_data(datapoint):
     if not 'normal_Z' in datapoint:
         #print('Adding normal_Z to %s' % datapoint)
         datapoint['normal_Z'] = 0.0
-    if not 'angle_in_plane' in datapoint:
-        #print('Adding angle_in_plane to %s' % datapoint)
-        datapoint['angle_in_plane'] = 0.0
+    # There is no value we can set that does not mess up the scatterplot
+    # if not 'angle_in_plane' in datapoint:
+    #     #print('Adding angle_in_plane to %s' % datapoint)
+    #     datapoint['angle_in_plane'] = None  # otherwise it really messes up the scale
 
     return datapoint
 
@@ -525,9 +532,11 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables):
                                 # angle does not wrap around 270 degrees
                                 ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             else:
-                                # angle wraps around 270 degrees
-                                ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
-                                ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
+                                # angle wraps around 270 degrees, plot from maybe 240 to 300
+                                # xmin may be 240, xmax may be -50
+                                ax.plot([xmin,xmax+360,xmax+360,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                #ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
+                                #ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
 
                             cc += 1
                         if variables == 4:            # gap and z
@@ -549,8 +558,9 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables):
                                 ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             else:
                                 # angle wraps around 270 degrees
-                                ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
-                                ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
+                                ax.plot([xmin,xmax+360,xmax+360,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                #ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
+                                #ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
 
                             cc += 1
 
@@ -565,8 +575,9 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables):
                                 ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             else:
                                 # angle wraps around 270 degrees
-                                ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
-                                ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
+                                ax.plot([xmin,xmax+360,xmax+360,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                # ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
+                                # ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
 
                             cc += 1
 
@@ -713,6 +724,37 @@ def load_dssr_basepairs(pdb_id):
 
     return interaction_to_pair
 
+
+def load_rnaview_basepairs(pdb_id):
+
+    pickle_filename = os.path.join(rnaview_basepair_path,pdb_id+'_pairs.pickle')
+
+    interaction_to_pair = {}
+
+    if os.path.exists(pickle_filename):
+        if sys.version_info[0] < 3:
+            interaction_to_pair = pickle.load(open(pickle_filename,"rb"))
+        else:
+            interaction_to_pair = pickle.load(open(pickle_filename,"rb"), encoding = 'latin1')
+
+    return interaction_to_pair
+
+def load_pdb_basepairs(pdb_id):
+
+    pickle_filename = os.path.join(pdb_basepair_path,pdb_id+'_pairs.pickle')
+
+    interaction_to_pair = {}
+
+    if os.path.exists(pickle_filename):
+        if sys.version_info[0] < 3:
+            interaction_to_pair = pickle.load(open(pickle_filename,"rb"))
+        else:
+            interaction_to_pair = pickle.load(open(pickle_filename,"rb"), encoding = 'latin1')
+
+    return interaction_to_pair
+
+
+
 #=========================================== Main block =============================
 
 if __name__=="__main__":
@@ -750,20 +792,23 @@ if __name__=="__main__":
     # look at 4V88 cSH
     # 7JQQ is 4.1A resolution but has both RNA and DNA coordinates in the server, so we can see DNA pairs
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
-    resolution = '1.5A'
-
     PDB_list = ['1NBS','6PMO']
     resolution = '1NBS_6PMO'
 
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8GLP','8B0X','4M6D','4V88']
-    resolution = '3.0A'
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','8GLP','8B0X']
+    resolution = '2.0A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
+    resolution = '1.5A'
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','8GLP','8B0X']
     resolution = '2.0A'
 
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv','8GLP','8B0X']
     resolution = '2.5A'
+
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8GLP','8B0X','4M6D','4V88']
+    resolution = '3.0A'
 
     # zzz
 
@@ -785,15 +830,6 @@ if __name__=="__main__":
         for chain in chains.split("+"):
             representative_chains.add(chain)
 
-    if '1VQO' in all_PDB_ids:
-        all_PDB_ids.remove('1VQO')
-    if '1VQN' in all_PDB_ids:
-        all_PDB_ids.remove('1VQN')  # essentially the same as 4V9F, here because of 2 nt chains
-    if '4V8D' in all_PDB_ids:
-        all_PDB_ids.remove('4V8D')
-    if '8AYE' in all_PDB_ids:
-        all_PDB_ids.remove('8AYE')
-
     print("Working on %d PDB files" % len(all_PDB_ids))
 
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
@@ -801,6 +837,8 @@ if __name__=="__main__":
     # load annotations of these PDB files from the BGSU RNA server
     pair_to_interaction_matlab = defaultdict(str)
     pair_to_interaction_dssr = defaultdict(str)
+    pair_to_interaction_rnaview = defaultdict(str)
+    pair_to_interaction_pdb = defaultdict(str)
 
     if not DNA:
         print('Loading Matlab annotations')
@@ -820,7 +858,7 @@ if __name__=="__main__":
         #print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
         #print("Found Matlab annotations in %s files" % (len(all_PDB_ids)-len(PDB_skip_set))
 
-    print('Loading DSSR annotations to %s' % dssr_basepair_path)
+    print('Loading DSSR annotations from %s' % dssr_basepair_path)
     for PDB_id in all_PDB_ids:
         interaction_to_triples = load_dssr_basepairs(PDB_id)
         for interaction in interaction_to_triples.keys():
@@ -828,6 +866,24 @@ if __name__=="__main__":
             if "c" in interaction or "t" in interaction:
                 for u1,u2,crossing in interaction_to_triples[interaction]:
                     pair_to_interaction_dssr[(u1,u2)] = interaction
+
+    print('Loading RNAview annotations from %s' % rnaview_basepair_path)
+    for PDB_id in all_PDB_ids:
+        interaction_to_triples = load_rnaview_basepairs(PDB_id)
+        for interaction in interaction_to_triples.keys():
+            # store all basepairs and only basepairs
+            if "c" in interaction or "t" in interaction:
+                for u1,u2,crossing in interaction_to_triples[interaction]:
+                    pair_to_interaction_rnaview[(u1,u2)] = interaction
+
+    print('Loading PDB annotations from %s' % pdb_basepair_path)
+    for PDB_id in all_PDB_ids:
+        interaction_to_triples = load_pdb_basepairs(PDB_id)
+        for interaction in interaction_to_triples.keys():
+            # store all basepairs and only basepairs
+            if "c" in interaction or "t" in interaction:
+                for u1,u2,crossing in interaction_to_triples[interaction]:
+                    pair_to_interaction_pdb[(u1,u2)] = interaction
 
     #all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
 
@@ -849,8 +905,6 @@ if __name__=="__main__":
         except:
             print("Not able to load Python annotations for %s from %s" % (PDB,pair_to_datapoint_file))
 
-        interaction_to_pair_dssr = load_dssr_basepairs(PDB)
-
     # loop over specified base combinations
     for base_combination in base_combination_list:
 
@@ -867,6 +921,8 @@ if __name__=="__main__":
             if not interaction.lower() in ['css','cssa','ncss']:
                 continue
 
+
+            angle_out_of_order = False   # set to True if there is a cutoff like 250 to -60 degrees
 
             # make base edges uppercase since that's all we get from the pipeline
             inter = interaction.replace("n","").replace("a","")
@@ -943,8 +999,6 @@ if __name__=="__main__":
                 if len(fields2) > 5 and not fields2[5] == 'A':
                     continue
 
-                have_data_in_other_order = False
-
                 # check different annotation schemes to decide how to show this datapoint
                 # check Python annotation that generated pair_to_datapoint
                 if 'basepair' in datapoint and interaction in datapoint['basepair']:
@@ -964,6 +1018,18 @@ if __name__=="__main__":
                 else:
                     dssr = False
 
+                rnaview_annotation = pair_to_interaction_rnaview[pair]
+                if len(rnaview_annotation) > 0 and interaction_lower in rnaview_annotation.lower():
+                    rnaview = True
+                else:
+                    rnaview = False
+
+                pdb_annotation = pair_to_interaction_pdb[pair]
+                if len(pdb_annotation) > 0 and interaction_lower in pdb_annotation.lower():
+                    pdb = True
+                else:
+                    pdb = False
+
                 if reverse(pair) in pair_to_datapoint:
                     r_datapoint = pair_to_datapoint[reverse(pair)]
                 else:
@@ -980,27 +1046,25 @@ if __name__=="__main__":
                 # do we have all of the parameters that are checked for cutoffs?
                 have_full_data = check_full_data(datapoint)
 
-                if (Matlab or dssr) and not have_full_data and not skip_this_order:
+                if (Matlab or dssr or rnaview or pdb) and not have_full_data and not skip_this_order:
 
                     if reverse(pair) in pair_to_datapoint:
                         r_datapoint = pair_to_datapoint[reverse(pair)]
 
-                        if check_full_data(r_datapoint):
-                            have_data_in_other_order = True
-                        else:
+                        if not check_full_data(r_datapoint):
                             print('Matlab annotation %s, data in both orders, but no match %s' % (matlab_annotation, datapoint['url']))
                             #print(pair)
                             #print(reverse(pair))
-                            print(datapoint)
-                            print(r_datapoint)
-                            print()
+                            #print(datapoint)
+                            #print(r_datapoint)
+                            #print()
                     else:
                         print('Matlab annotation %s but missing data in both orders for %s' % (matlab_annotation,datapoint['url']))
-                        print(datapoint)
-                        print(r_datapoint)
-                        print()
+                        #print(datapoint)
+                        #print(r_datapoint)
+                        #print()
 
-                if (Python or Matlab or dssr) and not skip_this_order:
+                if (Python or Matlab or dssr or rnaview or pdb) and not skip_this_order:
 
                     if not have_full_data:
                         datapoint = make_full_data(datapoint)
@@ -1066,6 +1130,9 @@ if __name__=="__main__":
 
                                 cutoff = nt_nt_cutoffs[bc][bp][subcat]
 
+                                if cutoff["anglemin"] > cutoff["anglemax"]:
+                                    angle_out_of_order = True
+
                                 if datapoint['x'] < cutoff["xmin"]:
                                     cutoff_distance += cutoff["xmin"] - datapoint['x']
                                     reasons.append("xmin")
@@ -1098,7 +1165,7 @@ if __name__=="__main__":
                                         cutoff_distance += 3*(datapoint['normal_Z'] - cutoff["normalmax"])
                                         reasons.append("nmax")
                                 else:
-                                    cutoff_distance += 3
+                                    cutoff_distance += 1
                                     reasons.append("nmax")
 
                                 if 'angle_in_plane' in datapoint:
@@ -1117,11 +1184,11 @@ if __name__=="__main__":
                                             cutoff_distance += min(cutoff["anglemin"]-datapoint["angle_in_plane"],datapoint['angle_in_plane']-cutoff["anglemax"])/10.0
                                             reasons.append("angle")
                                 else:
-                                    cutoff_distance += 3
+                                    cutoff_distance += 1
                                     reasons.append("angle")
 
                                 if datapoint['maxgap'] > cutoff["gapmax"]:
-                                    cutoff_distance += 5*(datapoint['maxgap'] - cutoff["gapmax"])
+                                    cutoff_distance += 4*(datapoint['maxgap'] - cutoff["gapmax"])  # strong penalty
                                     reasons.append('gap')
 
                                 if cutoff_distance < best_cutoff_distance:
@@ -1140,21 +1207,12 @@ if __name__=="__main__":
                         new_python_annotation += ',hbond'
 
                     # only keep pairs if their parameters are somewhat close to the cutoffs for some category
-                    if best_cutoff_distance < 2 or (dssr and best_cutoff_distance < 2) or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 2):
-
-                        c += 1
-                        xvalues.append(datapoint['x'])
-                        yvalues.append(datapoint['y'])
-                        rvalues.append(math.sqrt(datapoint['x']**2 + datapoint['y']**2))
-                        tvalues.append(math.atan2(datapoint['y'],datapoint['x'])*180/3.141592654)
-                        zvalues.append(datapoint['z'])
-                        if 'gap21' in datapoint:
-                            gvalues.append(max(datapoint['gap12'],datapoint['gap21']))
-                        else:
-                            gvalues.append(datapoint['gap12'])
-                            datapoint['gap21'] = 0
-                        avalues.append(datapoint['angle_in_plane'])
-                        nvalues.append(datapoint['normal_Z'])
+                    if best_cutoff_distance < 2 \
+                        or ('sugar_ribose' in datapoint and datapoint['sugar_ribose'] == 'cSR' and best_cutoff_distance < 2) \
+                        or (rnaview and best_cutoff_distance < 2) \
+                        or (pdb and best_cutoff_distance < 2) \
+                        or (dssr and best_cutoff_distance < 2) \
+                        or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 2):
 
                         # store data about this pair for output
                         pdata = datapoint
@@ -1168,6 +1226,8 @@ if __name__=="__main__":
                         pdata['basepair_subcat'] = new_python_subcat
                         pdata['matlab_annotation'] = matlab_annotation
                         pdata['dssr_annotation'] = dssr_annotation
+                        pdata['rnaview_annotation'] = rnaview_annotation
+                        pdata['pdb_annotation'] = pdb_annotation
                         pdata['best_cutoff_distance'] = best_cutoff_distance
 
                         if 'sugar_ribose' in datapoint:
@@ -1180,60 +1240,85 @@ if __name__=="__main__":
                         else:
                             pdata['r_sugar_ribose'] = ''
 
+                        if not 'angle_in_plane' in pdata:
+                            pdata['angle_in_plane'] = 0.0  # so distance can be calculated
+
                         pair_data.append(pdata)
 
-                        # color and print information about bad examples
-                        if 'gap' in keep_reasons:
-                            color = [0,1,0]  # green
-                            hcolor = [0,1,0]
-                            size = 20
-                            hsize = 20
-                        elif len(keep_reasons) > 0:
-                            color = cyan
-                            hcolor = cyan
-                            size = 20
-                            hsize = 20
-                        elif disqualified_hbond:
-                            color = orange
-                            hcolor = orange
-                            size = 20
-                            hsize = 20
-                        elif Python and not Matlab:
-                            color = purple
-                            hcolor = purple
-                            size = 20
-                            hsize = 20
-                            #print_datapoint(datapoint)
-                        elif Matlab and not Python:
-                            color = red
-                            hcolor = red
-                            if "n" in matlab_annotation:
-                                size = 5
-                                hsize = 5
+                        # collect data for scatterplots
+                        if 'angle_in_plane' in datapoint and abs(datapoint['angle_in_plane']) > 0.0001:
+
+                            c += 1
+                            xvalues.append(datapoint['x'])
+                            yvalues.append(datapoint['y'])
+                            rvalues.append(math.sqrt(datapoint['x']**2 + datapoint['y']**2))
+                            tvalues.append(math.atan2(datapoint['y'],datapoint['x'])*180/3.141592654)
+                            zvalues.append(datapoint['z'])
+                            if 'gap21' in datapoint:
+                                gvalues.append(max(datapoint['gap12'],datapoint['gap21']))
                             else:
+                                gvalues.append(datapoint['gap12'])
+                                datapoint['gap21'] = 0
+
+                            if angle_out_of_order and datapoint['angle_in_plane'] < 0:
+                                avalues.append(datapoint['angle_in_plane']+360)
+                            else:
+                                avalues.append(datapoint['angle_in_plane'])
+
+                            nvalues.append(datapoint['normal_Z'])
+
+                            # colors and sizes for scatterplots
+                            if 'gap' in keep_reasons:
+                                color = [0,1,0]  # green
+                                hcolor = [0,1,0]
                                 size = 20
                                 hsize = 20
-                            #print_datapoint(datapoint)
-                        elif Python and Matlab:
-                            color = black
-                            size = 1
-                            hcolor = color
-                            hsize = size
-                        else:
-                            # just in case
-                            color = [0.5,0.5,0.5]  # gray
-                            size = 100       # very large
-                            hcolor = color
-                            hsize = size
-                        colors2d.append(color)
-                        sizes.append(size)
+                            elif len(keep_reasons) > 0:
+                                color = cyan
+                                hcolor = cyan
+                                size = 20
+                                hsize = 20
+                            elif disqualified_hbond:
+                                color = orange
+                                hcolor = orange
+                                size = 20
+                                hsize = 20
+                            elif Python and not Matlab:
+                                color = purple
+                                hcolor = purple
+                                size = 20
+                                hsize = 20
+                                #print_datapoint(datapoint)
+                            elif Matlab and not Python:
+                                color = red
+                                hcolor = red
+                                if "n" in matlab_annotation:
+                                    size = 5
+                                    hsize = 5
+                                else:
+                                    size = 20
+                                    hsize = 20
+                                #print_datapoint(datapoint)
+                            elif Python and Matlab:
+                                color = black
+                                size = 1
+                                hcolor = color
+                                hsize = size
+                            else:
+                                # just in case
+                                color = [0.5,0.5,0.5]  # gray
+                                size = 100       # very large
+                                hcolor = color
+                                hsize = size
+                            colors2d.append(color)
+                            sizes.append(size)
 
-                        # record data about hydrogen bonds
-                        hdvalues.append(max_distance)  # hbond distance
-                        havalues.append(min_angle)  # hbond angle
-                        hbvalues.append(min(6,max_badness))  # hbond badness
-                        hcolors2d.append(hcolor)
-                        hsizes.append(hsize)
+                            # record data about hydrogen bonds
+                            # hdvalues.append(max_distance)  # hbond distance
+                            # havalues.append(min_angle)  # hbond angle
+                            # hbvalues.append(min(6,max_badness))  # hbond badness
+                            hcolors2d.append(hcolor)
+                            hsizes.append(hsize)
 
             # make scatterplots for pairwise combinations of data
             bc = base_combination.replace(",","-")
@@ -1354,6 +1439,8 @@ if __name__=="__main__":
                 Q['resolution'] = resolution
 
                 # if too many pairs, show some good and also the worst ones
+                # This ordering is not working!  It often keeps the true ones with bad h-bonds,
+                # puts the true ones beyond 300, so the heat map shows all bad instances.
                 if len(xvalues) > 300:
                     # sort by hydrogen bond badness, putting priority on ones that are not Matlab near
                     pair_data = sorted(pair_data, key=lambda p: p['max_badness']+0.0001*random.uniform(0,1)+10*(len(p['matlab_annotation'])==0)+10*(not "n" in p['matlab_annotation']))
