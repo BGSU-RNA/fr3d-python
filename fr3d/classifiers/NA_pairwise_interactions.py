@@ -12,25 +12,17 @@
 """
 
 """
-    Developer notes:
-        CC acHS needs a tighter gap requirement, avoid http://rna.bgsu.edu/rna3dhub/display3D/unitid/4V9F|1|0|C|2309,4V9F|1|0|C|2281
-        AC cWW needs tigher requirements, avoid http://rna.bgsu.edu/rna3dhub/display3D/unitid/4V9F|1|0|A|2465,4V9F|1|0|C|2396
-        AG cWS has near that should be true, see big cluster at http://rna.bgsu.edu/webfr3d/Results/60ca1ea55ae61/60ca1ea55ae61.html
-
-    When fr3d is changed, python setup.py install
+    When fr3d_python is changed, python setup.py install
 """
 
 import argparse
 from collections import defaultdict
-import csv
-from datetime import datetime
 import gzip
 import math
 import numpy as np
 import pickle
 import sys
 import os
-from os import path
 from time import time
 import urllib
 
@@ -49,27 +41,16 @@ else:
     read_mode = 'rt'
     write_mode = 'wt'   # write as text
 
-from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
 from fr3d.definitions import NAbaseatoms
 from fr3d.definitions import nt_sugar
 from fr3d.definitions import nt_phosphate
-from fr3d.definitions import nt_backbone
-from fr3d.definitions import aa_connections
-from fr3d.definitions import aa_backconnect
-from fr3d.definitions import aa_hydrogen_connections
 from fr3d.definitions import aa_fg
 from fr3d.definitions import aa_linker
 from fr3d.definitions import aa_backbone
-from fr3d.definitions import tilt_cutoff
 from fr3d.definitions import planar_atoms
-from fr3d.definitions import HB_donors
-from fr3d.definitions import HB_weak_donors
-from fr3d.definitions import HB_acceptors
 from fr3d.definitions import NAbaseMassiveAndHydrogens
-from fr3d.data.components import Component
-
 
 from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
 from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
