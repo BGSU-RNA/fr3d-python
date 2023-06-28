@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<link rel="shortcut icon" href="http://rna.bgsu.edu/rna3dhub/icons/F_icon.png">
+<head>
+  <title>###PAGETITLE###</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js" type="text/javascript"></script>
+  ###JS1###
+  ###JS2###
+  ###JS3###
+  ###REFRESH###
+  <style>
+      tr:nth-child(even) {background-color: #E6F2F2;}
+      td:nth-child(###sequencecolumn###) { font-family:'consolas','monaco','andale mono','caravan','courier new','monospace';}
+      th {position: sticky; top: 0px; background: white; cursor: pointer;}
+  </style>
+
+  <script>
+  function sortTable(n,table_id,data_type) {
+    // adapted from https://www.w3schools.com/howto/howto_js_sort_table.asp
+    // n is the column number
+    // table_id tells which table
+    // numeric is true if the column is numeric, false if alphabetic
+
+    var table, rows, switching, i, j, x, y, check_next, shouldSwitch, dir, switchcount = 0;
+    // Set the sorting direction to ascending at first
+    dir = "asc";
+
+    table = document.getElementById(table_id);
+    rows = table.rows;
+
+    if (data_type == 'checkbox') {
+      var text = rows[8].getElementsByTagName("TD")[n].innerHTML;
+      var id = text.split('id="')[1].split('"')[0]
+    }
+
+    // Make passes until no switches are made; bubble sort
+    switching = true;
+    while (switching) {
+      switching = false;
+      /* Loop through all table rows (except the
+      first, which contains table headers): */
+      for (i = 1; i < (rows.length - 1); i++) {
+
+        // the current row entry
+        if (data_type == 'alpha') {
+          x = rows[i].getElementsByTagName("TD")[n].innerHTML.toLowerCase();
+        } else if (data_type == 'numeric') {
+          x = Number(rows[i].getElementsByTagName("TD")[n].innerHTML);
+        } else if (data_type == 'checkbox') {
+          var text = rows[i].getElementsByTagName("TD")[n].innerHTML;
+          var id = text.split('id="')[1].split('"')[0]
+          if (document.getElementById(id).checked) {
+            x = 0;
+          } else {
+            x = 1;
+          }
+        } else {
+          x = 0;
+        }
+
+        j = i;  // compare row i to row j
+        check_next = true;
+
+        // look for where row i should be pushed back to
+        while (check_next & j < rows.length-1) {
+
+          if (data_type == 'alpha') {
+            y = rows[j+1].getElementsByTagName("TD")[n].innerHTML.toLowerCase();
+          } else if (data_type == 'numeric') {
+            y = Number(rows[j+1].getElementsByTagName("TD")[n].innerHTML);
+          } else if (data_type == 'checkbox') {
+            var text = rows[j+1].getElementsByTagName("TD")[n].innerHTML;
+            var id = text.split('id="')[1].split('"')[0]
+            if (document.getElementById(id).checked) {
+              y = 0;
+            } else {
+              y = 1;
+            }
+          } else {
+            y = 0;
+          }
+
+          if (dir == "asc") {
+            if (x > y) {
+              j++
+            } else {
+              check_next = false;
+            }
+          } else if (dir == "desc") {
+            if (x < y) {
+              j++
+            } else {
+              check_next = false;
+            }
+          }
+        }
+
+        // if row i belongs later in the table, put it there
+        if (j > i) {
+          // Move row i to just after row j
+          rows[0].parentNode.insertBefore(rows[i], rows[j+1]);
+          // Each time a switch is done, increase this count by 1:
+          switchcount++;
+          // still keep looking for switches to make
+          switching = true;
+        }
+      }
+      /* If no switching has been done AND the direction is "asc",
+      set the direction to "desc" and run the while loop again. */
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+  </script>
+</head>
+
+<body>
+
+<h2>FR3D output</h2>
+###QUERYNAME###
+###SEEMODIFYQUERY### |
+###seeCSVOutput###
+###DESCRIPTION###
+
+<div style="height:300px;width:100%;border:solid 2px black;overflow:scroll;overflow-x:scroll;overflow-y:scroll;">
+###CANDIDATELIST###
+</div>
+
+<table border=0>
+<tr>
+<td valign="top">
+
+###JS4###
+
+    <input type="button" id="neighborhood" value="Show neighborhood">
+    <input type="button" id="prev" value="Previous">
+    <input type="button" id="next" value="Next">
+    <input type="button" id='all' value='Hide all'>
+    <label><input type="checkbox" id="showNtNums">Nucleotide numbers</label>
+    <!--<label><input type="checkbox" id="stereo1">Stereo</label>-->
+    <input type="button" id="stereo2" value="Stereo">
+    Coloring options: <select id="colorOPT">
+                    <option value="Default" selected>Default</option>
+                    <option value="CPK">CPK</option>
+                    <option value="RSR">Real Space R (RSR)</option>
+                    <option value="RSRZ">RSR Z-Score (RSRZ)</option>
+    </select>
+</div>
+
+    <div class='showRSR' style="display:none">
+                    <svg height="30" width="340">
+                        <defs>
+                            <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="10%" style="stop-color:#0d0887; stop-opacity:1" />
+                                <stop offset="20%" style="stop-color:#6603a5; stop-opacity:1" />
+                                <stop offset="30%" style="stop-color:#8a0da2; stop-opacity:1" />
+                                <stop offset="40%" style="stop-color:#ac2693; stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#ca457a; stop-opacity:1" />
+                                <stop offset="60%" style="stop-color:#df6264; stop-opacity:1" />
+                                <stop offset="70%" style="stop-color:#f0824d; stop-opacity:1" />
+                                <stop offset="80%" style="stop-color:#faa638; stop-opacity:1" />
+                                <stop offset="90%" style="stop-color:#fbcc27; stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#f0f921; stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    <rect x="20" y="0" width="300" height="15" fill="url(#grad3)"  />
+                    <text x="20" y="30" font-family="sans-serif" font-size="12px" fill="black">0.0</text>
+                    <text x="90" y="30" font-family="sans-serif" font-size="12px" fill="black">RSR Scale truncated at 0.5</text>
+                    <text x="310" y="30" font-family="sans-serif" font-size="12px" fill="black">0.5</text>
+                    </svg>
+    </div>
+
+                <div class='showRSRZ' style="display:none">
+                    <svg height="45" width="340">
+                        <defs>
+                        <text x="120" y="0" font-family="sans-serif" font-size="12px" fill="black">RSRZ Scale</text>
+                            <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="25%" style="stop-color:green;stop-opacity:1" />
+                                <stop offset="25%" style="stop-color:yellow;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:yellow;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:orange;stop-opacity:1" />
+                                <stop offset="75%" style="stop-color:orange;stop-opacity:1" />
+                                <stop offset="75%" style="stop-color:red;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:red;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    <rect x="20" y="0" width="300" height="15" fill="url(#grad2)"  />
+                    <text x="92" y="30" font-family="sans-serif" font-size="12px" fill="black">1</text>
+                    <text x="167" y="30" font-family="sans-serif" font-size="12px" fill="black">2</text>
+                    <text x="243" y="30" font-family="sans-serif" font-size="12px" fill="black">3</text>
+                    <text x="140" y="45" font-family="sans-serif" font-size="12px" fill="black">RSRZ Scale</text>
+                    </svg>
+                </div>
+</td>
+
+
+    <td valign="top">
+        <div id ='heatmap' style="text-align: left;">
+          <script src="//d3js.org/d3.v4.min.js"></script>
+
+###DISCREPANCYDATA###
+###JS5###
+</div>
+</td>
+</tr>
+</table>
+###MESSAGES###
+</body>
+</html>
