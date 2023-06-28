@@ -245,8 +245,8 @@ cis S/s,U,G,O2',H2',---,N3,-,
 cis S/s,U,G,-,O2,---,H21,N2,
 cis S/s,U,U,-,O2',---,H2',O2',
 cis S/s,U,U,O2',H2',---,O2,-,
-trans S/s,A,A,-,N3,---,H2,C2,
-trans S/s,A,A,C2,H2',---,N3,-,
+trans S/s,A,A,-,N3,---,H2,C2,              *** usually a bad bond, reconsider ***
+trans S/s,A,A,C2,H2,---,N3,-,              *** fixed 2023-06-17 CLZ to use H2 ***
 trans S/s,A,A,-,N1,---,H2',O2',
 trans S/s,A,C,C2,H2,---,O2,-,
 trans S/s,A,C,-,N1,---,H2',O2',
