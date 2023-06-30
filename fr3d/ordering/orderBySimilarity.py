@@ -52,9 +52,13 @@ def normalizePenaltyMatrix(distance,penalty):
             dsum = dsum + distance[i][j]
             psum = psum + penalty[i][j]
 
-    for i in range(0,distance.shape[0]):
-        for j in range(0,distance.shape[0]):
-            newpenalty[i][j] = penalty[i][j] * dsum / psum
+    if psum > 0:
+        for i in range(0,distance.shape[0]):
+            for j in range(0,distance.shape[0]):
+                newpenalty[i][j] = penalty[i][j] * dsum / psum
+    else:
+        # in case of a distance matrix of all zeros
+        newpenalty = penalty
 
     return newpenalty
 
@@ -125,30 +129,50 @@ def multipleGreedyInsertionPathLength(distance, repetitions=100, seed=None):
 
 def multipleGreedyInsertionPathLengthTwoOpt(distance, repetitions=10, seed=None, bestScore=float("inf"), bestOrder=[]):
     # repeat greedy insertion followed by two-opt swaps multiple times and keep the best ordering
-    if seed:
-        random.seed(seed)
 
-    bestRep = None
+    n = distance.shape[0]
 
-    for rep in range(0,repetitions):
-        order, score = greedyInsertionPathLength(distance)
-        order, distance_reduction = twoOptSwap(distance,order)
-        score = score + distance_reduction
-        if score < bestScore:
-            bestScore = score
-            bestOrder = order
+    if n == 0:
+        bestOrder = []
+        bestScore = 0
+    elif n == 1:
+        bestOrder = [0]
+        bestScore = 0
+    else:
+        if seed:
+            random.seed(seed)
 
-            # optional diagnostics
-            if False:
-                print('Greedy insertion repetion %2d score %10.8f' % (rep+1,bestScore))
+        bestRep = None
+
+        for rep in range(0,repetitions):
+            order, score = greedyInsertionPathLength(distance)
+            order, distance_reduction = twoOptSwap(distance,order)
+            score = score + distance_reduction
+            if score < bestScore:
+                bestScore = score
+                bestOrder = order
+
+                # optional diagnostics
+                if False:
+                    print('Greedy insertion repetion %2d score %10.8f' % (rep+1,bestScore))
 
 
-    bestOrder, distance_reduction = twoOptSwap(distance,bestOrder)
-    bestScore = bestScore + distance_reduction
+        bestOrder, distance_reduction = twoOptSwap(distance,bestOrder)
+        bestScore = bestScore + distance_reduction
 
     return bestOrder, bestScore
 
 def treePenalizedPathLength(distance,repetitions=10,seed=None,penaltyStrength=0.5):
+
+    n = distance.shape[0]
+
+    if n == 0:
+        return []
+    elif n == 1:
+        return [0]
+    elif n == 2:
+        return [0,1]
+
     if penaltyStrength > 0:
         # tpPL penalized distance matrix
         penaltyMatrix = treePenalty(distance)
