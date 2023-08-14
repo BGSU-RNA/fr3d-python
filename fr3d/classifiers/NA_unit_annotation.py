@@ -10,7 +10,8 @@ import argparse
 import math
 import os
 
-from fr3d.modified_parent_mapping import modified_nucleotides
+#from fr3d.modified_parent_mapping import modified_nucleotides
+from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
@@ -58,9 +59,9 @@ def annotate_bond_orientation(structure,pipeline=False):
         chi = None
         classification = ""
 
-        N1N9 = None
-        C2C4 = None
-        parent = None
+        N1N9 = np.empty( shape=(0, 0) )
+        C2C4 = np.empty( shape=(0, 0) )
+        parent = np.empty( shape=(0, 0) )
 
         if nt.sequence in ['A','G','DA','DG']:
             N1N9 = nt.centers["N9"]
@@ -73,11 +74,23 @@ def annotate_bond_orientation(structure,pipeline=False):
         else:
             parent = get_parent(nt.sequence)
             if parent in ['A','G','DA','DG']:
-                N1N9 = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["N9"]]
-                C2C4 = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["C4"]]
+                if "N9" in parent_atom_to_modified[nt.sequence]:
+                    N1N9 = nt.centers[parent_atom_to_modified[nt.sequence]["N9"]]
+                else:
+                    print('No N9 atom correspondence in %s, parent is %s' % (nt.sequence,parent))
+                if "C4" in parent_atom_to_modified[nt.sequence]:
+                    C2C4 = nt.centers[parent_atom_to_modified[nt.sequence]["C4"]]
+                else:
+                    print('No C4 atom correspondence in %s, parent is %s' % (nt.sequence,parent))
             elif parent in ['C','U','DC','DT']:
-                N1N9 = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["N1"]]
-                C2C4 = nt.centers[modified_nucleotides[nt.sequence]["atoms"]["C2"]]
+                if "N1" in parent_atom_to_modified[nt.sequence]:
+                    N1N9 = nt.centers[parent_atom_to_modified[nt.sequence]["N1"]]
+                else:
+                    print('No N1 atom correspondence in %s, parent is %s' % (nt.sequence,parent))
+                if "C2" in parent_atom_to_modified[nt.sequence]:
+                    C2C4 = nt.centers[parent_atom_to_modified[nt.sequence]["C2"]]
+                else:
+                    print('No C2 atom correspondence in %s, parent is %s' % (nt.sequence,parent))
             else:
                 if pipeline:
                     error_message.append("%s has no identified parent" % nt.unit_id())
@@ -157,7 +170,7 @@ def annotate_bond_orientation(structure,pipeline=False):
 
     return bond_annotations, error_message
 
-def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations):
+def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,categories):
     """
     Write interactions according to category, and within each
     category, write by annotation.
@@ -182,36 +195,12 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations):
 ShowStructureReadingErrors = True
 
 
-if __name__=="__main__":
 
-    # allow user to specify input and output paths
-    parser = argparse.ArgumentParser()
-    parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
-    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
-    parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (glycosidic)')
 
-    # process command line arguments
-    args = parser.parse_args()
-    if args.input:
-        inputPath = args.input
-    elif not inputPath:
-        inputPath = ""
-    if args.output:
-        outputNAPairwiseInteractions = args.output     # set output path
-    elif not outputNAPairwiseInteractions:
-        outputNAPairwiseInteractions = ""
+def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat):
 
-    # dictionary to control what specific annotations are output, in a file named for the key
-    # empty list means to output all interactions in that category
-    # non-empty list specifies which interactions to output in that category
-    categories = {}
-
-    if args.category:
-        for category in args.category.split(","):
-            categories[category] = []
-    else:
-        categories['glycosidic'] = []  # default
+    if isinstance(entry_id,str):
+        entry_id = entry_id.split(",")
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
@@ -225,8 +214,7 @@ if __name__=="__main__":
 
     # process additional arguments as PDB files
     PDBs = []
-    entries = args.PDBfiles
-    for entry in entries:
+    for entry in entry_id:
         if '.pdb' in entry.lower():
             x = entry
         else:
@@ -247,7 +235,7 @@ if __name__=="__main__":
 
         PDBid = PDB[-8:-4]
 
-        print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDBs)))
+        #print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDBs)))
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
@@ -260,7 +248,7 @@ if __name__=="__main__":
             failed_structures.append((PDB,type(ex).__name__,ex))
             continue
 
-        if 'glycosidic' in categories:
+        if 'glycosidic' in category:
             timerData = myTimer("Annotating bond orientation",timerData)
             bond_annotations, error_message = annotate_bond_orientation(structure)
 
@@ -268,7 +256,7 @@ if __name__=="__main__":
 
             timerData = myTimer("Recording interactions",timerData)
             print("  Recording interactions in %s" % outputNAPairwiseInteractions)
-            write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations)
+            write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,category)
 
     myTimer("summary",timerData)
 
@@ -276,3 +264,51 @@ if __name__=="__main__":
         print("Not able to read these files: %s" % failed_structures)
     else:
         print("All files read successfully")
+
+
+if __name__=="__main__":
+
+    # allow user to specify input and output paths
+    parser = argparse.ArgumentParser()
+    parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
+    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
+    parser.add_argument('-i', "--input", help='Input Path')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (glycosidic)')
+    parser.add_argument('-f', "--format", help='Output format (txt)')
+    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
+
+    # process command line arguments
+    args = parser.parse_args()
+    if args.input:
+        inputPath = args.input
+    elif not inputPath:
+        inputPath = ""
+    if args.output:
+        outputNAPairwiseInteractions = args.output     # set output path
+    elif not outputNAPairwiseInteractions:
+        outputNAPairwiseInteractions = ""
+
+    # dictionary to control what specific annotations are output, in a file named for the key
+    # empty list means to output all interactions in that category
+    # non-empty list specifies which interactions to output in that category
+    category = {}
+
+    if args.category:
+        for categ in args.category[0].split(","):
+            category[categ] = []
+    else:
+        category['glycosidic'] = {}
+
+    if args.format:
+        outputFormat = args.format
+    else:
+        outputFormat = 'txt'
+
+    if args.chain:
+        chain_id = args.chain
+    else:
+        chain_id = None
+
+    entry_id = args.PDBfiles[0].split(",")
+
+    generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
