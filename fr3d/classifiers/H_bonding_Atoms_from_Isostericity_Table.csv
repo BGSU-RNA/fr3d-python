@@ -13,7 +13,7 @@ TYPE,Bases,,ATOM 1,ATOM 2 ,H-bond,ATOM 3 ,ATOM 4,
 cis W/w,A,A,N6,H61,---,N1,-,
 cis W/w,A,A,-,N1,---,H2,C2,
 cis W/W,A,C,N6,H61,---,N3,-,
-cis W/W,A,C,N1,H11,---,O2,-,   *** presumes that N1 is protonated
+cis W/W,A,C,N1,H11,---,O2,-,   *** presumes that N1 is protonated and that the atom is called H11
 cis W/W,A,G,N6,H61,---,O6,-,
 cis W/W,A,G,-,N1,---,H1,N1,
 cis W/W,A,U,N6,H61,---,O4,-,
@@ -26,8 +26,8 @@ cis W/W,C,U,-,N3,---,H3,N3,    *** LSW 2002 indicates that this is water-mediate
 cis W/W,G,C,-,O6,---,H41,N4,2.0
 cis W/W,G,C,N1,H1,---,N3,-,
 cis W/W,G,C,N2,H22,---,O2,-,
-cis W/wa,G,G,-,O6,---,H1,N1,   *** this will be unusual because must be anionic
-cis W/wa,G,G,N1,H1,---,N2,-,
+cis W/w,G,G,-,O6,---,H1,N1,   *** this will be unusual because must be anionic
+cis W/w,G,G,N1,H1,---,N2,-,
 cis W/W,G,U,-,O6,---,H3,N3,
 cis W/W,G,U,N1,H1,---,O2,-,
 cis W/Wa,G,U,N1,H1,---,O4,-,   *** this will be unusual because must be anionic
@@ -172,6 +172,7 @@ trans H/H,A,G,N6,H62,---,O6,-,
 trans H/H,A,U,N6,H62,---,O4,-,
 trans H/H,C,U,N4,H42,---,O4,-,
 trans H/H,G,C,-,N7,---,H42,N4,
+trans H/H,G,C,-,O6,---,H5,C5,          *** plausible additional hydrogen bond 2023-07-19 CLZ ***
 trans H/h,G,G,-,O6,---,H8,C8,
 cis H/S,A,A,N6,H62,---,N3,-,
 cis H/S,A,C,N6,H62,---,O2,-,
@@ -194,6 +195,7 @@ trans H/S,A,C,N6,H62,---,O2,-,
 trans H/S,A,C,N6,H61,---,O2',-,
 trans H/S,A,G,-,N7,---,H21,N2,
 trans H/S,A,G,N6,H62,---,N3,-,
+trans H/S,A,G,N6,H61,---,O2',-,        *** shown in LSW 2002 but not in basepair catalog; don't know why ***
 trans H/S,A,U,N6,H62,---,O2,-,
 trans H/S,A,U,N6,H61,---,O2',-,
 trans H/S,C,A,N4,H42,---,N3,-,
@@ -245,7 +247,7 @@ cis S/s,U,G,O2',H2',---,N3,-,
 cis S/s,U,G,-,O2,---,H21,N2,
 cis S/s,U,U,-,O2',---,H2',O2',
 cis S/s,U,U,O2',H2',---,O2,-,
-trans S/s,A,A,-,N3,---,H2,C2,              *** usually a bad bond, reconsider ***
+trans S/s,A,A,-,N3,---,H2,C2,              *** usually a bad bond; reconsider ***
 trans S/s,A,A,C2,H2,---,N3,-,              *** fixed 2023-06-17 CLZ to use H2 ***
 trans S/s,A,A,-,N1,---,H2',O2',
 trans S/s,A,C,C2,H2,---,O2,-,
