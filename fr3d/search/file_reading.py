@@ -6,8 +6,8 @@ import datetime
 import pickle
 import urllib
 import sys
-from fr3d_configuration import DATAPATH
-from fr3d_configuration import SERVER
+from fr3d.search.fr3d_configuration import DATAPATH
+from fr3d.search.fr3d_configuration import SERVER
 
 # import the version of urlretrieve appropriate to the Python version
 if sys.version_info[0] < 3:

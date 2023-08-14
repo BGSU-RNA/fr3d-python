@@ -3,15 +3,15 @@
 import numpy as np
 import os
 from collections import defaultdict
-from fr3d_configuration import SERVER
-from fr3d_configuration import OUTPUTPATH
-from fr3d_configuration import TEMPLATEPATH
-from fr3d_configuration import JS1
-from fr3d_configuration import JS2
-from fr3d_configuration import JS3
-from fr3d_configuration import JS4
-from fr3d_configuration import JS5
-from fr3d_configuration import REFRESHTIME
+from fr3d.search.fr3d_configuration import SERVER
+from fr3d.search.fr3d_configuration import OUTPUTPATH
+from fr3d.search.fr3d_configuration import TEMPLATEPATH
+from fr3d.search.fr3d_configuration import JS1
+from fr3d.search.fr3d_configuration import JS2
+from fr3d.search.fr3d_configuration import JS3
+from fr3d.search.fr3d_configuration import JS4
+from fr3d.search.fr3d_configuration import JS5
+from fr3d.search.fr3d_configuration import REFRESHTIME
 
 def getCSVfilename(Q):
     if SERVER:
