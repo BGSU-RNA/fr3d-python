@@ -19,10 +19,16 @@ def load_ideal_basepair_hydrogen_bonds():
 
     filename = os.path.join(current_path,'H_bonding_Atoms_from_Isostericity_Table.csv')
 
+    data_found = False
+
     with open(filename) as csvfile:
         bond_reader = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in bond_reader:
-            if len(row) == 9:
+
+            if row and row[0] == 'TYPE':
+                data_found = True
+
+            if len(row) == 9 and data_found:
                 b1 = row[1]
                 b2 = row[2]
                 if b1 in ['A','C','G','U'] and b2 in ['A','C','G','U']:
@@ -221,3 +227,30 @@ def check_hydrogen_bond(nt1,nt2,atoms):
             return True, False, distance, float("NaN"), max(0,distance-2.5)
 
 
+if __name__=="__main__":
+
+    hbond = load_ideal_basepair_hydrogen_bonds()
+
+    angle_sets = set()
+
+    for bc in hbond.keys():
+        for interaction in hbond[bc].keys():
+            for atom_set in hbond[bc][interaction]:
+
+                print(atom_set)
+                a1,h1,a2,direction = atom_set
+
+                base1, base2 = bc.split(",")
+
+                if "D" in base1 or "D" in base2:
+                    continue
+
+                if direction == '12':
+                    angle_set = "%s,,%s,%s" % (base1,a1,h1)
+                else:
+                    angle_set = "%s,,%s,%s" % (base2,a1,h1)
+
+                angle_sets.add(angle_set)
+
+    for angle_set in sorted(angle_sets):
+        print(angle_set)
