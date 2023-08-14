@@ -1,15 +1,30 @@
 # This script is for developing and testing NA_pairwise_interactions.py
 
-# When changes are made to other code in fr3d-python
-# As administrator,
-# cd c:\Users\zirbel\Documents\GitHub\fr3d-python
-# python setup.py install
-# "C:\Program Files\Python38\python" setup.py install
+"""
+When changes are made to other code in fr3d-python
+As administrator,
+cd c:/Users/zirbel/Documents/GitHub/fr3d-python
+python27 -m pip install .
+python38 -m pip install .
+python311 -m pip install .
 
-# cd c:\Users\zirbel\Documents\GitHub\fr3d-python\fr3d\classifiers
-# python NA_pairwise_interactions.py -c basepair,stacking 4TNA
-# "C:\Program Files\Python38\python" NA_pairwise_interactions.py -c basepair 4TNA
-# "C:\Program Files\Python38\python" develop_NA_pairwise_interactions.py
+
+python27 -m pip install
+python38 -m pip install .
+python311 -m pip install .
+
+
+
+
+cd c:/Users/zirbel/Documents/GitHub/fr3d-python/fr3d/classifiers
+python NA_pairwise_interactions.py -c basepair,stacking,sugar_ribose 4TNA
+"C:/Program Files/Python38/python" NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
+"C:/Program Files/Python311/python" NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
+
+"C:/Program Files/Python38/python" develop_NA_pairwise_interactions.py
+"C:/Program Files/Python311/python" develop_NA_pairwise_interactions.py
+"""
+
 
 # python NA_pairwise_interactions.py -i "C:\Users\zirbel\Documents\FR3D\PDBFiles" -o "C:\Users\zirbel\Documents\FR3D\NAPairwiseInteractions" 4TNA
 # python NA_pairwise_interactions.py -i "C:\Users\zirbel\Documents\FR3D\PDBFiles" -o "C:\Users\zirbel\Documents\FR3D\NAPairwiseInteractions" 4TNA.cif.gz
@@ -18,6 +33,7 @@
 # python NA_pairwise_interactions.py -i "C:\Users\zirbel\Documents\FR3D\PDBFiles" -o "C:\Users\zirbel\Documents\FR3D\NAPairwiseInteractions" user_test.pdb.gz
 
 from NA_pairwise_interactions import *
+from NA_unit_annotation import generateUnitAnnotation
 
 from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -106,16 +122,24 @@ PDB_list = ['7K00','8B0X']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
-from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 PDB_list = ['1NBS','6PMO']
 PDB_list = ['6DVK']
-PDB_list = ['4V9F']
 PDB_list = ['7QI4']
 PDB_list = ['7O7Y']
 PDB_list = ['1Q96']
 PDB_list = ['7QI4','6S0Z','4C8Z','5FQ5','5D5L','5AOX','7K16','5CCB','4V8Y','8D28','4AL5','7OZQ','6YL5','4NLF','7LO9','7QIW','7QIZ','4C8Y','5F4Q','8D28']  # have hydrogens that are named wrong
 PDB_list = ['7O7Y','7O7Z','8A3D']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/3.0A/csv','8B0X','4M6D','3IWN','4V88','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.280/1.5A/csv']
+PDB_list = ['1L2X']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
+PDB_list = ['7ZW0','6S0X','7UVZ']
+PDB_list = ['6XU8']
+
+PDB_list = ['4TNA','5KFX','8B0X']
+from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
+
+# zzz
 
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
@@ -129,9 +153,9 @@ categories = {}
 #categories['sO'] = []        # annotate all sO interactions
 categories['coplanar'] = []   # necessary to get all data for datapoint
 categories['basepair'] = []
-#categories['stacking'] = []
-categories['sugar_ribose']   = []
-#categories['backbone'] = []
+# categories['stacking'] = []
+# categories['sugar_ribose']   = []
+# categories['backbone'] = []
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
@@ -154,7 +178,7 @@ timerData = myTimer("Making PDB list",timerData)
 
 PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
-#print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
+print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
 
 counter = 0
 count_pair = 0
@@ -163,6 +187,9 @@ count_pair = 0
 PDBs = PDB_IFE_Dict.keys()
 #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
 
+print('Annotating these %d PDB files:' % len(PDBs))
+print(",".join(sorted(PDBs)))
+
 # If just a few files are requested, overwrite data files
 if len(PDBs) > 10 and not OverwriteDataFiles:
     print("Annotating interactions if no file is found in %s" % outputNAPairwiseInteractions)
@@ -170,22 +197,40 @@ else:
     print("Annotating interactions and saving in %s" % outputNAPairwiseInteractions)
 
 # restrict dictionary of cutoffs to just the basepairs needed here
-Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW', 'cWB', 'cBW']
 focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,Leontis_Westhof_basepairs)
 ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
+PDBs = sorted(PDBs)
 
-for PDB in sorted(PDBs):
+worker = [0,len(PDBs),1]     # process each file from 0 to end
+
+worker = [1,len(PDBs),2]     # start at 1 and do every other
+worker = [0,len(PDBs),2]     # start at 0 and do every other
+worker = [len(PDBs)-1,0,-1]  # start at the end and work backward, one at a time
+
+for i in range(worker[0],worker[1],worker[2]):
+
+    PDB = PDBs[i]
 
     PDB_id = PDB[0:4]
 
     counter += 1
 
-    outputDataFileCSV    = os.path.join(outputNAPairwiseInteractions, PDB_id + ".csv")
+    outputDataFileCSV = os.path.join(outputNAPairwiseInteractions, PDB_id + ".csv")
     if experimental:
         outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs_exp", PDB_id + "_RNA_pairs.pickle")
     else:
         outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs", PDB_id + "_RNA_pairs.pickle")
+
+
+    unit_annotation_file = os.path.join(outputNAPairwiseInteractions,"%s_glycosidic.txt" % PDB_id)
+    if not os.path.exists(unit_annotation_file):
+        print('Annotating units in %s, which is %d out of %d' % (PDB_id,i+1,len(PDB_IFE_Dict)))
+        generateUnitAnnotation(PDB_id, '', inputPath, outputNAPairwiseInteractions, {'glycosidic':[]}, 'txt')
+
+
+    #print(crashnow)
 
     if annotate_entire_PDB_files:
 
@@ -194,7 +239,7 @@ for PDB in sorted(PDBs):
 
         if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles:
 
-            print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
+            print("Reading file %s, which is number %d out of %d" % (PDB,i+1,len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
 
             structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
@@ -235,6 +280,9 @@ for PDB in sorted(PDBs):
 
             # annotate interactions and return pair_to_data
             interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,[],timerData,True)
+
+            # for pair,data in pair_to_data.items():
+            #     print(pair,data)
 
             # turn this off during development and testing
             if True:
