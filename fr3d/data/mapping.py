@@ -1,10 +1,8 @@
-# Read file called atom_mappings.txt, create dictionary from this where keys are modified 
-# nucleotides and values are a triple of parent sequence, parent atom, then corresponding 
-# atom from modified nucleotide. 
+# Read file called atom_mappings.txt, create dictionary from this where keys are modified
+# nucleotides and values are a triple of parent sequence, parent atom, then corresponding
+# atom from modified nucleotide.
 
-# 02-15-2023 update atom_mappings.txt to atom_mappings_refined.txt. Improvements on mappings for hydrogens
-
-# NOTES: 
+# NOTES:
     # How the following dictionaries work
 
     # modified_atom_to_parent['4EN']['N8'] = 'C8': 4EN is modified, N8 is from the modified 4EN, corresponds to parent A's C8
@@ -17,10 +15,8 @@
     # modified_base_atom_list['PSU']: list of names of all atoms in PSU
 
 from fr3d import definitions as defs
-import os 
+import os
 import sys
-
-#from fr3d.data.atom_mappings_refined import mapping_text   # alternative method we should not have to use
 
 if sys.version_info[0] < 3:
     read_mode = 'rb'
@@ -30,7 +26,7 @@ else:
 def create_modified_nucleotide_to_parent_mappings():
     # Read in mapping file from the folder where this program is installed
     current_path,current_program = os.path.split(os.path.abspath(__file__))
-    filename = os.path.join(current_path,"atom_mappings_refined.txt")
+    filename = os.path.join(current_path,"atom_mappings.txt")
 
     #print('mapping.py is being run in path %s' % current_path)
     #print('mapping.py is trying to open %s' % filename)
@@ -60,7 +56,7 @@ def create_modified_nucleotide_to_parent_mappings():
     modified_atom_to_parent = {}
     parent_atom_to_modified = {}
     modified_base_to_parent = {}
-    modified_base_atom_list = {} 
+    modified_base_atom_list = {}
     modified_base_to_hydrogens_coordinates = {}
 
     for modified_nucleotide in modified_atom_map:
