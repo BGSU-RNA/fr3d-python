@@ -1,28 +1,21 @@
 # This script is for developing and testing NA_pairwise_interactions.py
 
 """
-When changes are made to other code in fr3d-python
-As administrator,
+When changes are made to other code in fr3d-python, as administrator:
 cd c:/Users/zirbel/Documents/GitHub/fr3d-python
 python27 -m pip install .
 python38 -m pip install .
 python311 -m pip install .
 
-
-python27 -m pip install
-python38 -m pip install .
-python311 -m pip install .
-
-
-
-
+To run the code:
 cd c:/Users/zirbel/Documents/GitHub/fr3d-python/fr3d/classifiers
-python NA_pairwise_interactions.py -c basepair,stacking,sugar_ribose 4TNA
-"C:/Program Files/Python38/python" NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
-"C:/Program Files/Python311/python" NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
+python27 NA_pairwise_interactions.py -c basepair,stacking,sugar_ribose 4TNA
+python38 NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
+python311 NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
 
-"C:/Program Files/Python38/python" develop_NA_pairwise_interactions.py
-"C:/Program Files/Python311/python" develop_NA_pairwise_interactions.py
+python38 develop_NA_pairwise_interactions.py
+python311 develop_NA_pairwise_interactions.py
+
 """
 
 
@@ -44,7 +37,7 @@ from fr3d.localpath import fr3d_pickle_path
 
 from fr3d.data.base import EntitySelector
 
-from fr3d.pdb import pdb_reader
+#from fr3d.pdb import pdb_reader
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
@@ -91,8 +84,6 @@ PDB_list = ['203D']
 PDB_list = ['7k00']
 PDB_list = ['6CFJ']
 PDB_list = ['7K00']
-PDB_list = ['4V9F']
-# list needed for a WebFR3D query
 PDB_list = ['7MKY', '4JF2', '5VGW', '4ENC', '5XTM', '2R8S', '4PQV', '3RW6', '4BW0', '6CB3', '4K27', '5U3G', '7OF0', '4LVW', '5D5L', '2NZ4', '3NKB', '6TFG', '2Z75', '4YAZ', '5X2G', '4V9F', '7OZQ', '4Y4O', '4WFL', '1M5K', '7K16', '5FJC', '7O7Y', '6JQ5', '6S0Z', '3P22', '7OX9', '1Q96', '6KWQ', '3LQX', '6U8D', '6SVS', '3E5C', '7RQB', '2EZ6', '6DMC', '2V3C', '5M0I', '3MXH', '4YBB', '5B2P', '4P95', '7KKV', '3NPQ', '5DDP', '4NLF', '7P7Q', '6AZ3', '7D7W', '6S0X', '7RYG', '3AM1', '4PCJ', '5UZ6', '5B2T']
 PDB_list += ['5AH5', '4ENC', '7EOG', '1QU2', '2ZUE', '2QUW', '2QUS', '5KPY', '7OF0', '7EQJ', '1U0B', '5AOX', '3FOZ', '2DRA', '4YCO', '7C79', '4V9F', '4Y4O', '4WFL', '3RG5', '5UD5', '7K16', '7O7Y', '6S0Z', '4JXZ', '4J50', '3B31', '3ADD', '7RQB', '3OVB', '6UGG', '4PRF', '4YBB', '3VJR', '1QTQ', '7K98', '4P95', '2GDI', '7DCO', '7P7Q', '6AZ3', '4YYE', '6S0X', '5HR7', '7RYG', '3AM1', '2OEU', '3D2V', '1J1U']
 PDB_list = list(set(PDB_list))
@@ -101,11 +92,9 @@ PDB_list = ['3AM1','4J50']  # these have symmetry operators, but no annotations 
 PDB_list = ['3AM1']  # these have symmetry operators, but no annotations there
 PDB_list = ['4J50']  # these have symmetry operators, but no annotations there
 PDB_list = ['4RKV','4J50','3AM1']
-
 PDB_list = ['4TNA.cif']
 PDB_list = ['5T2A']  # has a conflicting cBW annotation
 PDB_list = ['5UED']
-PDB_list = ['4TNA']
 PDB_list = ['4V9F','6ZMI','7K00','4TNA']
 PDB_list = ['4TNA','7QI4']
 PDB_list = ['4K27']
@@ -130,19 +119,22 @@ PDB_list = ['1Q96']
 PDB_list = ['7QI4','6S0Z','4C8Z','5FQ5','5D5L','5AOX','7K16','5CCB','4V8Y','8D28','4AL5','7OZQ','6YL5','4NLF','7LO9','7QIW','7QIZ','4C8Y','5F4Q','8D28']  # have hydrogens that are named wrong
 PDB_list = ['7O7Y','7O7Z','8A3D']
 PDB_list = ['1L2X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 PDB_list = ['7ZW0','6S0X','7UVZ']
 PDB_list = ['6XU8']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 
-PDB_list = ['4TNA','5KFX','8B0X']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 
+PDB_list = ['4TNA','5KFX','8B0X']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
+PDB_list = ['4TNA']
+PDB_list = ['4V9F']
+PDB_list = ['2IZN']   # gets an interaction called p_1??
 
 # zzz
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -150,12 +142,12 @@ base_seq_list = []                     # for all nucleic acids, modified or not
 
 # tell which types of interactions to annotate
 categories = {}
-#categories['sO'] = []        # annotate all sO interactions
 categories['coplanar'] = []   # necessary to get all data for datapoint
 categories['basepair'] = []
-# categories['stacking'] = []
-# categories['sugar_ribose']   = []
-# categories['backbone'] = []
+categories['stacking'] = []
+categories['backbone'] = []
+categories['sO'] = []        # annotate all sO interactions
+categories['sugar_ribose']   = []
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
@@ -203,11 +195,14 @@ ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
 PDBs = sorted(PDBs)
 
-worker = [0,len(PDBs),1]     # process each file from 0 to end
+
+# python311 develop_NA_pairwise_interactions.py
 
 worker = [1,len(PDBs),2]     # start at 1 and do every other
 worker = [0,len(PDBs),2]     # start at 0 and do every other
 worker = [len(PDBs)-1,0,-1]  # start at the end and work backward, one at a time
+
+worker = [0,len(PDBs),1]     # process each file from 0 to end
 
 for i in range(worker[0],worker[1],worker[2]):
 
@@ -218,11 +213,19 @@ for i in range(worker[0],worker[1],worker[2]):
     counter += 1
 
     outputDataFileCSV = os.path.join(outputNAPairwiseInteractions, PDB_id + ".csv")
-    if experimental:
-        outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs_exp", PDB_id + "_RNA_pairs.pickle")
-    else:
-        outputDataFilePickle = os.path.join(fr3d_pickle_path, "pairs", PDB_id + "_RNA_pairs.pickle")
 
+    if not os.path.exists(outputNAPairwiseInteractions):
+        os.mkdir(outputNAPairwiseInteractions)
+
+    if experimental:
+        outputDataFilePicklePath = os.path.join(fr3d_pickle_path, "pairs_exp")
+    else:
+        outputDataFilePicklePath = os.path.join(fr3d_pickle_path, "pairs")
+
+    if not os.path.exists(outputDataFilePicklePath):
+        os.mkdir(outputDataFilePicklePath)
+
+    outputDataFilePickle = os.path.join(outputDataFilePicklePath, PDB_id + "_RNA_pairs.pickle")
 
     unit_annotation_file = os.path.join(outputNAPairwiseInteractions,"%s_glycosidic.txt" % PDB_id)
     if not os.path.exists(unit_annotation_file):
