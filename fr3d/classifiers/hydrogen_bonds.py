@@ -143,19 +143,86 @@ def check_hydrogen_bond(nt1,nt2,atoms):
       A measure of the "badness" of the bond
     """
 
+    # identify the heavy base atom to use for calculating the heavy-donor-acceptor angle
+    base_donor_to_atom_for_angle = {}
+    base_donor_to_atom_for_angle["A"] = {}
+    base_donor_to_atom_for_angle["A"]["C2"] = "N3"    # atoms N3-C2-H2
+    base_donor_to_atom_for_angle["A"]["C8"] = "N7"    # atoms N7-C8-H8
+    base_donor_to_atom_for_angle["A"]["N1"] = "C2"    # atoms C2-N1-H1
+    base_donor_to_atom_for_angle["A"]["N6"] = "C6"    # atoms C6-N6-H61
+    base_donor_to_atom_for_angle["A"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["C"] = {}
+    base_donor_to_atom_for_angle["C"]["C5"] = "C4"    # atoms C4-C5-H5
+    base_donor_to_atom_for_angle["C"]["C6"] = "C5"    # atoms C5-C6-H6
+    base_donor_to_atom_for_angle["C"]["N3"] = "C2"    # atoms C2-N3-H3
+    base_donor_to_atom_for_angle["C"]["N4"] = "C4"    # atoms C4-N4-H41
+    base_donor_to_atom_for_angle["C"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["G"] = {}
+    base_donor_to_atom_for_angle["G"]["C8"] = "N7"    # atoms N7-C8-H8
+    base_donor_to_atom_for_angle["G"]["N1"] = "C2"    # atoms C2-N1-H1
+    base_donor_to_atom_for_angle["G"]["N2"] = "C2"    # atoms C2-N2-H21
+    base_donor_to_atom_for_angle["G"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["U"] = {}
+    base_donor_to_atom_for_angle["U"]["C5"] = "C4"    # atoms C4-C5-H5
+    base_donor_to_atom_for_angle["U"]["N3"] = "C2"    # atoms C2-N3-H3
+    base_donor_to_atom_for_angle["U"]["C6"] = "C5"    # atoms C5-C6-H6
+    base_donor_to_atom_for_angle["U"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["DA"] = {}
+    base_donor_to_atom_for_angle["DA"]["C2"] = "N3"    # atoms N3-C2-H2
+    base_donor_to_atom_for_angle["DA"]["C8"] = "N7"    # atoms N7-C8-H8
+    base_donor_to_atom_for_angle["DA"]["N1"] = "C2"    # atoms C2-N1-H1
+    base_donor_to_atom_for_angle["DA"]["N6"] = "C6"    # atoms C6-N6-H61
+    base_donor_to_atom_for_angle["DA"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["DC"] = {}
+    base_donor_to_atom_for_angle["DC"]["C5"] = "C4"    # atoms C4-C5-H5
+    base_donor_to_atom_for_angle["DC"]["C6"] = "C5"    # atoms C5-C6-H6
+    base_donor_to_atom_for_angle["DC"]["N3"] = "C2"    # atoms C2-N3-H3
+    base_donor_to_atom_for_angle["DC"]["N4"] = "C4"    # atoms C4-N4-H41
+    base_donor_to_atom_for_angle["DC"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["DG"] = {}
+    base_donor_to_atom_for_angle["DG"]["C8"] = "N7"    # atoms N7-C8-H8
+    base_donor_to_atom_for_angle["DG"]["N1"] = "C2"    # atoms C2-N1-H1
+    base_donor_to_atom_for_angle["DG"]["N2"] = "C2"    # atoms C2-N2-H21
+    base_donor_to_atom_for_angle["DG"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+    base_donor_to_atom_for_angle["DT"] = {}
+    base_donor_to_atom_for_angle["DT"]["C5"] = "C4"    # atoms C4-C5-H5
+    base_donor_to_atom_for_angle["DT"]["N3"] = "C2"    # atoms C2-N3-H3
+    base_donor_to_atom_for_angle["DT"]["C6"] = "C5"    # atoms C5-C6-H6
+    base_donor_to_atom_for_angle["DT"]["O2'"] = "C2'"    # atoms C2'-O2'-H2'
+
+    # default return values
+    result = {}
+    result['bond_checked'] = False
+    result['bond_made'] = False
+    result['length'] = float("NaN")    # based on distance between hydrogen and acceptor, if available
+    result['angle'] = float("NaN")
+    result['badness'] = float("NaN")
+    result['donor_acceptor_distance'] = float("NaN")
+    result['donor_acceptor_atoms'] = ''
+    result['heavy_donor_acceptor_angle'] = float("NaN")
+    result['heavy_donor_acceptor_atoms'] = ''
+
+    # record atom names according to the standard nucleotide, not modified
+    donor_atom = atoms[0]
+    acceptor_atom = atoms[2]
+
+    # get atom coordinates and name of heavy atom for angle
     seq = nt1.sequence
     if seq in ['A','C','G','U','DA','DC','DG','DT']:
         donor    = nt1.centers[atoms[0]]
         hydrogen = nt1.centers[atoms[1]]
+        atom_for_angle_name = base_donor_to_atom_for_angle[seq][atoms[0]]
+        atom_for_angle = nt1.centers[base_donor_to_atom_for_angle[seq][atoms[0]]]  # for heavy-heavy-heavy angle calculation
     else:
         #print('Checking hydrogen bond for %s, mapping atoms' % nt1.unit_id())
 
-        if seq in parent_atom_to_modified:
+        if seq in modified_base_to_parent:
             # map the atom name
             if atoms[0] in parent_atom_to_modified[seq]:
                 donor    = nt1.centers[parent_atom_to_modified[seq][atoms[0]]]
                 #print('Parent atom %s modified atom %s length %d' % (atoms[0],parent_atom_to_modified[seq][atoms[0]],len(donor)))
             else:
+                # unmapped atom, just try the original atom name
                 donor    = nt1.centers[atoms[0]]
 
             if atoms[1] in parent_atom_to_modified[seq]:
@@ -164,14 +231,24 @@ def check_hydrogen_bond(nt1,nt2,atoms):
             else:
                 hydrogen = nt1.centers[atoms[1]]
 
+            parent = modified_base_to_parent[seq]
+            parent_atom_for_angle = base_donor_to_atom_for_angle[parent][atoms[0]]
+
+            if parent_atom_for_angle in parent_atom_to_modified[seq]:
+                atom_for_angle_name = parent_atom_to_modified[seq][parent_atom_for_angle]
+            else:
+                atom_for_angle_name = parent_atom_for_angle
+
+            atom_for_angle = nt1.centers[atom_for_angle_name]
 
         else:
             # uknown modified nucleotide, just try for the named atom
             print('%s is not a known modified nucleotide' % nt1.unit_id())
             donor    = nt1.centers[atoms[0]]
             hydrogen = nt1.centers[atoms[1]]
+            atom_for_angle = np.empty( shape=(0, 0) )    # no way to map it since we don't know the parent nucleotide
 
-
+    # get acceptor atom coordinates
     seq = nt2.sequence
     if seq in ['A','C','G','U','DA','DC','DG','DT']:
         acceptor = nt2.centers[atoms[2]]
@@ -191,40 +268,51 @@ def check_hydrogen_bond(nt1,nt2,atoms):
             print('%s is not a known modified nucleotide' % nt2.unit_id())
             acceptor = nt2.centers[atoms[2]]
 
+    # record names of heavy atoms from the standard base
+    result["donor_acceptor_atoms"] = "%s-%s" % (donor_atom,acceptor_atom)
+    result["heavy_donor_acceptor_atoms"] = "%s-%s-%s" % (atom_for_angle_name,donor_atom,acceptor_atom)
 
+    # calculate donor-acceptor distance
+    if len(donor) == 3 and len(acceptor) == 3:
+        result["donor_acceptor_distance"] = np.linalg.norm(np.subtract(donor,acceptor))
+
+    # calculate heavy-heavy-heavy angle
+    if len(donor) == 3 and len(acceptor) == 3 and len(atom_for_angle) == 3:
+        result["heavy_donor_acceptor_angle"] = calculate_hb_angle(atom_for_angle,donor,acceptor)
+
+    # calculate distance and angle using hydrogen atom location, if available
     if atoms[1] == "H2'" or len(hydrogen) < 3:
-        # hydrogen coordinates are not available, check donor-acceptor distance
+        # hydrogen coordinates are not available, check donor-acceptor distance instead
         if len(donor) == 3 and len(acceptor) == 3:
             heavy_distance = np.linalg.norm(np.subtract(donor,acceptor))
-        else:
-            return False, False, float("NaN"), float("NaN"), float("Inf")
+            result["bond_checked"] = True
+            result["distance"] = heavy_distance
+            result["badness"] = max(0,heavy_distance-3.0)
 
-        if heavy_distance > 4.5:
-            return True, False, heavy_distance, float("NaN"), max(0,heavy_distance-3.0)
-        else:
-            return True, True, heavy_distance, float("NaN"), max(0,heavy_distance-3.0)
-
+            if heavy_distance < 4.5:
+                result["bond_made"] = True
 
     else:
         if len(hydrogen) == 3 and len(acceptor) == 3:
             distance = np.linalg.norm(np.subtract(hydrogen,acceptor))
-        else:
-            return False, False, float("NaN"), float("NaN"), float("Inf")
+            result["bond_checked"] = True
+            result["distance"] = distance
+            result["badness"] = max(0,distance-2.5)
 
-        if len(donor) == 3:
-            hb_angle = calculate_hb_angle(donor,hydrogen,acceptor)
+            if len(donor) == 3:
+                hb_angle = calculate_hb_angle(donor,hydrogen,acceptor)
 
-            if not hb_angle:
-                return False, False, distance, float("NaN"), float("Inf")
-            elif hb_angle > 110 and distance < 4.0:
-                return True, True, distance, hb_angle, (max(0,distance-2.5)+max(0,150-hb_angle)/20.0)
-            else:
-                return True, False, distance, hb_angle, (max(0,distance-2.5)+max(0,150-hb_angle)/20.0)
+                if hb_angle:
+                    result["badness"] = max(0,distance-2.5)+max(0,150-hb_angle)/20.0
+                    result["angle"] = hb_angle
 
-        elif distance < 4.0:
-            return True, True, distance, float("NaN"), max(0,distance-2.5)
-        else:
-            return True, False, distance, float("NaN"), max(0,distance-2.5)
+                    if hb_angle > 110 and distance < 4.0:
+                        result["bond_made"] = True
+
+            elif distance < 4.0:
+                result["bond_made"] = True
+
+    return result
 
 
 if __name__=="__main__":
