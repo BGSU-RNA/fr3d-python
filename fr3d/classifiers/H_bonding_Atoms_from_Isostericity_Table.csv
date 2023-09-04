@@ -18,12 +18,12 @@ cis W/W,A,G,N6,H61,---,O6,-,
 cis W/W,A,G,-,N1,---,H1,N1,
 cis W/W,A,U,N6,H61,---,O4,-,
 cis W/W,A,U,-,N1,---,H3,N3,
-cis W/W,A,U,C2,H2,---,O2,-,3.0    *** this bond is often long and low-angle.  Badness up to 3 could work
+cis W/W,A,U,C2,H2,---,O2,-,    *** this bond is often long and low-angle
 cis W/w,C,C,-,N3,---,H41,N4,
 cis W/w,C,C,-,O2,---,H3,N3,    *** this will be unusual because N3 is protonated and H3 is usually not present
 cis W/W,C,U,N4,H41,---,O4,-,
 cis W/W,C,U,-,N3,---,H3,N3,    *** LSW 2002 indicates that this is water-mediated
-cis W/W,G,C,-,O6,---,H41,N4,2.0
+cis W/W,G,C,-,O6,---,H41,N4,
 cis W/W,G,C,N1,H1,---,N3,-,
 cis W/W,G,C,N2,H22,---,O2,-,
 cis W/w,G,G,-,O6,---,H1,N1,   *** this will be unusual because must be anionic
@@ -40,7 +40,7 @@ trans W/W,A,C,N6,H61,---,N3,-,
 trans W/W,A,C,-,N1,---,H41,N4,
 trans W/W,A,U,N6,H61,---,O2,-,
 trans W/W,A,U,-,N1,---,H3,N3,
-trans W/W,A,U,C2,H2,---,O4,-,3.0     *** this bond is often missing.  Badness up to 3 could work.
+trans W/W,A,U,C2,H2,---,O4,-,     *** this bond is often missing
 trans W/W,C,C,N4,H41,---,O2,-,
 trans W/W,C,C,-,O2,---,H41,N4,
 trans W/Wa,C,C,N4,H41,---,N3,-,      *** alternate set of hydrogen bonds
