@@ -256,10 +256,9 @@ NAbasehydrogens['C'] = ['H6','H5','H41','H42']
 NAbasehydrogens['G'] = ['H1','H8','H21','H22']
 NAbasehydrogens['U'] = ['H5','H3','H6']
 
-# classifications for ribose and phosphate interactions 
-NAbaseMassiveAndHydrogens = {}
+# hydrogen bond donor, hydrogen, and classificatoin for base-backbone interactions
 NAbaseMassiveAndHydrogens = {'A': [['H2',"C2","2BPh", "2BR"], ['H8',"C8","0BPh", "0BR"],['H61',"N6","6BPh", "6BR"],['H62',"N6","7BPh", "7BR"]],
-			'C': [['H6',"C6","0BPh","0BR"], ['H5',"C5","9BPh","9BR"], ['H41',"N4","7BPh","7BR"], ['H42',"N4", "6BPh", "6BR"]],
+			'C': [['H6',"C6","0BPh","0BR"], ['H5',"C5","9BPh","9BR"], ['H42',"N4","7BPh","7BR"], ['H41',"N4", "6BPh", "6BR"]],
 			'G': [['H1',"N1","5BPh","5BR"], ['H8',"C8","0BPh", "0BR"],['H21',"N2","1BPh", "1BR"], ['H22',"N2","3BPh", "3BR"]],
 			'U': [['H5',"C5","9BPh","9BR"], ['H3',"N3","5BPh","5BR"], ['H6',"C6","0BPh","0BR"]]}
 
@@ -292,7 +291,7 @@ NAbasehydrogens['DC'] = ['H6','H5','H41','H42']
 NAbasehydrogens['DG'] = ['H1','H8','H21','H22']
 NAbasehydrogens['DT'] = ['H3','H71','H72','H73','H6']
 
-# classifications for ribose and phosphate interactions 
+# classifications for ribose and phosphate interactions
 NAbaseMassiveAndHydrogens['DT'] = [['H6',"C6","0BPh","0BR"], ['H71', 'C5', '7BPh', '7BR'], ['H72', 'C5', '8BPh', '8BR'], ['H73', 'C5', '9BPh', '9BR'],['H3','N3','5BPh','5BR']]
 NAbaseMassiveAndHydrogens['DA'] = NAbaseMassiveAndHydrogens['A']
 NAbaseMassiveAndHydrogens['DC'] = NAbaseMassiveAndHydrogens['C']
@@ -487,7 +486,7 @@ NAbasecoordinates['A']['H62'] = [ -0.880080,   2.876400,   0.000000]
 
 NAbasecoordinates['C'] = {}
 NAbasecoordinates['C'][ 'N1'] = [ -0.380579,  -1.484583,   0.000000]
-NAbasecoordinates['C'][ "C1'"] = [ -0.380579,  (-1.484583-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1 
+NAbasecoordinates['C'][ "C1'"] = [ -0.380579,  (-1.484583-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N1
 NAbasecoordinates['C'][ "H1'"] = [ -0.380579,  (-1.484583-1.010259),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['C'][ 'C2'] = [  0.908756,  -0.885330,   0.000000]
 NAbasecoordinates['C'][ 'O2'] = [  1.888871,  -1.605366,   0.000000]
@@ -504,7 +503,7 @@ NAbasecoordinates['C']['H41'] = [  0.823255,   2.927413,   0.000000]  # H41 is o
 
 NAbasecoordinates['G'] = {}
 NAbasecoordinates['G'][ 'N9'] = [ -1.456680,  -1.711888,   0.000000]
-NAbasecoordinates['G'][ "C1'"] = [ -1.456680,  (-1.711888-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9 
+NAbasecoordinates['G'][ "C1'"] = [ -1.456680,  (-1.711888-1.48),   0.000000] #should be roughly 1.48 angstroms lower than N9
 NAbasecoordinates['G'][ "H9'"] = [ -1.456680,  (-1.711888-1.009529),   0.000000] # approximation of where a hydrogen would be based on code in zStackingOverlap.m
 NAbasecoordinates['G'][ 'C4'] = [ -0.339093,  -0.921183,   0.000000]
 NAbasecoordinates['G'][ 'N3'] = [  0.947138,  -1.370892,   0.000000]
