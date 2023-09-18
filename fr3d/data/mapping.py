@@ -30,7 +30,8 @@ else:
 def create_modified_nucleotide_to_parent_mappings():
     # Read in mapping file from the folder where this program is installed
     current_path,current_program = os.path.split(os.path.abspath(__file__))
-    filename = os.path.join(current_path,"atom_mappings_refined.txt")
+    # filename = os.path.join(current_path,"atom_mappings_refined.txt")
+    filename = os.path.join(current_path,"atom_mappings.txt")
 
     #print('mapping.py is being run in path %s' % current_path)
     #print('mapping.py is trying to open %s' % filename)
