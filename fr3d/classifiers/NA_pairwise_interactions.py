@@ -3094,9 +3094,9 @@ def write_output_df(interaction_to_list_of_tuples,categories,category_to_interac
             if len(categories[category]) == 0 or inter in categories[category] or ("near" in categories and "n" in interaction and inter.replace('n','') in categories[category]):
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
                     rows.append({'category': category,
-                                 'from': a,
+                                 'source': a,
                                  'interaction': inter,
-                                 'to': b,
+                                 'target': b,
                                  'crossing': c
                                  })
     return pd.DataFrame(rows)
