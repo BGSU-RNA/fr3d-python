@@ -26,6 +26,8 @@ import os
 from time import time
 import urllib
 
+import pandas as pd
+
 # import the version of urlretrieve appropriate to the Python version
 if sys.version_info[0] < 3:
     from urllib import urlretrieve as urlretrieve
@@ -3063,6 +3065,44 @@ def write_unit_data_file(PDB,unit_data_path,structure):
 
             print("  Wrote unit data file %s" % filename)
 
+def write_output_df(interaction_to_list_of_tuples,categories,category_to_interactions):
+    """
+    Write interactions according to category, and within each
+    category, write by annotation.
+    Other than that, the interactions are listed in no particular order.
+    """
+
+    if "near" in categories:
+        true_near = ["","n"]
+    else:
+        true_near = [""]
+
+    # loop over types of output files requested
+    rows = []
+    for category in categories:
+        if category == "near":
+            continue
+        # loop over all interactions found in this category
+        for interaction in sorted(category_to_interactions[category]):
+            if category == 'basepair':
+                # capitalize base edges to simplify
+                inter = interaction.replace("w","W").replace("s","S").replace("h","H")
+            else:
+                inter = interaction
+
+            # if this category has a restricted list of interactions to output
+            if len(categories[category]) == 0 or inter in categories[category] or ("near" in categories and "n" in interaction and inter.replace('n','') in categories[category]):
+                for a,b,c in interaction_to_list_of_tuples[interaction]:
+                    rows.append({'category': category,
+                                 'from': a,
+                                 'interaction': inter,
+                                 'to': b,
+                                 'crossing': c
+                                 })
+    return pd.DataFrame(rows)
+
+
+
 
 def write_txt_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions):
     """
@@ -3096,7 +3136,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list
                     for a,b,c in interaction_to_list_of_tuples[interaction]:
                         f.write("%s\t%s\t%s\t%s\n" % (a,inter,b,c))
 
-def write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified):
+def write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified, dump=True):
     """
     For each chain, write interactions according to category,
     and within each category, write by annotation.
@@ -3146,11 +3186,65 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to
 
         #print(json.dumps(output))
 
-        with open(filename,'w') as f:
-            f.write(json.dumps(output))
+        if dump:
+            with open(filename,'w') as f:
+                f.write(json.dumps(output))
+        else:
+            return output
 
 
 #=======================================================================
+
+def generatePairwiseAnnotation_import(inputPath, category):
+    """ Importable version of pairwise annotator.
+    :param inputPath: path to input cif file
+    :param category: list of desired annotations 
+
+    :returns dict: dictionary with annotations
+    """
+
+    # dictionary to control what specific annotations are output, in a file named for the key
+    # empty list means to output all interactions in that category
+    # non-empty list specifies which interactions to output in that category
+    categories = {}
+
+    Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
+
+    if category:
+        for category in category.split(","):
+            categories[category] = []
+    else:
+        # default is to annotate and write just "true" basepairs
+        categories['basepair'] = Leontis_Westhof_basepairs
+
+    if 'basepair_detail' in categories:
+        categories['basepair'] = Leontis_Westhof_basepairs + ['cWB','cBW']  # bifurcated pairs
+    elif 'basepair' in categories:
+        categories['basepair'] = Leontis_Westhof_basepairs
+    else:
+        categories['basepair'] = ['cWW']  # only annotate cWW, for crossing number
+
+    # process additional arguments as PDB files
+    
+    # annotate each PDB file
+    timerData = myTimer("start")
+    failed_structures = []
+    counter = 0
+
+    # restrict dictionary of cutoffs to just the basepairs needed here
+    focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
+    ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
+
+    from fr3d.cif.reader import Cif
+    with open(inputPath, read_mode) as raw:
+        structure = Cif(raw).structure()
+
+    chains = []
+    pdbid = ""
+    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
+
+    return write_output_df(interaction_to_list_of_tuples,categories,category_to_interactions)
+
 def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, output_format):
 
     if isinstance(entry_id,str):
