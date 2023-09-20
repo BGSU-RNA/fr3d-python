@@ -152,6 +152,7 @@ def defineUserQuery(name):
         name = "Stacked cWW GC"
         name = 'cWW in DNA'
         name = 'cWW stack in DNA'
+        name = "coplanar"
         name = "sarcin5mixed2"
 
     if name == 'Python modified bases':
@@ -277,6 +278,16 @@ def defineUserQuery(name):
         Q["searchFiles"] = ['4ARC']   # set of IFEs to search
         Q["searchFiles"] = ['4V9F','5J7L','6ZMI']   # set of IFEs to search
         Q["searchFiles"] = ['3AM1|1|B']   # set of IFEs to search
+
+    elif name == 'coplanar':
+        Q["name"] = name
+        Q["type"] = "symbolic"
+        Q["numpositions"] = 2
+        Q["requiredMoleculeType"][0] = ["RNA"]
+        Q["requiredMoleculeType"][1] = ["RNA"]
+        Q["interactionMatrix"] = emptyInteractionMatrix(Q["numpositions"])
+        Q["interactionMatrix"][0][1] = "coplanar"
+        Q["searchFiles"] = ['4V9F']   # set of IFEs to search
 
     elif name == 'syn pair':
         Q["name"] = name
