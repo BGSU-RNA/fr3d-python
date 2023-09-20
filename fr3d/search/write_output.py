@@ -3,15 +3,15 @@
 import numpy as np
 import os
 from collections import defaultdict
-from fr3d.search.fr3d_configuration import SERVER
-from fr3d.search.fr3d_configuration import OUTPUTPATH
-from fr3d.search.fr3d_configuration import TEMPLATEPATH
-from fr3d.search.fr3d_configuration import JS1
-from fr3d.search.fr3d_configuration import JS2
-from fr3d.search.fr3d_configuration import JS3
-from fr3d.search.fr3d_configuration import JS4
-from fr3d.search.fr3d_configuration import JS5
-from fr3d.search.fr3d_configuration import REFRESHTIME
+from fr3d_configuration import SERVER
+from fr3d_configuration import OUTPUTPATH
+from fr3d_configuration import TEMPLATEPATH
+from fr3d_configuration import JS1
+from fr3d_configuration import JS2
+from fr3d_configuration import JS3
+from fr3d_configuration import JS4
+from fr3d_configuration import JS5
+from fr3d_configuration import REFRESHTIME
 
 def getCSVfilename(Q):
     if SERVER:
@@ -204,8 +204,13 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
             else:
                 discrepancydata += "]\n]" # end list of instances, end list of data
 
+    # get the path of the current program
+    current_path,current_program = os.path.split(os.path.abspath(__file__))
+
+    filename = os.path.join(current_path,'template.html')
+
     # read template.html into one string
-    with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
+    with open(filename, 'r') as myfile:
         template = myfile.read()
 
     # replace ###PAGETITLE### with pagetitle
