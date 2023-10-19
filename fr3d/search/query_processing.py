@@ -251,7 +251,12 @@ def retrieveQueryInformation(Q):
         chainData = {}
 
         if "unitID" in Q:
-            Q["numpositions"] = len(Q["unitID"])
+            if len(Q["unitID"]) > 0:
+                Q["numpositions"] = len(Q["unitID"])
+            else:
+                print("Error:  Need to specify unit IDs for geometric or mixed query")
+                Q["errorMessage"].append("Need to specify unit IDs for geometric or mixed query")
+
         else:
             print("Error:  Need to specify unit IDs for geometric or mixed query")
             Q["errorMessage"].append("Need to specify unit IDs for geometric or mixed query")
@@ -1028,11 +1033,12 @@ def calculateQueryConstraints(Q):
 
             search_file = search_file.upper()
 
+            chains = []
+
             if search_file in Q["PDB_data_file"].keys():
 
                 #print(Q["PDB_data_file"][search_file])
 
-                chains = []
                 if searchingRNA and 'RNA' in Q["PDB_data_file"][search_file]['chains']:
                     chains += ["|".join([search_file,'1',x]) for x in Q["PDB_data_file"][search_file]['chains']['RNA']]
                 if searchingDNA and 'DNA' in Q["PDB_data_file"][search_file]['chains']:
@@ -1041,7 +1047,31 @@ def calculateQueryConstraints(Q):
                 # print("Found these chains %s in %s" % (chains,file))
             else:
                 print("Could not find %s in units/NA_datafile.pickle" % search_file)
-                Q["errorMessage"].append("Could not find list of chains for %s" % search_file)
+
+                # read directory listing for units directory, get filenames that include search_file in the name
+                units_path = os.path.join(DATAPATH,'units')
+                if os.path.exists(units_path):
+                    # get directory listing
+                    file_list = os.listdir(units_path)
+                    # Loop over the filenames
+                    for filename in file_list:
+                        # Check if the search_file string is in the filename
+                        print(filename)
+                        if search_file in filename:
+                            fields = filename.split("_")
+                            print(fields)
+                            chains += fields[2]
+
+                    if len(chains) == 0:
+                        # no pre-computed pairwise annotations found
+                        # attempt to annotate pairs from the .cif file
+
+
+                else:
+                    Q["errorMessage"].append("Data directory %s does not exist" % units_path)
+
+
+
 
         elif SERVER:
             print('  Unknown file %s' % search_file)
