@@ -477,6 +477,54 @@ def makeListOfNtIndices(baseCubeList, baseCubeNeighbors):
     return(lastNT)
 
 
+def map_unit_id_to_previous_O3(bases):
+    """
+    Create a dictionary whose key is unit id and whose value
+    is the 3d coordinates of the O3' atom of the previous nucleotide,
+    if available, otherwise empty vector.
+    """
+
+    list_of_nucleotides = []
+    for base in bases:
+        coordinates = get_one_atom_coordinates(base,"O3'")
+        P = get_one_atom_coordinates(base,"P")
+        t = (base.model,base.symmetry,base.chain,base.index,base.unit_id(),coordinates,P)
+        list_of_nucleotides.append(t)
+
+    list_of_nucleotides.sort()
+
+    previous_O3_coordinates = np.empty([1,3])
+    previous_model = None
+    previous_symmetry = None
+    previous_chain = None
+    previous_index = None
+    unit_id_to_previous_O3 = {}
+
+    for model,symmetry,chain,index,unit_id,O3_coordinates,P in list_of_nucleotides:
+
+        #print(model,symmetry,chain,index,unit_id,O3_coordinates)
+
+        if model == previous_model and symmetry == previous_symmetry and chain == previous_chain and index == previous_index + 1:
+            unit_id_to_previous_O3[unit_id] = previous_O3_coordinates
+
+            # if P.any():
+            #     print("%-20s distance from P to previous O3' is %f" % (unit_id,np.linalg.norm(P-previous_O3_coordinates)))
+            # else:
+            #     print(P)
+        else:
+            unit_id_to_previous_O3[unit_id] = np.empty([1,3])
+            # print("%-20s has no previous O3' see http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s" % (unit_id,unit_id))
+
+        # save current values for next nucleotide
+        previous_model = model
+        previous_symmetry = symmetry
+        previous_chain = chain
+        previous_index = index
+        previous_O3_coordinates = O3_coordinates
+
+    return unit_id_to_previous_O3
+
+
 def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=False):
     """
     Loop over nucleotides, find those with two or more interactions on the same edge, choose the best, remove the others
@@ -607,9 +655,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     # For base-backbone interactions, we need to know
     if 'backbone' in categories.keys():
-        ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
-    else:
-        ntDict = []
+        #ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
+        unit_id_to_previous_O3 = map_unit_id_to_previous_O3(bases)
 
     for nt1key in baseCubeList:                         # key to first cube
         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
@@ -759,17 +806,19 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         # annotate base phosphate and base ribose interactions
                         if 'backbone' in categories.keys():
                             timerData = myTimer("Check backbone interactions", timerData)
-                            #you need the O3' atom of the last nucleotide and this dict will help you get that component.
-                            lastNT = None
-                            lastNT2 = None
-                            if nt1.index - 1 > 0 and (nt1.index-1) in ntDict:
-                                lastNT = ntDict[nt1.index-1]
-                            if nt2.index - 1 > 0 and (nt2.index-1) in ntDict:
-                                lastNT2 = ntDict[nt2.index-1]
 
-                            # this is not checking for self interactions, but is capable of doing that. Should be done in NA_unit_annotation.py
-                            interactionbPh, interactionbR, datapoint12 = check_base_backbone_interactions(nt1, nt2, lastNT, lastNT2, parent1, parent2, datapoint12)
-                            # maybe self interactions should be checked here, or maybe in unit_annotation
+                            # # you need the O3' atom of the last nucleotide and this dict will help you get that component.
+                            # lastNT = None
+                            # lastNT2 = None
+                            # if nt1.index - 1 > 0 and (nt1.index-1) in ntDict:
+                            #     lastNT = ntDict[nt1.index-1]
+                            # if nt2.index - 1 > 0 and (nt2.index-1) in ntDict:
+                            #     lastNT2 = ntDict[nt2.index-1]
+
+                            # get coordinates of O3' of the nucleotide before nt2, part of the phosphate of nt2
+                            previousO3 = unit_id_to_previous_O3.get(nt2.unit_id(),np.empty([1,3]))
+                            interactionbPh, interactionbR, datapoint12 = check_base_backbone_interactions(nt1, nt2, previousO3, parent1, parent2, datapoint12)
+
                             if interactionbPh and len(interactionbPh) > 0:
                                 count_pair += 1
                                 interaction_to_pair_list[interactionbPh].append(unit_id_pair)
@@ -1522,7 +1571,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
     return False, [-100,-100,-100]
 
 
-def get_base_atoms(sequence):
+def get_base_atom_names(sequence):
     """
     For standard bases, look up the base heavy and hydrogen atoms.
     For modified bases, map the parent base heavy and hydrogen atoms
@@ -1552,10 +1601,10 @@ def get_base_atoms(sequence):
 
 def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     """
-    Checks for nucleotide base stacking.
-    Two nucleotides and their parents passed in.
-    Creates a list of their outermost atoms.
-    Projects nucleotides onto one another to find overlap.
+    Check for nucleotide base stacking.
+    Two nucleotides and their parents are passed in.
+    Create a list of their outermost atoms.
+    Project nucleotides onto one another to find overlap.
     Annotated Near Stacking if the following criteria are met:
         Overlap is found at least one way
         Displacement of z coordinate is less than 4.5 and greater than 1
@@ -1572,23 +1621,23 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     interaction = ""
     interaction_reversed = ""
     reverseAnnotation = False
-    #Outermost Atoms of NT Bases that's coordinates will be checked to see if they fit in the base of another nt
+    #Outermost Atoms of NT Bases whose coordinates will be checked to see if they fit in the base of another nt
 
     # these sets are already defined
-    parent1BaseAtoms = NAbaseatoms[parent1]
-    parent2BaseAtoms = NAbaseatoms[parent2]
+    # parent1BaseAtoms = NAbaseatoms[parent1]
+    # parent2BaseAtoms = NAbaseatoms[parent2]
 
     #Create a list in case one of these is nucleotides is a modified nucleotide.
     #This will allow us to project atoms that may not follow the same coordinates as standard
     #nucleotides and see if they will project onto the base of another nt.
 
-    nt1baseAtomsList = get_base_atoms(nt1.sequence)
+    nt1baseAtomsList = get_base_atom_names(nt1.sequence)
 
     if len(nt1baseAtomsList) == 0:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
 
-    nt2baseAtomsList = get_base_atoms(nt2.sequence)
+    nt2baseAtomsList = get_base_atom_names(nt2.sequence)
 
     if len(nt2baseAtomsList) == 0:
         print("Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
@@ -1630,7 +1679,6 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
                 normal_Z = rotation_2_to_1[2,2]
                 min_vertical_distance = coords[2]
 
-
         if min_vertical_distance > 0:
             if normal_Z > 0:
                 interaction = "ns35" # second base above, pointing up
@@ -1669,7 +1717,6 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         if abs(min_distance) < 1 or abs(normal_Z) < 0.5:
             return "", datapoint, ""
 
-
     if len(interaction) > 0 and False:
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
@@ -1703,8 +1750,8 @@ def calculate_min_distances(nt1, nt2, base_points2):
     min_distance = 1000
     base_points1 = []
 
-    base1_atoms = get_base_atoms(nt1.sequence)
-    base2_atoms = get_base_atoms(nt2.sequence)
+    base1_atoms = get_base_atom_names(nt1.sequence)
+    base2_atoms = get_base_atom_names(nt2.sequence)
 
     if base_points2:
         base_points2_local = [p for p in base_points2]
@@ -1759,11 +1806,11 @@ def calculate_base_min_distances(nt1, nt2, base_points2 = []):
     base_min_distance = 9999
     base_points1 = []
 
-    base1_atoms = get_base_atoms(nt1.sequence)
+    base1_atoms = get_base_atom_names(nt1.sequence)
 
     if not base_points2:
         base_points2 = []
-        base2_atoms = get_base_atoms(nt2.sequence)
+        base2_atoms = get_base_atom_names(nt2.sequence)
         for atom2 in nt2.atoms():
             if atom2.name in base2_atoms:
                 p = [atom2.x, atom2.y, atom2.z]
@@ -1817,13 +1864,13 @@ def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrog
                     baseMassiveAndHydrogens[nt1.sequence].append(atom)
     return baseMassiveAndHydrogens
 
-def check_base_backbone_interactions(nt1,nt2,lastNT,lastNT2,parent1,parent2,datapoint):
+def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoint):
     """
     Function to check base backbone interactions
     nt1 base checked for hydrogen bonds with phosphate and ribose of nt2
     """
 
-    # annotations
+    # annotations to return
     phosphate = ""
     ribose = ""
 
@@ -1860,11 +1907,10 @@ def check_base_backbone_interactions(nt1,nt2,lastNT,lastNT2,parent1,parent2,data
         phosphateOxygens = get_atom_coordinates(nt2, phosphateOxygenNames)
         riboseOxygens    = get_atom_coordinates(nt2, riboseOxygenNames)
 
-        # look for O3' of previous nucleotide and use it if it is available
-        if lastNT2:
-            O3atom = get_one_atom_coordinates(lastNT2, "O3'")
-            if O3atom.any():
-                phosphateOxygens.append(O3atom)
+        # use O3' coordinates of nucleotide before nt2 if available
+        if previousO3.any():
+            phosphateOxygens.append(previousO3)
+            #print('Found O3 of nucleotide before %s' % nt2.unit_id())
 
         # if nt2 has a P atom and it is far from the plane of base 1, don't look for BPh interactions
         Pcoord = get_one_atom_coordinates(nt2, "P")
@@ -2162,7 +2208,7 @@ def calculate_basepair_gap(nt1,nt2,base_points2=None):
         # look up the base atoms in nt2
         base_points2 = []
 
-        base_atoms = get_base_atoms(nt2.sequence)
+        base_atoms = get_base_atom_names(nt2.sequence)
 
         for atom in nt2.atoms():
             if atom.name in base_atoms:
@@ -2290,7 +2336,8 @@ def check_sugar_ribose(nt1,nt2,parent1,datapoint):
     if datapoint:
         datapoint['sugar_ribose'] = annotation
 
-    #print('%s %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (annotation,o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+    # if annotation in ['cSR','tSR']:
+    #     print('%s %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (annotation,o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
 
     return annotation, datapoint
 
@@ -2325,6 +2372,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
     quality = {}                  # dictionary of quality scores for each interaction type
+
+    # if nt1.unit_id() == "464D|1|B|A|14" and nt2.unit_id() == "464D|1|A|U|1":
+    #     print("Checking cutoffs for %s,%s" % (nt1.unit_id(),nt2.unit_id()))
+    #     print(datapoint)
 
     if abs(displ[0,2]) > 3.6:         # too far out of plane for a basepair
         return "", "", quality, datapoint
