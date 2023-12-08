@@ -4,14 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fr3d"
-version = "0.0.1"
+version = "0.0.2"
 description = "Python implementation of FR3D"
 authors = [{name="Craig L. Zirbel and others", email="zirbel@bgsu.edu"}]
-
+license = { text = "Apache-2.0"}
 dependencies = [
 	"numpy",
 	"scipy",
 	"mmcif-pdbx; python_version>='3.0'"
 ]
+
+[tools.setuptools]
+packages = ["fr3d"]
+
+
 
 
