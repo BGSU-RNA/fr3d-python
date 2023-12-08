@@ -8,7 +8,6 @@ setup(
     packages=find_packages(include=['fr3d', 'fr3d.*']),
     include_package_data=True,
     url='',
-    license='LICENSE.txt',
     install_requires=["numpy", "scipy", "mmcif-pdbx; python_version >= '3.0'"],
     description='Python implementation of FR3D',
     long_description="",
