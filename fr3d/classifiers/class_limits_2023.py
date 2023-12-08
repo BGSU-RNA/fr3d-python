@@ -447,6 +447,7 @@ nt_nt_cutoffs["A,U"]["tWW"] = {}
 nt_nt_cutoffs["A,U"]["tWW"][0] = {}
 nt_nt_cutoffs["A,U"]["tWW"][0]["xmin"] = 4.80
 nt_nt_cutoffs["A,U"]["tWW"][0]["xmax"] = 6.40
+nt_nt_cutoffs["A,U"]["tWW"][0]["xmax"] = 7.20          # expand 2023-10-01 CLZ
 nt_nt_cutoffs["A,U"]["tWW"][0]["ymin"] = 6.00
 nt_nt_cutoffs["A,U"]["tWW"][0]["ymax"] = 7.80
 nt_nt_cutoffs["A,U"]["tWW"][0]["zmin"] = -3.00
