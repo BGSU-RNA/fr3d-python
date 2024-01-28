@@ -3110,7 +3110,7 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to
                 inter = interaction.replace("w","W").replace("s","S").replace("h","H")
             # if this category has a restricted list of interactions to output
             if len(categories[category]) == 0 or inter in categories[category]:
-                for a,b,c in interaction_to_list_of_tuples[tn+interaction]:
+                for a,b,c in interaction_to_list_of_tuples[interaction]:
                     fields1 = a.split("|")
                     fields2 = b.split("|")
                     if fields1[2] == chain and fields2[2] == chain:
