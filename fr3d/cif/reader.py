@@ -12,7 +12,7 @@ import os
 
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter # old name
-    from pdbx.reader.PdbxReader import PdbxReader as Reader #If running python 2.7, use pdbx reader 
+    from pdbx.reader.PdbxReader import PdbxReader as Reader #If running python 2.7, use pdbx reader
 else:
     from pdbx import PdbxReader as Reader #if running in python 3, install mmcif package to deal with reading. ([mmcif_pdbx] will need added to setup.py for this)
 
@@ -90,7 +90,11 @@ class Cif(object):
     makes things easier.
     """
 
-    def __init__(self, handle=None, data=None):
+    def __init__(self, handle=None, data=None, preferred_id=None):
+
+        if handle is None and data is None:
+            raise ValueError("Must give either handle or data")
+
         if data is None:
             reader = Reader(handle)
             self.data = []
@@ -99,12 +103,13 @@ class Cif(object):
         else:
             self.data = data
 
-        if handle is None and data is None:
-            raise ValueError("Must give either handle or data")
-        if sys.version_info[0] < 3:
+        if preferred_id:
+            self.pdb = preferred_id
+        elif sys.version_info[0] < 3:
             self.pdb = self.data.getName()
-        else: 
+        else:
             self.pdb = self.data.name
+
         self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
@@ -188,12 +193,12 @@ class Cif(object):
 
                 return assemblies
         ###########################################################################################
-        # Otherwise, Default to this main way of processing 
+        # Otherwise, Default to this main way of processing
         if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
             for assembly in self.pdbx_struct_assembly_gen:
                 oper_expression = assembly['oper_expression']
 
-                # Attempt to handle complex symettries. These symmetries have characters such as -, X, and P 
+                # Attempt to handle complex symettries. These symmetries have characters such as -, X, and P
                 operators = oper_expression.split(',')
 
                 for asym_id in assembly['asym_id_list'].split(','):
@@ -202,16 +207,16 @@ class Cif(object):
                         #Some Cif files such as 5MSF use a whole list of operators, a hyphen should do an adequte job of flagging these situations
                         if '-' in operator and 'X' not in operator and 'P' not in operator:# list of operators, but not crystallographic operators
                             op1 = operator.replace("(", "")
-                            op1 = op1.replace(")", "") 
+                            op1 = op1.replace(")", "")
                             startEnd = op1.split('-')
                             if sys.version_info[0] < 3:
                                 for number in xrange(int(startEnd[0]), int(startEnd[1])+1):
-                                    listOfNumbers.append(number)                                
+                                    listOfNumbers.append(number)
                             else:
                                 for number in range(int(startEnd[0]), int(startEnd[1])+1):
                                     listOfNumbers.append(number)
                             for symmetry in listOfNumbers: #Add all of these symmetry operators and then go to the next operator
-                                op = self._operators[str(symmetry)]    
+                                op = self._operators[str(symmetry)]
                                 previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                                 if not op['id'] in previous_id:
                                     assemblies[asym_id].append(op)
@@ -223,7 +228,7 @@ class Cif(object):
                             pass # I don't think we need to apply anything.
                         elif 'P' in operator:  # P moves coordinates into a "standard" icosahedral point symmettry frame
                             if self.pdb in oldStructures:
-                                op = self._operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                                op = self._operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database.
                                                                # This is only applied for the structures in the old structures list.
                         else: #Normal case
                             if '(' in operator or ')' in operator:
@@ -294,8 +299,12 @@ class Cif(object):
         """
         if sys.version_info[0] < 3:
             pdb = self.data.getName()
-        else: 
+        else:
             pdb = self.data.name
+
+        pdb = self.pdb
+        #print('  reader: using pdb = %s' % pdb)
+
         residues = self.__residues__(pdb)
         return Structure(list(residues), pdb=pdb)
 
@@ -332,6 +341,9 @@ class Cif(object):
             chain_compare = ft.partial(op.contains, set(chain))
 
         pdb = self.data.getName()
+
+        pdb = self.pdb
+
         mapping = coll.defaultdict(list)
         for residue in self.__residues__(pdb):
             if chain_compare(residue.chain):
@@ -485,7 +497,7 @@ class Cif(object):
 
     def __atoms__(self, pdb):
         # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-        if self.pdb in oldStructures: 
+        if self.pdb in oldStructures:
             if hasattr(self, '_assemblies.values()'):
                 max_operators = max(len(op) for op in list(self._assemblies.values()))
             else:
@@ -521,7 +533,7 @@ class Cif(object):
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
         ###########################################################################
-        # Otherwise, this is the default way to handle this 
+        # Otherwise, this is the default way to handle this
         try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         except:
@@ -534,7 +546,7 @@ class Cif(object):
                 zipped = it.izip(pdbs, self.atom_site, operators)
                 return it.imap(lambda a: self.__atom__(*a), zipped)
             else:
-                operators = it.repeat(self.__identity_operator__(), len(self.atom_site)) 
+                operators = it.repeat(self.__identity_operator__(), len(self.atom_site))
                 pdbs = it.repeat(pdb, len(self.atom_site))
                 zipped = list(zip(pdbs, self.atom_site, operators))
                 return list(map(lambda a: self.__atom__(*a), zipped))
@@ -604,7 +616,7 @@ class Cif(object):
                         name=atom_id,
                         symmetry=symmetry_name,
                         polymeric=self.is_polymeric_atom(atom))
-        except: 
+        except:
             comp_num = re.sub('\D', '',atom['auth_seq_id'])
             return Atom(pdb=pdb,
                         model=model,
@@ -634,9 +646,9 @@ class Cif(object):
         if self.pdb in oldStructures:
              if not symmetry_name or symmetry_name == '?':
                 #6QNQ is in old structures for a seperate reason than the rest of the structures. Doesn't apply the p annotation.
-                symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database.
                                                     # This is only applied for the structures in the old symmetry list.
-        elif not symmetry_name or symmetry_name == '?': 
+        elif not symmetry_name or symmetry_name == '?':
             symmetry_name = 'ASM_%s' % symmetry['id'] #we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
 
         return symmetry_name
@@ -650,7 +662,7 @@ class Cif(object):
         return bool(block)
 
     def operators(self, asym_id):
-        
+
         assemblies = self._assemblies[asym_id]
 
         if not assemblies:
@@ -674,7 +686,7 @@ class Cif(object):
         block_name = re.sub('^_', '', name)
         if sys.version_info[0] < 3:
             block = self.data.getObj(block_name)
-        else: 
+        else:
             block = self.data.get_object(block_name)
         if not block:
             raise MissingBlockException("Unknown block " + name)
@@ -697,7 +709,7 @@ class Table(object):
         self._cif = cif
         self.block = block
         self.rows = rows
-        
+
         if sys.version_info[0] < 3:
             self.columns = self.block.getItemNameList()
         else:
