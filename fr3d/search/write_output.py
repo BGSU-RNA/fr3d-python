@@ -117,9 +117,9 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         if(Q["type"] == "geometric" or Q["type"] == "mixed"):
             candidatelist += "<td>%0.4f" % candidate["discrepancy"] + "</td>"
 
-        PDB_id = candidate["unitids"][0][0:4]
-        if PDB_id in Q["PDB_data_file"]:
-            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][PDB_id])
+        file_id = candidate["unitids"][0].split("|")[0]
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][file_id])
         else:
             candidatelist += "<td>NA</td>"
 
@@ -172,6 +172,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     candidatelist += '</table>\n'
 
     discrepancydata = "var data =  []\n"
+
+    # print("  write_output: ", allvsallmatrix)
 
     if np.size(allvsallmatrix) > 0:
         # write discrepancy data in new 2022 list format
@@ -273,9 +275,15 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         template = template.replace("###DISCREPANCYDATA###","")
         template = template.replace("###JS5###","")    # do not display a heat map
 
+    if "OUTPUTPATH" in Q:
+        OUTPUTPATH = Q["OUTPUTPATH"]
+    else:
+        from fr3d_configuration import OUTPUTPATH
+
     outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
 
-    print("Writing to %s" % outputfilename)
+    if Q.get('printFileOperations',False):
+        print("Writing to %s" % outputfilename)
 
     messages = ""
 
@@ -297,9 +305,9 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         os.system("gzip %s" % outputfilename)
 
 
-
 def writeCSVOutput(Q,candidates):
-    """Write the list of candidates in comma separated value format
+    """
+    Write the list of candidates in comma separated value format
     """
 
     pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','BPh','BR','sO','crossingNumber']
@@ -352,9 +360,9 @@ def writeCSVOutput(Q,candidates):
         if(Q["type"] == "geometric" or Q["type"] == "mixed"):
             candidatelist += "%0.4f," % candidate["discrepancy"]
 
-        PDB_id = candidate["unitids"][0][0:4]
-        if PDB_id in Q["PDB_data_file"]:
-            candidatelist += format_resolution(Q["PDB_data_file"][PDB_id]) + ","
+        file_id = candidate["unitids"][0].split("|")[0]
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += format_resolution(Q["PDB_data_file"][file_id]) + ","
         else:
             candidatelist += "NA,"
 
@@ -412,17 +420,31 @@ def writeCSVOutput(Q,candidates):
                 unit_id_list += ','
 
         # make link to view
-        candidatelist += '"http://rna.bgsu.edu/rna3dhub/display3D/unitid/' + unit_id_list + '",'
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += '"http://rna.bgsu.edu/rna3dhub/display3D/unitid/' + unit_id_list + '",'
+        else:
+            candidatelist += ','
 
         # make link to coordinates
-        candidatelist += '"http://rna.bgsu.edu/rna3dhub/rest/getCoordinates?coord=' + unit_id_list + '",'
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += '"http://rna.bgsu.edu/rna3dhub/rest/getCoordinates?coord=' + unit_id_list + '",'
+        else:
+            candidatelist += ','
 
         # make link to sequence variability server
-        candidatelist += '"http://rna.bgsu.edu/correspondence/variability?id=' + unit_id_list + '&format=unique",'
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += '"http://rna.bgsu.edu/correspondence/variability?id=' + unit_id_list + '&format=unique",'
+        else:
+            candidatelist += ','
 
         candidatelist += '\n'
 
     csvfilename,csvlink = getCSVfilename(Q)
+
+    if "OUTPUTPATH" in Q:
+        OUTPUTPATH = Q["OUTPUTPATH"]
+    else:
+        from fr3d_configuration import OUTPUTPATH
 
     outputfilename = os.path.join(OUTPUTPATH,csvfilename)
 
