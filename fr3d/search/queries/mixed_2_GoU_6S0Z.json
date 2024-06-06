@@ -1,0 +1,17 @@
+{
+"name": "mixed_2_GoU_6S0Z", 
+"unitID": ["6S0Z|1|A|G|2331", "6S0Z|1|A|U|2339"], 
+"numpositions": 2, 
+"discrepancy": 1.0, 
+"searchFiles": ["8b0x|1|a", "7K00|1|a", "5E81", "4Y4O", "5NJT", "5NGM", "6S0Z"], 
+"constraintMatrix,1,2": "GU", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

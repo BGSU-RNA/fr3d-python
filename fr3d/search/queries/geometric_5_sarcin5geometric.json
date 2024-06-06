@@ -1,0 +1,16 @@
+{
+"name": "geometric_5_sarcin5geometric", 
+"unitID": ["4V9F|1|0|G|2692", "4V9F|1|0|U|2693", "4V9F|1|0|A|2694", "4V9F|1|0|G|2701", "4V9F|1|0|A|2702"], 
+"numpositions": 5, 
+"discrepancy": 0.3, 
+"searchFiles": ["4V9F"], 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

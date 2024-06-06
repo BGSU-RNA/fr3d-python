@@ -1,0 +1,17 @@
+{
+"name": "symbolic_2_chain_length", 
+"numpositions": 2, 
+"searchFiles": ["6ZMI"], 
+"constraintMatrix,1,1": "N chainlength_2000_inf", 
+"constraintMatrix,1,2": "cWW", 
+"constraintMatrix,2,2": "N chainlength_0_500", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

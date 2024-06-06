@@ -1,0 +1,20 @@
+{
+"name": "geometric_3_stacked_bases_with_aa", 
+"numpositions": 3, 
+"unitID": ["4V9F|1|0|G|1302", "4V9F|1|0|G|1354", "4V9F|1|L|LYS|5"], 
+"unittype": [null, null, null], 
+"discrepancy": 0.4, 
+"searchFiles": ["4V9F"], 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"constraintMatrix,3,3": "protein", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

@@ -1,0 +1,17 @@
+{
+"name": "mixed_2_cWW_with_modified", 
+"unitID": ["2N1Q|2|A|G|234", "2N1Q|2|A|C|284"], 
+"numpositions": 2, 
+"discrepancy": 0.4, 
+"searchFiles": ["http://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/3.0A/csv"], 
+"constraintMatrix,1,1": "RNA modified", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

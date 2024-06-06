@@ -1,0 +1,17 @@
+{
+"name": "symbolic_2_count_BP", 
+"numpositions": 2, 
+"searchFiles": ["4TNA", "4V9F", "5J7L", "6ZMI"], 
+"constraintMatrix,1,1": "chainlength_100_700 RNA", 
+"constraintMatrix,1,2": "cWW AU UA GC CG GU UG", 
+"constraintMatrix,2,2": "chainlength_100_700 RNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

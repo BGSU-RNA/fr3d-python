@@ -1,0 +1,18 @@
+{
+"name": "symbolic_2_LR_cSR",
+"numpositions": 2,
+"searchFiles": ["4V9F"],
+"computePairsLocally": 1,
+"constraintMatrix,1,1": "N",
+"constraintMatrix,1,2": "LR tSR cSR",
+"constraintMatrix,2,2": "N",
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 1,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 0,
+"printTimer": 1
+}

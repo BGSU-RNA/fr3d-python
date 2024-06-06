@@ -1,0 +1,19 @@
+{
+"name": "symbolic_6_base_surrounded_by_bases", 
+"numpositions": 6, 
+"searchFiles": ["4V9F"], 
+"constraintMatrix,1,2": "cSW tSW cSH tSH cSS tSS", 
+"constraintMatrix,1,3": "cWW tWW cWH tWH cWS tWS", 
+"constraintMatrix,1,4": "cHW tHW cHH tHH cHS tHS", 
+"constraintMatrix,1,5": "s33 s35", 
+"constraintMatrix,1,6": "s53 s55", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

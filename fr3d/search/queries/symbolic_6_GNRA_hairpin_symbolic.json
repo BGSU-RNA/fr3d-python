@@ -1,0 +1,23 @@
+{
+"name": "symbolic_6_GNRA_hairpin_symbolic", 
+"numpositions": 6, 
+"searchFiles": ["4V9F", "5J7L"], 
+"constraintMatrix,1,6": "cWW", 
+"constraintMatrix,2,1": "=1 after", 
+"constraintMatrix,2,5": "tSH GA", 
+"constraintMatrix,3,2": "<4 after", 
+"constraintMatrix,3,4": "stack", 
+"constraintMatrix,4,3": "<4 after", 
+"constraintMatrix,4,5": "stack", 
+"constraintMatrix,5,4": "<4 after", 
+"constraintMatrix,6,5": "=1 after", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

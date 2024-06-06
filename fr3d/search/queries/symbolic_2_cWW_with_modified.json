@@ -1,0 +1,18 @@
+{
+"numpositions": 2,
+"searchFiles": ["4TNA"],
+"constraintMatrix,1,1": "RNA modified",  # insist that position 1 is a modified RNA nucleotide
+"constraintMatrix,1,2": "cWW",
+"constraintMatrix,2,2": "RNA",
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 1,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 1,
+"printTimer": 1,
+"DATAPATHPAIRS": "C:/Users/zirbel/Documents/FR3D/NAPairwiseInteractions",
+"computePairsLocally": 1    # don't download, compute locally
+}

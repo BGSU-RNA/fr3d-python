@@ -1,0 +1,17 @@
+{
+"name": "symbolic_2_next", 
+"numpositions": 2, 
+"searchFiles": ["4TNA"], 
+"constraintMatrix,2,1": "next", 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

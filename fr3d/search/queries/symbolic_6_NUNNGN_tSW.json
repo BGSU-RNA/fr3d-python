@@ -1,0 +1,21 @@
+{
+"name": "symbolic_6_NUNNGN_tSW", 
+"numpositions": 6, 
+"searchFiles": ["7K00", "5Y85", "4ARC", "5Y85", "5T5H", "6DCB", "5OB3", "3U4M", "7KKV", "7EOG"], 
+"constraintMatrix,2,1": "next", 
+"constraintMatrix,2,5": "UG tSW", 
+"constraintMatrix,3,2": "next", 
+"constraintMatrix,4,3": "next", 
+"constraintMatrix,5,4": "next", 
+"constraintMatrix,5,5": "glyco", 
+"constraintMatrix,6,5": "next", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

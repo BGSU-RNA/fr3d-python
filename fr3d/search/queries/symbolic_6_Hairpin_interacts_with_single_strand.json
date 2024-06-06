@@ -1,0 +1,21 @@
+{
+"name": "symbolic_6_Hairpin_interacts_with_single_strand", 
+"numpositions": 6, 
+"searchFiles": ["4V9F|1|0"], 
+"constraintMatrix,1,3": "cWW and bSS", 
+"constraintMatrix,2,1": ">", 
+"constraintMatrix,2,5": "pair stack BPh BR", 
+"constraintMatrix,3,2": ">", 
+"constraintMatrix,4,6": "bSS", 
+"constraintMatrix,5,4": ">", 
+"constraintMatrix,6,5": ">", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}
