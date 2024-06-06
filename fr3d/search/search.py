@@ -4,16 +4,16 @@ Created on Sun Nov 10 3:00:00 2021
 
 """
 
-from discrepancy import matrix_discrepancy_cutoff
-from myTimer import myTimer
-from copy import copy
 from collections import defaultdict
+from copy import copy
 import numpy as np
 import sys
 from time import time
+
+from discrepancy import matrix_discrepancy_cutoff
+from myTimer import myTimer
 from query_processing import synonym
 from pair_processing import get_pairlist
-from fr3d_configuration import SERVER
 
 if sys.version_info[0] < 3:
     from time import clock as cputime  # true cpu time
@@ -151,18 +151,17 @@ def makeFullList(universe1, universe2):
 
 def printListLengths(Q, numpositions, universe, listOfPairs, text=""):
 
-    if not 'server' in Q and not 'motif_atlas' in Q:
-        print("Universe sizes followed by list lengths, upper triangle. %s" % text)
-        for i in range(0, numpositions):
-            line = "%6d" % len(universe[i])
-            for j in range(0, numpositions):
-                if j < i+1:
-                    line  = "        " + line
-                elif listOfPairs[i][j] == "full":
-                    line += "    full"
-                else:
-                    line += "%8d" % len(listOfPairs[i][j])
-            print(line)
+    print("Universe sizes followed by list lengths, upper triangle. %s" % text)
+    for i in range(0, numpositions):
+        line = "%6d" % len(universe[i])
+        for j in range(0, numpositions):
+            if j < i+1:
+                line  = "        " + line
+            elif listOfPairs[i][j] == "full":
+                line += "    full"
+            else:
+                line += "%8d" % len(listOfPairs[i][j])
+        print(line)
 
 
 def sameAlternateId(Q, ifedata, possibilities):
@@ -221,6 +220,7 @@ def symmetryDifference(u1,u2):
                     return fields2[8]
 
     return ""
+
 
 def oneSymmetryVersion(Q, ifedata, possibilities, index_to_id):
     """
@@ -568,7 +568,12 @@ def prunePairsWithUniverses(universe, listOfPairs, positions_and_counts = None):
             emptyUniverse = True
             return universe, listOfPairs, emptyUniverse, 1.0
 
-    return universe, listOfPairs, emptyUniverse, (before_counter-after_counter)/before_counter
+    if before_counter > 0:
+        reduction = (before_counter-after_counter)/before_counter
+    else:
+        reduction = 0.0
+
+    return universe, listOfPairs, emptyUniverse, reduction
 
 
 def collectModelChainSymmetry(ifedata):
@@ -594,6 +599,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
     CPUStartTime = cputime()
 
     numpositions = Q['numpositions']
+
     interactionToPairs = ifedata['interactionToPairs']
     pairToInteractions = ifedata['pairToInteractions']
     pairToCrossingNumber = ifedata['pairToCrossingNumber']
@@ -601,7 +607,6 @@ def FR3D_search(Q, ifedata, ifename, timerData):
     units = ifedata["units"]
     modelChainSymmetry = []
     chains = []
-
 
     # find lists due to required pairwise constraints
     # do this early because an empty list prevents calculating distances in mixed searches
@@ -663,22 +668,23 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                         emptyList = True
 
         if emptyList:
-            print("A required constraint has no matches, returning an empty list of candidates")
-            return Q, [], cputime()-CPUStartTime
-
+            if Q.get('printRequiredNoMatches',False):
+                print("A required constraint has no matches, returning an empty list of candidates")
+            Q["CPUTimeUsed"] += cputime()-CPUStartTime
+            return Q, [], timerData
 
     # Impose pairwise distance constraints for geometric and mixed searches
     # This can take 20% or more of the runtime in geometric and mixed searches
     timerData = myTimer("Calculating pairwise distances")
     listOfPairs = get_pairlist(Q, ifedata["models"], ifedata["centers"])
 
-
     # define the initial universe for each position in the query; they are sets
     universe = {}
     for i in range(0, numpositions):
         universe[i] = set(ifedata['index_to_id'].keys())
 
-    printListLengths(Q, numpositions, universe, listOfPairs, "After setting up universes and imposing distance constraints.")
+    if Q.get('printListLengths', False):
+        printListLengths(Q, numpositions, universe, listOfPairs, "After setting up universes and imposing distance constraints.")
 
     timerData = myTimer("Unary constraints")
 
@@ -739,12 +745,14 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                 b = Q["chiAngle"][i][2]
                 if Q["chiAngle"][i][0] == 'between':
                     for index in universe[i]:
-                        if a <= units[index]["chiDegree"] and units[index]["chiDegree"] <= b:
-                            temp_universe.add(index)
+                        if units[index]["chiDegree"]:
+                            if a <= units[index]["chiDegree"] and units[index]["chiDegree"] <= b:
+                                temp_universe.add(index)
                 else:
                     for index in universe[i]:
-                        if a <= units[index]["chiDegree"] or units[index]["chiDegree"] <= b:
-                            temp_universe.add(index)
+                        if units[index]["chiDegree"]:
+                            if a <= units[index]["chiDegree"] or units[index]["chiDegree"] <= b:
+                                temp_universe.add(index)
 
                 universe[i] = universe[i] & temp_universe
 
@@ -770,12 +778,14 @@ def FR3D_search(Q, ifedata, ifename, timerData):
 
                 universe[i] = universe[i] & temp_universe
 
-    printListLengths(Q, numpositions, universe, listOfPairs, "After unary constraints.")
+    if Q.get('printListLengths', False):
+        printListLengths(Q, numpositions, universe, listOfPairs, "After unary constraints.")
 
     # if one of the universes is empty, no candidates will be found
     for i in range(len(universe)):
         if len(universe[i]) == 0:
-            return Q, [], cputime()-CPUStartTime
+            Q["CPUTimeUsed"] += cputime()-CPUStartTime
+            return Q, [], timerData
     emptyUniverse = False
 
     # reduce lists of pairs according to required pairwise constraints
@@ -792,13 +802,15 @@ def FR3D_search(Q, ifedata, ifename, timerData):
         # propagate each shortened list of pairs to the affected universes, very quick
         timerData = myTimer("Reduce universes after required")
         universe, emptyUniverse = pruneUniversesWithPairs(universe, listOfPairs, positions_and_counts)
-        printListLengths(Q, numpositions, universe, listOfPairs, "After required constraints and reducing their universes.")
+        if Q.get('printListLengths', False):
+            printListLengths(Q, numpositions, universe, listOfPairs, "After required constraints and reducing their universes.")
 
         if not emptyUniverse:
             # reduce the other pair lists using the reduced universes from above, slow but effective
             timerData = myTimer("Reduce pairs after required")
             universe, listOfPairs, emptyUniverse, reduction = prunePairsWithUniverses(universe, listOfPairs, positions_and_counts)
-            printListLengths(Q, numpositions, universe, listOfPairs, "After required constraints and reducing pairs from universes.")
+            if Q.get('printListLengths', False):
+                printListLengths(Q, numpositions, universe, listOfPairs, "After required constraints and reducing pairs from universes.")
 
     # reduce list of pairs according to continuity constraints
     if not emptyUniverse and "continuityConstraint" in Q and numpositions > 1:
@@ -935,13 +947,15 @@ def FR3D_search(Q, ifedata, ifename, timerData):
         # propagate each shortened list of pairs to the affected universes, very quick
         timerData = myTimer("Reduce universes after cont'y")
         universe, emptyUniverse = pruneUniversesWithPairs(universe, listOfPairs, positions_and_counts)
-        printListLengths(Q, numpositions, universe, listOfPairs, "After continuity constraints and reducing their universes.")
+        if Q.get('printListLengths', False):
+            printListLengths(Q, numpositions, universe, listOfPairs, "After continuity constraints and reducing their universes.")
 
         if not emptyUniverse:
             # reduce the other pair lists using the reduced universes from above, slow but effective
             timerData = myTimer("Reduce pairs after continuity")
             universe, listOfPairs, emptyUniverse, reduction = prunePairsWithUniverses(universe, listOfPairs, positions_and_counts)
-            printListLengths(Q, numpositions, universe, listOfPairs, "After continuity constraints and reducing pairs from universes.")
+            if Q.get('printListLengths', False):
+                printListLengths(Q, numpositions, universe, listOfPairs, "After continuity constraints and reducing pairs from universes.")
 
     # reduce list of pairs subject to a unit type combination constraint, like CG GC
     if not emptyUniverse and "combinationConstraint" in Q and numpositions > 1:
@@ -966,13 +980,15 @@ def FR3D_search(Q, ifedata, ifename, timerData):
         # propagate each shortened list of pairs to the affected universes, very quick
         timerData = myTimer("Reduce universes after comb")
         universe, emptyUniverse = pruneUniversesWithPairs(universe, listOfPairs, positions_and_counts)
-        printListLengths(Q, numpositions, universe, listOfPairs, "After combination constraints and reducing universes.")
+        if Q.get('printListLengths', False):
+            printListLengths(Q, numpositions, universe, listOfPairs, "After combination constraints and reducing universes.")
 
         if not emptyUniverse:
             # reduce the other pair lists using the reduced universes from above, slow but effective
             timerData = myTimer("Reduce pairs after combination")
             universe, listOfPairs, emptyUniverse, reduction = prunePairsWithUniverses(universe, listOfPairs, positions_and_counts)
-            printListLengths(Q, numpositions, universe, listOfPairs, "After combination constraints and reducing pairs.")
+            if Q.get('printListLengths', False):
+                printListLengths(Q, numpositions, universe, listOfPairs, "After combination constraints and reducing pairs.")
 
 
     # reduce list of pairs according to prohibited pairwise constraints
@@ -988,7 +1004,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
 
                     for interaction in Q["prohibitedInteractions"][i][j]:
                         if interaction in interactionToPairs and len(interactionToPairs[interaction]) > 0:
-                            listOfPairs[i][j] = list(set(listOfPairs[i][j]) - 
+                            listOfPairs[i][j] = list(set(listOfPairs[i][j]) -
                                 set(interactionToPairs[interaction][0]))
 
                 # below the diagonal, for asymmetric pairs like BPh, BR, sO
@@ -1008,7 +1024,8 @@ def FR3D_search(Q, ifedata, ifename, timerData):
         # propagate each shortened list of pairs to the affected universes, very quick
         timerData = myTimer("Full universe pruning")
         universe, emptyUniverse = pruneUniversesWithPairs(universe, listOfPairs)
-        printListLengths(Q, numpositions, universe, listOfPairs, "Full universe pruning")
+        if Q.get('printListLengths', False):
+            printListLengths(Q, numpositions, universe, listOfPairs, "Full universe pruning")
 
     if not emptyUniverse:
         reduction = 0.5
@@ -1017,12 +1034,14 @@ def FR3D_search(Q, ifedata, ifename, timerData):
             # reduce the other pair lists using the reduced universes from above, slow but effective
             timerData = myTimer("Full pair pruning %d" % i)
             universe, listOfPairs, emptyUniverse, reduction = prunePairsWithUniverses(universe, listOfPairs)
-            printListLengths(Q, numpositions, universe, listOfPairs, "Full pair pruning #%d, reduction fraction %0.4f" % (i,reduction))
+            if Q.get('printListLengths', False):
+                printListLengths(Q, numpositions, universe, listOfPairs, "Full pair pruning #%d, reduction fraction %0.4f" % (i,reduction))
             i += 1
 
     # No candidates
     if emptyUniverse:
-        return Q, [], cputime()-CPUStartTime
+        Q["CPUTimeUsed"] += cputime()-CPUStartTime
+        return Q, [], timerData
 
     if numpositions == 1:
         # just one position, just one universe, those are the possibilities
@@ -1043,7 +1062,8 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                 for j in range(numpositions):
                     Q["permutedDistance"][i][j] = Q["distance"][perm[i]][perm[j]]
 
-            printListLengths(Q, numpositions, universe, listOfPairs, "After reordering positions")
+            if Q.get('printListLengths', False):
+                printListLengths(Q, numpositions, universe, listOfPairs, "After reordering positions")
 
         timerData = myTimer("Intersecting pair lists")
 
@@ -1057,7 +1077,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
     timerData = myTimer("Same alternate id")
     possibilities = sameAlternateId(Q, ifedata, possibilities)
 
-    if not SERVER and len(possibilities) > 0:
+    if len(possibilities) > 0 and Q.get('printFoundPossibilities',False):
         print("Found %5d possibilities from %s in %10.4f seconds" % (len(possibilities),ifename,(time() - IFEStartTime)))
 
     candidates = []
@@ -1120,5 +1140,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
             newcandidate['interactions'] = lookUpInteractions(Q,indices,
                 pairToInteractions, pairToCrossingNumber, units)
             candidates.append(newcandidate)
-    
-    return Q, candidates, cputime()-CPUStartTime
+
+    Q["CPUTimeUsed"] += cputime()-CPUStartTime
+
+    return Q, candidates, timerData
