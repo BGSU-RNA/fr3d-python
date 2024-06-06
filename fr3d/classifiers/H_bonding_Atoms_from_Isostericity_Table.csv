@@ -14,6 +14,8 @@ cis W/w,A,A,N6,H61,---,N1,-,
 cis W/w,A,A,-,N1,---,H2,C2,
 cis W/W,A,C,N6,H61,---,N3,-,
 cis W/W,A,C,N1,H11,---,O2,-,   *** presumes that N1 is protonated and that the atom is called H11
+cis W/Wa,A,C,-,N1,---,H41,N4,  *** new 2024-05-07 CLZ
+cis W/Wa,A,C,C2,H2,---,N3,-,   *** new 2024-05-07 CLZ
 cis W/W,A,G,N6,H61,---,O6,-,
 cis W/W,A,G,-,N1,---,H1,N1,
 cis W/W,A,U,N6,H61,---,O4,-,
@@ -22,7 +24,6 @@ cis W/W,A,U,C2,H2,---,O2,-,    *** this bond is often long and low-angle
 cis W/w,C,C,-,N3,---,H41,N4,
 cis W/w,C,C,-,O2,---,H3,N3,    *** this will be unusual because N3 is protonated and H3 is usually not present
 cis W/W,C,U,N4,H41,---,O4,-,
-cis W/W,C,U,-,N3,---,H3,N3,    *** LSW 2002 indicates that this is water-mediated
 cis W/W,G,C,-,O6,---,H41,N4,
 cis W/W,G,C,N1,H1,---,N3,-,
 cis W/W,G,C,N2,H22,---,O2,-,
@@ -130,8 +131,7 @@ cis W/S,U,C,N3,H3,---,O2,-,
 cis W/S,U,C,-,O2,---,H2',O2',
 cis W/S,U,G,-,O4,---,H21,N2,
 cis W/S,U,G,N3,H3,---,N3,-,
-cis W/S,U,U,N3,H3,---,O2,-,
-cis W/S,U,U,-,O2,---,H2',O2',
+cis W/S,U,U,N3,H3,---,O2,-,                 *** removed O2 H2' O2' bond per Eric Westhof ***
 trans W/S,A,A,N6,H61,---,N3,-,
 trans W/S,A,A,-,N1,---,H2,C2,
 trans W/S,A,C,N6,H62,---,O2',-,
@@ -172,7 +172,6 @@ trans H/H,A,G,N6,H62,---,O6,-,
 trans H/H,A,U,N6,H62,---,O4,-,
 trans H/H,C,U,N4,H42,---,O4,-,
 trans H/H,G,C,-,N7,---,H42,N4,
-trans H/H,G,C,-,O6,---,H5,C5,          *** plausible additional hydrogen bond 2023-07-19 CLZ ***
 trans H/h,G,G,-,O6,---,H8,C8,
 cis H/S,A,A,N6,H62,---,N3,-,
 cis H/S,A,C,N6,H62,---,O2,-,
@@ -204,6 +203,8 @@ trans H/S,C,C,N4,H42,---,O2,-,
 trans H/S,C,C,N4,H41,---,O2',-,
 trans H/S,C,U,N4,H42,---,O2,-,
 trans H/S,C,U,N4,H41,---,O2',-,
+trans H/Sa,C,U,C5,H5,---,O2,-,          *** new CLZ 2024/02/18 ***
+trans H/Sa,C,U,N4,H42,---,O2',-,        *** new CLZ 2024/02/18 ***
 trans H/S,G,G,-,O6,---,H21,N2,
 trans H/S,U,A,-,O4,---,H2,C2,
 trans H/S,U,G,-,O4,---,H21,N2,
@@ -260,14 +261,13 @@ trans S/s,A,U,C2,H2,---,O2,-,
 trans S/s,G,A,-,N3,---,H2,C2,
 trans S/s,G,A,N2,H21,---,N3,-,
 trans S/s,G,A,N2,H22,---,O2',-,
-trans S/s,G,C,N2,H21,---,O2,-,
-trans S/s,G,C,N2,H22,---,O2',-,
+trans S/s,G,A,O2',H2',---,N1,-,            *** added 2024-03-05 CLZ per Eric Westhof ***
+trans S/s,G,C,N2,H21,---,O2,-,             *** removed trans S/s G C N2 H22 --- O2' instances OK with Eric Westhof ***
 trans S/S,G,G,-,O2',---,H22,N2,
 trans S/S,G,G,-,N3,---,H21,N2,
 trans S/S,G,G,N2,H21,---,N3,-,
 trans S/S,G,G,N2,H22,---,O2',-,
-trans S/s,G,U,N2,H22,---,O2',-,
-trans S/s,G,U,N2,H21,---,O2,-,
+trans S/s,G,U,N2,H21,---,O2,-,             *** removed trans S/s G U N2 H22 --- O2' instances OK with Eric Westhof ***
 cis W/B,A,A,-,N1,---,H61,N6,
 cis W/B,A,A,-,N1,---,H62,N6,
 cis W/B,A,C,-,N1,---,H42,N4,
