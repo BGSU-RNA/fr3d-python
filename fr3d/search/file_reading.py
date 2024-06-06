@@ -1,12 +1,12 @@
+
+from collections import defaultdict
+import datetime
 import numpy as np
 import os.path
-from collections import defaultdict
-from time import time
-import datetime
 import pickle
-import urllib
 import sys
-from fr3d.search.fr3d_configuration import DATAPATH
+from time import time
+
 from fr3d.search.fr3d_configuration import SERVER
 
 # import the version of urlretrieve appropriate to the Python version
@@ -16,10 +16,168 @@ else:
     from urllib.request import urlretrieve as urlretrieve
 
 
-def writeNAUnitData(structure,DATAPATH,messages=[]):
+def checkDirectories(Q):
     """
-    accumulate units, centers, rotations and write to files
-    according to chain
+    check for required directories for data and output
+    """
+
+    if SERVER or Q.get('server', False):
+        # on the server, the directories are already set up; save time
+        return Q
+
+    if "DATAPATHUNITS" in Q:
+        DATAPATHUNITS = Q["DATAPATHUNITS"]
+    else:
+        try:
+            from fr3d_configuration import DATAPATHUNITS
+            Q["DATAPATHUNITS"] = DATAPATHUNITS
+        except:
+            print("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
+            Q["errorMessage"].append("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    if "DATAPATHPAIRS" in Q:
+        DATAPATHPAIRS = Q["DATAPATHPAIRS"]
+    else:
+        try:
+            from fr3d_configuration import DATAPATHPAIRS
+            Q["DATAPATHPAIRS"] = DATAPATHPAIRS
+        except:
+            print("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
+            Q["errorMessage"].append("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    if "OUTPUTPATH" in Q:
+        OUTPUTPATH = Q["OUTPUTPATH"]
+    else:
+        try:
+            from fr3d_configuration import OUTPUTPATH
+            Q["OUTPUTPATH"] = OUTPUTPATH
+        except:
+            print("Error: Could not find OUTPUTPATH in query or in fr3d_configuration.py")
+            Q["errorMessage"].append("Error: Could not find OUTPUTPATH in query or in fr3d_configuration.py")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    for directory in [DATAPATHUNITS, DATAPATHPAIRS, OUTPUTPATH]:
+        try:
+            os.stat(directory)
+        except:
+            try:
+                os.mkdir(directory)
+                print("Made " + directory + " directory")
+            except:
+                print("Error: Could not make " + directory + " directory")
+                Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+                Q["errorStatus"] = "write and exit"
+                return Q
+    return Q
+
+
+def get_DATAPATHUNITS(Q):
+    """
+    Figure out where to look for files containing information on individual units,
+    the centers and rotation matrices.
+    """
+
+    if "DATAPATHUNITS" in Q:
+        DATAPATHUNITS = Q["DATAPATHUNITS"]
+    else:
+        try:
+            from fr3d_configuration import DATAPATHUNITS
+        except:
+            print("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
+            Q["errorMessage"].append("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
+            Q["errorStatus"] = "write and exit"
+
+    directory = DATAPATHUNITS
+    try:
+        os.stat(directory)
+    except:
+        try:
+            os.mkdir(directory)
+            print("Made " + directory + " directory")
+        except:
+            print("Error: Could not make " + directory + " directory")
+            Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    return Q, DATAPATHUNITS
+
+
+def get_DATAPATHPAIRS(Q):
+    """
+    Figure out where to look for files containing information on individual units,
+    the centers and rotation matrices.
+    """
+
+    if "DATAPATHPAIRS" in Q:
+        DATAPATHPAIRS = Q["DATAPATHPAIRS"]
+    else:
+        try:
+            from fr3d_configuration import DATAPATHPAIRS
+        except:
+            print("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
+            Q["errorMessage"].append("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
+            Q["errorStatus"] = "write and exit"
+
+    directory = DATAPATHPAIRS
+    try:
+        os.stat(directory)
+    except:
+        try:
+            os.mkdir(directory)
+            print("Made " + directory + " directory")
+        except:
+            print("Error: Could not make " + directory + " directory")
+            Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    return Q, DATAPATHPAIRS
+
+
+def get_CIFPATH(Q):
+    """
+    When working with user-defined queries or when one wants to not download pre-computed
+    annotations, we need a place to store the .cif or .pdb files.
+    Check that this directory is defined and that the directory exists.
+    """
+
+    if "CIFPATH" in Q:
+        CIFPATH = Q["CIFPATH"]
+    else:
+        try:
+            from fr3d_configuration import CIFPATH
+            Q["CIFPATH"] = CIFPATH
+        except:
+            print("Error: Could not find CIFPATH in query or in fr3d_configuration.py")
+            Q["errorMessage"].append("Error: Could not find CIFPATH in query or in fr3d_configuration.py")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    directory = CIFPATH
+    try:
+        os.stat(directory)
+    except:
+        try:
+            os.mkdir(directory)
+            print("Made " + directory + " directory")
+        except:
+            print("Error: Could not make " + directory + " directory")
+            Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+            Q["errorStatus"] = "write and exit"
+            return Q
+
+    return Q, CIFPATH
+
+
+def writeNAUnitData(structure,DATAPATHUNITS,messages=[]):
+    """
+    accumulate units, centers, rotations and write to files according to chain
     """
 
     chain_to_unit_data = {}
@@ -41,7 +199,7 @@ def writeNAUnitData(structure,DATAPATH,messages=[]):
 
         chain_to_unit_data[chain]['ids'].append(nt.unit_id())
         chain_to_unit_data[chain]['chainIndices'].append(nt.index)
-        chain_to_unit_data[chain]['centers'].append(nt.centers['glycosidic'])
+        chain_to_unit_data[chain]['centers'].append(nt.centers['glycosidic'])  # use glycosidic atom
         chain_to_unit_data[chain]['rotations'].append(nt.rotation_matrix)
 
     # write chain data out to individual files
@@ -52,19 +210,20 @@ def writeNAUnitData(structure,DATAPATH,messages=[]):
         unit_info.append(chain_to_unit_data[chain]['centers'])
         unit_info.append(chain_to_unit_data[chain]['rotations'])
 
-        chain_filename = os.path.join(DATAPATH,'units',chain.replace('|','-')+'_RNA.pickle')
+        # follow format used on BGSU RNA server like 4V9F-1-0_NA.pickle
+        chain_filename = os.path.join(DATAPATHUNITS,chain.replace('|','-')+'_NA.pickle')
 
         with open(chain_filename, 'wb') as fh:
             # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
             pickle.dump(unit_info, fh, 2)
 
         chains.append(chain)
-        messages.append('Wrote %d nucleotides to %s' % (len(chain_to_unit_data[chain]['ids']),chain_filename))
+        messages.append('file_reading: Wrote %4d nucleotides to %s' % (len(chain_to_unit_data[chain]['ids']),chain_filename))
 
     return chains, messages
 
 
-def writeNAPairwiseInteractions(structure,DATAPATH,messages=[]):
+def writeNAPairwiseInteractions(structure,DATAPATHPAIRS,messages=[]):
     """
     Annotate pairwise interactions and write one file for the
     structure.
@@ -75,15 +234,17 @@ def writeNAPairwiseInteractions(structure,DATAPATH,messages=[]):
     # tell which categories of interactions to annotate
     categories = {}
     categories['basepair'] = []
+    categories['basepair_detail'] = []
     categories['stacking'] = []
     categories['sO'] = []
+    categories['sugar_ribose'] = []
+    categories['coplanar'] = []
 
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories)
 
-    print("  file_reading:  structure name: %s" % structure.pdb)
-
     # use RNA_pairs for now until _NA_pairs is established
-    pdb_filename = os.path.join(DATAPATH,'pairs',structure.pdb+'_RNA_pairs.pickle')
+
+    pdb_filename = os.path.join(DATAPATHPAIRS,structure.pdb+'_RNA_pairs.pickle')
     with open(pdb_filename, 'wb') as fh:
         # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
         pickle.dump(interaction_to_list_of_tuples, fh, 2)
@@ -91,12 +252,12 @@ def writeNAPairwiseInteractions(structure,DATAPATH,messages=[]):
     return messages
 
 
-def writeNAUnitAnnotations(structure,DATAPATH,messages=[]):
+def writeNAUnitAnnotations(structure,DATAPATHUNITS,messages=[]):
     """
     Annotate chi angle and glycosidic bond conformation.
     """
 
-    print("  file_reading:  annotating bond orientation for %s" % structure.pdb)
+    from fr3d.classifiers.NA_unit_annotation import annotate_bond_orientation
 
     bond_annotations, error_messages = annotate_bond_orientation(structure,False)
 
@@ -121,18 +282,18 @@ def writeNAUnitAnnotations(structure,DATAPATH,messages=[]):
 
     # write chain data out to individual files for each chain
     for chain in chain_to_unit_data.keys():
-        chain_filename = os.path.join(DATAPATH,'units',chain.replace('|','-')+'_NA_unit_annotations.pickle')
+        chain_filename = os.path.join(DATAPATHUNITS,chain.replace('|','-')+'_NA_unit_annotations.pickle')
 
         with open(chain_filename, 'wb') as fh:
             # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
             pickle.dump(chain_to_unit_data[chain], fh, 2)
 
-        messages.append('Wrote %d nucleotides to %s' % (len(chain_to_unit_data[chain]),chain_filename))
+        messages.append('file_reading: Wrote %4d nucleotides to %s' % (len(chain_to_unit_data[chain]),chain_filename))
 
     return messages
 
 
-def writeNABackboneData(structure,DATAPATH,messages=[]):
+def writeNABackboneData(structure,DATAPATHUNITS,messages=[]):
     """
     accumulate units, phosphate, and sugar centers and write to files
     according to chain
@@ -162,7 +323,7 @@ def writeNABackboneData(structure,DATAPATH,messages=[]):
 
     # write chain data out to individual files
     for chain in chain_to_unit_data.keys():
-        chain_filename = os.path.join(DATAPATH,'units',chain.replace('|','-')+'_NA_phosphate_sugar.pickle')
+        chain_filename = os.path.join(DATAPATHUNITS,chain.replace('|','-')+'_NA_phosphate_sugar.pickle')
 
         unit_info = [chain_to_unit_data[chain]['ids']]
         unit_info.append(chain_to_unit_data[chain]['chainIndices'])
@@ -174,12 +335,12 @@ def writeNABackboneData(structure,DATAPATH,messages=[]):
             pickle.dump(unit_info, fh, 2)
 
         chains.append(chain)
-        messages.append('Wrote %d nucleotides to %s' % (len(chain_to_unit_data[chain]['ids']),chain_filename))
+        messages.append('file_reading: Wrote %4d nucleotides to %s' % (len(chain_to_unit_data[chain]['ids']),chain_filename))
 
     return messages
 
 
-def writeProteinUnitData(structure,DATAPATH,messages=[]):
+def writeProteinUnitData(structure,DATAPATHUNITS,messages=[]):
     """
     accumulate units, indices, centers and write to one file
     """
@@ -197,79 +358,123 @@ def writeProteinUnitData(structure,DATAPATH,messages=[]):
         aa_centers.append(aa.centers['aa_fg'])  # amino acid functional group center, None in GLY
         aa_backbones.append(aa.centers['aa_backbone'])  # amino acid backbone, average of ['N','CA','C','O']
 
-
-
         if 'GLY' in aa.unit_id():
             print('file_reading',aa.unit_id,aa.index,aa.centers['aa_fg'],aa.centers['aa_backbone'])
 
-
-
     # write chain data out to individual files
-    protein_filename = os.path.join(DATAPATH,'units',structure.pdb+'_protein.pickle')
+    protein_filename = os.path.join(DATAPATHUNITS,structure.pdb+'_protein.pickle')
 
     with open(protein_filename, 'wb') as fh:
         # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
         pickle.dump([aa_unit_ids,aa_indices,aa_centers,aa_backbones], fh, 2)
 
-    messages.append('Wrote %d amino acids to %s' % (len(aa_unit_ids),protein_filename))
+    messages.append('file_reading: Wrote %4d amino acids to %s' % (len(aa_unit_ids),protein_filename))
 
     return messages
 
 
-def processPDBFile(PDBname):
+def processPDBFile(Q,structure_filename,file_id=None,pairs_only=False):
     """
+    Read the coordinate file (in .cif or .pdb format) and save .pickle files.
     If we have to start with a .pdb or .cif file,
-    load that file and write out all necessary .pickle files
-    with required annotations.
+    load that file and write out all necessary .pickle files with required annotations.
+    structure_filename can be:
+        a full path to a file with an extension .cif or .pdb
+        a file_id that is presumed to be located in CIFPATH and we will add .cif or .pdb
+        a chain identifier, from which we extract the file_id and look in CIFPATH
     """
 
-    from fr3d_configuration import CIFPATH
     from fr3d.classifiers.NA_pairwise_interactions import load_structure
-    from fr3d.classifiers.NA_pairwise_interactions import annotate_nt_nt_in_structure
-    from fr3d.classifiers.NA_unit_annotation import annotate_bond_orientation
-
 
     messages = []
 
-    if '.cif' in PDBname.lower() or '.pdb' in PDBname.lower():
-        cifPathAndFileName = PDBname
+    if Q.get("printFileOperations",False):
+        print("  file_reading: processing %s" % structure_filename)
+
+    if os.path.exists(structure_filename):
+        # full path to a file that exists, use that
+        cifPathAndFileName = structure_filename
     else:
-        fields = PDBname.split('|')
-        cifPathAndFileName = os.path.join(CIFPATH,fields[0]+'.cif')
+        Q, CIFPATH = get_CIFPATH(Q)
 
-    # read the coordinate file
-    structure, messages = load_structure(cifPathAndFileName)
+        if '|' in structure_filename:
+            # chain identifier given, extract file_id and look in CIFPATH
+            fields = structure_filename.split('|')
+            cifPathAndFileName = os.path.join(CIFPATH,fields[0]+'.cif')
+        elif '.cif' in structure_filename.lower() or '.pdb' in structure_filename.lower():
+            # name ends with .cif or .pdb
+            cifPathAndFileName = os.path.join(CIFPATH,structure_filename)
+        else:
+            # no extension provided, hopefully we can hunt it down
+            cifPathAndFileName = os.path.join(CIFPATH,structure_filename)
 
-    # write out centers and rotation matrices of nucleotides by chain
-    chains, messages = writeNAUnitData(structure,DATAPATH,messages)
+    # file_id is the analogue of PDB id, but also allows for other coordinate file names
+    if not file_id:
+        file_id = os.path.basename(cifPathAndFileName).replace('.gz','').replace('.cif','').replace('.pdb','')
+        print('  file_reading: file_id is %s, cifPathAndFileName is %s' % (file_id,cifPathAndFileName))
+
+    # read the coordinate file, specifying the file_id as the preferred name
+    structure, messages = load_structure(cifPathAndFileName,file_id,preferred_id = file_id)
+
+    if not structure and Q.get("printFileOperations",False):
+        print('  file_reading: Could not read %s' % cifPathAndFileName)
+        print('  file_reading: messages: %s' % messages)
+        return [], file_id, messages
+
+    # use file_id to determine the name, not the name in the file itself
+    if not structure.pdb == file_id and Q.get("printFileOperations",False):
+        print("  file_reading: structure name is %s but using file_id %s" % (structure.pdb,file_id))
+        structure.pdb = file_id
+
+    # make sure directories exist
+    Q = checkDirectories(Q)
 
     # annotate pairwise interactions
-    messages = writeNAPairwiseInteractions(structure,DATAPATH,messages)
+    if Q.get("printFileOperations",False):
+        print("  file_reading: annotating pairwise interactions for %s" % structure.pdb)
 
-    # annotate chi angle and glycosidic bond conformation
-    messages = writeNAUnitAnnotations(structure,DATAPATH,messages)
+    messages = writeNAPairwiseInteractions(structure,Q['DATAPATHPAIRS'],messages)
 
-    # write out centers and indices for amino acids for the whole structure
-    messages = writeProteinUnitData(structure,DATAPATH,messages)
+    if Q.get("printFileOperations",False):
+        print("  file_reading: saving in %s" % Q['DATAPATHPAIRS'])
 
-    # write out centers and indices for amino acids for the whole structure
-    messages = writeNABackboneData(structure,DATAPATH,messages)
+    if not pairs_only:
+        if Q.get("printFileOperations",False):
+            print("  file_reading: calculating and writing unit data for %s" % structure.pdb)
 
-    for message in messages:
-        print("  %s" % message)
+        # write out centers and rotation matrices of nucleotides by chain
+        chains, messages = writeNAUnitData(structure,Q['DATAPATHUNITS'],messages)
 
-    return chains, messages
+        # annotate chi angle and glycosidic bond conformation
+        messages = writeNAUnitAnnotations(structure,Q['DATAPATHUNITS'],messages)
 
-def readPDBDatafile():
+        # write out centers and indices for amino acids for the whole structure
+        messages = writeProteinUnitData(structure,Q['DATAPATHUNITS'],messages)
+
+        # write out centers and indices for amino acids for the whole structure
+        messages = writeNABackboneData(structure,Q['DATAPATHUNITS'],messages)
+
+    else:
+        chains = None
+
+    if Q.get("printFileOperations",False):
+        for message in messages:
+            print("  %s" % message)
+
+    return chains, file_id, messages
+
+
+def readPDBDatafile(DATAPATHUNITS):
     """
     Read .pickle file containing data about each nucleic-
     acid-containing PDB file.
+    This file is produced by pipeline stage NA_datafile
     """
 
     datafile = {}
 
     filename = "NA_datafile.pickle"
-    pathAndFileName = os.path.join(DATAPATH,'units',filename)
+    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
     #if not os.path.exists(pathAndFileName) and not SERVER:
     # try to update the file for a local installation, but not too often
@@ -307,7 +512,8 @@ def readPDBDatafile():
 def readNAPositionsFile(Q, chainString, starting_index):
     """
     Read .pickle file of RNA/DNA base center and rotation matrix;
-    download if necessary; create if necessary
+    download from BGSU RNA site if necessary; create from .cif or .pdb if necessary.
+    chainString is like '4V9F|1|0'
     """
 
     ids = []
@@ -316,24 +522,36 @@ def readNAPositionsFile(Q, chainString, starting_index):
     rotations = []
     line_num = starting_index
 
-    centers = np.zeros((0,3))
-    rotations = np.zeros((0,3,3))
     id_to_index = defaultdict()
     index_to_id = defaultdict()
 
-    filename = chainString + '_RNA.pickle'  # old, uses base center
-    filename = chainString + '_NA.pickle'   # new on 2023-02-20, covers RNA and DNA, uses glycosidic atom
-    pathAndFileName = os.path.join(DATAPATH,'units',filename)
+    fields = chainString.split('|')
+    file_id = fields[0]
+
+    # filename = chainString.replace('|','-') + '_RNA.pickle'  # old, uses base center
+    filename = chainString.replace('|','-') + '_NA.pickle'   # new on 2023-02-20, covers RNA and DNA, uses glycosidic atom
+
+    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
+
+    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
     if not os.path.exists(pathAndFileName) and not SERVER:
-        try:
-            urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName) # testing
-            print("Downloaded "+filename)
-        except:
-            print("file_reading: Could not download %s, reading .cif" % filename)
+        # try to download .pickle file of RNA/DNA base center and rotation matrix
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            try:
+                print("Attempting to download "+filename+" from BGSU RNA site")
+                urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+                print("Downloaded "+filename)
+            except:
+                print("Could not download %s from BGSU RNA site" % filename)
+                pass
 
-            chains, messages = processPDBFile(chainString)
-            Q['userMessage'] += messages
+    if not os.path.exists(pathAndFileName) and not SERVER:
+        # try to download .cif file and all related .pickle files
+        if Q.get("printFileOperations",False):
+            print("No positions file found for %s, attempting to create it from .cif or .pdb" % chainString)
+        chains, file_id, messages = processPDBFile(Q,file_id,file_id)
+        Q['userMessage'] += messages
 
     if os.path.exists(pathAndFileName):
         try:
@@ -343,21 +561,44 @@ def readNAPositionsFile(Q, chainString, starting_index):
                 ids, chainIndices, centers, rotations = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
         except:
             print("Could not read "+filename)
-            Q["errorMessage"].append("Could not retrieve RNA unit file "+filename)
+            Q["errorMessage"].append("Could not retrieve NA unit file "+filename)
+
+        ok_ids = []
+        ok_centers = []
+        ok_rotations = []
 
         for i in range(0,len(ids)):
-            id_to_index[ids[i]] = line_num
-            index_to_id[line_num] = ids[i]
-            line_num += 1
+            if len(centers[i]) == 3 and rotations[i].shape == (3,3):
+                ok_ids.append(ids[i])
+                ok_centers.append(centers[i])
+                ok_rotations.append(rotations[i])
+                id_to_index[ids[i]] = line_num
+                index_to_id[line_num] = ids[i]
+                line_num += 1
+
+        ids = ok_ids
+        centers = np.asarray(ok_centers)
+        rotations = np.asarray(ok_rotations)
 
     else:
         print("Could not find "+filename)
-        Q["errorMessage"].append("Could not retrieve RNA unit file "+filename)
+        Q["errorMessage"].append("Could not retrieve NA unit file "+filename)
 
-    centers = np.asarray(centers)
-    rotations = np.asarray(rotations)
+        centers = np.asarray(np.zeros((0,3)))
+        rotations = np.asarray(np.zeros((0,3,3)))
+
+    for center in centers:
+        if not len(center) == 3:
+            print("  file_reading: center is %s" % center)
+
+    # for rotation in rotations:
+    #     print(rotation)
+
+    # centers = np.asarray(centers)
+    # rotations = np.asarray(rotations)
 
     return Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices
+
 
 def readNABackboneFile(Q, chainString, starting_index):
     """
@@ -375,8 +616,9 @@ def readNABackboneFile(Q, chainString, starting_index):
     id_to_index = defaultdict()
     index_to_id = defaultdict()
 
+    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
     filename = chainString + "_NA_phosphate_sugar.pickle"
-    pathAndFileName = os.path.join(DATAPATH,'units',filename)
+    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
     if not os.path.exists(pathAndFileName) and not SERVER:
         urlretrieve("http://rna.bgsu.edu/units/"+filename, pathAndFileName)
@@ -388,13 +630,13 @@ def readNABackboneFile(Q, chainString, starting_index):
                 ids, chainIndices, phosphate, sugar = pickle.load(open(pathAndFileName,"rb"))
             except:
                 print("Could not read "+filename)
-                Q["userMessage"].append("Could not retrieve RNA unit file "+filename)
+                Q["userMessage"].append("Could not retrieve NA backbone file "+filename)
         else:
             try:
                 ids, chainIndices, phosphate, sugar = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
             except:
                 print("Could not read "+filename)
-                Q["userMessage"].append("Could not retrieve RNA unit file "+filename)
+                Q["userMessage"].append("Could not retrieve NA backbone file "+filename)
 
         for i in range(0,len(ids)):
             id_to_index[ids[i]] = line_num
@@ -403,14 +645,15 @@ def readNABackboneFile(Q, chainString, starting_index):
 
     else:
         print("Could not find "+filename)
-        Q["userMessage"].append("Could not retrieve RNA unit file "+filename)
+        Q["userMessage"].append("Could not retrieve NA backbone file "+filename)
 
     phosphate = np.asarray(phosphate)
     sugar     = np.asarray(sugar)
 
     return Q, phosphate, sugar, ids, id_to_index, index_to_id, chainIndices
 
-def readProteinPositionsFile(Q, PDBID, starting_index):
+
+def readProteinPositionsFile(Q, file_id, starting_index):
 
     ids = []
     chainIndices = []
@@ -422,8 +665,9 @@ def readProteinPositionsFile(Q, PDBID, starting_index):
     id_to_index = defaultdict()
     index_to_id = defaultdict()
 
-    filename = PDBID + "_protein.pickle"
-    pathAndFileName = os.path.join(DATAPATH,'units',filename)
+    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
+    filename = file_id + "_protein.pickle"
+    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
     if not os.path.exists(pathAndFileName) and not SERVER:
         urlretrieve("http://rna.bgsu.edu/units/"+filename, pathAndFileName)
@@ -469,25 +713,50 @@ def readProteinPositionsFile(Q, PDBID, starting_index):
     return Q, centers, ids, id_to_index, index_to_id, chainIndices
 
 
-def readNAPairsFileRaw(Q, PDBID, alternate = ""):
+def readNAPairsFileRaw(Q, file_id, alternate = ""):
     """
     Read the .pickle file that stores all pairwise interactions for a PDB id.
     Alternate could be "_exp" for experimental annotations, for example.
     """
 
-    interactionToTriples = defaultdict(list)
-
-    pairsFileName = PDBID + '_RNA_pairs.pickle'
-    pathAndFileName = os.path.join(DATAPATH,'pairs'+alternate,pairsFileName)
-
     justDownloaded = False
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
-        url = "http://rna.bgsu.edu/pairs" + alternate + "/"+pairsFileName
-        urlretrieve(url, pathAndFileName) # testing
-        print("Downloaded "+pairsFileName)
+    Q, DATAPATHPAIRS = get_DATAPATHPAIRS(Q)
 
-        justDownloaded = True
+    # new standard filename does not say RNA or DNA or NA
+    pairsFileName = file_id + '_pairs.pickle'
+    pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
+
+    if not os.path.exists(pathAndFileName):
+        # old standard was _RNA_ but that is being phased out
+        pairsFileName = file_id + '_RNA_pairs.pickle'
+        pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
+
+        if not os.path.exists(pathAndFileName) and not SERVER:
+            if Q.get("printFileOperations",False):
+                print("  file_reading: Could not find "+pairsFileName+" in "+DATAPATHPAIRS+alternate)
+            if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
+                # try to download annotations of this structure from BGSU RNA site
+                url = "http://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
+                urlretrieve(url, pathAndFileName) # testing
+                if Q.get("printFileOperations",False):
+                    print("  file_reading: downloaded "+pairsFileName)
+
+                justDownloaded = True
+            else:
+                # compute pairwise interactions locally and store locally
+
+                # continue with old standard until we switch over completely
+                pairsFileName = file_id + '_RNA_pairs.pickle'
+                pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
+
+                not_chains, file_id, messages = processPDBFile(Q,file_id,file_id,pairs_only=True)
+                Q['userMessage'] += messages
+
+    if Q.get("printFileOperations",False):
+        print("  file_reading: reading "+pairsFileName+" from "+DATAPATHPAIRS+alternate)
+
+    interactionToTriples = defaultdict(list)
 
     if os.path.exists(pathAndFileName):
         if sys.version_info[0] < 3:
@@ -495,22 +764,23 @@ def readNAPairsFileRaw(Q, PDBID, alternate = ""):
                 interactionToTriples = pickle.load(open(pathAndFileName,"rb"))
             except:
                 print("Could not read "+pairsFileName+", it may not be available")
-                Q["userMessage"].append("Could not retrieve RNA pairs file "+pairsFileName)
+                Q["userMessage"].append("Could not read RNA pairs file "+pairsFileName)
                 if justDownloaded:
                     os.remove(pathAndFileName)
         else:
             try:
                 interactionToTriples = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
             except:
-                print("Could not read "+pairsFileName+", it may not be available D*********************************")
-                Q["userMessage"].append("Could not retrieve RNA pairs file "+pairsFileName)
+                if Q.get("printFileOperations",False):
+                    print("Could not read "+pairsFileName+", it may not be available D*********************************")
+                Q["userMessage"].append("Could not read RNA pairs file "+pairsFileName)
                 if justDownloaded:
                     os.remove(pathAndFileName)
 
     return Q, interactionToTriples
 
 
-def readNAPairsFile(Q, PDBID, id_to_index, alternate = ""):
+def readNAPairsFile(Q, file_id, id_to_index, alternate = ""):
     """
     We need to read the pairwise interactions whether or not there are
     constraints, to be able to display the interactions in the output.
@@ -518,7 +788,7 @@ def readNAPairsFile(Q, PDBID, id_to_index, alternate = ""):
     The alternate .pickle files must be stored in a parallel directory.
     """
 
-    Q, interactionToTriples = readNAPairsFileRaw(Q, PDBID, alternate)
+    Q, interactionToTriples = readNAPairsFileRaw(Q, file_id, alternate)
 
     # interactionToTriples has this structure:
     # interactionToTriples['cWW'] is a list of triples, each triple being (unit_id_1,unit_id_2,range)
@@ -585,11 +855,12 @@ def readUnitAnnotations(Q, ifename):
 
     for chain in chains:
         filename        = "%s_NA_unit_annotations.pickle" % chain.replace("|","-")
-        pathAndFileName = os.path.join(DATAPATH,'units',filename)
+        pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
         if not os.path.exists(pathAndFileName) and not SERVER:
             urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
-            print("Downloaded "+filename)
+            if Q.get("printFileOperations",False):
+                print("Downloaded "+filename)
 
         # note:  if the file is not present on the server, a text file with a 404 error will be downloaded
         # so it will look like a file was downloaded, but it's not the file you need!
@@ -601,22 +872,22 @@ def readUnitAnnotations(Q, ifename):
                     unit_id_to_annotation.update(new_mapping)
                 except:
                     print("Could not read "+filename+", it may not be available D=================================")
-                    Q["userMessage"].append("Could not retrieve RNA pairs file "+filename)
+                    Q["userMessage"].append("Could not retrieve NA unit annotation file "+filename)
                     try:
                         os.remove(pathAndFileName)
                     except:
-                        Q["userMessage"].append("Could not remove RNA pairs file "+filename)
+                        Q["userMessage"].append("Could not remove NA unit annotation file "+filename)
             else:
                 try:
                     new_mapping = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
                     unit_id_to_annotation.update(new_mapping)
                 except:
                     print("Could not read "+filename+", it may not be available D*********************************")
-                    Q["userMessage"].append("Could not retrieve RNA pairs file "+filename)
+                    Q["userMessage"].append("Could not retrieve NA unit annotation file "+filename)
                     try:
                         os.remove(pathAndFileName)
                     except:
-                        Q["userMessage"].append("Could not remove RNA pairs file "+filename)
+                        Q["userMessage"].append("Could not remove NA unit annotation file "+filename)
 
 
     return Q, unit_id_to_annotation
