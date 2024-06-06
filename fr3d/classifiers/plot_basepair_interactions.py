@@ -1,13 +1,13 @@
 """
-    plot-basepair-interactions.py reads a data file and plots points to represent
-    base pairing interactions.
-    Points are colored according to python_fr3d and Matlab annotations.
+plot-basepair-interactions.py reads a data file and plots points to represent
+base pairing interactions.
+Points are colored according to python_fr3d and Matlab annotations.
 
-    HTML output is in C:/Users/zirbel/Documents/FR3D/Python FR3D/output
-    PNG output is in C:/Users/zirbel/Documents/FR3D/NAPairwiseInteractions
+HTML output is in C:/Users/zirbel/Documents/FR3D/Python FR3D/output
+PNG output is in C:/Users/zirbel/Documents/FR3D/NAPairwiseInteractions
 
-    cd "C:/Users/zirbel/Documents/FR3D/Python FR3D/output"
-    python -m SimpleHTTPServer
+cd "C:/Users/zirbel/Documents/FR3D/Python FR3D/output"
+python -m SimpleHTTPServer
 
 """
 
@@ -15,12 +15,13 @@ from collections import defaultdict
 import json
 import math
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import os
 import pickle
 import random
 import requests
+from scipy.stats import trim_mean
 import sys
 import time
 
@@ -37,21 +38,21 @@ from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from NA_pairwise_interactions import reverse_edges
 from draw_residues import draw_base
 
-from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import fr3d_pickle_path
-from fr3d.localpath import contact_list_file
-from fr3d.localpath import inputPath
-from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
+from fr3d.localpath import fr3d_pickle_path
 
 from fr3d.search.file_reading import readPDBDatafile
-from fr3d.search.write_output import format_resolution
 
 # very specific directories, for data files in specific formats.  Hard for others to run!
 dssr_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_dssr'
 rnaview_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_rnaview'
 pdb_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_pdb'
+datmos_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos'
+
+VERSION = 'v6'    # not sure exactly what that was
+VERSION = 'v7'    # only FR3D-annotated basepairs, show hDistAngle, omit C-H.. bonds
+VERSION = 'v8'    # show FR3D or datmos annotated basepairs or demoted, show hDist, hDistAngle, include C-H.. bonds
 
 OUTPUTPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/output/"
 
@@ -68,260 +69,194 @@ JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
 JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
 TEMPLATEPATH = '../search/'
 
-def print_dictionary(x):
-    for key, value in sorted(x.items()):
-        print("  %s: %s" % (key,value))
 
-
-def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
-    """
-    Write the list of candidates in an HTML format that also shows
-    the coordinate window and a heat map of all-against-all distances.
-    Write the heatmap data in an efficient way.
-    """
-
-    pagetitle = "%s" % Q['name']
-
-    htmlfilename = Q['name'].replace(" ","_")
-
-    # make the table of instances
-    candidatelist = '<table id="instances" style="white-space:nowrap;">\n'
-
-    numPositions = 2
-
-    # write header line, make columns sortable, numeric=true, alpha=false
-    candidatelist += '<tr><th onclick="sortTable(0,\'instances\',\'numeric\')">S.</th>'
-    candidatelist += '<th onclick="sortTable(1,\'instances\',\'checkbox\')">Show</th>'
-    candidatelist += '<th onclick="sortTable(2,\'instances\',\'checkbox\')">Note</th>'
-    candidatelist += '<th onclick="sortTable(3,\'instances\',\'numeric\')">Res.</th>'
-
-    sequence_column = 3
-    for j in range(0,numPositions):
-        candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">Position %d</th>' % (j+4,j+1)
-        sequence_column += 1
-
-    candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">RNAview</th>'
-    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">DSSR</th>'
-    candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">pdb</th>'
-    candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">contacts</th>'
-    candidatelist += '<th onclick="sortTable(10,\'instances\',\'alpha\')">FR3D</th>'
-    candidatelist += '<th onclick="sortTable(11,\'instances\',\'alpha\')">New FR3D</th>'
-    candidatelist += '<th onclick="sortTable(12,\'instances\',\'alpha\')">Newest FR3D</th>'
-    candidatelist += '<th onclick="sortTable(13,\'instances\',\'alpha\')">Subcat</th>'
-    candidatelist += '<th onclick="sortTable(14,\'instances\',\'numeric\')">cut dist</th>'
-    candidatelist += '<th onclick="sortTable(15,\'instances\',\'numeric\')">x</th>'
-    candidatelist += '<th onclick="sortTable(16,\'instances\',\'numeric\')">y</th>'
-    candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">z</th>'
-    candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">r</th>'
-    candidatelist += '<th onclick="sortTable(19,\'instances\',\'numeric\')">maxgap</th>'
-    candidatelist += '<th onclick="sortTable(20,\'instances\',\'numeric\')">angle</th>'
-    candidatelist += '<th onclick="sortTable(21,\'instances\',\'numeric\')">mindist</th>'
-    candidatelist += '<th onclick="sortTable(22,\'instances\',\'numeric\')">normal_z</th>'
-    candidatelist += '<th onclick="sortTable(23,\'instances\',\'numeric\')">h dist</th>'
-    candidatelist += '<th onclick="sortTable(24,\'instances\',\'numeric\')">h ang</th>'
-    candidatelist += '<th onclick="sortTable(25,\'instances\',\'numeric\')">h bad</th>'
-
-    if 'css' in Q['name'].lower():
-        candidatelist += '<th onclick="sortTable(26,\'instances\',\'alpha\')">SR12</th>'
-        candidatelist += '<th onclick="sortTable(27,\'instances\',\'alpha\')">SR21</th>'
-
-    candidatelist += "</tr>\n"
-
-    # write one row for each candidate
-    for i in range(0,len(candidates)):
-        candidate = candidates[i]
-        candidatelist += '<tr><td>'+str(i+1)+'.</td>'
-        candidatelist += '<td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
-        candidatelist += candidate['unit_id_1'] + ',' + candidate['unit_id_2']
-        candidatelist += '">&nbsp</label></td>'
-
-        candidatelist += '<td><label><input type="checkbox" id="note_'+str(i)+'">&nbsp</label></td>'
-
-        PDB_id = candidate['unit_id_1'][0:4]
-
-        if PDB_id in Q["PDB_data_file"]:
-            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][PDB_id])
+def print_dictionary(datapoint):
+    for key,value in sorted(datapoint.items()):
+        if type(value) == dict:
+            print(key,' is a dictionary:')
+            for k,v in sorted(value.items()):
+                print("  %s = %s" % (k,v))
         else:
-            candidatelist += "<td>NA</td>"
+            print(key,value)
 
-        # write unit ids
-        candidatelist += "<td>"+candidate['unit_id_1']+"</td>"
-        candidatelist += "<td>"+candidate['unit_id_2']+"</td>"
 
-        # write python_fr3d, Matlab interactions
-        candidatelist += "<td>%s</td>" % candidate['rnaview_annotation']  # rnaview
-        candidatelist += "<td>%s</td>" % candidate['dssr_annotation']  # dssr
-        candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
-        candidatelist += "<td>%s</td>" % candidate['contacts_annotation']  # contacts
-        candidatelist += "<td>%s</td>" % candidate['matlab_annotation']  # matlab
-        candidatelist += "<td>%s</td>" % candidate['python_annotation']  # python
-        candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # new python
-        candidatelist += "<td>%d</td>" % candidate['basepair_subcat']  # python subcategory
-        candidatelist += "<td>%0.4f</td>" % candidate['best_cutoff_distance']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['x']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['y']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['z']  #
-        candidatelist += "<td>%0.2f</td>" % (math.sqrt(candidate['x']**2 + candidate['y']**2))
-        candidatelist += "<td>%0.2f</td>" % candidate['maxgap']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['angle_in_plane']  #
+def format_resolution(data):
 
-        if not 'min_distance' in candidate:
-            candidate['min_distance'] = -1.0
-
-        candidatelist += "<td>%0.2f</td>" % candidate['min_distance']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['normal_Z']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['max_distance']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['min_angle']  #
-        candidatelist += "<td>%0.2f</td>" % candidate['max_badness']  #
-
-        if 'css' in Q['name'].lower():
-            if 'sugar_ribose' in candidate:
-                candidatelist += "<td>%s</td>" % candidate['sugar_ribose']
-            else:
-                candidatelist += "<td></td>"
-
-            if 'r_sugar_ribose' in candidate:
-                candidatelist += "<td>%s</td>" % candidate['r_sugar_ribose']
-            else:
-                candidatelist += "<td></td>"
-
-        if 'hbond_messages' in candidate:
-            for message in candidate['hbond_messages']:
-                # write messages pertaining to the annotated basepair
-                candidatelist += "<td>%s</td>" % message   # h-bond message
+    r = data['resolution']
+    try:
+        s = "%0.2f" % r
+        # remove trailing 0
+        if s[-1] == "0":
+            s = s[0:(len(s)-1)]
+    except:
+        if 'NMR' in data['method']:
+            s = "NMR"
         else:
-            candidatelist += "<td>No hydrogen bond information</td>"
+            s = "NA"
+    return s
 
-        candidatelist += '</tr>\n'
-    candidatelist += '</table>\n'
 
-    discrepancydata = ''
+def format_distance_atoms(d_atoms,atom_set,nt1_seq,nt2_seq,reverse_bases):
 
-    if np.size(allvsallmatrix) > 0:
-        # write discrepancy data in new 2022 list format
-        # first element is a reference to the div in which the heatmap should appear
-        discrepancydata = '["#heatmap",['              # start a list, start a matrix
+    # print('format_distance_atoms')
+    # print('Given d_atoms',d_atoms)
+    # print('Given atom_set',atom_set)
 
-        # second element is a matrix with the numerical values of the discrepancy
-        # writing both upper and lower triangles of the matrix
-        s = allvsallmatrix.shape[0]
-        for c in range(0,s):
-            discrepancydata += '['     # start a row of the discrepancy matrix
-            #ife1 = candidates[c]['unit_id_1']
-            for d in range(0,s):
-                #ife2 = candidates[d]['unit_id_2']
-                discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
-                if d < s-1:
-                    discrepancydata += ','  # commas between entries in a row
+    if nt1_seq == nt2_seq:
+        s1 = nt1_seq + "1"
+        s2 = nt2_seq + "2"
+    else:
+        s1 = nt1_seq
+        s2 = nt2_seq
+
+    f = d_atoms.split("-")
+
+    distance_atoms = ""
+
+    if reverse_bases:
+        if atom_set[3] == '12':
+            distance_atoms = "%s(%s)..%s(%s)" % (f[1],s2,f[0],s1)
+        else:
+            distance_atoms = "%s(%s)..%s(%s)" % (f[0],s2,f[1],s1)
+    else:
+        if atom_set[3] == '12':
+            distance_atoms = "%s(%s)..%s(%s)" % (f[0],s1,f[1],s2)
+        else:
+            distance_atoms = "%s(%s)..%s(%s)" % (f[1],s1,f[0],s2)
+
+    # print('Produced formatted distance_atoms',distance_atoms)
+
+    return distance_atoms
+
+
+def format_angle_atoms(a_atoms,atom_set,nt1_seq,nt2_seq,reverse_bases):
+
+    # print('format_angle_atoms')
+    # print('Given a_atoms',a_atoms)
+    # print('Given atom_set',atom_set)
+
+    if nt1_seq == nt2_seq:
+        s1 = nt1_seq + "1"
+        s2 = nt2_seq + "2"
+    else:
+        s1 = nt1_seq
+        s2 = nt2_seq
+
+    f = a_atoms.split("-")
+
+    angle_atoms = ""
+
+    if reverse_bases:
+        if atom_set[3] == '12':
+            angle_atoms = "%s(%s)..%s(%s)-%s(%s)" % (f[2],s2,f[1],s1,f[0],s1)
+        else:
+            angle_atoms = "%s(%s)-%s(%s)..%s(%s)" % (f[0],s2,f[1],s2,f[2],s1)
+    else:
+        if atom_set[3] == '12':
+            angle_atoms = "%s(%s)-%s(%s)..%s(%s)" % (f[0],s1,f[1],s1,f[2],s2)
+        else:
+            angle_atoms = "%s(%s)..%s(%s)-%s(%s)" % (f[2],s1,f[1],s2,f[0],s2)
+
+    # print('Produced formatted angle_atoms',angle_atoms)
+
+    return angle_atoms
+
+
+def get_dist2_angle_penalty(interaction_to_atom_sets,candidate,target_distance=None,target_angle=None):
+    """
+    Loop over hydrogen bonds and find the second-worst distance
+    Also calculate angles
+    Calculate "badness" relative to a target distance and angle, if available
+    """
+
+    # list and score hydrogen bonds
+    badness = []
+    dist2_list = []           # list of scores for distances too long
+    hDistAngle_list = []      # list of scores for distances and/or angles out of specifications
+    z_score = 0.0
+    z_count = 0
+    extra_penalty = 0.0
+
+    candidatelist = ""
+
+    # todo: when more than one interaction, only show the hydrogen bonds that match the best
+    # this is a problem when there are pairs that are not true FR3D pairs
+
+    for interaction in interaction_to_atom_sets.keys():
+        # loop over hydrogen bond atom sets for this interaction
+        for atom_set in interaction_to_atom_sets[interaction]:
+            if "atom_set_to_results" in candidate and atom_set in candidate["atom_set_to_results"]:
+                if len(interaction_to_atom_sets.keys()) > 1 and "python_annotation" in candidate and not "n" in candidate["python_annotation"] and not candidate["python_annotation"] == interaction:
+                    candidatelist += "<td></td><td></td>"  # don't show hydrogen bond information
                 else:
-                    discrepancydata += '],\n'  # end a row, newline
+                    if target_distance:
+                        td = target_distance[atom_set]
+                    else:
+                        td = 2.9
 
-        discrepancydata += '],\n'           # end the matrix, continue the list
+                    if target_angle:
+                        ta = target_angle[atom_set]
+                    else:
+                        ta = 120.0
 
-        # third element is a list of labels of instances
-        discrepancydata += '['              # start list of instances
-        for c in range(0,s):
-            ife1 = candidates[c]['unit_id_1']
-            discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
-            if c < s-1:
-                discrepancydata += ","  # commas between instances
+                    result = candidate["atom_set_to_results"][atom_set]
+                    candidatelist += "<td>%0.2f</td>" % (result["donor_acceptor_distance"])  # hydrogen bond distance
+                    candidatelist += "<td>%0.1f</td>" % (result["heavy_donor_acceptor_angle"])  # hydrogen bond angle
+                    z_score += abs(result["donor_acceptor_distance"] - td) / 0.1
+                    z_score += abs(result["heavy_donor_acceptor_angle"] - ta) / 10.0
+                    z_count += 2
+                    extra_penalty += 3*max(0.0, abs(result["donor_acceptor_distance"]-td) - 1.0)  # extra penalty when more than 1A from target distance
+
+                    bad = max(0.0, abs(result["donor_acceptor_distance"]-2.9) - 0.1)    # how far from 2.9, penalize when above 0.2
+                    bad += max(0.0, abs(result["heavy_donor_acceptor_angle"] - 120) - 10)/20.0  # how far from 120, penalize when more than 20 degrees away
+                    badness.append(bad)
+
+                    bad = max(0.0, result["donor_acceptor_distance"]-3.5)    # how far above 3.5A
+                    dist2_list.append(result["donor_acceptor_distance"])     # distance
+                    bad += (max(0.0, abs(result["heavy_donor_acceptor_angle"] - 120) - 20))/20.0  # more than 20 degrees from 120
+                    hDistAngle_list.append(bad)
             else:
-                discrepancydata += "]]" # end list of instances, end list of data
+                candidatelist += "<td></td><td></td>"  # no hydrogen bond information
+                z_score = 99.99  # bad
+                z_count = 1
+                badness.append(9.99)
+                dist2_list.append(99.99)
+                hDistAngle_list.append(99.99)
 
-    # read template.html into one string
-    with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
-        template = myfile.read()
+    # if len(badness) > 1:
+    #     badness = sorted(badness)
+    #     candidatelist += "<td>%0.2f</td>" % (badness[1])  # second worst badness
+    # elif len(badness) == 1:
+    #     candidatelist += "<td>%0.2f</td>" % (badness[0])  # the only badness
+    # else:
+    #     candidatelist += "<td>9.99</td>"  # pretty bad
 
-    # replace ###PAGETITLE### with pagetitle
-    template = template.replace("###PAGETITLE###",pagetitle)
+    if z_count == 0:
+        z_score = 99.99
+        z_count = 1
 
-    sequence_column = 0   # column to set in fixed width font, not important here!
-    template = template.replace("###sequencecolumn###",str(sequence_column))
-
-    queryNote = "%s.  Found %d candidates from %d files, showing %d." % (Q['name'],Q['numFound'],len(Q["searchFiles"]),len(candidates))
-
-    template = template.replace("###QUERYNAME###",queryNote)
-
-    seeModifyQuery = ''
-    template = template.replace("###SEEMODIFYQUERY### |",seeModifyQuery)
-
-    prefix = ""
-    if Q['DNA']:
-        prefix += "DNA_"
-    if Q['only_modified']:
-        prefix += "modified_"
-
-    table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix=prefix)
-
-    template = template.replace("###seeCSVOutput###",table)
-
-    description = "<br>Columns of the table show candidate number in similarity order, checkbox to display coordinates or not, interacting nucleotides, annotations from different programs, variables describing the interaction, and hydrogen bond information<br>"
-    # put in the scatterplot
-    description += '\n<br><img src="%s"><br>\n' % Q['figure_img_src']
-
-    template = template.replace("###DESCRIPTION###",description)
-
-    # replace ###CANDIDATELIST### with candidatelist
-    template = template.replace("###CANDIDATELIST###",candidatelist)
-
-    if Q['DNA']:
-        # for when working with DNA
-        JS2 = '  <script src="./js/jquery.jmolTools.rnatest.js"></script>'  # special version to get coordinates
-    else:
-        JS2 = '  <script src="./js/jquery.jmolTools.bp.js"></script>'  # special version for basepairs
-
-    template = template.replace("###JS1###",JS1)
-    template = template.replace("###JS2###",JS2)
-    template = template.replace("###JS3###",JS3)
-    template = template.replace("###JS4###",JS4)
-
-    refresh = ""
-    if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
-        refresh = '<meta http-equiv="refresh" content="%d">' % REFRESHTIME
-    template = template.replace("###REFRESH###",refresh)
-
-    if np.size(allvsallmatrix) > 0:
-        template = template.replace("###JS5###",JS5)    # include heatmap.js code
-        discrepancydata = "var data =  " + discrepancydata
-        discrepancydata = '<script type="text/javascript">\n' + discrepancydata + '\n</script>'
-        template = template.replace("###DISCREPANCYDATA###",discrepancydata)
-    else:
-        #template = template.replace("###DISCREPANCYDATA###","")
-        template = template.replace("###JS5###","")    # do not display a heat map
-
-    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
-
-    print("Writing to %s" % outputfilename)
-
-    messages = ""
-    if len(Q["userMessage"]) > 0:
-        for line in Q["userMessage"]:
-            messages += line + "<br>\n"
-    else:
-        #messages += "No error or warning messages.<br>\n"
-        pass
-
-    template = template.replace("###MESSAGES###",messages)
-
-    with open(outputfilename, 'w') as myfile:
-        myfile.write(template)
+    return dist2_list, hDistAngle_list, extra_penalty, candidatelist, z_score, z_count
 
 
-def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
+def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_messages,allvsallmatrix=np.empty( shape=(0, 0) ),option_set=set()):
     """
     Write the list of candidates in an HTML format that also shows
     the coordinate window and a heat map of all-against-all distances.
     Write the heatmap data in an efficient way.
     Do not show x,y,z parameters or scatterplots, but do show annotations from different programs.
+    option_set includes additional things to include for local FR3D diagnostics
     """
 
     pagetitle = "%s" % Q['name']
 
-    htmlfilename = "compare_v6_" + Q['name'].replace(" ","_")
-    htmlfilename = htmlfilename.replace('compare_v6_DNA','DNA_compare_v6')        # awkward, fragile, but works
+    if 'FR3D' in option_set:
+        htmlfilename = Q['name'].replace(" ","_")
+    else:
+        htmlfilename = "compare_%s_%s" % (VERSION,Q['name'].replace(" ","_"))
+        htmlfilename = htmlfilename.replace('compare_%s_DNA' % VERSION,'DNA_compare_%s' % VERSION)  # awkward, fragile, but works
 
     print('htmlfilename',htmlfilename)
-    print('Qname',Q['name'])
+    print('Q name',Q['name'])
 
     base_combination = Q['name'].split()[1]
 
@@ -331,7 +266,8 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
     numPositions = 2
 
     # write header line, make columns sortable, numeric=true, alpha=false
-    candidatelist += '<tr><th onclick="sortTable(0,\'instances\',\'numeric\')">S.</th><th onclick="sortTable(1,\'instances\',\'checkbox\')">Show</th>'
+    candidatelist += '<tr><th onclick="sortTable(0,\'instances\',\'numeric\')">S.</th>'
+    candidatelist += '<th onclick="sortTable(1,\'instances\',\'checkbox\')">Show</th>'
     candidatelist += '<th onclick="sortTable(2,\'instances\',\'numeric\')">Res.</th>'
 
     for j in range(0,numPositions):
@@ -340,35 +276,66 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
     candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">RNAview</th>'
     candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">DSSR</th>'
     candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">PDB</th>'
-    candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">contacts</th>'
+    candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">datmos</th>'
     candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">Number</th>'
     candidatelist += '<th onclick="sortTable(11,\'instances\',\'alpha\')">Which</th>'
     candidatelist += '<th onclick="sortTable(12,\'instances\',\'alpha\')">Glyco 1</th>'
     candidatelist += '<th onclick="sortTable(13,\'instances\',\'alpha\')">Glyco 2</th>'
 
-    current_column = 14   # next column after the one list above, keep track manually
+    if 'FR3D' in option_set:
+        candidatelist += '<th onclick="sortTable(14,\'instances\',\'alpha\')">New FR3D</th>'
+        candidatelist += '<th onclick="sortTable(15,\'instances\',\'alpha\')">Newest FR3D</th>'
+        candidatelist += '<th onclick="sortTable(16,\'instances\',\'alpha\')">Subcat</th>'
+        candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">cut dist</th>'
+        candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">x</th>'
+        candidatelist += '<th onclick="sortTable(19,\'instances\',\'numeric\')">y</th>'
+        candidatelist += '<th onclick="sortTable(20,\'instances\',\'numeric\')">z</th>'
+        candidatelist += '<th onclick="sortTable(21,\'instances\',\'numeric\')">r</th>'
+        candidatelist += '<th onclick="sortTable(22,\'instances\',\'numeric\')">maxgap</th>'
+        candidatelist += '<th onclick="sortTable(23,\'instances\',\'numeric\')">angle</th>'
+        candidatelist += '<th onclick="sortTable(24,\'instances\',\'numeric\')">hmindist</th>'
+        candidatelist += '<th onclick="sortTable(25,\'instances\',\'numeric\')">normal_z</th>'
+        current_column = 26   # next column after the one list above, keep track manually
+        if 'css' in Q['name'].lower():
+            candidatelist += '<th onclick="sortTable(26,\'instances\',\'alpha\')">SR12</th>'
+            candidatelist += '<th onclick="sortTable(27,\'instances\',\'alpha\')">SR21</th>'
+            current_column += 2
+    else:
+        current_column = 14   # next column after the one list above, keep track manually
 
-    # loop over the hydrogen bonds for this base combination and basepair category
-    atom_sets = []
-    for candidate in candidates:
-        if "atom_sets" in candidate and len(candidate["atom_sets"]) > 0:
-            atom_sets = sorted(candidate["atom_sets"])
-            #print("Found atom sets %s from %s" % (atom_sets,candidate))
-            print("Found atom sets %s" % (atom_sets))
+    # loop over true interaction(s) in this group, like cWW and cWWa
+    if len(candidates) > 0:
+        for interaction in interaction_to_atom_sets.keys():
+            # loop over hydrogen bond atom sets for this interaction
+            for atom_set in interaction_to_atom_sets[interaction]:
+                print("Making headers for atom set %s" % (str(atom_set)))
 
-            for atom_set in atom_sets:
-                result = candidate["atom_set_to_results"][atom_set]
-                atoms = result["donor_acceptor_atoms"]
-                candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">%s</th>' % (current_column,atoms)
+                # look up formatted listings of atoms
+                d_atoms = Q['d_atoms'][atom_set]
+                a_atoms = Q['a_atoms'][atom_set]
+
+                if len(interaction_to_atom_sets) > 1:
+                    # more than one true interaction, so list the interaction
+                    d_atoms += " " + interaction
+                    a_atoms += " " + interaction
+
+                candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">%s</th>' % (current_column,d_atoms)
                 current_column += 1
-                atoms = result["heavy_donor_acceptor_atoms"]
-                candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">%s</th>' % (current_column,atoms)
+                candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">%s</th>' % (current_column,a_atoms)
                 current_column += 1
 
-                print(result)
-
-            candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">SBHBB</th>' % (current_column)  # second best hydrogen bond badness
-            break
+    # make headers for various measures of the quality of the hydrogen bonding
+    #candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">SBHBB</th>' % (current_column)  # second best hydrogen bond badness
+    candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">Dist2</th>' % (current_column)  #
+    current_column += 1
+    candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">hDistAngle</th>' % (current_column)  #
+    current_column += 1
+    candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">hbond1</th>' % (current_column)  #
+    current_column += 1
+    candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">hbond2</th>' % (current_column)  #
+    current_column += 1
+    candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">hbond3</th>' % (current_column)  #
+    current_column += 1
 
     # pdata["atom_sets"] = sorted(datapoint["LW_to_atom_sets"][interaction])
     # pdata["atom_set_to_results"] = datapoint["atom_set_to_results"]
@@ -376,17 +343,17 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
     if not Q['DNA']:
        candidatelist += '<th>3D structures</th>'
        candidatelist += '<th>Sequence alignments</th>'
+       candidatelist += '<th>View</th>'
 
     candidatelist += "</tr>\n"
 
+    # not sure what this code is doing, because first_listed_base is always A
     first_listed_base = 'A'
     for i in range(0,len(candidates)):
         candidate = candidates[i]
         first_listed_base = candidate['unit_id_1'].split("|")[3]
         if first_listed_base in ['A','C','G','U','DA','DC','DG','DT']:
             break
-
-    print('First listed base is %s, base_combination is %s' % (first_listed_base,base_combination))
 
     # list bases in the order they appear in the filename
     if first_listed_base == base_combination.split(",")[0]:
@@ -396,13 +363,24 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
         id_1 = 'unit_id_2'
         id_2 = 'unit_id_1'
 
+    print('First listed base is %s, base_combination is %s' % (first_listed_base,base_combination))
+
     # write one row for each candidate
     for i in range(0,len(candidates)):
+
         candidate = candidates[i]
-        candidatelist += '<tr><td>'+str(i+1)+'.</td><td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
 
+        # try to understand why OK pairs are demoted
+        if 'demoted' in candidate['new_python_annotation']:
+            print_dictionary(candidate)
+            print()
+        elif 'ncWW' in candidate['python_annotation']:
+            print_dictionary(candidate)
+            print()
+
+        candidatelist += '<tr><td>'+str(i+1)+'.</td>'
+        candidatelist += '<td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
         candidatelist += candidate[id_1] + ',' + candidate[id_2]
-
         candidatelist += '">&nbsp</label></td>'
 
         PDB_id = candidate['unit_id_1'][0:4]
@@ -421,13 +399,16 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
             candidatelist += "<td>%s</td>" % candidate['rnaview_annotation']  # rnaview
             candidatelist += "<td>%s</td>" % candidate['dssr_annotation']  # dssr
             candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
-            candidatelist += "<td>%s</td>" % candidate['contacts_annotation']  # contacts
+            # candidatelist += "<td>%s</td>" % candidate['contacts_annotation']  # contacts
+            candidatelist += "<td>%s</td>" % candidate['datmos_annotation']  # datmos
         else:
-            candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'].replace("a",""))  # python FR3D, with w, h, s
+            # used to replace "a" with "" but that starts to be more confusing than it's worth
+            candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'])  # python FR3D, with w, h, s
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['rnaview_annotation'])  # rnaview
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['dssr_annotation'])  # dssr
             candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
-            candidatelist += "<td>%s</td>" % reverse_edges(candidate['contacts_annotation'])  # contacts
+            # candidatelist += "<td>%s</td>" % reverse_edges(candidate['contacts_annotation'])  # contacts
+            candidatelist += "<td>%s</td>" % reverse_edges(candidate['datmos_annotation'])  # datmos
 
         candidatelist += "<td>%s</td>" % candidate['annotator_count']  # number that agree
         candidatelist += "<td>%s</td>" % candidate['annotator']  # who annotates
@@ -435,30 +416,72 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
         candidatelist += "<td>%s</td>" % candidate['glycosidic1']  # unit 1 glycosidic bond
         candidatelist += "<td>%s</td>" % candidate['glycosidic2']  # unit 2 glycosidic bond
 
-        badness = []
-        for atom_set in atom_sets:
-            if "atom_set_to_results" in candidate and atom_set in candidate["atom_set_to_results"]:
-                result = candidate["atom_set_to_results"][atom_set]
-                candidatelist += "<td>%0.2f</td>" % (result["donor_acceptor_distance"])  # hydrogen bond distance
-                candidatelist += "<td>%0.1f</td>" % (result["heavy_donor_acceptor_angle"])  # hydrogen bond angle
-                bad = max(0.0, abs(result["donor_acceptor_distance"]-2.9) - 0.1)    # how far from 2.9, penalize when above 0.2
-                bad += max(0.0, abs(result["heavy_donor_acceptor_angle"] - 120) - 10)/20.0  # how far from 120, penalize when more than 20 degrees away
-                badness.append(bad)
-            else:
-                candidatelist += "<td></td><td></td>"  # no hydrogen bond information
-                badness.append(9.99)
+        if 'FR3D' in option_set:
+            candidatelist += "<td>%s</td>" % candidate['python_annotation']  # python
+            candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # after checks in this program
+            candidatelist += "<td>%d</td>" % candidate['basepair_subcat']  # python subcategory
+            candidatelist += "<td>%0.4f</td>" % candidate['best_cutoff_distance']  #
+            candidatelist += "<td>%0.2f</td>" % candidate['x']  #
+            candidatelist += "<td>%0.2f</td>" % candidate['y']  #
+            candidatelist += "<td>%0.2f</td>" % candidate['z']  #
+            candidatelist += "<td>%0.2f</td>" % (math.sqrt(candidate['x']**2 + candidate['y']**2))
+            candidatelist += "<td>%0.2f</td>" % candidate['maxgap']  #
+            candidatelist += "<td>%0.2f</td>" % candidate['angle_in_plane']  #
 
-        if len(badness) > 1:
-            badness = sorted(badness)
-            candidatelist += "<td>%0.2f</td>" % (badness[1])  # second worst badness
-        elif len(badness) == 1:
-            candidatelist += "<td>%0.2f</td>" % (badness[0])  # the only badness
+            if not 'heavy_min_distance' in candidate:
+                candidate['heavy_min_distance'] = -1.0
+
+            candidatelist += "<td>%0.2f</td>" % candidate['heavy_min_distance']  #
+            candidatelist += "<td>%0.2f</td>" % candidate['normal_Z']  #
+
+            if 'css' in Q['name'].lower():
+                if 'sugar_ribose' in candidate:
+                    candidatelist += "<td>%s</td>" % candidate['sugar_ribose']
+                else:
+                    candidatelist += "<td></td>"
+
+                if 'r_sugar_ribose' in candidate:
+                    candidatelist += "<td>%s</td>" % candidate['r_sugar_ribose']
+                else:
+                    candidatelist += "<td></td>"
+
+        dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count = get_dist2_angle_penalty(interaction_to_atom_sets,candidate,Q['target_distance'],Q['target_angle'])
+
+        candidatelist += cl
+
+        # hDist is zero when there are two good hydrogen bonds, and non-zero to the extent that the second hydrogen bond is bad
+        if len(dist2_list) >= 2:
+            candidatelist += "<td>%0.2f</td>" % (sorted(dist2_list)[1])   # second shortest distance
+        elif len(dist2_list) == 1:
+            candidatelist += "<td>%0.2f</td>" % (dist2_list[0])   # the only distance
         else:
-            candidatelist += "<td>9.99</td>"  # pretty bad
+            candidatelist += "<td></td>"
+
+        # hDistAngle is zero when there are two good hydrogen bonds, and non-zero to the extent that the second hydrogen bond is bad
+        if len(hDistAngle_list) >= 2:
+            candidatelist += "<td>%0.2f</td>" % (sorted(hDistAngle_list)[1])   # second best badness
+        elif len(hDistAngle_list) == 1:
+            candidatelist += "<td>%0.2f</td>" % (hDistAngle_list[0])   # the only badness
+        else:
+            candidatelist += "<td></td>"
+
+        # hbond1 is the sum of z-scores
+        candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
+
+        # hbond2 is the sum of z-scores plus extra penalty for being more than 1A from target distance
+        z_score += extra_penalty
+        z_count += 1
+        candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
+
+        # hbond3 has an additional penalty for the maxgap
+        z_score += 5*max(0.0,candidate['maxgap']-0.8)
+        z_count += 1
+        candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
 
         if not Q['DNA']:
             candidatelist += '<td><a href="http://rna.bgsu.edu/correspondence/comparison?selection=%s,%s&exp_method=all&resolution=3.0" target="_blank" rel="noopener noreferrer">Compare 3D</a></td>' % (candidate[id_1],candidate[id_2])
             candidatelist += '<td><a href="http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique" target="_blank" rel="noopener noreferrer">Compare sequence</a></td>' % (candidate[id_1],candidate[id_2])
+            candidatelist += '<td><a href="http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" target="_blank" rel="noopener noreferrer">View</a></td>' % (candidate[id_1],candidate[id_2])
 
         candidatelist += '</tr>\n'
     candidatelist += '</table>\n'
@@ -518,14 +541,28 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
     if height < 300:
         template = template.replace("height:300px","height:%dpx" % (height))
 
-    if Q['DNA']:
-        table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix='DNA_compare_v6_')
+    if 'FR3D' in option_set:
+        prefix = ""
+        if Q['DNA']:
+            prefix += "DNA_"
+        if Q['only_modified']:
+            prefix += "modified_"
+        table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix=prefix)
     else:
-        table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix='compare_v6_')
+        if Q['DNA']:
+            table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix='DNA_compare_%s_' % VERSION)
+        else:
+            table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix='compare_%s_' % VERSION)
 
     template = template.replace("###seeCSVOutput###",table)
 
     description = "<br>Columns of the table show candidate number in similarity order, checkbox to display coordinates or not, interacting nucleotides, annotations from different programs, number of programs which annotate, and a string that tells which programs annotate.  Click on column headings to sort.<br>"
+
+    if 'FR3D' in option_set:
+        # put in the scatterplot
+        description += '\n<br><img src="%s"><br>\n' % Q['figure_img_src']
+
+    description += "<br>".join(distance_angle_messages)
 
     template = template.replace("###DESCRIPTION###",description)
 
@@ -559,7 +596,7 @@ def writeHTMLOutputCompareAnnotators(Q,candidates,allvsallmatrix=np.empty( shape
 
     outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
 
-    print("Compare annotators is writing to %s" % outputfilename)
+    print("plot_basepair_interactions is writing to %s" % outputfilename)
 
     messages = ""
 
@@ -859,9 +896,12 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables,angle_o
                                 ymax += cc*0.001                   # don't overlap
 
                             if angle_out_of_order and xmin < 0:
-                                ax.plot([xmin+360,xmax+360,xmax+360,xmin+360,xmin+360],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                # for example, xmin = -75, xmax = -55
+                                # can happen when one subcategory wraps and the other does not
+                                ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             elif angle_out_of_order and xmax < 0:
-                                ax.plot([xmin+360,xmax,xmax,xmin+360,xmin+360],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                # for example, xmin = 260 and xmax = -50
+                                ax.plot([xmin-360,xmax,xmax,xmin-360,xmin-360],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             elif xmin < xmax:
                                 # angle does not wrap around 270 degrees
                                 ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
@@ -888,9 +928,10 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables,angle_o
                             ymax = limits['xmax']
 
                             if angle_out_of_order and xmin < 0:
-                                ax.plot([xmin+360,xmax+360,xmax+360,xmin+360,xmin+360],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             elif angle_out_of_order and xmax < 0:
-                                ax.plot([xmin+360,xmax,xmax,xmin+360,xmin+360],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                # for example, xmin = 260 and xmax = -50
+                                ax.plot([xmin-360,xmax,xmax,xmin-360,xmin-360],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             elif xmin < xmax:
                                 # angle does not wrap around 270 degrees
                                 ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
@@ -909,9 +950,10 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables,angle_o
                             ymax = limits['ymax']
 
                             if angle_out_of_order and xmin < 0:
-                                ax.plot([xmin+360,xmax+360,xmax+360,xmin+360,xmin+360],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             elif angle_out_of_order and xmax < 0:
-                                ax.plot([xmin+360,xmax,xmax,xmin+360,xmin+360],[ymin,ymin,ymax,ymax,ymin],color[cc])
+                                # for example, xmin = 260 and xmax = -50
+                                ax.plot([xmin-360,xmax,xmax,xmin-360,xmin-360],[ymin,ymin,ymax,ymax,ymin],color[cc])
                             elif xmin < xmax:
                                 # angle does not wrap around 270 degrees
                                 ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
@@ -1144,6 +1186,43 @@ def load_contacts_basepairs(contacts_filename):
     return pair_to_interaction
 
 
+def load_datmos_basepairs(datmos_filename):
+
+    # print('Reading %s' % datmos_filename)
+
+    pair_to_interaction = defaultdict(str)
+
+    if os.path.exists(datmos_filename):
+        with open(datmos_filename,'r') as f:
+            for line in f:
+                fields = line.split()
+                u1 = fields[0].replace('||||1_555','')
+                interaction = fields[1]
+                u2 = fields[2].replace('||||1_555','')
+
+                u1_fields = u1.split("|")
+                u2_fields = u2.split("|")
+
+                u1_fields[0] = u1_fields[0].upper()
+                u2_fields[0] = u2_fields[0].upper()
+
+                u1 = "|".join(u1_fields)
+                u2 = "|".join(u2_fields)
+
+                # print('datmos',u1,u2,interaction)
+
+                if (u1,u2) in pair_to_interaction:
+                    previous = pair_to_interaction[(u1,u2)]
+                    if not previous == interaction:
+                        view = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
+                        print('Conflicting annotations in datmos file %s %s interactions %s %s url %s' % (u1,u2,previous,interaction,view))
+
+                pair_to_interaction[(u1,u2)] = interaction
+                pair_to_interaction[(u2,u1)] = reverse_edges(interaction)
+
+    return pair_to_interaction
+
+
 def add_pairs_in_order(pair_to_priority,pair_to_data,priority):
     """
     Assign a priority score to each pair.
@@ -1331,13 +1410,15 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
                 best_cutoff_distance = cutoff_distance
 
 
-
     if best_cutoff_distance > 0:
         new_python_annotation = ",".join(keep_reasons)
 
     if max_distance > 4 or min_angle < 100 or max_badness > 3:
         disqualified_hbond = True
         new_python_annotation += ',hbond'
+
+    if 'demoted_hbond' in datapoint:
+        new_python_annotation = 'demoted,' + new_python_annotation
 
     datapoint['best_interaction'] = best_interaction
     datapoint['best_subcategory'] = new_python_subcat
@@ -1388,6 +1469,10 @@ if __name__=="__main__":
     LW12c = ['cWw','tWW','cWH','tWH','cWS','tWS','cHh','tHh','cHS','tHS','cSs','tSS']
     LW18 = ['cWW','tWW','cWH','cHW','tWH','tHW','cWS','cSW','tWS','tSW','cHH','tHH','cHS','cSH','tHS','tSH','cSs','csS','tSs','tsS']
 
+    LW_to_number = {}
+    for i,LW in enumerate(Leontis_Westhof_basepairs):
+        LW_to_number[LW] = i+1
+
     base_combination_list = ['G,C','A,A','A,C','A,G','A,U','C,C','C,U','G,G','G,U','U,U']
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
 
@@ -1414,6 +1499,8 @@ if __name__=="__main__":
     base_combination_to_interaction['DG,DT'] = LW18
     base_combination_to_interaction['DT,DT'] = LW12b
 
+    standard_nucleotides = ['A','C','G','U','DA','DC','DG','DT']
+
     red   = [1,0,0] # red
     black = [0,0,0] # black
     cyan  = [0,1,1] # cyan
@@ -1429,31 +1516,48 @@ if __name__=="__main__":
     make_plots = True
 
     all_agree = '11111'            # indicates how many annotators are being compared
-    compare_annotators = True      # tally up how many pairs are annotated by FR3D, RNAview, DSSR, PDB, contacts
-    compare_annotators = False
+    compare_annotators = False     # write HTML pages for internal evaluation of FR3D annotations
+    compare_annotators = True      # write HTML pages to compare FR3D, RNAview, DSSR, PDB, datmos for basepair group
 
-    only_modified = False
     only_modified = True           # only show basepairs involving modified nucleotides
+    only_modified = False
+
+    write_hbond_tables = False     # does not work well
+    write_hbond_tables = True      # write a table listing hbond atoms, distances, angles
 
     DNA = True
     DNA = False
+
+    # temporary focus on this pair and interaction
+    # base_combination_list = ['A,G']
+    # base_combination_to_interaction['A,G'] = ['tHS']
+    # O2_bond_length = 'short'
+    # O2_bond_length = 'long'
+    O2_bond_length = ''
 
     # zzz
 
     resolution_list = ['2.5A','3.0A','1.5A','2.0A']
     resolution_list = ['2.0A','2.5A','3.0A']
-    resolution_list = ['1.5A','2.0A','2.5A','3.0A']
+    resolution_list = ['2.0A','2.5A']
     resolution_list = ['2.5A','3.0A']
-    resolution_list = ['3.0A']
-    resolution_list = ['1.5A']
-    resolution_list = ['2.5A']
     resolution_list = ['2.0A']
+    resolution_list = ['3.0A']
+    resolution_list = ['1.5A','2.0A','2.5A','3.0A']
+    resolution_list = ['2.5A']
+    resolution_list = ['1.5A']
+    resolution_list = ['2.0A','2.5A','3.0A','1.5A']
     resolution_list = ['1.5A','2.0A','2.5A','3.0A']
 
     if compare_annotators:
         make_plots = False
 
     for resolution in resolution_list:
+
+        if write_hbond_tables:
+            hbond_data_list = []
+            dist2_data_list = []   # values to output for each basepair category
+
         if DNA:
             from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
             PDB_list.remove('5G35')        # has AG pairs that overlap
@@ -1463,20 +1567,21 @@ if __name__=="__main__":
             data_file = []
         else:
             if resolution == '1.5A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/1.5A/csv']
             elif resolution == '2.0A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.0A/csv']
             elif resolution == '2.5A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.5A/csv','8GLP','8B0X']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.5A/csv','8GLP','8B0X']
             elif resolution == '3.0A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/3.0A/csv','8GLP','8B0X']
-            data_file = readPDBDatafile()  # available PDB structures, resolutions, chains
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/3.0A/csv','8GLP','8B0X']
+            data_file = readPDBDatafile(os.path.join(fr3d_pickle_path,'units'))  # available PDB structures, resolutions, chains
 
         PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
         # load all datapoints on pairs of bases, whether annotated as paired or not
         all_PDB_ids = sorted(PDB_IFE_Dict.keys())
 
+        print("")
         print("Resolution %s, working on %d PDB files" % (resolution,len(all_PDB_ids)))
 
         representative_chains = set(['8GLP|1|L5','8GLP|1|L8','8GLP|1|S2','8B0X|1|a','8B0X|1|A'])
@@ -1496,53 +1601,14 @@ if __name__=="__main__":
         pair_to_interaction_dssr     = defaultdict(str)
         pair_to_interaction_rnaview  = defaultdict(str)
         pair_to_interaction_pdb      = defaultdict(str)
-        pair_to_interaction_contacts = defaultdict(str)
+        # pair_to_interaction_contacts = defaultdict(str)
+        pair_to_interaction_datmos   = defaultdict(str)
 
         pdb_id_to_annotators = defaultdict(set)   # which programs annotate pairs in each structure?
 
-        pair_to_datapoint = defaultdict(dict)
+        print('Loading glycosidic bond conformations')
         unit_id_to_glycosidic = defaultdict(str)
-
-        # load output files from NA_pairwise_interactions
-        print("Loading FR3D     annotations from %s" % outputNAPairwiseInteractions)
         for PDB_id in all_PDB_ids:
-            pair_to_datapoint_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB_id
-            try:
-                if sys.version_info[0] < 3:
-                    new_dict = pickle.load(open(pair_to_datapoint_file,'rb'))
-                else:
-                    new_dict = pickle.load(open(pair_to_datapoint_file,'rb'),encoding = 'latin1')
-                if len(new_dict.keys()) > 0:
-                    # make sure at least one pair was annotated
-                    found_basepair = False
-                    for pair,datapoint in new_dict.items():
-                        if 'basepair' in datapoint and datapoint['basepair']:
-                            found_basepair = True
-
-                    if found_basepair:
-                        pdb_id_to_annotators[PDB_id].add('FR3D')
-                        for pair,datapoint in new_dict.items():
-                            # reduce memory usage by only storing pairs we will process
-                            u1,u2 = pair
-
-                            # only keep pairs from representative chains
-                            fields1 = u1.split("|")
-                            chain1 = "|".join(fields1[0:3])
-                            if not chain1 in representative_chains and not DNA:
-                                continue
-
-                            fields2 = u2.split("|")
-                            chain2 = "|".join(fields2[0:3])
-                            if not chain2 in representative_chains and not DNA:
-                                continue
-
-                            # pair_to_datapoint.update(new_dict)
-                            pair_to_datapoint[pair] = datapoint
-
-            except:
-                print("Not able to load python_fr3d annotations for %s from %s" % (PDB_id,pair_to_datapoint_file))
-
-
             unit_annotation_file = os.path.join(outputNAPairwiseInteractions,"%s_glycosidic.txt" % PDB_id)
             if os.path.exists(unit_annotation_file):
                 #print('Reading glycosidic bond conformations for %s' % (PDB_id))
@@ -1553,16 +1619,6 @@ if __name__=="__main__":
                     unit_id = fields[0]
                     glycosidic = fields[1]
                     unit_id_to_glycosidic[unit_id] = glycosidic
-
-
-
-        """
-        print(pair_to_datapoint[('8GLP|1|L5|U|3914','8GLP|1|L5|U|3915')])
-        print(pair_to_datapoint[('8GLP|1|L5|U|3915','8GLP|1|L5|U|3914')])
-        """
-
-        # keep track of pairs, prioritizing those with annotations like cWw over those like cWH/cHW
-        pair_to_priority = add_pairs_in_order({},pair_to_datapoint,1)
 
         if not DNA and not compare_annotators:
             print('Loading Matlab   annotations')
@@ -1594,8 +1650,6 @@ if __name__=="__main__":
                     if len(interaction_to_triples[interaction]) > 0:
                         pdb_id_to_annotators[PDB_id].add('RNAview')
 
-        pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_rnaview,2)
-
         print('Loading DSSR     annotations from %s' % dssr_basepair_path)
         for PDB_id in all_PDB_ids:
             interaction_to_triples = load_dssr_basepairs(PDB_id)
@@ -1606,8 +1660,6 @@ if __name__=="__main__":
                         pair_to_interaction_dssr[(u1,u2)] = interaction
                     if len(interaction_to_triples[interaction]) > 0:
                         pdb_id_to_annotators[PDB_id].add('DSSR')
-
-        pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_dssr,3)
 
         print('Loading PDB      annotations from %s' % pdb_basepair_path)
         for PDB_id in all_PDB_ids:
@@ -1620,158 +1672,235 @@ if __name__=="__main__":
                     if len(interaction_to_triples[interaction]) > 0:
                         pdb_id_to_annotators[PDB_id].add('PDB')
 
-        pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,5)
+        # if DNA:
+        #     contacts_filename = os.path.join('C:/Users/zirbel/Documents/RNA/contacts program','pairing_DNA.txt')
+        # else:
+        #     contacts_filename = os.path.join('C:/Users/zirbel/Documents/RNA/contacts program','pairing_1599_RNA.txt')
+        # print('Loading contacts annotations from %s' % contacts_filename)
+        # pair_to_interaction_contacts = load_contacts_basepairs(contacts_filename)
+        # for u1,u2 in pair_to_interaction_contacts.keys():
+        #     fields = u1.split("|")
+        #     pdb_id = fields[0].upper()
+        #     pdb_id_to_annotators[pdb_id].add('contacts')
 
-        if DNA:
-            contacts_filename = os.path.join('C:/Users/zirbel/Documents/RNA/contacts program','pairing_DNA.txt')
-        else:
-            contacts_filename = os.path.join('C:/Users/zirbel/Documents/RNA/contacts program','pairing_1599_RNA.txt')
-        print('Loading contacts annotations from %s' % contacts_filename)
-        pair_to_interaction_contacts = load_contacts_basepairs(contacts_filename)
-        for u1,u2 in pair_to_interaction_contacts.keys():
-            fields = u1.split("|")
-            pdb_id = fields[0].upper()
-            pdb_id_to_annotators[pdb_id].add('contacts')
+        print('Loading datmos   annotations from %s' % datmos_basepair_path)
+        for PDB_id in all_PDB_ids:
+            datmos_filename = os.path.join(datmos_basepair_path,PDB_id.lower() + "_basepair_detailed.txt")
+            if os.path.exists(datmos_filename):
+                new_pairs = load_datmos_basepairs(datmos_filename)
+                pair_to_interaction_datmos.update(new_pairs)
 
-        pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,4)
+                if len(new_pairs) > 0:
+                    pdb_id_to_annotators[PDB_id].add('datmos')
 
-        if compare_annotators:
-            all_annotate_counter = 0
-            for pdb_id, annotators in sorted(pdb_id_to_annotators.items()):
-                if len(annotators) < len(all_agree):
-                    if len(annotators) > 1 or not list(annotators)[0] == 'contacts':
-                        print('%s only annotated by %s' % (pdb_id,sorted(annotators)))
-                else:
-                    all_annotate_counter += 1
-            print('%d files are annotated by all %d annotators' % (all_annotate_counter,len(all_agree)))
-
-
-        # remove pairs with symmetry operators, alternate ids, insertion codes when comparing annotators
-        complicated_unit_id = set()
-        if compare_annotators:
-            for u1,u2 in pair_to_priority.keys():
-                fields1 = u1.split("|")
-                fields2 = u2.split("|")
-
-                if len(fields1) > 5:
-                    complicated_unit_id.add(u1)                      # blacklist the full unit id
-                    complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the plain unit id as well
-                    complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the paired plain unit id as well
-                    #print('Omitting',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]))
-                if len(fields2) > 5:
-                    complicated_unit_id.add(u2)                      # blacklist the full unit id
-                    complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the plain unit id as well
-                    complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the paired plain unit id as well
-                    #print('Omitting',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]))
-
-                # some x-ray structures like 3CMY have a model 2 that RNAview does not mark as model 2,
-                # so it gets reported as being in model 1.  Remove every such pair, even from model 1.
-                if not fields1[1] == '1' or not fields2[1] == '1':
-                    complicated_unit_id.add(u1)                      # blacklist the full unit id
-                    complicated_unit_id.add(u2)                      # blacklist the full unit id
-                    fields1[1] = '1'
-                    complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist any model 1 version of the unit id
-                    fields2[1] = '1'
-                    complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist any model 1 version of the unit id
-                    print('Removing',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]),' because of model numbers')
-
-
-        print('Found %d pair_to_priority pairs to work with' % len(pair_to_priority))
-
-        standard_nucleotides = ['A','C','G','U','DA','DC','DG','DT']
-
-        # cull out pairs that we don't want to consider
-        pair_to_priority_final = {}
-        for pair,priority in pair_to_priority.items():
-            u1,u2 = pair
-            if u1 in complicated_unit_id:
-                continue
-
-            if u2 in complicated_unit_id:
-                continue
-
-            fields1 = u1.split("|")
-
-            # only keep pairs from representative chains
-            chain1 = "|".join(fields1[0:3])
-            if not chain1 in representative_chains and not DNA:
-                continue
-
-            # DSSR has hyphens because of symmetry operators being applied
-            if '-' in chain1:
-                continue
-
-            fields2 = u2.split("|")
-            chain2 = "|".join(fields2[0:3])
-            if not chain2 in representative_chains and not DNA:
-                continue
-
-            # DSSR has hyphens because of symmetry operators being applied
-            if '-' in chain2:
-                continue
-
-            if only_modified and fields1[3] in standard_nucleotides and fields2[3] in standard_nucleotides:
-                continue
-
-            # if both are from a symmetry operator, skip, because we probably already have it
-            if len(fields1) == 9 and len(fields2) == 9:
-                #print('Skipping %s - %s because both have a symmetry operator' % (u1,u2))
-                continue
-
-            pdb_id = fields1[0]
-
-            # only include pairs where all annotators are able to make annotations
-            if compare_annotators and not len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
-                continue
-
-            # some PDB ids are a problem, just skip them
-            if pdb_id in PDB_skip_set:
-                continue
-
-            pair_to_priority_final[(u1,u2)] = priority
-
-        # set the order in which to process pairs; doing FR3D first gets more consistent unit orders when symmetric
-        pairs_in_order = sorted(pair_to_priority_final.keys(), key=lambda x:pair_to_priority_final[x])
-
-        # try to reduce memory usage
-        pair_to_priority_final = {}
-
-        print('Found %d pairs_in_order pairs to work with' % len(pairs_in_order))
-
-        # store pairs by their base combination for faster retrieval
-        # store modified nucleotides according to their parent nucleotide
-        bc_to_pairs_in_order = {}
-        for pair in pairs_in_order:
-            b1 = pair[0].split("|")[3]
-            if b1 in modified_base_to_parent and not compare_annotators and not b1 in ['DA','DC','DG','DT']:
-                b1 = modified_base_to_parent[b1]
-
-            b2 = pair[1].split("|")[3]
-            if b2 in modified_base_to_parent and not compare_annotators and not b2 in ['DA','DC','DG','DT']:
-                b2 = modified_base_to_parent[b2]
-
-            if not b1 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
-                print('Unknown nucleotide %s' % pair[0])
-            if not b2 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
-                print('Unknown nucleotide %s' % pair[1])
-
-            bc = b1+","+b2
-
-            if not bc in bc_to_pairs_in_order:
-                bc_to_pairs_in_order[bc] = []
-
-            bc_to_pairs_in_order[bc].append(pair)
-
-        # try to reduce memory usage
-        pairs_in_order = {}
-
-        count_annotations = {}
-        count_annotations_by_group = {}
-
-        big_min_distance_list = []
+        # h-bond data takes up so much space, it seems necessary to work one base combination at a time
 
         # loop over specified base combinations
-        for base_combination in base_combination_list:
+        for bc_num, base_combination in enumerate(base_combination_list):
+
+            if bc_num == 0 or resolution in ['3.0A']:
+
+                # load output files from NA_pairwise_interactions
+                print("Loading FR3D     annotations for %s from %s" % (base_combination,outputNAPairwiseInteractions))
+                pair_to_datapoint = defaultdict(dict)
+                c = 0
+                st = time.time()
+                for PDB_id in all_PDB_ids:
+                    c += 1
+                    if c % 1 == 0:
+                        print('Reading file %4s # %4d of %d for %s, estimated total time %8.0f seconds' % (PDB_id,c,len(all_PDB_ids),base_combination,(time.time()-st)*(len(all_PDB_ids)/c)))
+                    pair_to_datapoint_file = outputNAPairwiseInteractions + "%s_datapoint.pickle" % PDB_id
+
+                    if os.path.exists(pair_to_datapoint_file):
+                        if sys.version_info[0] < 3:
+                            new_dict = pickle.load(open(pair_to_datapoint_file,'rb'))
+                        else:
+                            new_dict = pickle.load(open(pair_to_datapoint_file,'rb'),encoding = 'latin1')
+
+                        if len(new_dict.keys()) > 0:
+                            # make sure at least one pair was annotated before loading all the data
+                            found_basepair = False
+                            for pair,datapoint in new_dict.items():
+                                if 'basepair' in datapoint and datapoint['basepair']:
+                                    found_basepair = True
+                                    pdb_id_to_annotators[PDB_id].add('FR3D')
+                                    break
+
+                            if found_basepair:
+                                for pair in new_dict.keys():
+                                    # reduce memory usage by only storing pairs we will process
+                                    u1,u2 = pair
+
+                                    # only keep pairs from representative chains
+                                    fields1 = u1.split("|")
+                                    chain1 = "|".join(fields1[0:3])
+                                    if not chain1 in representative_chains and not DNA:
+                                        continue
+
+                                    fields2 = u2.split("|")
+                                    chain2 = "|".join(fields2[0:3])
+                                    if not chain2 in representative_chains and not DNA:
+                                        continue
+
+                                    # for resolution 3.0, focus on one base combination at a time
+                                    if resolution in ['3.0A'] and not DNA:
+                                        b1 = fields1[3]
+                                        b2 = fields2[3]
+
+                                        if not base_combination == b1+","+b2 and not base_combination == b2+","+b1:
+                                            continue
+
+                                    pair_to_datapoint[pair] = new_dict[pair]
+                    else:
+                        print('Cannot open FR3D annotation file %s' % pair_to_datapoint_file)
+
+            if bc_num == 0 and compare_annotators:
+                all_annotate_counter = 0
+                for pdb_id, annotators in sorted(pdb_id_to_annotators.items()):
+                    if len(annotators) < len(all_agree):
+                        if len(annotators) > 1 or not list(annotators)[0] == 'datmos':
+                            print('%s only annotated by %s' % (pdb_id,sorted(annotators)))
+                    else:
+                        all_annotate_counter += 1
+                print('%d files are annotated by all %d annotators' % (all_annotate_counter,len(all_agree)))
+
+
+            """
+            print(pair_to_datapoint[('8GLP|1|L5|U|3914','8GLP|1|L5|U|3915')])
+            print(pair_to_datapoint[('8GLP|1|L5|U|3915','8GLP|1|L5|U|3914')])
+            """
+
+            # keep track of pairs, prioritizing those with annotations like cWw over those like cWH/cHW
+            pair_to_priority = add_pairs_in_order({},pair_to_datapoint,1)
+            pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_rnaview,2)
+            pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_dssr,3)
+            pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,4)
+            pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,5)
+
+            # remove pairs with symmetry operators, alternate ids, insertion codes when comparing annotators
+            complicated_unit_id = set()
+            if compare_annotators:
+                for u1,u2 in pair_to_priority.keys():
+                    fields1 = u1.split("|")
+                    fields2 = u2.split("|")
+
+                    if len(fields1) > 5:
+                        complicated_unit_id.add(u1)                      # blacklist the full unit id
+                        complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the plain unit id as well
+                        complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the paired plain unit id as well
+                        #print('Omitting',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]))
+                    if len(fields2) > 5:
+                        complicated_unit_id.add(u2)                      # blacklist the full unit id
+                        complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the plain unit id as well
+                        complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the paired plain unit id as well
+                        #print('Omitting',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]))
+
+                    # some x-ray structures like 3CMY have a model 2 that RNAview does not mark as model 2,
+                    # so it gets reported as being in model 1.  Remove every such pair, even from model 1.
+                    if not fields1[1] == '1' or not fields2[1] == '1':
+                        complicated_unit_id.add(u1)                      # blacklist the full unit id
+                        complicated_unit_id.add(u2)                      # blacklist the full unit id
+                        fields1[1] = '1'
+                        complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist any model 1 version of the unit id
+                        fields2[1] = '1'
+                        complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist any model 1 version of the unit id
+                        print('Removing',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]),' because of model numbers')
+
+            print('Found %d pair_to_priority pairs to work with' % len(pair_to_priority))
+
+            # cull out pairs that we don't want to consider
+            pair_to_priority_final = {}
+            for pair,priority in pair_to_priority.items():
+                u1,u2 = pair
+                if u1 in complicated_unit_id:
+                    continue
+
+                if u2 in complicated_unit_id:
+                    continue
+
+                fields1 = u1.split("|")
+
+                # only keep pairs from representative chains
+                chain1 = "|".join(fields1[0:3])
+                if not chain1 in representative_chains and not DNA:
+                    continue
+
+                # DSSR has hyphens because of symmetry operators being applied
+                if '-' in chain1:
+                    continue
+
+                fields2 = u2.split("|")
+                chain2 = "|".join(fields2[0:3])
+                if not chain2 in representative_chains and not DNA:
+                    continue
+
+                # DSSR has hyphens because of symmetry operators being applied
+                if '-' in chain2:
+                    continue
+
+                if only_modified and fields1[3] in standard_nucleotides and fields2[3] in standard_nucleotides:
+                    continue
+
+                # if both are from a symmetry operator, skip, because we probably already have it
+                if len(fields1) == 9 and len(fields2) == 9:
+                    #print('Skipping %s - %s because both have a symmetry operator' % (u1,u2))
+                    continue
+
+                pdb_id = fields1[0]
+
+                # only include pairs where all annotators are able to make annotations
+                if compare_annotators and not len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
+                    continue
+
+                # exclude PDB ids where datmos does not annotate a basepair
+                if VERSION in ['v8'] and not 'datmos' in pdb_id_to_annotators[pdb_id]:
+                    continue
+
+                # some PDB ids are a problem, just skip them
+                if pdb_id in PDB_skip_set:
+                    continue
+
+                pair_to_priority_final[(u1,u2)] = priority
+
+            # set the order in which to process pairs; doing FR3D first gets more consistent unit orders when symmetric
+            pairs_in_order = sorted(pair_to_priority_final.keys(), key=lambda x:pair_to_priority_final[x])
+
+            # try to reduce memory usage
+            pair_to_priority_final = {}
+
+            print('Found %d pairs_in_order pairs to work with' % len(pairs_in_order))
+
+            # store pairs by their base combination for faster retrieval
+            # store modified nucleotides according to their parent nucleotide
+            bc_to_pairs_in_order = {}
+            for pair in pairs_in_order:
+                b1 = pair[0].split("|")[3]
+                if b1 in modified_base_to_parent and not compare_annotators and not b1 in ['DA','DC','DG','DT']:
+                    b1 = modified_base_to_parent[b1]
+
+                b2 = pair[1].split("|")[3]
+                if b2 in modified_base_to_parent and not compare_annotators and not b2 in ['DA','DC','DG','DT']:
+                    b2 = modified_base_to_parent[b2]
+
+                if not b1 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
+                    print('Unknown nucleotide %s' % pair[0])
+                if not b2 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
+                    print('Unknown nucleotide %s' % pair[1])
+
+                bc = b1+","+b2
+
+                if not bc in bc_to_pairs_in_order:
+                    bc_to_pairs_in_order[bc] = []
+
+                bc_to_pairs_in_order[bc].append(pair)
+
+            # try to reduce memory usage
+            pairs_in_order = {}
+
+            count_annotations = {}
+            count_annotations_by_group = {}
+
+            big_min_distance_list = []
 
             interactions_processed = set([])
 
@@ -1783,6 +1912,9 @@ if __name__=="__main__":
 
                 python_true_count = 0
                 python_near_count = 0
+                python_demoted_count = 0
+
+                all_dist2_list = []    # dist2 values for each true pair
 
                 # faster re-check when working on a specific category; some use lowercase letters
                 # if not interaction in ['cWB','cBW']:
@@ -1797,6 +1929,7 @@ if __name__=="__main__":
                 # use this for counting and for filenames
                 bc_filename = base_combination
                 inter_filename = interaction_upper
+                reverse_bases = False
 
                 # base combination and basepair to use in filenames
                 # reverse order of base combination with interactions like tsS because
@@ -1806,8 +1939,9 @@ if __name__=="__main__":
                     bases = bc_filename.split(",")
                     bc_filename = bases[1] + "," + bases[0]
                     inter_filename = interaction_upper[0] + interaction_upper[2] + interaction_upper[1]
+                    reverse_bases = True
 
-                print('Working on %s %s' % (base_combination,interaction))
+                print('Resolution %s, working on %s %s' % (resolution,base_combination,interaction))
                 print('Base combination %s filename %s' % (bc_filename,inter_filename))
 
                 nt1_seq, nt2_seq = base_combination.split(",")
@@ -1833,6 +1967,11 @@ if __name__=="__main__":
 
                 # store data to produce an HTML table
                 pair_data = []  # list of data dictionaries to print in a table
+
+                # identify all atom sets in this family and base combination
+                interaction_to_atom_sets = {}
+                atom_set_to_d_atoms = {}
+                atom_set_to_a_atoms = {}
 
                 # loop over pairs for which we have data, finding those with the interaction and base combination
                 for pair in bc_to_pairs_in_order.get(base_combination,[]):
@@ -1889,11 +2028,18 @@ if __name__=="__main__":
                     else:
                         dssr = False
 
-                    contacts_annotation = pair_to_interaction_contacts[pair]
-                    if len(contacts_annotation) > 0 and interaction_lower in contacts_annotation.lower():
-                        contacts = True
+                    # contacts_annotation = pair_to_interaction_contacts[pair]
+                    # if len(contacts_annotation) > 0 and interaction_lower in contacts_annotation.lower():
+                    #     contacts = True
+                    # else:
+                    #     contacts = False
+
+                    datmos_annotation = pair_to_interaction_datmos[pair]
+                    # match datmos annotation exactly to keep cSs and csS distinct
+                    if len(datmos_annotation) > 0 and interaction_lower in datmos_annotation:
+                        datmos = True
                     else:
-                        contacts = False
+                        datmos = False
 
                     rnaview_annotation = pair_to_interaction_rnaview[pair].replace("n","!")
                     if len(rnaview_annotation) > 0 and interaction_lower in rnaview_annotation.lower():
@@ -1910,16 +2056,50 @@ if __name__=="__main__":
                         rnaview_true = False
 
                     # skip cases where RNAview may need to annotate across chains in different bundles
-                    if compare_annotators and not rnaview and (python_true or python_near or dssr or contacts) and not chain1 == chain2 and not DNA:
+                    if compare_annotators and not rnaview and (python_true or python_near or dssr or datmos) and not chain1 == chain2 and not DNA:
                         print('Skipping %s-%s %s because the chains may be from different bundles' % (pair[0],pair[1],interaction))
                         continue
+
+                    if VERSION in ['v7']:
+                        # in v7 we only look at FR3D annotated pairs
+                        if not python_true:
+                            continue
+                    elif VERSION in ['v8']:
+                        # in v8 we look at true and near due to demotion due to h-bonds plus datmos
+                        if python_true:
+                            pass
+                        elif python_near and 'demoted_hbond' in datapoint:
+                            pass
+                        elif datmos:
+                            pass
+                        else:
+                            continue
+
+                        if not datmos and '||' in pair[0] or '||' in pair[1]:
+                            # datmos does not consistently get all symmetry operators
+                            # datmos does not have ||A and ||B alternate ids
+                            continue
+
+                        if not datmos and (not pair[0].split("|")[3] in ['A','C','G','U','DA','DC','DG','DT'] or not pair[1].split("|")[3] in ['A','C','G','U','DA','DC','DG','DT']):
+                            # datmos does not consistently get all modified bases
+                            continue
+
+                    elif VERSION in ['v9']:
+                        # in v9 we look at true and near, some of which are due to demotion due to h-bonds
+                        if python_true:
+                            pass
+                        elif python_near:
+                            pass
+                        else:
+                            continue
+
 
                     # since PDB annotations only tell the family and since we are only going to list
                     # each pair once, only record a PDB annotation when you can tell what edges are used
                     pdb_annotation = pair_to_interaction_pdb[pair]
                     pdb = False
                     if len(pdb_annotation) > 0 and interaction_lower in pdb_annotation.lower():
-                        if (rnaview or python_fr3d or dssr or contacts) or inter_filename in ['cWW','tWW','cHH','tHH']:
+                        if (rnaview or python_fr3d or dssr or datmos) or inter_filename in ['cWW','tWW','cHH','tHH']:
                             pdb = True
 
                     # correctly identify instances as cSs/csS or tSs/tsS; delay csS and tsS to get cSs and tSs
@@ -1929,7 +2109,7 @@ if __name__=="__main__":
                             if not interaction in datapoint['basepair']:
                                 # python_fr3d is csS or tsS, does not match cSs or tSs, so skip until later
                                 continue
-                        elif rnaview_true or dssr or contacts or pdb:
+                        elif rnaview_true or dssr or datmos or pdb:
                             print('Checking %s-%s for %s' % (pair[0],pair[1],interaction))
                             datapoint, pdata, angle_order = evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs[base_combination])
                             #print("evaluated datapoint:")
@@ -1955,9 +2135,9 @@ if __name__=="__main__":
                     # tally how well they agree
                     annotator = ""
                     annotator_count = 0
-                    if compare_annotators and len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
-                        if python_true or rnaview_true or dssr or contacts or pdb:
-                            booleans = (python_true,rnaview_true,dssr,pdb,contacts)
+                    if len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
+                        if python_true or rnaview_true or dssr or datmos or pdb:
+                            booleans = (python_true,rnaview_true,dssr,pdb,datmos)
                             for i,truth in enumerate(booleans):
                                 if truth:
                                     annotator += "1"
@@ -1965,7 +2145,7 @@ if __name__=="__main__":
                                 else:
                                     annotator += "0"
 
-                            booleans = (python_true,python_near,rnaview_true,rnaview_near,dssr,pdb,contacts)
+                            booleans = (python_true,python_near,rnaview_true,rnaview_near,dssr,pdb,datmos)
 
                             if not inter_filename in count_annotations:
                                 count_annotations[inter_filename] = {}
@@ -1997,7 +2177,9 @@ if __name__=="__main__":
                     if python_near:
                         python_near_count += 1
 
-                    if (annotator_count > 0) or (python_true or Matlab or dssr or rnaview_true or pdb or contacts) or (not compare_annotators and python_near):
+                    if (annotator_count > 0) or \
+                        (python_true or Matlab or dssr or rnaview_true or pdb or datmos) or \
+                        (not compare_annotators and python_near):
 
                         # evaluate the quality of the match to the current pair, for scatterplots and all
                         #print('Evaluating pair %s - %s for interaction %s' % (pair[0],pair[1],interaction))
@@ -2032,14 +2214,19 @@ if __name__=="__main__":
 
                         # save the pair if it is good enough to list in the table
                         if compare_annotators \
-                            or (not interaction in nt_nt_cutoffs[base_combination] and (rnaview or pdb or dssr or contacts)) \
+                            or (not interaction in nt_nt_cutoffs[base_combination] and (rnaview or pdb or dssr or datmos)) \
                             or best_cutoff_distance < 2 \
                             or ('sugar_ribose' in datapoint and datapoint['sugar_ribose'] == 'cSR' and best_cutoff_distance < 2) \
                             or (rnaview and best_cutoff_distance < 2) \
                             or (pdb and best_cutoff_distance < 2) \
                             or (dssr and best_cutoff_distance < 2) \
-                            or (contacts and best_cutoff_distance < 2) \
+                            or (datmos and best_cutoff_distance < 2) \
                             or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 2):
+
+
+                            # store for h-bond routine
+                            pdata['python_true'] = python_true
+
 
                             pdata['unit_id_1'] = pair[0]
                             pdata['unit_id_2'] = pair[1]
@@ -2049,26 +2236,78 @@ if __name__=="__main__":
                             pdata['dssr_annotation'] = dssr_annotation
                             pdata['rnaview_annotation'] = rnaview_annotation
                             pdata['pdb_annotation'] = pdb_annotation
-                            pdata['contacts_annotation'] = contacts_annotation
+                            # pdata['contacts_annotation'] = contacts_annotation
+                            pdata['datmos_annotation'] = datmos_annotation
                             pdata['annotator_count'] = annotator_count  # how many annotate as such
                             pdata['annotator'] = annotator
 
                             # store information about hydrogen bonds for this base combination and interaction
+                            # avoid carryover from previous times this datapoint was encountered
+                            pdata["atom_sets"] = []
+
+                            # collect atom sets for h-bonds that should be shown in this family and base combination
                             if "LW_to_atom_sets" in datapoint:
-                                if interaction in datapoint["LW_to_atom_sets"]:
-                                    pdata["atom_sets"] = sorted(datapoint["LW_to_atom_sets"][interaction])
+                                this_atom_set = []
+                                if python_annotation in datapoint["LW_to_atom_sets"]:
+                                    # special cases like cWWa
+                                    # pdata["atom_sets"] = sorted(datapoint["LW_to_atom_sets"][python_annotation])
+                                    this_atom_set = sorted(datapoint["LW_to_atom_sets"][python_annotation])
+                                    this_interaction = python_annotation
+                                elif interaction in datapoint["LW_to_atom_sets"]:
+                                    # pdata["atom_sets"] = sorted(datapoint["LW_to_atom_sets"][interaction])
+                                    this_atom_set = sorted(datapoint["LW_to_atom_sets"][interaction])
+                                    this_interaction = interaction
                                     #pdata["atom_set_to_results"] = datapoint["atom_set_to_results"]  # it's already there in most cases
-                                else:
-                                    # avoid carryover from previous times this datapoint was encountered
-                                    pdata["atom_sets"] = []
-                            else:
-                                pdata["atom_sets"] = []
+
+                                for atom_set in this_atom_set:
+                                    if ("C" in atom_set[0] or "C" in atom_set[2]) and VERSION in ['v7']:
+                                        # weak hydrogen bond, ignore in some versions of this output
+                                        continue
+                                    else:
+                                        if not this_interaction in interaction_to_atom_sets:
+                                            interaction_to_atom_sets[this_interaction] = []
+                                        if not atom_set in interaction_to_atom_sets[this_interaction]:
+                                            interaction_to_atom_sets[this_interaction].append(atom_set)
+
+                                            # also save what the header should list for this atom set
+                                            result = pdata["atom_set_to_results"][atom_set]
+
+                                            atom_set_to_d_atoms[str(atom_set)] = result["donor_acceptor_atoms"]
+                                            atom_set_to_a_atoms[str(atom_set)] = result["heavy_donor_acceptor_atoms"]
+
+
+                            # if desired, focus on pairs with long or short O2' bond lengths
+                            if O2_bond_length:
+                                if "atom_set_to_results" in pdata:
+                                    atom_set = ('N6', 'H61', "O2'", '12')
+                                    if atom_set in pdata["atom_set_to_results"]:
+                                        if pdata["atom_set_to_results"][atom_set]["donor_acceptor_distance"] <= 3.5 and O2_bond_length == 'long':
+                                            continue
+                                        if pdata["atom_set_to_results"][atom_set]["donor_acceptor_distance"] > 3.5 and O2_bond_length == 'short':
+                                            continue
 
                             if annotator_count == len(annotator):
                                 pdata['annotator_all'] = 1
                             else:
                                 pdata['annotator_all'] = 0
 
+                            # yyy
+                            # get second-best hydrogen bond distance and angle
+                            # use default target distance and angle
+                            dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count = get_dist2_angle_penalty(interaction_to_atom_sets,pdata,None,None)
+
+                            if len(dist2_list) >= 2:
+                                pdata['dist2'] = sorted(dist2_list)[1]
+                            elif len(dist2_list) == 1:
+                                pdata['dist2'] = dist2_list[0]
+                            else:
+                                # not clear what to put in this case
+                                pdata['dist2'] = 9.99
+
+                            if python_true:
+                                all_dist2_list.append(pdata['dist2'])
+
+                            # store this pair
                             pair_data.append(pdata)
 
                             pair_shown.add(pair)
@@ -2093,8 +2332,8 @@ if __name__=="__main__":
                                     gvalues.append(datapoint['gap12'])
                                     datapoint['gap21'] = 0
 
-                                if angle_out_of_order and datapoint['angle_in_plane'] < 0:
-                                    avalues.append(datapoint['angle_in_plane']+360)
+                                if angle_out_of_order and datapoint['angle_in_plane'] > 90:
+                                    avalues.append(datapoint['angle_in_plane']-360)
                                 else:
                                     avalues.append(datapoint['angle_in_plane'])
 
@@ -2145,9 +2384,28 @@ if __name__=="__main__":
                                 else:
                                     # python near or other
                                     color = [0.5,0.5,0.5]  # gray
-                                    size = 20       # large
+                                    color = orange  # orange
+                                    size = 15       # medium
                                     hcolor = color
                                     hsize = size
+
+                                if VERSION in ['v8']:
+                                    if python_true and not datmos:
+                                        color = red
+                                        size = 20
+                                        hcolor = color
+                                        hsize = size
+                                    elif not python_true and datmos:
+                                        color = cyan
+                                        size = 20
+                                        hcolor = color
+                                        hsize = size
+                                    else:
+                                        color = black
+                                        size = 1
+                                        hcolor = color
+                                        hsize = size
+
                                 colors2d.append(color)
                                 sizes.append(size)
 
@@ -2174,6 +2432,10 @@ if __name__=="__main__":
                     figure_save_file = os.path.join(OUTPUTPATH,"plots","basepairs_%s_%s_%d.png" % (inter_filename,bc_filename,len(all_PDB_ids)))
                     figure_img_src = "plots/basepairs_%s_%s_%d.png" % (inter_filename,bc_filename,len(all_PDB_ids))
 
+                if only_modified:
+                    figure_save_file = figure_save_file.replace("basepairs_","modified_basepairs_")
+                    figure_img_src = figure_img_src.replace("basepairs_","modified_basepairs_")
+
                 # make scatterplots for pairwise combinations of data
                 if len(xvalues) > 0 and make_plots:
 
@@ -2183,7 +2445,7 @@ if __name__=="__main__":
                     ax.axis("equal")
                     plot_basepair_cutoffs(base_combination,[interaction],ax,1)
                     ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=sizes)
-                    ax.set_title('x and y for %d %s %s' % (len(xvalues),base_combination,interaction))
+                    ax.set_title('x, y %d=%d+%d %s %s' % (len(xvalues),python_true_count,python_near_count,base_combination,interaction))
                     draw_base(nt1_seq,'default',2,ax)
 
                     ax = fig.add_subplot(2, 3, 2)
@@ -2237,12 +2499,17 @@ if __name__=="__main__":
                     #plt.show()
                     plt.close()
 
-                    print("Plotted %5d points for %s %s" % (len(xvalues),base_combination,interaction))
+                    print("Plotted %5d points for %s %s, resolution %s" % (len(xvalues),base_combination,interaction,resolution))
 
-                # write HTML pages listing instances
-                if len(pair_data) >= 0 and write_html_pages:
+                # write a table of hydrogen bond lengths and angles for FR3D-annotated pairs
+                # aaa
+
+                # a place to store data, similar to a query object in FR3D
+                Q = {}
+
+                # write HTML pages listing instances for this base combination and interaction
+                if len(pair_data) >= 0:
                     # mimic how WebFR3D writes result pages
-                    Q = {}
                     if len(all_PDB_ids) <= 10:
                         Q['name'] = "%s %s %s" % (inter_filename,bc_filename,"_".join(all_PDB_ids))
                     elif 'nrlist' in PDB_list[0]:
@@ -2258,6 +2525,7 @@ if __name__=="__main__":
                     if only_modified:
                         Q['name'] = 'modified_' + Q['name']
 
+                    Q['resolution'] = resolution
                     Q['numFilesSearched'] = len(all_PDB_ids)
                     Q['searchFiles'] = all_PDB_ids
                     Q['elapsedCPUTime'] = 0
@@ -2265,7 +2533,6 @@ if __name__=="__main__":
                     Q['figure_img_src'] = figure_img_src
                     Q['DNA'] = DNA
                     Q['only_modified'] = only_modified
-                    Q['numFound'] = len(pair_data)
                     Q["PDB_data_file"] = data_file
 
                     # identify the interaction so a table of HTML links can be made
@@ -2275,7 +2542,210 @@ if __name__=="__main__":
                         # reverse the edges to get the standard family name
                         Q['LW'] = interaction_upper[0] + interaction_upper[2] + interaction_upper[1]
 
-                    Q['resolution'] = resolution
+                    Q['numFound'] = len(pair_data)
+
+                distance_angle_messages = []
+
+                # map atom sets to distance atoms and angle atoms
+                Q['d_atoms'] = {}
+                Q['a_atoms'] = {}
+
+                Q["target_distance"] = {}
+                Q["target_angle"] = {}
+
+                if len(pair_data) > 0:
+
+                    # loop over the hydrogen bonds for this base combination and basepair category
+                    # record the atom sets
+                    atom_sets = []
+                    target_distance = {}
+                    target_angle = {}
+
+                    # for candidate in pair_data:
+                    #     if candidate['python_true'] or not compare_annotators:
+                    #         if "atom_sets" in candidate and len(candidate["atom_sets"]) > 0:
+                    #             for atom_set in candidate["atom_sets"]:
+                    #                 result = candidate["atom_set_to_results"][atom_set]
+                    #                 d_atoms = result["donor_acceptor_atoms"]
+                    #                 if "C" in d_atoms and VERSION in ['v7']:
+                    #                     # weak hydrogen bond, ignore in some versions
+                    #                     continue
+                    #                 else:
+                    #                     atom_sets.append(atom_set)
+                    #             print("Found these atom sets %s" % (atom_sets))
+                    #             break
+
+                    b1,b2 = bc_filename.split(",")
+
+                    if DNA:
+                        filename = "DNA_compare_%s_%s_%s,%s_%s.html" % (VERSION,inter_filename,b1,b2,resolution)
+                    else:
+                        filename = "compare_%s_%s_%s,%s_%s.html" % (VERSION,inter_filename,b1,b2,resolution)
+
+                    family_num = LW_to_number.get(inter_filename,14)   # not sure why this would not work
+
+                    # loop over the hydrogen bonds for this base combination and basepair category
+                    for this_interaction in interaction_to_atom_sets.keys():
+                        for atom_set in interaction_to_atom_sets[this_interaction]:
+                            print('Analyzing interaction %s atom set %s' % (this_interaction,str(atom_set)))
+
+                            d_atoms = atom_set_to_d_atoms[str(atom_set)]
+                            a_atoms = atom_set_to_a_atoms[str(atom_set)]
+
+                            # nice way to format the distance atoms
+                            distance_atoms = format_distance_atoms(d_atoms,atom_set,nt1_seq,nt2_seq,reverse_bases)
+                            angle_atoms = format_angle_atoms(a_atoms,atom_set,nt1_seq,nt2_seq,reverse_bases)
+
+                            # presumably the different interactions have non-overlapping atom sets
+                            Q['d_atoms'][atom_set] = distance_atoms
+                            Q['a_atoms'][atom_set] = angle_atoms
+
+                            # loop over pdata, accumulate distance and angle from the FR3D-annotated pairs
+                            # accumulate a list of bond lengths and angles
+                            bond_lengths = []
+                            bond_angles = []
+                            count = 0
+
+                            # determine mean values among candidates with agreement between annotators
+                            num_agree_to_distance = defaultdict(list)
+                            num_agree_to_angle = defaultdict(list)
+                            for candidate in pair_data:
+                                if candidate.get('python_true',False) and candidate['python_annotation'] == this_interaction:
+                                    if "atom_set_to_results" in candidate:
+                                        num_agree = candidate["annotator_count"]
+                                        if atom_set in candidate["atom_set_to_results"]:
+                                            num_agree_to_distance[num_agree].append(candidate["atom_set_to_results"][atom_set]["donor_acceptor_distance"])
+                                            num_agree_to_angle[num_agree].append(candidate["atom_set_to_results"][atom_set]["heavy_donor_acceptor_angle"])
+
+                            num_agree = 10
+                            distances = []
+                            angles = []
+                            while num_agree > 3 and len(distances) < 5:
+                                distances += num_agree_to_distance[num_agree]
+                                angles += num_agree_to_angle[num_agree]
+                                num_agree -= 1
+
+                            if len(distances) >= 5:
+                                target_distance[atom_set] = trim_mean(distances,0.1)
+                                target_angle[atom_set] = trim_mean(angles,0.1)
+                                distance_angle_messages.append("Target distance for %s bond %10s is %0.2f, target angle for %s is %0.2f, based on %d data points where multiple annotators agree" % (this_interaction,distance_atoms,target_distance[atom_set],angle_atoms,target_angle[atom_set],len(distances)))
+
+                                with open("distance_angle_%s.txt" % Q['resolution'],"a") as outfile:
+                                    if "O" in d_atoms:
+                                        outfile.write("distance\t%s\t%s\t%0.2f\t%d\tN-O\n" % (distance_atoms,Q["name"],target_distance[atom_set],len(distances)))
+                                    else:
+                                        outfile.write("distance\t%s\t%s\t%0.2f\t%d\tN-N\n" % (distance_atoms,Q["name"],target_distance[atom_set],len(distances)))
+                                    outfile.write("angle\t%s\t%s\t%0.2f\t%d\n" % (angle_atoms,Q["name"],target_angle[atom_set],len(distances)))
+
+                            elif "O" in d_atoms:
+                                target_distance[atom_set] = 2.95
+                                target_angle[atom_set] = 115.0
+                                distance_angle_messages.append("Target distance for %s bond %10s is %0.2f, target angle for %s is %0.2f, based on standard reference" % (this_interaction,distance_atoms,target_distance[atom_set],angle_atoms,target_angle[atom_set]))
+                            else:
+                                target_distance[atom_set] = 2.8
+                                target_angle[atom_set] = 120.0
+                                distance_angle_messages.append("Target distance for %s bond %10s is %0.2f, target angle for %s is %0.2f, based on standard reference" % (this_interaction,distance_atoms,target_distance[atom_set],angle_atoms,target_angle[atom_set]))
+
+                            Q["target_distance"] = target_distance
+                            Q["target_angle"] = target_angle
+
+                            # record data about hydrogen bonds
+                            for candidate in pair_data:
+                                if candidate['python_true'] and candidate['python_annotation'] == this_interaction:
+                                    if "atom_set_to_results" in candidate and atom_set in candidate["atom_set_to_results"]:
+                                        result = candidate["atom_set_to_results"][atom_set]
+                                        d_atoms = result["donor_acceptor_atoms"]
+                                        a_atoms = result["heavy_donor_acceptor_atoms"]
+
+                                        d = candidate["atom_set_to_results"][atom_set]["donor_acceptor_distance"]
+                                        if not math.isnan(d):
+                                            count += 1
+                                            bond_lengths.append(d)
+
+                                        a = candidate["atom_set_to_results"][atom_set]["heavy_donor_acceptor_angle"]
+                                        if not math.isnan(a):
+                                            bond_angles.append(a)
+
+                            # # h-bond atoms are listed as 12 or 21; base order may also change
+                            # if atom_set[3] == '21' and bc_filename == base_combination:
+                            #     # reverse d_atoms
+                            #     d_atoms = '-'.join(reversed(d_atoms.split('-')))
+                            #     # reverse a_atoms
+                            #     a_atoms = '-'.join(reversed(a_atoms.split('-')))
+                            # elif atom_set[3] == '12' and not bc_filename == base_combination:
+                            #     # reverse d_atoms
+                            #     d_atoms = '-'.join(reversed(d_atoms.split('-')))
+                            #     # reverse a_atoms
+                            #     a_atoms = '-'.join(reversed(a_atoms.split('-')))
+
+
+                            # write one line for each atom set listing all the data
+                            if len(bond_lengths) > 0:
+                                d_avg = np.mean(bond_lengths)
+                            else:
+                                d_avg = 0.0
+
+                            if len(bond_angles) > 0:
+                                a_avg = np.mean(bond_angles)
+                            else:
+                                a_avg = 0.0
+
+                            # check for nan
+                            if math.isnan(d_avg):
+                                print(bond_lengths)
+                                print(crashnow)
+
+                            hbond_data = {}
+                            hbond_data['family_num'] = family_num
+                            hbond_data['interaction'] = inter_filename
+                            hbond_data['b1'] = b1
+                            hbond_data['b2'] = b2
+                            hbond_data['count'] = count
+                            hbond_data['d_atoms'] = distance_atoms
+                            hbond_data['d_avg'] = d_avg
+                            hbond_data['d_std'] = np.std(bond_lengths)
+                            if len(bond_lengths) > 0:
+                                hbond_data['percent_over_3.5'] = 100.0*sum([1 for d in bond_lengths if d > 3.5])/len(bond_lengths)
+                            else:
+                                hbond_data['percent_over_3.5'] = 0.0
+                            hbond_data['a_atoms'] = angle_atoms
+                            hbond_data['a_avg'] = a_avg
+                            hbond_data['a_std'] = np.std(bond_angles)
+                            if len(bond_angles) > 0:
+                                hbond_data['percent_under_80'] = 100.0*sum([1 for a in bond_angles if a < 80])/len(bond_angles)
+                            else:
+                                hbond_data['percent_under_80'] = 0.0
+                            hbond_data['link'] = "http://rna.bgsu.edu/experiments/annotations/" + filename
+                            hbond_data['image_link'] = 'https://www.nakb.org/ndbmodule/bp-catalog//static/img/%s/%s_%s%s_exemplar.png' % (inter_filename,inter_filename,b1,b2)
+
+                            hbond_data_list.append(hbond_data)
+
+                    # record data about second best hydrogen bond distance for this interaction
+                    dist2_data = {}
+                    dist2_data['family_num'] = family_num
+                    dist2_data['interaction'] = inter_filename
+                    dist2_data['b1'] = b1
+                    dist2_data['b2'] = b2
+                    dist2_data['count'] = count
+                    dist2_data['python_true_count'] = python_true_count
+                    dist2_data['python_near_count'] = python_near_count
+                    if len(all_dist2_list) > 0:
+                        dist2_data['percent_over_3.7'] = 100.0*sum([1 for d in all_dist2_list if d > 3.7])/len(all_dist2_list)
+                        dist2_data['percent_over_3.6'] = 100.0*sum([1 for d in all_dist2_list if d > 3.6])/len(all_dist2_list)
+                        dist2_data['percent_over_3.5'] = 100.0*sum([1 for d in all_dist2_list if d > 3.5])/len(all_dist2_list)
+                        dist2_data['percent_over_3.4'] = 100.0*sum([1 for d in all_dist2_list if d > 3.4])/len(all_dist2_list)
+                    else:
+                        dist2_data['percent_over_3.7'] = 0.0
+                        dist2_data['percent_over_3.6'] = 0.0
+                        dist2_data['percent_over_3.5'] = 0.0
+                        dist2_data['percent_over_3.4'] = 0.0
+                    dist2_data['link'] = "http://rna.bgsu.edu/experiments/annotations/" + filename
+                    dist2_data['image_link'] = 'https://www.nakb.org/ndbmodule/bp-catalog//static/img/%s/%s_%s%s_exemplar.png' % (inter_filename,inter_filename,b1,b2)
+
+                    dist2_data_list.append(dist2_data)
+
+                # write HTML pages listing instances for this base combination and interaction
+                if len(pair_data) >= 0 and write_html_pages:
 
                     # if too many pairs, show some good and also the worst ones
                     # This ordering is not working!  It often keeps the true ones with bad h-bonds,
@@ -2298,11 +2768,14 @@ if __name__=="__main__":
                         # sort by hydrogen bond badness, putting priority on ones that are not Matlab near
                         pair_data = sorted(pair_data, key=lambda p: p['max_badness']+0.0001*random.uniform(0,1)+10*(len(p['matlab_annotation'])==0)+10*(not "n" in p['matlab_annotation']))
 
+                        # sort by second-best hydrogen bond distance
+                        pair_data = sorted(pair_data, key=lambda p: p['dist2'])
+
                         # keep 50 of the best pairs, and the 250 worst
                         order_pair_data = pair_data[0:50] + pair_data[-250:]
 
                         # sort the other pairs by python_fr3d annotation and then by badness
-                        other_pair_data = sorted(pair_data[51:-251], key=lambda p: (p['python_annotation'],p['max_badness']+0.0001*random.uniform(0,1)))
+                        other_pair_data = sorted(pair_data[51:-251], key=lambda p: (p['python_annotation'],p['dist2']+0.0001*random.uniform(0,1)))
 
                         if len(other_pair_data) > 1000:
                             # keep the worst 1000 of them, otherwise you get 30,000 GC cWW or something
@@ -2377,14 +2850,19 @@ if __name__=="__main__":
                     the coordinate window and a heat map of all-against-all distances.
                     """
                     if compare_annotators:
-                        writeHTMLOutputCompareAnnotators(Q,reorder_pairs,reorder_dista)
+                        writeHTMLOutput(Q,reorder_pairs,interaction_to_atom_sets,distance_angle_messages,reorder_dista)
                     else:
-                        writeHTMLOutput(Q,reorder_pairs,reorder_dista)
+                        option_set = set()
+                        option_set.add('FR3D')
+                        writeHTMLOutput(Q,reorder_pairs,interaction_to_atom_sets,distance_angle_messages,reorder_dista,option_set)
 
             # print large minimum distances
             big_min_distance_list = sorted(big_min_distance_list)
             for b in big_min_distance_list:
-                print("%8.2f %s %5s %5s" % b)
+                print("big_min_distance %8.2f %s %5s %5s" % b)
+
+        # write a table that tells how the second hbond distance tails off
+
 
 
         # write a table of counts of each basepair family and base combination
@@ -2395,10 +2873,10 @@ if __name__=="__main__":
             print(",".join(sorted(pdb_id_to_annotators.keys())))
 
             # show FR3D near
-            header = "Family\tLW\tBase 1\tBase 2\tFR3D\tFR3D near\tRNAview\tRNAview near\tDSSR\tPDB\tcontacts\tMax / (1+Min)\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tFR3D RNAview\tFR3D DSSR\tFR3D PDB\tRNAview DSSR\tRNAview PDB\tDSSR PDB\tFR3D only\tRNAview only\tDSSR only\tPDB only"
+            header = "Family\tLW\tBase 1\tBase 2\tFR3D\tFR3D near\tRNAview\tRNAview near\tDSSR\tPDB\tdatmos\tMax / (1+Min)\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tFR3D RNAview\tFR3D DSSR\tFR3D PDB\tRNAview DSSR\tRNAview PDB\tDSSR PDB\tFR3D only\tRNAview only\tDSSR only\tPDB only"
 
             # leave out FR3D near, add FR3D-All, etc.
-            header = "Fam\tLW\tBase 1\tBase 2\tStatus\tFR3D\tRNAview\tRNAview near\tDSSR\tPDB\tcontacts\tMax / (1+Min)\tFR3D-All\tRNAview-All\tDSSR-All\tPDB-All\tcontacts-All\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tAll but contacts\t3 agree\t2 agree\tFR3D only\tRNAview only\tDSSR only\tPDB only\tcontacts only\tLink\n"
+            header = "Fam\tLW\tBase 1\tBase 2\tStatus\tFR3D\tRNAview\tRNAview near\tDSSR\tPDB\tdatmos\tMax / (1+Min)\tFR3D-All\tRNAview-All\tDSSR-All\tPDB-All\tdatmos-All\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tAll but datmos\t3 agree\t2 agree\tFR3D only\tRNAview only\tDSSR only\tPDB only\tdatmos only\tImage\tInstances\n"
 
             all_output_list = [header]
             print(header)
@@ -2419,9 +2897,9 @@ if __name__=="__main__":
                         output = [str(index+1),family,b1,b2,combination_to_LSW_status[b1+","+b2]]
 
                         if DNA:
-                            filename = "DNA_compare_v6_%s_%s,%s_%s.html" % (interaction,b1,b2,resolution)
+                            filename = "DNA_compare_%s_%s_%s,%s_%s.html" % (VERSION,interaction,b1,b2,resolution)
                         else:
-                            filename = "compare_v6_%s_%s,%s_%s.html" % (interaction,b1,b2,resolution)
+                            filename = "compare_%s_%s_%s,%s_%s.html" % (VERSION,interaction,b1,b2,resolution)
 
                         max_count = 0.0
                         min_count = float('inf')
@@ -2471,15 +2949,85 @@ if __name__=="__main__":
                     print(output_text)
 
                 if DNA:
-                    table_filename = os.path.join(OUTPUTPATH,'DNA_table_v6_%s.txt' % resolution)
+                    table_filename = os.path.join(OUTPUTPATH,'DNA_table_%s_%s.txt' % (VERSION,resolution))
                 else:
-                    table_filename = os.path.join(OUTPUTPATH,'table_v6_%s.txt' % resolution)
+                    table_filename = os.path.join(OUTPUTPATH,'table_%s_%s.txt' % (VERSION,resolution))
+
+                if only_modified:
+                    table_filename = table_filename.replace("table_","modified_table_")
 
                 with open(table_filename,'w') as f:
                     f.writelines(all_output_list)
 
                 print('Saved %s table in %s' % (resolution,table_filename))
 
-        print("Saved figures in %s/plots" % outputNAPairwiseInteractions)
-        print("Saved HTML files in %s" % OUTPUTPATH)
-        print()
+        if write_hbond_tables:
+            if DNA:
+                hbond_table_file = os.path.join(OUTPUTPATH,"DNA_h-bond_table_%s.txt" % (resolution))
+            else:
+                hbond_table_file = os.path.join(OUTPUTPATH,"h-bond_table_%s.txt" % (resolution))
+
+            with open(hbond_table_file,"w") as hbond_table:
+                hbond_table.write("Family\tLW\tBase 1\tBase 2\tCount\tHbond Atoms\tAvg Distance\tStd Distance\tPercent Over 3.5 Distance\tDonor Angle Atoms\tAvg Angle\tStd Angle\tPercent Under 80 Angle\tEric comment\tOther comment\tImage\tInstances\n")
+
+                # sort by family, base 1, base 2, atoms
+                hbond_data_list = sorted(hbond_data_list, key=lambda x: (x['family_num'],x['b1'],x['b2'],x['d_avg']))
+
+                for hbond_data in hbond_data_list:
+                    hbond_text = ""
+                    hbond_text += "%d\t" % hbond_data['family_num']
+                    hbond_text += "%s\t" % hbond_data['interaction']
+                    hbond_text += "%s\t" % hbond_data['b1']
+                    hbond_text += "%s\t" % hbond_data['b2']
+                    hbond_text += "%d\t" % hbond_data['count']
+                    hbond_text += "%s\t" % hbond_data['d_atoms']
+                    hbond_text += "%0.2f\t" % hbond_data['d_avg']
+                    hbond_text += "%0.2f\t" % hbond_data['d_std']
+                    hbond_text += "%0.2f\t" % hbond_data['percent_over_3.5']
+                    hbond_text += "%s\t" % hbond_data['a_atoms']
+                    hbond_text += "%0.2f\t" % hbond_data['a_avg']
+                    hbond_text += "%0.2f\t" % hbond_data['a_std']
+                    hbond_text += "%0.2f\t" % hbond_data['percent_under_80']
+                    hbond_text += "\t\t%s\t" % hbond_data['image_link']
+                    hbond_text += "%s" % hbond_data['link']
+
+                    hbond_table.write(hbond_text+"\n")
+
+            print("Saved h-bond table in %s" % hbond_table_file)
+
+        if write_hbond_tables:
+            # write table of second best hydrogen bond distances
+            if DNA:
+                dist2_table_file = os.path.join(OUTPUTPATH,"DNA_dist2_table_%s.txt" % (resolution))
+            else:
+                dist2_table_file = os.path.join(OUTPUTPATH,"dist2_table_%s.txt" % (resolution))
+
+            with open(dist2_table_file,"w") as dist2_table:
+                dist2_table.write("Family\tLW\tBase 1\tBase 2\tTrue\tNear\t% Over 3.4A\t% Over 3.5A\t% Over 3.6A\t% Over 3.7A\tEric comment\tOther comment\tImage\tInstances\n")
+
+                # sort by family, base 1, base 2, atoms
+                dist2_data_list = sorted(dist2_data_list, key=lambda x: (x['family_num'],x['b1'],x['b2']))
+
+                for dist2_data in dist2_data_list:
+                    dist2_text = ""
+                    dist2_text += "%d\t" % dist2_data['family_num']
+                    dist2_text += "%s\t" % dist2_data['interaction']
+                    dist2_text += "%s\t" % dist2_data['b1']
+                    dist2_text += "%s\t" % dist2_data['b2']
+                    dist2_text += "%d\t" % dist2_data['python_true_count']
+                    dist2_text += "%d\t" % dist2_data['python_near_count']
+                    dist2_text += "%0.2f\t" % dist2_data['percent_over_3.4']
+                    dist2_text += "%0.2f\t" % dist2_data['percent_over_3.5']
+                    dist2_text += "%0.2f\t" % dist2_data['percent_over_3.6']
+                    dist2_text += "%0.2f\t" % dist2_data['percent_over_3.7']
+                    dist2_text += "\t\t%s\t" % dist2_data['image_link']
+                    dist2_text += "%s" % dist2_data['link']
+
+                    dist2_table.write(dist2_text+"\n")
+
+            print("Saved dist2 table in %s" % dist2_table_file)
+
+        if make_plots:
+            print("Saved figures in %s/plots" % outputNAPairwiseInteractions)
+        if write_html_pages:
+            print("Saved HTML files in %s" % OUTPUTPATH)
