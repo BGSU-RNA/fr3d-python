@@ -1,45 +1,15 @@
+"""
+set paths and parameters for FR3D to use
+these can also be set in the .json file
+"""
+
 import os
-# try to determine where FR3D is running, so this file does not need to be modified
-if "vtnguye" in os.getcwd():
-	SERVER = False
-	DATAPATH = "D:/vtnguye/Bowling Green State University/data/"  # where to store downloaded data files
-	OUTPUTPATH = "../output/"
-	JSONPATH = "../JSONqueries/"
-	TEMPLATEPATH = "./"
-	MAXTIME = 20
-	MAXTIME = float('inf')
-	MAXCANDIDATESHEATMAP = 300
-	MAXCANDIDATES = 10000
-	REFRESHTIME = 20
 
-	JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
-	JS2 = '  <script src="./js/jquery.jmolTools.js"></script>'
-	JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
-	JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
-	JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
-
-elif "monke" in os.getcwd():
-	SERVER = False
-	DATAPATH = "D:/Users/monke/OneDrive/Desktop/oldPC/RNA/data"  # where to store downloaded data files
-	OUTPUTPATH = "../output/"
-	JSONPATH = "../JSONqueries/"
-	TEMPLATEPATH = "./"
-	MAXTIME = 20
-	MAXTIME = float('inf')
-	MAXCANDIDATESHEATMAP = 300
-	MAXCANDIDATES = 10000
-	REFRESHTIME = 20
-
-	JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
-	JS2 = '  <script src="./js/jquery.jmolTools.js"></script>'
-	JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
-	JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
-	JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
-
-elif "zirbel" in os.getcwd():
+if "zirbel" in os.getcwd():
 	SERVER = False
 	CIFPATH = "C:/Users/zirbel/Documents/FR3D/PDBFiles"
-	DATAPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/"
+	DATAPATHUNITS = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/units"
+	DATAPATHPAIRS = "C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs"
 	OUTPUTPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/output/"
 	JSONPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/JSONqueries/"
 	TEMPLATEPATH = "./"
@@ -57,7 +27,8 @@ elif "zirbel" in os.getcwd():
 else:
 	SERVER = True
 	CIFPATH = "/"
-	DATAPATH = "/var/www/html/"
+	DATAPATHUNITS = "/var/www/html/units"
+	DATAPATHPAIRS = "/var/www/html/pairs"
 	OUTPUTPATH = "/var/www/web-fr3d/Results/"
 	JSONPATH = "/var/www/web-fr3d/Results/"
 	TEMPLATEPATH = "/var/www/web-fr3d/python/"
