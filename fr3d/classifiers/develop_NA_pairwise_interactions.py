@@ -14,7 +14,10 @@ python38 NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
 python311 NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
 
 python38 develop_NA_pairwise_interactions.py
-python311 develop_NA_pairwise_interactions.py
+python311 develop_NA_pairwise_interactions.py 1
+python311 develop_NA_pairwise_interactions.py 2
+python311 develop_NA_pairwise_interactions.py 4
+python311 develop_NA_pairwise_interactions.py 5
 
 """
 
@@ -28,33 +31,41 @@ python311 develop_NA_pairwise_interactions.py
 from NA_pairwise_interactions import *
 from NA_unit_annotation import generateUnitAnnotation
 
-from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
-from fr3d.localpath import outputHTML
 from fr3d.localpath import fr3d_pickle_path
 
-from fr3d.data.base import EntitySelector
+from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 
-#from fr3d.pdb import pdb_reader
 
 parser = argparse.ArgumentParser()
+parser.add_argument('worker', type=str, nargs='+', help='0 for all, 1 to process evens, 2 to process odds, 3 to start at end')
 parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
 args = parser.parse_args()
-categories = {}
 
 Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
 
 if args.category:
+    categories = {}
     for category in args.category.split(","):
         categories[category] = []
 else:
     # default is to annotate and write just "true" basepairs
+    categories = {}
     categories['basepair'] = Leontis_Westhof_basepairs
+    # tell which types of interactions to annotate
+    categories['coplanar'] = []   # necessary to get all data for datapoint
+    categories['basepair'] = []
+    categories['basepair_detail'] = []
+    categories['stacking'] = []
+    categories['backbone'] = []
+    categories['sO'] = []        # annotate all sO interactions
+    categories['sugar_ribose']   = []
 
-from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
-from hydrogen_bonds import check_hydrogen_bond
+if args.worker:
+    worker = int(args.worker[0])
+else:
+    worker = 0
 
 PDB_list = ['5AJ3']
 PDB_list = ['6hiv']
@@ -79,7 +90,6 @@ PDB_list = ['4ARC']
 PDB_list = ['4ARC']
 PDB_list = ['4V9F','6ZMI','7K00']
 PDB_list = ['2N1Q']
-PDB_list = ['4V9F']
 PDB_list = ['203D']
 PDB_list = ['7k00']
 PDB_list = ['6CFJ']
@@ -123,13 +133,22 @@ PDB_list = ['7ZW0','6S0X','7UVZ']
 PDB_list = ['6XU8']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 
-from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
-
 PDB_list = ['4TNA','5KFX','8B0X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
-PDB_list = ['4TNA']
 PDB_list = ['4V9F']
 PDB_list = ['2IZN']   # gets an interaction called p_1??
+PDB_list = ['4TNA']
+PDB_list = ['7JQQ']  # Five RNA chains and a DNA-DNA duplex
+PDB_list = ['464D']
+PDB_list = ['8EA4']
+PDB_list = ['4V9F']
+
+from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.308/3.0A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/1.5A/csv']
+
+PDB_list = ['4V9F','6AZ3','6GYV','7O7Y','7OYC','7QI4','7QIW','7V9E','8A98','8AZW','8GLP','5J7L','7RQB']
 
 # zzz
 
@@ -139,15 +158,6 @@ OverwriteDataFiles = True    # even if a data file already exists, annotate and 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = []                     # for all nucleic acids, modified or not
-
-# tell which types of interactions to annotate
-categories = {}
-categories['coplanar'] = []   # necessary to get all data for datapoint
-categories['basepair'] = []
-categories['stacking'] = []
-categories['backbone'] = []
-categories['sO'] = []        # annotate all sO interactions
-categories['sugar_ribose']   = []
 
 ShowStructureReadingErrors = True
 ShowStructureReadingErrors = False
@@ -195,16 +205,37 @@ ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
 PDBs = sorted(PDBs)
 
+# simple parallelization
+if worker == 0:     # start at 0 and process all files
+    a = 0
+    b = len(PDBs)
+    c = 1
+elif worker == 1:   # start at 0 and process even-numbered files
+    a = 0
+    b = len(PDBs)
+    c = 2
+elif worker == 2:   # start at 1 and process odd-numbered files
+    a = 1
+    b = len(PDBs)
+    c = 2
+elif worker == 3:   # start at the end and process all files
+    a = len(PDBs)-1
+    b = 0
+    c = -1
+elif worker == 4:   # start at the end and process every other
+    a = len(PDBs)-1
+    b = 0
+    c = -2
+elif worker == 5:   # start almost at the end and process every other
+    a = len(PDBs)-2
+    b = 0
+    c = -2
+else:
+    a = worker      # start at indicated number and process all files
+    b = len(PDBs)
+    c = 1
 
-# python311 develop_NA_pairwise_interactions.py
-
-worker = [1,len(PDBs),2]     # start at 1 and do every other
-worker = [0,len(PDBs),2]     # start at 0 and do every other
-worker = [len(PDBs)-1,0,-1]  # start at the end and work backward, one at a time
-
-worker = [0,len(PDBs),1]     # process each file from 0 to end
-
-for i in range(worker[0],worker[1],worker[2]):
+for i in range(a,b,c):
 
     PDB = PDBs[i]
 
@@ -225,19 +256,17 @@ for i in range(worker[0],worker[1],worker[2]):
     if not os.path.exists(outputDataFilePicklePath):
         os.mkdir(outputDataFilePicklePath)
 
-    outputDataFilePickle = os.path.join(outputDataFilePicklePath, PDB_id + "_RNA_pairs.pickle")
 
     unit_annotation_file = os.path.join(outputNAPairwiseInteractions,"%s_glycosidic.txt" % PDB_id)
     if not os.path.exists(unit_annotation_file):
         print('Annotating units in %s, which is %d out of %d' % (PDB_id,i+1,len(PDB_IFE_Dict)))
         generateUnitAnnotation(PDB_id, '', inputPath, outputNAPairwiseInteractions, {'glycosidic':[]}, 'txt')
 
-
-    #print(crashnow)
+    outputDataFilePickle = os.path.join(outputDataFilePicklePath, PDB_id + "_RNA_pairs.pickle")
 
     if annotate_entire_PDB_files:
-
-        pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
+        # name for file with pairs and datapoint variable about annotations
+        pair_file = "%s_datapoint.pickle" % (PDB)
         pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
         if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles:
@@ -292,6 +321,11 @@ for i in range(worker[0],worker[1],worker[2]):
                 print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
                 pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
                 print('  Wrote FR3D pair file %s' % outputDataFilePickle)
+
+
+            for pair, datapoint in pair_to_data.items():
+                if pair[0] == "8AZW|1|A|G|102":
+                    print(pair,datapoint)
 
             timerData = myTimer("Recording interactions",timerData)
             pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),2)
@@ -381,7 +415,7 @@ for i in range(worker[0],worker[1],worker[2]):
         #         count_pair += 1
         #         allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
             # turn this off during development and testing
-        pair_file = "%s_pairs_%s.pickle" % (PDB,fr3d_classification_version)
+        pair_file = "%s_pairs.pickle" % (PDB)
         pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
         if True:
