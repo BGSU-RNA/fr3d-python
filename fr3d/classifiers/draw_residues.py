@@ -1,4 +1,6 @@
 
+import numpy as np
+
 from fr3d.definitions import NAconnections
 from fr3d.definitions import NAbasecoordinates
 from fr3d.definitions import NAbasecolor
@@ -17,9 +19,18 @@ def draw_base(base_seq,colorscheme,dimensions,ax,zorder=1):
     new_base_y = []
     new_base_z = []
 
+    # put the glycosidic atom at the origin
+    if base_seq in ['A','G']:
+        origin = NAbasecoordinates[base_seq]['N9']
+    elif base_seq in ['C','U']:
+        origin = NAbasecoordinates[base_seq]['N1']
+    else:
+        # use the zero vector
+        origin = np.array([0,0,0])
+
     if colorscheme == 'default':
         for atomname in NAconnections[base_seq]:
-            coord_base = NAbasecoordinates[base_seq][atomname]
+            coord_base = np.subtract(NAbasecoordinates[base_seq][atomname], origin)
             new_base_x.append(coord_base[0])
             new_base_y.append(coord_base[1])
             new_base_z.append(coord_base[2])
