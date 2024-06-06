@@ -1,16 +1,23 @@
-# This file holds methods for checking hydrogen bonds
+"""
+This file has methods for checking hydrogen bonds.
+The default hydrogen bond lengths are set in the functin load_ideal_basepair_hydrogen_bonds.
+A longer distance cutoff is used for C-H contacts.
+There are no angle cutoffs for now.
+"""
 
 import csv
 import numpy as np
 import os
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
-def load_ideal_basepair_hydrogen_bonds():
+def load_ideal_basepair_hydrogen_bonds(def_mind=0.0,def_maxd=3.6,def_C_maxd=4.2,def_mina=0.0,def_maxa=180.0):
     """
     Load a table of ideal hydrogen bonds for each base combination
     in each Leontis-Westhof family, as determined by Jesse Stombaugh.
-    For each base combination, store as a mapping from hydrogen bonds
-    to basepairs that contain that bond.
+    Pass in default cutoff values for heavy-heavy distance, heavy-heavy distance for C-H contacts, and
+    heavy-heavy-heavy angle.
+    The returned variable is a mapping from base combinations to
+    Leontis-Westhof families to lists of hydrogen bonds.
     """
 
     hbond = {}
@@ -34,6 +41,15 @@ def load_ideal_basepair_hydrogen_bonds():
                 if b1 in ['A','C','G','U'] and b2 in ['A','C','G','U']:
                     combination = b1+','+b2
                     LW = row[0].replace('cis ','c').replace('trans ','t').replace('/','')
+
+                    mind = def_mind    # default minimum heavy atom distance
+                    mina = def_mina    # default minimum heavy-heavy-heavy angle
+                    maxa = def_maxa    # default maximum heavy-heavy-heavy angle
+
+                    # In the future, parse the line to find other distance, angle values
+                    # Note that the acceptable ranges of distances and angles may
+                    # depend on the Leontis-Westhof family the bond is part of
+
                     if combination in ['A,A','A,C','A,G','A,U','C,C','G,C','G,G','G,U','C,U','U,U']:
                         #print(LW,combination)
                         #print(row)
@@ -43,17 +59,24 @@ def load_ideal_basepair_hydrogen_bonds():
                         c = row[6].replace('*',"'")
                         d = row[7].replace('-','').replace('*',"'")
 
+                        if "C" in a or "C" in d:
+                            maxd = def_C_maxd    # default maximum heavy atom distance for C-H contacts
+                        else:
+                            maxd = def_maxd    # default maximum heavy atom distance
+
+
                         if not combination in hbond:
                             hbond[combination] = {}
 
                         if not LW in hbond[combination]:
                             hbond[combination][LW] = []
 
-                        # store as donor, hydrogen, acceptor, and order of nucleotides
+                        # store as donor, hydrogen, acceptor, order of nucleotides,
+                        # then min distance, max distance, min angle, max angle
                         if len(a) > 0:
-                            hbond[combination][LW].append((a,b,c,'12'))
+                            hbond[combination][LW].append((a,b,c,'12',mind,maxd,mina,maxa))
                         else:
-                            hbond[combination][LW].append((d,c,b,'21'))
+                            hbond[combination][LW].append((d,c,b,'21',mind,maxd,mina,maxa))
 
                     elif combination in ['C,A','G,A','U,A','C,G','U,C','U,G']:
                         # reverse order of edges, bases, and atoms
@@ -78,12 +101,12 @@ def load_ideal_basepair_hydrogen_bonds():
 
                         # store as donor, hydrogen, acceptor, and order of nucleotides
                         if len(a) > 0:
-                            hbond[combination][LW].append((a,b,c,'12'))
+                            hbond[combination][LW].append((a,b,c,'12',mind,maxd,mina,maxa))
                         else:
-                            hbond[combination][LW].append((d,c,b,'21'))
+                            hbond[combination][LW].append((d,c,b,'21',mind,maxd,mina,maxa))
 
                     # apply RNA hydrogen bonds to DNA interactions
-                    # sloppy for now, but better as time permits
+                    # sloppy for now, but can get better as time permits
                     # will want to remove O2' hbonds from the DNA side
 
                     RNA_to_DNA = {'A': 'DA', 'C': 'DC', 'G': 'DG', 'U': 'DT'}
@@ -102,11 +125,6 @@ def load_ideal_basepair_hydrogen_bonds():
                     if not DNA_pair in hbond:
                         hbond[DNA_pair] = {}
                     hbond[DNA_pair][LW] = hbond[combination][LW]
-
-
-
-
-
 
     """
     for combination in hbond:
@@ -135,7 +153,7 @@ def check_hydrogen_bond(nt1,nt2,atoms):
     """
     Calculate hydrogen bond parameters for hydrogen donor and hydrogen from nt1
     and hydrogen bond acceptor from nt2.
-    Return a list telling:
+    Return a dictionary telling:
       Whether or not the bond could be checked
       Whether or not the bond meets criteria to form
       Distance between hydrogen and acceptor if available
@@ -275,42 +293,39 @@ def check_hydrogen_bond(nt1,nt2,atoms):
     # calculate donor-acceptor distance
     if len(donor) == 3 and len(acceptor) == 3:
         result["donor_acceptor_distance"] = np.linalg.norm(np.subtract(donor,acceptor))
+        badness = max(0,result["donor_acceptor_distance"]-3.0)
+        # calculate heavy-heavy-heavy angle
+        if len(donor) == 3 and len(acceptor) == 3 and len(atom_for_angle) == 3:
+            result["heavy_donor_acceptor_angle"] = calculate_hb_angle(atom_for_angle,donor,acceptor)
+            badness += abs(120-result["heavy_donor_acceptor_angle"])/20.0
+            result["bond_checked"] = True
+        else:
+            # prefer acceptor atoms with 3D coordinates
+            badness += 1000.0
+    else:
+        badness = 100.0
 
-    # calculate heavy-heavy-heavy angle
-    if len(donor) == 3 and len(acceptor) == 3 and len(atom_for_angle) == 3:
-        result["heavy_donor_acceptor_angle"] = calculate_hb_angle(atom_for_angle,donor,acceptor)
+
+    # generic measure of badness of the hydrogen bond
+    result["badness"] = badness
 
     # calculate distance and angle using hydrogen atom location, if available
     if atoms[1] == "H2'" or len(hydrogen) < 3:
         # hydrogen coordinates are not available, check donor-acceptor distance instead
         if len(donor) == 3 and len(acceptor) == 3:
             heavy_distance = np.linalg.norm(np.subtract(donor,acceptor))
-            result["bond_checked"] = True
             result["distance"] = heavy_distance
-            result["badness"] = max(0,heavy_distance-3.0)
-
-            if heavy_distance < 4.5:
-                result["bond_made"] = True
 
     else:
         if len(hydrogen) == 3 and len(acceptor) == 3:
             distance = np.linalg.norm(np.subtract(hydrogen,acceptor))
-            result["bond_checked"] = True
             result["distance"] = distance
-            result["badness"] = max(0,distance-2.5)
 
             if len(donor) == 3:
                 hb_angle = calculate_hb_angle(donor,hydrogen,acceptor)
 
                 if hb_angle:
-                    result["badness"] = max(0,distance-2.5)+max(0,150-hb_angle)/20.0
                     result["angle"] = hb_angle
-
-                    if hb_angle > 110 and distance < 4.0:
-                        result["bond_made"] = True
-
-            elif distance < 4.0:
-                result["bond_made"] = True
 
     return result
 
