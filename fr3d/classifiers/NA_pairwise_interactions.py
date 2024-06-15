@@ -2350,7 +2350,7 @@ def store_basepair_quality(cutoff_distance,pair_data,LW,hydrogen_bonds):
     quality['atoms2'] = []
     LW_clean = LW.replace("n","")
     if LW_clean in hydrogen_bonds:
-        for donor, hydrogen, acceptor, direction,a,b,c,d in hydrogen_bonds[LW_clean]:
+        for donor, hydrogen, acceptor, direction in hydrogen_bonds[LW_clean]:
             if direction == "12":
                 quality['atoms1'].append(hydrogen)
                 quality['atoms2'].append(acceptor)
