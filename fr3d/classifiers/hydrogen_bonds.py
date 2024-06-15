@@ -103,11 +103,6 @@ def load_ideal_basepair_hydrogen_bonds():
                         hbond[DNA_pair] = {}
                     hbond[DNA_pair][LW] = hbond[combination][LW]
 
-
-
-
-
-
     """
     for combination in hbond:
         for LW in hbond[combination]:
