@@ -2350,7 +2350,7 @@ def store_basepair_quality(cutoff_distance,pair_data,LW,hydrogen_bonds):
     quality['atoms2'] = []
     LW_clean = LW.replace("n","")
     if LW_clean in hydrogen_bonds:
-        for donor, hydrogen, acceptor, direction in hydrogen_bonds[LW_clean]:
+        for donor, hydrogen, acceptor, direction,a,b,c,d in hydrogen_bonds[LW_clean]:
             if direction == "12":
                 quality['atoms1'].append(hydrogen)
                 quality['atoms2'].append(acceptor)
@@ -2398,6 +2398,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     # default is that there is no annotation
     hbond_annotation = ""
     hbond_badness = 9999
+
+    LW_bond_rank = []
 
     if datapoint:
         #print("Checking hydrogen bonds for http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
@@ -2670,9 +2672,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             # true pair
             match.append((interaction,subcategory,cutoff_distance))
 
-    if nt1.unit_id() in ["7UW1|1|a|G|107"]:
-        print(nt1.unit_id())
-        print(datapoint)
+    # if nt1.unit_id() in ["7UW1|1|a|G|107"]:
+    #     print(nt1.unit_id())
+    #     print(datapoint)
 
 
     if len(match) > 0:
@@ -2740,7 +2742,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                         print("  Using %s\n" % LW)
                         return LW, subcategory, quality, datapoint
 
-            print("No match between all cutoffs and all hydrogen bonds, using first match")
+            print("  No match between all cutoffs and all hydrogen bonds, using first match")
             interaction,subcategory,cutoff_distance = match[0]
             if cutoff_distance > 0 and not "n" in interaction:
                 LW = "n" + interaction
