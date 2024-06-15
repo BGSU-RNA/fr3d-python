@@ -1,8 +1,12 @@
+"""
+Find RNA 3D search program, for running FR3D searches locally.
+python311 FR3D.py "queries/symbolic_2_bSS_distance_5_6.json"
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sun Oct 21 21:18:59 2018
-
 @author:william xi, Craig Zirbel
 """
 
