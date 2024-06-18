@@ -134,8 +134,8 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.339/3.0A/csv','8B0X'
 
 # zzz
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -202,8 +202,8 @@ PDBs = sorted(PDBs)
 worker = [1,len(PDBs),2]     # start at 1 and do every other
 worker = [0,len(PDBs),2]     # start at 0 and do every other
 
-worker = [0,len(PDBs),1]     # process each file from 0 to end
 worker = [len(PDBs)-1,0,-1]  # start at the end and work backward, one at a time
+worker = [0,len(PDBs),1]     # process each file from 0 to end
 
 for i in range(worker[0],worker[1],worker[2]):
 
