@@ -126,15 +126,16 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 
 PDB_list = ['4TNA','5KFX','8B0X']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 PDB_list = ['4TNA']
 PDB_list = ['4V9F']
 PDB_list = ['2IZN']   # gets an interaction called p_1??
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.339/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.339/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.339/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.339/1.5A/csv']
 
 # zzz
 
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -200,9 +201,9 @@ PDBs = sorted(PDBs)
 
 worker = [1,len(PDBs),2]     # start at 1 and do every other
 worker = [0,len(PDBs),2]     # start at 0 and do every other
-worker = [len(PDBs)-1,0,-1]  # start at the end and work backward, one at a time
 
 worker = [0,len(PDBs),1]     # process each file from 0 to end
+worker = [len(PDBs)-1,0,-1]  # start at the end and work backward, one at a time
 
 for i in range(worker[0],worker[1],worker[2]):
 

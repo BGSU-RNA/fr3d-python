@@ -3071,20 +3071,26 @@ def write_txt_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list
         if category == "near":
             continue
         filename = os.path.join(outputNAPairwiseInteractions,pdbid + "_" + category + ".txt")
+
+
+        quads_to_write = []
+        # loop over all interactions found in this category
+        for interaction in sorted(category_to_interactions[category]):
+            if category == 'basepair':
+                # capitalize base edges to simplify
+                inter = interaction.replace("w","W").replace("s","S").replace("h","H")
+            else:
+                inter = interaction
+
+            # if this category has a restricted list of interactions to output
+            if len(categories[category]) == 0 or inter in categories[category] or ("near" in categories and "n" in interaction and inter.replace('n','') in categories[category]):
+                for a,b,c in interaction_to_list_of_tuples[interaction]:
+                    quads_to_write.append((a,inter,b,c))
+
+        ordered = sorted(quads_to_write, key=lambda x: (x[0].split("|")[1],x[0].split("|")[2],int(x[0].split("|")[4]),x[1]))
         with open(filename,'w') as f:
-            # loop over all interactions found in this category
-
-            for interaction in sorted(category_to_interactions[category]):
-                if category == 'basepair':
-                    # capitalize base edges to simplify
-                    inter = interaction.replace("w","W").replace("s","S").replace("h","H")
-                else:
-                    inter = interaction
-
-                # if this category has a restricted list of interactions to output
-                if len(categories[category]) == 0 or inter in categories[category] or ("near" in categories and "n" in interaction and inter.replace('n','') in categories[category]):
-                    for a,b,c in interaction_to_list_of_tuples[interaction]:
-                        f.write("%s\t%s\t%s\t%s\n" % (a,inter,b,c))
+            for a,b,c,d in ordered:
+                f.write("%s\t%s\t%s\t%s\n" % (a,b,c,d))
 
 def write_ebi_json_output_file(outputNAPairwiseInteractions,pdbid,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified):
     """
