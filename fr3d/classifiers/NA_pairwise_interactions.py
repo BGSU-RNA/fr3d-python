@@ -1116,8 +1116,20 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
             chain_index_to_unit_id[(model,chain)] = {}
         chain_index_to_unit_id[(model,chain)][nt.index] = unit_id
 
+    chain_to_nested_cWW_endpoints = {}
+    chain_to_endpoints = defaultdict(set)
+
     for (model,chain), index_to_unit_id in sorted(chain_index_to_unit_id.items()):
         print("  model %s chain %s has %d nucleotides" % (model,chain,len(index_to_unit_id)))
+
+        # at first, each index maps to itself
+        nested_cWW_endpoints = []
+        for i in range(0,chain_to_max_index[(model,chain)]+1):
+            nested_cWW_endpoints.append(i)
+        chain_to_nested_cWW_endpoints[(model,chain)] = nested_cWW_endpoints
+
+        # set up empty sets of endpoints for use later
+        chain_to_endpoints[(model,chain)] = set()
 
     # find AU, GC, GU cWW basepairs within each chain
     chain_to_canonical_cWW_indices = defaultdict(list)   # separate list for each model and chain
@@ -1150,24 +1162,16 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
     # within each chain, sort nested cWW by distance between them
     # starting with the shortest-range pairs, record nested cWW pairs
     # by mapping one index to the other in chain_to_nested_cWW_endpoints
-    chain_to_nested_cWW_endpoints = {}
-    chain_to_endpoints = {}
+
     for (model,chain), pairs in chain_to_canonical_cWW_indices.items():
         print("  Getting nested for model %s and chain %s" % (model,chain))
         cWW_pairs = sorted(pairs, key=lambda p: (p[1]-p[0],p[0]))
-
-        nested_cWW_endpoints = []
-        endpoints = set()
-
-        # at first, each index maps to itself
-        for i in range(0,chain_to_max_index[(model,chain)]+1):
-            nested_cWW_endpoints.append(i)
 
         # loop over cWW pairs and if no conflict, record as being nested
         for index1,index2 in cWW_pairs:
             # loop over indices within this pair, see if they map outside this pair
             i = index1+1
-            while i < index2 and nested_cWW_endpoints[i] > index1 and nested_cWW_endpoints[i] < index2:
+            while i < index2 and chain_to_nested_cWW_endpoints[(model,chain)][i] > index1 and chain_to_nested_cWW_endpoints[(model,chain)][i] < index2:
                 i += 1
 
             if i == index2:
@@ -1177,30 +1181,25 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                 #print("index2",index2)
                 #print("list length",len(nested_cWW_endpoints))
 
-                nested_cWW_endpoints[index1] = index2
-                nested_cWW_endpoints[index2] = index1
-                endpoints.add(index1)
-                endpoints.add(index2)
+                chain_to_nested_cWW_endpoints[(model,chain)][index1] = index2
+                chain_to_nested_cWW_endpoints[(model,chain)][index2] = index1
+                chain_to_endpoints[(model,chain)].add(index1)
+                chain_to_endpoints[(model,chain)].add(index2)
             else:
                 #print("cWW pair %s,%s is not nested" % (index1,index2))
                 pass
 
-        # record the nested cWW endpoints for this chain
-        # might this only result in a pointer and so mix up lists?
-        chain_to_nested_cWW_endpoints[(model,chain)] = nested_cWW_endpoints
-        chain_to_endpoints[(model,chain)] = endpoints
-
-    # process canonical pairs between chains
-    for model,chain1,chain2,index1,index2 in sorted(two_chain_pairs):
-        pass
+    # process canonical pairs between chains ... why?
+    # for model,chain1,chain2,index1,index2 in sorted(two_chain_pairs):
+    #     pass
 
     #print('chain_to_max_index.keys()',chain_to_max_index.keys())
     #print('chain_to_canonical_cWW_indices.keys()',chain_to_canonical_cWW_indices.keys())
     #print('chain_to_nested_cWW_endpoints.keys()',chain_to_nested_cWW_endpoints.keys())
-    interaction_to_list_of_tuples = defaultdict(list)
 
-    # loop over pairs, calculate crossing number
+    # loop over pairs, calculate crossing number, the number of nested pairs crossed
     # record interacting pairs and their crossing number as triples
+    interaction_to_list_of_tuples = defaultdict(list)
     pairs_to_crossing = {}
     for interaction in interaction_to_pair_list.keys():
 
@@ -1215,30 +1214,33 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                 model2,chain2,index2,base2 = unit_id_to_index[u2]
 
                 if not model1 == model2:
-                    # should never happen, but just for good form
+                    # should never happen, but check for good form
                     continue
 
                 crossing = 0
 
                 # interactions within the same chain can have non-zero crossing number
                 # some chains may not have any cWW pairs, then all interactions are nested
-                if chain1 == chain2 and (model1,chain1) in chain_to_nested_cWW_endpoints:
-                    # put indices in increasing order
-                    index1,index2 = sorted([index1,index2])
+                if chain1 == chain2:
+                    if (model1,chain1) in chain_to_nested_cWW_endpoints:
+                        # put indices in increasing order
+                        index1,index2 = sorted([index1,index2])
 
-                    # count nested cWW that reach outside of [index1,index2]
-                    for i in range(index1+1,index2):
+                        # count nested cWW that reach outside of [index1,index2]
+                        for i in range(index1+1,index2):
 
-                        j = chain_to_nested_cWW_endpoints[(model1,chain1)][i]
+                            j = chain_to_nested_cWW_endpoints[(model1,chain1)][i]
 
-                        if not isinstance(j,tuple) and (j < index1 or j > index2):
-                            crossing += 1
+                            if not isinstance(j,tuple) and (j < index1 or j > index2):
+                                crossing += 1
 
-                    if False and crossing > 0:
-                        print("%-20s and %-20s make %s and have crossing number %d" % (u1,u2,interaction,crossing))
+                        if False and crossing > 0:
+                            print("%-20s and %-20s make %s and have crossing number %d" % (u1,u2,interaction,crossing))
                 else:
-                    # count nested pairs in chain1 that cross index1
+                    # different chains
+                    # count nested pairs in chain1 that cross index1, in chain2 that cross index2
                     for chain, index in [(chain1,index1),(chain2,index2)]:
+                        # we know model1 == model2 already
                         if (model1,chain) in chain_to_nested_cWW_endpoints:
                             m = chain_to_max_index[(model1,chain)]
                             if index < m / 2:
@@ -1255,7 +1257,8 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                                         crossing += 1
 
                     # print("Two chain %-20s and %-20s make %-5s and have crossing number %3d" % (u1,u2,interaction,crossing))
-                    if crossing == 0 and interaction.lower() in ['cww','cwwa']:
+                    # note inter-chain nested cWW basepairs for later bSS calculation
+                    if crossing == 0 and interaction.lower() in ['cww','cwwa'] and 'bss' in categories:
                         # record canonical cWW pairs and their endpoints by chain
                         parent1 = get_parent(base1)
                         parent2 = get_parent(base2)
@@ -1405,6 +1408,7 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
 
 
     return interaction_to_list_of_tuples
+
 
 def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, category_to_interactions, timerData):
     """
@@ -2657,6 +2661,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         # check cutoffs first and exit if no interaction is present
         check_order = ['cutoffs','hydrogen bonds']
 
+    LW_bond_rank = []
+
     # check possible basepairs two different ways
     for check in check_order:
         if check == 'cutoffs':
@@ -2955,20 +2961,20 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                     # can't reject based on hydrogen bonds, if there are none
                     hbond_interactions.add(LW)
 
-            if datapoint:
-                # best annotation considering only hydrogen bonds
-                if len(LW_bond_counter) > 0:
-                    # sort interactions to find the best hydrogen bonds
-                    # sort by badness of second worst hydrogen bond
-                    LW_bond_rank = sorted(LW_bond_counter, key=lambda x : (x[3]))
-                    LW = LW_bond_rank[0][0]   # best LW category
+            # best annotation considering only hydrogen bonds
+            if len(LW_bond_counter) > 0:
+                # sort interactions to find the best hydrogen bonds
+                # sort by badness of second worst hydrogen bond
+                LW_bond_rank = sorted(LW_bond_counter, key=lambda x : (x[3]))
+                LW = LW_bond_rank[0][0]   # best LW category
 
-                    if LW_bond_rank[0][3] < 2.0:
-                        # if second_badness is not horrible
-                        #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+                if LW_bond_rank[0][3] < 2.0:
+                    # if second_badness is not horrible
+                    #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+                    if datapoint:
                         datapoint['hbond_best_pair'] = LW
-                        #datapoint['hbond'] = LW_bonds[LW]
-                        #datapoint['hbond_messages'] = LW_bond_messages[LW]
+                    #datapoint['hbond'] = LW_bonds[LW]
+                    #datapoint['hbond_messages'] = LW_bond_messages[LW]
 
     # use hydrogen bond data to update the interactions in match, maybe change from true to near
     still_match = []
@@ -3436,6 +3442,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
                     quads_to_write.append((a,inter,b,c))
 
+        # sort quads by model, first chain, first number, interaction
         ordered = sorted(quads_to_write, key=lambda x: (x[0].split("|")[1],x[0].split("|")[2],int(x[0].split("|")[4]),x[1]))
         with open(filename,'w') as f:
             for a,b,c,d in ordered:
