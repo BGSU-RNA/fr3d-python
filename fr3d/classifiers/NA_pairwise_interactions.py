@@ -1566,7 +1566,7 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
             for u1 in nts_to_sort[key1]:
                 for u2 in nts_to_sort[key2]:
                     interaction = "p_" + str(chain_distance)
-                    interaction_to_list_of_tuples[interaction].append((u1,u2,None))
+                    interaction_to_list_of_tuples[interaction].append((u1,u2,0))
                     category_to_interactions["covalent"].add(interaction)
                     #print("%s\t%s\t%s" % (u1,interaction,u2))
 
