@@ -459,18 +459,21 @@ class Cif(object):
             'insertion_code',
             'symmetry',
             )
+        # sort atoms by pdb, model, chain and then group by key defined above
         # in Python 3.8, sorted cannot have None values; this also works in 2.7
-        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb,x.model,x.chain,x.component_id,x.component_number,x.insertion_code or '',x.symmetry)), key)
+        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb,x.model,x.chain,x.component_index or 0,x.component_id,x.insertion_code or '',x.symmetry)), key)
 
         for comp_id, all_atoms in mapping:
             for atoms in self.__group_alt_atoms__(list(all_atoms)):
 
                 first = atoms[0]
-                atom_type = self._chem.get(first.component_id, {})
-                atom_type = atom_type.get('type', None)
+                component_type = self._chem.get(first.component_id, {})
+                component_type = component_type.get('type', None)
                 alt_id = first.alt_id
                 if alt_id == '.':
                     alt_id = None
+
+                # print('%s|%s|%s|%s|%s index %s type %s' % (first.pdb, first.model, first.chain, first.component_id, first.component_number, first.component_index, component_type))
 
                 """
                 # testing
@@ -484,7 +487,7 @@ class Cif(object):
                     atoms,
                     pdb=first.pdb,
                     model=first.model,
-                    type=atom_type,
+                    type=component_type,
                     alt_id=alt_id,
                     chain=first.chain,
                     symmetry=first.symmetry,
@@ -582,6 +585,8 @@ class Cif(object):
 
     def __atom__(self, pdb, atom, symmetry):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
+
+        # print('%s|%s|%s|%s|%s index %s' % (pdb, atom['pdbx_PDB_model_num'], atom['auth_asym_id'], atom['label_comp_id'], atom['auth_seq_id'], atom['label_seq_id'])) #debugging
 
         index = atom['label_seq_id'] if 'label_seq_id' in atom else '.'
         if index != '.' and index != '':
