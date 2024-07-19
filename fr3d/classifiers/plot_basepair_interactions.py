@@ -1191,6 +1191,7 @@ def load_datmos_basepairs(datmos_filename):
     # print('Reading %s' % datmos_filename)
 
     pair_to_interaction = defaultdict(str)
+    skip_pair_set = set()
 
     if os.path.exists(datmos_filename):
         with open(datmos_filename,'r') as f:
@@ -1216,11 +1217,13 @@ def load_datmos_basepairs(datmos_filename):
                     if not previous == interaction:
                         view = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
                         print('Conflicting annotations in datmos file %s %s interactions %s %s url %s' % (u1,u2,previous,interaction,view))
+                        skip_pair_set.add((u1,u2))
+                        skip_pair_set.add((u2,u1))
+                else:
+                    pair_to_interaction[(u1,u2)] = interaction
+                    pair_to_interaction[(u2,u1)] = reverse_edges(interaction)
 
-                pair_to_interaction[(u1,u2)] = interaction
-                pair_to_interaction[(u2,u1)] = reverse_edges(interaction)
-
-    return pair_to_interaction
+    return pair_to_interaction, skip_pair_set
 
 
 def add_pairs_in_order(pair_to_priority,pair_to_data,priority):
@@ -1684,17 +1687,17 @@ if __name__=="__main__":
         #     pdb_id_to_annotators[pdb_id].add('contacts')
 
         print('Loading datmos   annotations from %s' % datmos_basepair_path)
+        skip_pair_set = set()
         for PDB_id in all_PDB_ids:
             datmos_filename = os.path.join(datmos_basepair_path,PDB_id.lower() + "_basepair_detailed.txt")
             if os.path.exists(datmos_filename):
-                new_pairs = load_datmos_basepairs(datmos_filename)
+                new_pairs, new_skip_pair_set = load_datmos_basepairs(datmos_filename)
                 pair_to_interaction_datmos.update(new_pairs)
-
+                skip_pair_set.update(new_skip_pair_set)  # does that work for sets?
                 if len(new_pairs) > 0:
                     pdb_id_to_annotators[PDB_id].add('datmos')
 
         # h-bond data takes up so much space, it seems necessary to work one base combination at a time
-
         # loop over specified base combinations
         for bc_num, base_combination in enumerate(base_combination_list):
 
@@ -1730,6 +1733,10 @@ if __name__=="__main__":
                                 for pair in new_dict.keys():
                                     # reduce memory usage by only storing pairs we will process
                                     u1,u2 = pair
+
+                                    # skip doubly-annotated datmos pairs
+                                    if (u1,u2) in skip_pair_set:
+                                        continue
 
                                     # only keep pairs from representative chains
                                     fields1 = u1.split("|")
