@@ -493,7 +493,16 @@ def readPDBDatafile(DATAPATHUNITS):
         if download_needed:
             try:
                 print("Downloading %s" % filename)
+                urlretrieve("http://rna.bgsu.edu/" + filename, pathAndFileName)
+                download_needed = False
+            except:
+                pass
+
+        if download_needed:
+            try:
+                print("Downloading %s" % filename)
                 urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+                download_needed = False
             except:
                 print("Unable to download %s" % filename)
 
