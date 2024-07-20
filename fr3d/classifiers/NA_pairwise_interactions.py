@@ -849,7 +849,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         # always annotate cWW basepairs to be able to calculate crossing numbers
                         # check coplanar and basepairing for bases in specific orders
-                        # AA, CC, GG, UU will be checked in both nucleotide orders, that's OK
+                        # AA, CC, GG, UU will be checked in both nucleotide orders, that's important
                         if parent_pair in basepair_parent_base_combination_set:
 
                             pair_data = {}
@@ -1091,6 +1091,7 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
     Then for each interaction, calculate the number of nested cWW pairs it crosses
     Also identify "border single stranded" or "bSS" pairs of nucleotides,
     which start and end a hairpin, or start and end each strand of an internal loop or junction loop.
+    If requested, extract hairpin, internal, and multi-helix junction loops.
 
     OK to not worry about symmetry operators since pairs are the same
     """
@@ -1278,18 +1279,24 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                             # print('  model1, chain2, index2 are %s, %s, %d' % (model1,chain2,index2))
 
                 pairs_to_crossing[(u1,u2)] = crossing
-                interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
 
-                # duplicate certain pairs in reversed order; saves time this way
-                if interaction in ["s33","s35","s53","s55","cp","ns33","ns35","ns53","ns55"]:
-                    interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-                    pairs_to_crossing[(u2,u1)] = crossing
-                elif interaction[0] in ["c","t"]:
-                    interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-                    pairs_to_crossing[(u2,u1)] = crossing
-                elif interaction[0:2] in ["nc","nt"]:
-                    interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
-                    pairs_to_crossing[(u2,u1)] = crossing
+            interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
+
+            # duplicate certain pairs in reversed order; saves time this way
+            if interaction in ["s33","s35","s53","s55","ns33","ns35","ns53","ns55"]:
+                interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
+                pairs_to_crossing[(u2,u1)] = crossing
+            elif interaction == 'cp':
+                interaction_to_list_of_tuples[interaction].append((u2,u1,crossing))
+                pairs_to_crossing[(u2,u1)] = crossing
+            elif interaction[0] in ["c","t"]:
+                interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
+                pairs_to_crossing[(u2,u1)] = crossing
+            elif interaction[0:2] in ["nc","nt"]:
+                interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
+                pairs_to_crossing[(u2,u1)] = crossing
+            else:
+                print("  Unknown interaction %s" % interaction)
 
     if 'bss' in categories or 'loop' in categories:
         unitid_face_to_stacking_partners = {}
@@ -1312,8 +1319,6 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
             # highest index is also an endpoint
             all_endpoints = sorted(endpoints - set([c])) + [chain_to_max_index[(model,chain)]]
             pairing_partners = chain_to_nested_cWW_endpoints[(model,chain)]
-
-            print(pairing_partners)
 
             # walk through the chain, looking for single-stranded regions
             # e is the "upper" index; we increase it in this process
