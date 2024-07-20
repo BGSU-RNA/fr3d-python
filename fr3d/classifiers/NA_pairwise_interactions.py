@@ -1295,8 +1295,6 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
             elif interaction[0:2] in ["nc","nt"]:
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
                 pairs_to_crossing[(u2,u1)] = crossing
-            else:
-                print("  Unknown interaction %s" % interaction)
 
     if 'bss' in categories or 'loop' in categories:
         unitid_face_to_stacking_partners = {}
