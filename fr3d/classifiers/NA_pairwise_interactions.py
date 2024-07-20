@@ -863,7 +863,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 timerData = myTimer("Check coplanar",timerData)
                                 pair_data, datapoint12 = check_coplanar(nt1,nt2,pair_data,datapoint12)
 
-                                # annotate coplanar relationship
+                                # annotate coplanar relationship when present
                                 if pair_data['coplanar']:
                                     count_pair += 1
                                     interaction_to_pair_list['cp'].append(unit_id_pair)
@@ -911,7 +911,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             pair_data["parent1"] = parent2
                             pair_data["parent2"] = parent1
 
-                            if 'coplanar' in categories.keys():
+                            if 'coplanar' in categories:
                                 timerData = myTimer("Check coplanar",timerData)
                                 pair_data, datapoint21 = check_coplanar(nt2,nt1,pair_data,datapoint21)
 
@@ -2514,58 +2514,58 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
         datapoint['gap21'] = gap21
 
     if gap12 <  0.5062:             # 70th percentile
-      Gap1Val = 1
+      gap1val = 1
     elif gap12 <  0.9775:           # 90th percentile
-      Gap1Val = 1+(gap12- 0.5062)*(-1.0609)
+      gap1val = 1+(gap12- 0.5062)*(-1.0609)
     elif gap12 <  1.5179:           # 97th percentile
-      Gap1Val = 0.5+(gap12- 0.9775)*(-0.9252)
+      gap1val = 0.5+(gap12- 0.9775)*(-0.9252)
     else:
-      Gap1Val = 0
+      gap1val = 0
 
     if gap21 <  0.5062:             # 70th percentile
-      Gap2Val = 1
+      gap2val = 1
     elif gap21 <  0.9775:           # 90th percentile
-      Gap2Val = 1+(gap21- 0.5062)*(-1.0609)
+      gap2val = 1+(gap21- 0.5062)*(-1.0609)
     elif gap21 <  1.5179:           # 97th percentile
-      Gap2Val = 0.5+(gap21- 0.9775)*(-0.9252)
+      gap2val = 0.5+(gap21- 0.9775)*(-0.9252)
     else:
-      Gap2Val = 0
+      gap2val = 0
 
     if dot1 <  0.1139:              # 70th percentile
-      dot1Val = 1
+      dot1val = 1
     elif dot1 <  0.2193:            # 90th percentile
-      dot1Val = 1+(dot1- 0.1139)*(-4.7408)
+      dot1val = 1+(dot1- 0.1139)*(-4.7408)
     elif dot1 <  0.3381:            # 97th percentile
-      dot1Val = 0.5+(dot1- 0.2193)*(-4.2103)
+      dot1val = 0.5+(dot1- 0.2193)*(-4.2103)
     else:
-      dot1Val = 0
+      dot1val = 0
 
     if dot2 <  0.1139:              # 70th percentile
-      dot2Val = 1
+      dot2val = 1
     elif dot2 <  0.2193:            # 90th percentile
-      dot2Val = 1+(dot2- 0.1139)*(-4.7408)
+      dot2val = 1+(dot2- 0.1139)*(-4.7408)
     elif dot2 <  0.3381:            # 97th percentile
-      dot2Val = 0.5+(dot2- 0.2193)*(-4.2103)
+      dot2val = 0.5+(dot2- 0.2193)*(-4.2103)
     else:
-      dot2Val = 0
+      dot2val = 0
 
     if -dot3 < -0.9509:             # 70th percentile
-      dot3Val = 1
+      dot3val = 1
     elif -dot3 < -0.8835:           # 90th percentile
-      dot3Val = 1+(-dot3-(-0.9509))*(-7.4217)
+      dot3val = 1+(-dot3-(-0.9509))*(-7.4217)
     elif -dot3 < -0.7757:           # 97th percentile
-      dot3Val = 0.5+(-dot3-(-0.8835))*(-4.6390)
+      dot3val = 0.5+(-dot3-(-0.8835))*(-4.6390)
     else:
-      dot3Val = 0
+      dot3val = 0
 
     if min_distance <  1.8982:      # 70th percentile
-      MinDistVal = 1
+      min_dist_val = 1
     elif min_distance <  2.1357:    # 90th percentile
-      MinDistVal = 1+(min_distance- 1.8982)*(-2.1050)
+      min_dist_val = 1+(min_distance- 1.8982)*(-2.1050)
     elif min_distance <  2.4859:    # 97th percentile
-      MinDistVal = 0.5+(min_distance- 2.1357)*(-1.4280)
+      min_dist_val = 0.5+(min_distance- 2.1357)*(-1.4280)
     else:
-      MinDistVal = 0
+      min_dist_val = 0
 
     # Pair.Coplanar is 1 if all are within the 70th percentile
     # Pair.Coplanar is 0.5 if all are within the 90th percentile
@@ -2573,7 +2573,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     # Between these, it decreases linearly
 
     pair_data["coplanar"] = True
-    pair_data["coplanar_value"] = min([Gap1Val, Gap2Val, dot1Val, dot2Val, dot3Val, MinDistVal])
+    pair_data["coplanar_value"] = min([gap1val, gap2val, dot1val, dot2val, dot3val, min_dist_val])
 
     if datapoint:
         datapoint['coplanar'] = pair_data['coplanar']
@@ -3793,7 +3793,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,so,backbone,coplanar,basepair_detail,covalent,sugar_ribose,near,bss)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
