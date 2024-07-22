@@ -1,9 +1,14 @@
 import itertools as it
+import sys 
+if sys.version_info[0] == 2:
+    from pdbx.writer.PdbxWriter import PdbxWriter as Writer
+    from pdbx.reader.PdbxContainers import DataCategory
+    from pdbx.reader.PdbxContainers import DataContainer
+else:    
+    from pdbx.writer import PdbxWriter as Writer
+    from pdbx.reader import DataCategory
+    from pdbx.reader import DataContainer
 
-from pdbx.writer.PdbxWriter import PdbxWriter as Writer
-
-from pdbx.reader.PdbxContainers import DataCategory
-from pdbx.reader.PdbxContainers import DataContainer
 
 
 class CifAtom(object):
