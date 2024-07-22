@@ -57,7 +57,7 @@ from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cuto
 from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
 
-# Modified nucleotide mappings from atom_mappings_refined.py
+# Modified nucleotide mappings
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 # read input and output paths from localpath.py
@@ -1060,7 +1060,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     # calculate and save crossing numbers for each annoated interaction
     timerData = myTimer("Calculate crossing",timerData)
-    interaction_to_list_of_tuples = calculate_crossing_numbers(bases,interaction_to_pair_list,categories)
+    interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,categories)
 
     if 'bSS' in interaction_to_list_of_tuples:
         category_to_interactions['bss'] = set(['bSS'])
@@ -1085,7 +1085,7 @@ def record_unitid_face_to_stacking_partners(interaction_to_pair_list):
     return unitid_face_to_stacking_partners
 
 
-def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
+def crossing_bss_loops(bases,interaction_to_pair_list,categories):
     """
     Identify which cWW pairs are nested.
     Then for each interaction, calculate the number of nested cWW pairs it crosses
@@ -1096,11 +1096,13 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
     OK to not worry about symmetry operators since pairs are the same
     """
 
-    # map unit_id to chain and sequence index
+    # map unit_id to model, chain, sequence index, and base
+    # map model, chain, index to unit id
+    # map model, chain to min and max index
     unit_id_to_index = {}
-    chain_index_to_unit_id = {}
-    chain_to_min_index = defaultdict(lambda: 9999999)
-    chain_to_max_index = defaultdict(lambda: 0)
+    model_chain_index_to_unit_id = {}
+    model_chain_to_min_index = defaultdict(lambda: 9999999)
+    model_chain_to_max_index = defaultdict(lambda: 0)
     for nt in bases:
         unit_id = nt.unit_id()
         fields = unit_id.split("|")
@@ -1113,30 +1115,30 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
 
         # print("  %s %s %s %s" % (model,chain,nt.index,base))
 
-        chain_to_min_index[(model,chain)] = min(chain_to_min_index[(model,chain)],nt.index)
-        chain_to_max_index[(model,chain)] = max(chain_to_max_index[(model,chain)],nt.index)
+        model_chain_to_min_index[(model,chain)] = min(model_chain_to_min_index[(model,chain)],nt.index)
+        model_chain_to_max_index[(model,chain)] = max(model_chain_to_max_index[(model,chain)],nt.index)
 
-        if not (model,chain) in chain_index_to_unit_id:
-            chain_index_to_unit_id[(model,chain)] = {}
-        chain_index_to_unit_id[(model,chain)][nt.index] = unit_id
+        if not (model,chain) in model_chain_index_to_unit_id:
+            model_chain_index_to_unit_id[(model,chain)] = {}
+        model_chain_index_to_unit_id[(model,chain)][nt.index] = unit_id
 
-    chain_to_nested_cWW_endpoints = {}
-    chain_to_endpoints = defaultdict(set)
-
-    for (model,chain), index_to_unit_id in sorted(chain_index_to_unit_id.items()):
-        print("  model %s chain %s has %d nucleotides" % (model,chain,len(index_to_unit_id)))
+    # prepare to identify the chain indices where nested cWW's occur
+    model_chain_to_nested_cWW_endpoints = {}
+    model_chain_to_endpoints = defaultdict(set)
+    for (model,chain), index_to_unit_id in sorted(model_chain_index_to_unit_id.items()):
+        print("  model %2s chain %4s has %4d nucleotides" % (model,chain,len(index_to_unit_id)))
 
         # at first, each index maps to itself
         nested_cWW_endpoints = []
-        for i in range(0,chain_to_max_index[(model,chain)]+1):
+        for i in range(0,model_chain_to_max_index[(model,chain)]+1):
             nested_cWW_endpoints.append(i)
-        chain_to_nested_cWW_endpoints[(model,chain)] = nested_cWW_endpoints
+        model_chain_to_nested_cWW_endpoints[(model,chain)] = nested_cWW_endpoints
 
         # set up empty sets of endpoints for use later
-        chain_to_endpoints[(model,chain)] = set()
+        model_chain_to_endpoints[(model,chain)] = set()
 
     # find AU, GC, GU cWW basepairs within each chain
-    chain_to_canonical_cWW_indices = defaultdict(list)   # separate list for each model and chain
+    model_chain_to_canonical_cWW_indices = defaultdict(list)   # separate list for each model and chain
     two_chain_pairs = []                                 # canonical pairs between chains
     for interaction in interaction_to_pair_list.keys():
         if not interaction.lower() in ['cww','cwwa']:
@@ -1146,7 +1148,7 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
             model2, chain2, index2, base2 = unit_id_to_index[u2]
 
             if not model1 == model2:
-                # should never happen, but just for good form
+                # should never happen, but check, for good form
                 continue
 
             # record AU, GC, GU cWW pairs by index within each chain
@@ -1156,18 +1158,18 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                 if chain1 == chain2:
                     if index1 < index2:
-                        chain_to_canonical_cWW_indices[(model1,chain1)].append((index1,index2))
+                        model_chain_to_canonical_cWW_indices[(model1,chain1)].append((index1,index2))
                     else:
-                        chain_to_canonical_cWW_indices[(model1,chain1)].append((index2,index1))
+                        model_chain_to_canonical_cWW_indices[(model1,chain1)].append((index2,index1))
                 else:
                     # store canonical pairs between chains for processing later
                     two_chain_pairs.append((model1,chain1,chain2,index1,index2))
 
     # within each chain, sort nested cWW by distance between them
     # starting with the shortest-range pairs, record nested cWW pairs
-    # by mapping one index to the other in chain_to_nested_cWW_endpoints
-
-    for (model,chain), pairs in chain_to_canonical_cWW_indices.items():
+    # by mapping one index to the other in model_chain_to_nested_cWW_endpoints
+    bss_endpoints = set()
+    for (model,chain), pairs in model_chain_to_canonical_cWW_indices.items():
         print("  Getting nested for model %s and chain %s" % (model,chain))
         cWW_pairs = sorted(pairs, key=lambda p: (p[1]-p[0],p[0]))
 
@@ -1175,7 +1177,7 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
         for index1,index2 in cWW_pairs:
             # loop over indices within this pair, see if they map outside this pair
             i = index1+1
-            while i < index2 and chain_to_nested_cWW_endpoints[(model,chain)][i] > index1 and chain_to_nested_cWW_endpoints[(model,chain)][i] < index2:
+            while i < index2 and model_chain_to_nested_cWW_endpoints[(model,chain)][i] > index1 and model_chain_to_nested_cWW_endpoints[(model,chain)][i] < index2:
                 i += 1
 
             if i == index2:
@@ -1185,10 +1187,12 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                 #print("index2",index2)
                 #print("list length",len(nested_cWW_endpoints))
 
-                chain_to_nested_cWW_endpoints[(model,chain)][index1] = index2
-                chain_to_nested_cWW_endpoints[(model,chain)][index2] = index1
-                chain_to_endpoints[(model,chain)].add(index1)
-                chain_to_endpoints[(model,chain)].add(index2)
+                model_chain_to_nested_cWW_endpoints[(model,chain)][index1] = index2
+                model_chain_to_nested_cWW_endpoints[(model,chain)][index2] = index1
+
+                if 'bss' in categories or 'loop' in categories:
+                    bss_endpoints.add((model,chain,index1,chain,index2))
+
             else:
                 #print("cWW pair %s,%s is not nested" % (index1,index2))
                 pass
@@ -1197,11 +1201,11 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
     # for model,chain1,chain2,index1,index2 in sorted(two_chain_pairs):
     #     pass
 
-    #print('chain_to_max_index.keys()',chain_to_max_index.keys())
-    #print('chain_to_canonical_cWW_indices.keys()',chain_to_canonical_cWW_indices.keys())
-    #print('chain_to_nested_cWW_endpoints.keys()',chain_to_nested_cWW_endpoints.keys())
+    #print('model_chain_to_max_index.keys()',model_chain_to_max_index.keys())
+    #print('model_chain_to_canonical_cWW_indices.keys()',model_chain_to_canonical_cWW_indices.keys())
+    #print('model_chain_to_nested_cWW_endpoints.keys()',model_chain_to_nested_cWW_endpoints.keys())
 
-    # loop over pairs, calculate crossing number, the number of nested pairs crossed
+    # loop over all pairs, calculate crossing number, the number of nested pairs crossed
     # record interacting pairs and their crossing number as triples
     interaction_to_list_of_tuples = defaultdict(list)
     pairs_to_crossing = {}
@@ -1226,14 +1230,14 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                 # interactions within the same chain can have non-zero crossing number
                 # some chains may not have any cWW pairs, then all interactions are nested
                 if chain1 == chain2:
-                    if (model1,chain1) in chain_to_nested_cWW_endpoints:
+                    if (model1,chain1) in model_chain_to_nested_cWW_endpoints:
                         # put indices in increasing order
                         index1,index2 = sorted([index1,index2])
 
                         # count nested cWW that reach outside of [index1,index2]
                         for i in range(index1+1,index2):
 
-                            j = chain_to_nested_cWW_endpoints[(model1,chain1)][i]
+                            j = model_chain_to_nested_cWW_endpoints[(model1,chain1)][i]
 
                             if not isinstance(j,tuple) and (j < index1 or j > index2):
                                 crossing += 1
@@ -1245,18 +1249,18 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                     # count nested pairs in chain1 that cross index1, in chain2 that cross index2
                     for chain, index in [(chain1,index1),(chain2,index2)]:
                         # we know model1 == model2 already
-                        if (model1,chain) in chain_to_nested_cWW_endpoints:
-                            m = chain_to_max_index[(model1,chain)]
+                        if (model1,chain) in model_chain_to_nested_cWW_endpoints:
+                            m = model_chain_to_max_index[(model1,chain)]
                             if index < m / 2:
                                 # closer to the beginning of the chain
                                 for i in range(0,index):
-                                    j = chain_to_nested_cWW_endpoints[(model1,chain)][i]
+                                    j = model_chain_to_nested_cWW_endpoints[(model1,chain)][i]
                                     if not isinstance(j,tuple) and j > index:
                                         crossing += 1
                             else:
                                 # closer to the end of the chain
                                 for i in range(index+1,m+1):
-                                    j = chain_to_nested_cWW_endpoints[(model1,chain)][i]
+                                    j = model_chain_to_nested_cWW_endpoints[(model1,chain)][i]
                                     if not isinstance(j,tuple) and j < index:
                                         crossing += 1
 
@@ -1268,15 +1272,14 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                         parent2 = get_parent(base2)
 
                         if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
-                            chain_to_endpoints[(model1,chain1)].add(index1)
-                            chain_to_endpoints[(model1,chain2)].add(index2)
-
-                            chain_to_nested_cWW_endpoints[(model1,chain1)][index1] = (model1,chain2,index2)
-                            chain_to_nested_cWW_endpoints[(model1,chain2)][index2] = (model1,chain1,index1)
-
+                            model_chain_to_nested_cWW_endpoints[(model1,chain1)][index1] = (model1,chain2,index2)
+                            model_chain_to_nested_cWW_endpoints[(model1,chain2)][index2] = (model1,chain1,index1)
                             # print('  Identified a canonical pair between %s and %s with crossing=0' % (u1,u2))
                             # print('  model1, chain1, index1 are %s, %s, %d' % (model1,chain1,index1))
                             # print('  model1, chain2, index2 are %s, %s, %d' % (model1,chain2,index2))
+
+                            if 'bss' in categories or 'loop' in categories:
+                                bss_endpoints.add((model1,chain1,index1,chain2,index2))
 
                 pairs_to_crossing[(u1,u2)] = crossing
 
@@ -1296,27 +1299,86 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
                 pairs_to_crossing[(u2,u1)] = crossing
 
+        # for (u1,face),partners in sorted(unitid_face_to_stacking_partners.items()):
+        #     print(u1,face,partners)
+
+    # record stacking partners for each nucleotide face
     if 'bss' in categories or 'loop' in categories:
-        unitid_face_to_stacking_partners = {}
-        unit_id_pair_to_interaction = {}
-        unitid_to_bss_partner = {}
+        # record stacking partners for each nucleotide face
+        unitid_face_to_stacking_partners = defaultdict(set)
+        face_to_stacks = {}
+        face_to_stacks['3'] = ['s33','s35','ns33','ns35']
+        face_to_stacks['5'] = ['s53','s55','ns53','ns55']
+
+        for face, face_list in face_to_stacks.items():
+            for interaction in face_list:
+                for u1,u2,crossing in interaction_to_list_of_tuples[interaction]:
+                    unitid_face_to_stacking_partners[(u1,face)].add(u2)
+
+        # loop over nested cWW pairs and check them for stacking that crosses a cWW
+        for model,chain1,index1,chain2,index2 in bss_endpoints:
+
+            u1 = model_chain_index_to_unit_id[(model,chain1)][index1]
+            u2 = model_chain_index_to_unit_id[(model,chain2)][index2]
+
+            stacking_cross = False
+
+            # check for stacking on e and pe that reaches outside of a loop
+            # nucleotides that stack on the 5' face of e, which is u2
+            chain_distance = 5
+            # stacking on the 5' face of u2 from outside the loop
+            for v,e,w,f in [(u1,index1,u2,index2),(u2,index2,u1,index1)]:
+                for u in unitid_face_to_stacking_partners[(v,'5')]:
+                    umodel, uchain, uindex, ubase = unit_id_to_index[u]
+                    # if u2 == '6JQ6|1|U|U|62':
+                    #     print(umodel, uchain, uindex, ubase)
+                    if umodel == model and uchain == chain and uindex > e and uindex < e+chain_distance:
+                        # found a stacking partner that is outside the loop
+                        stacking_cross = True
+                        print("  5a Found stacking partner %s for %s ==================" % (u,v))
+                    # if umodel == model and uchain == chain3 and uindex < pe and uindex > pe-chain_distance:
+                    #     # found a stacking partner that is outside the loop
+                    #     stacking_cross = True
+                    #     print("  5b Found stacking partner %s for %s ==================" % (u,v))
+
+                # stacking on the 3' face of u2 from inside the loop
+                # uindex > c and unindex < pc could be problematic
+                for u in unitid_face_to_stacking_partners[(v,'3')]:
+                    umodel, uchain, uindex, ubase = unit_id_to_index[u]
+                    # if u2 == '6JQ6|1|U|U|62':
+                    #     print(umodel, uchain, uindex, ubase)
+                    if umodel == model and uchain == chain and uindex < e and uindex > e-chain_distance:
+                        # found a stacking partner that is outside the loop
+                        stacking_cross = True
+                        print("  3a Found stacking partner %s for %s ==================" % (u,v))
+                    # if umodel == model and uchain == chain3 and uindex > pe and uindex < pe+chain_distance:
+                    #     # found a stacking partner that is outside the loop
+                    #     stacking_cross = True
+                    #     print("  3b Found stacking partner %s for %s ==================" % (u,v))
+
+            if not stacking_cross:
+                model_chain_to_endpoints[(model,chain1)].add(index1)
+                model_chain_to_endpoints[(model,chain2)].add(index2)
+
 
         # identify nucleotides that border a single-stranded region (bSS relation)
         # this includes strands between nested cWW pairs on one chain
         # it also includes cWW pairs with zero crossing number that go between chains
+        unit_id_pair_to_interaction = {}
+        unitid_to_bss_partner = {}
         bSS_list = []
-        for (model,chain), endpoints in chain_to_endpoints.items():
+        for (model,chain), endpoints in model_chain_to_endpoints.items():
             print("  Getting bSS for %s|%s|%s" % (file_id,model,chain))
 
             # c is the "lower" index; we increase it in this process
-            c = chain_to_min_index[(model,chain)]
+            c = model_chain_to_min_index[(model,chain)]
 
             if not c == 1:
                 print('  Minimum index is %d' % c)
 
-            # highest index is also an endpoint
-            all_endpoints = sorted(endpoints - set([c])) + [chain_to_max_index[(model,chain)]]
-            pairing_partners = chain_to_nested_cWW_endpoints[(model,chain)]
+            # highest index in the chain is also an endpoint
+            all_endpoints = sorted(endpoints - set([c])) + [model_chain_to_max_index[(model,chain)]]
+            pairing_partners = model_chain_to_nested_cWW_endpoints[(model,chain)]
 
             # walk through the chain, looking for single-stranded regions
             # e is the "upper" index; we increase it in this process
@@ -1330,15 +1392,14 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                     pc = pc[2]
 
                 pe = pairing_partners[e]
-
                 chain3 = None
                 if isinstance(pe,tuple):
                     # cWW pair with crossing number 0 between chains
                     chain3 = pe[1]
                     pe = pe[2]
 
-                u1 = chain_index_to_unit_id[(model,chain)][c]
-                u2 = chain_index_to_unit_id[(model,chain)][e]
+                u1 = model_chain_index_to_unit_id[(model,chain)][c]
+                u2 = model_chain_index_to_unit_id[(model,chain)][e]
 
                 # if c < 100:
                     # print('  Thinking about bSS between %s and %s' % (u1,u2))
@@ -1347,26 +1408,26 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
 
                 if (chain2 or chain3) and not chain2 == chain3:
                     # c and e are in one chain, but pc and pe are in different chains
-                    u1 = chain_index_to_unit_id[(model,chain)][c]
-                    u2 = chain_index_to_unit_id[(model,chain)][e]
+                    # u1 = model_chain_index_to_unit_id[(model,chain)][c]
+                    # u2 = model_chain_index_to_unit_id[(model,chain)][e]
 
-                    if c == chain_to_min_index[(model,chain)]:
+                    if c == model_chain_to_min_index[(model,chain)]:
                         print("  %-20s bSS %-20s at start of chain &" % (u1,u2))
-                    elif e == chain_to_max_index[(model,chain)]:
+                    elif e == model_chain_to_max_index[(model,chain)]:
                         print("  %-20s bSS %-20s at end of chain &" % (u1,u2))
                     else:
                         print("  %-20s bSS %-20s between chains" % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
                     unitid_to_bss_partner[u1] = u2
-                elif c == chain_to_min_index[(model,chain)] and pc == c and not chain2:
+                elif c == model_chain_to_min_index[(model,chain)] and pc == c and not chain2:
                     # c is at start of chain but does not make a cWW pair
                     print("  %-20s bSS %-20s at start of chain *" % (u1,u2))
                     print(c,pc,e,pe,chain,chain2,chain3)
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
                     unitid_to_bss_partner[u1] = u2
-                elif e == chain_to_max_index[(model,chain)] and pe == e and not chain3:
+                elif e == model_chain_to_max_index[(model,chain)] and pe == e and not chain3:
                     # e is at end of chain but does not make a cWW pair
                     print("  %-20s bSS %-20s at end of chain *" % (u1,u2))
                     bSS_list.append((u1,u2,0))
@@ -1383,8 +1444,8 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                         complementary = True
                         opposite_pairs = []
                         for i in range(c+1,e):
-                            u1 = chain_index_to_unit_id[(model,chain)][i]
-                            u2 = chain_index_to_unit_id[(model,chain1)][pc-(i-c)]
+                            u1 = model_chain_index_to_unit_id[(model,chain)][i]
+                            u2 = model_chain_index_to_unit_id[(model,chain1)][pc-(i-c)]
                             parent1 = get_parent(u1.split("|")[3])
                             parent2 = get_parent(u2.split("|")[3])
                             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
@@ -1418,28 +1479,28 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                                     print("  Found complementary pair %s and %s" % pair)
 
                         if not complementary:
-                            u1 = chain_index_to_unit_id[(model,chain)][c]
-                            u2 = chain_index_to_unit_id[(model,chain)][e]
+                            u1 = model_chain_index_to_unit_id[(model,chain)][c]
+                            u2 = model_chain_index_to_unit_id[(model,chain)][e]
                             print('  %-20s bSS %-20s even though symmetric IL' % (u1,u2))
                             bSS_list.append((u1,u2,0))
                             bSS_list.append((u2,u1,0))
                             unitid_to_bss_partner[u1] = u2
 
                     else:
-                        # if not c in chain_index_to_unit_id[(model,chain)]:
+                        # if not c in model_chain_index_to_unit_id[(model,chain)]:
                         #     print("Missing %d in %s and %s" % (c,model,chain))
-                        #     for k,u in sorted(chain_index_to_unit_id[(model,chain)].items()):
+                        #     for k,u in sorted(model_chain_index_to_unit_id[(model,chain)].items()):
                         #         print(k,u)
-                        u1 = chain_index_to_unit_id[(model,chain)][c]
-                        u2 = chain_index_to_unit_id[(model,chain)][e]
+                        u1 = model_chain_index_to_unit_id[(model,chain)][c]
+                        u2 = model_chain_index_to_unit_id[(model,chain)][e]
                         bSS_list.append((u1,u2,0))
                         bSS_list.append((u2,u1,0))
                         unitid_to_bss_partner[u1] = u2
                         print("  %-20s bSS %-20s gap between cWW's" % (u1,u2))
                 elif abs(pc-pe) > 1:
-                    u1 = chain_index_to_unit_id[(model,chain)][c]
-                    u2 = chain_index_to_unit_id[(model,chain)][e]
-                    if c == chain_to_min_index[(model,chain)]:
+                    u1 = model_chain_index_to_unit_id[(model,chain)][c]
+                    u2 = model_chain_index_to_unit_id[(model,chain)][e]
+                    if c == model_chain_to_min_index[(model,chain)]:
                         print('  %-20s bSS %-20s at start of chain #' % (u1,u2))
                     else:
                         print('  %-20s bSS %-20s distance 1 apart' % (u1,u2))
@@ -1451,12 +1512,12 @@ def calculate_crossing_numbers(bases,interaction_to_pair_list,categories):
                 c = e
 
             print("  Last index is %d" % c)
-            print("  Max  index is %s" % chain_to_max_index[(model,chain)])
+            print("  Max  index is %s" % model_chain_to_max_index[(model,chain)])
 
-            # if c < chain_to_max_index[(model,chain)]:
+            # if c < model_chain_to_max_index[(model,chain)]:
             #     # last single-stranded region
-            #     u1 = chain_index_to_unit_id[(model,chain)][c]
-            #     u2 = chain_index_to_unit_id[(model,chain)][chain_to_max_index[(model,chain)]]
+            #     u1 = model_chain_index_to_unit_id[(model,chain)][c]
+            #     u2 = model_chain_index_to_unit_id[(model,chain)][model_chain_to_max_index[(model,chain)]]
             #     print('  %-20s bSS %-20s at end of chain' % (u1,u2))
             #     bSS_list.append((u1,u2,0))
             #     bSS_list.append((u2,u1,0))
@@ -3796,7 +3857,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,loop)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
