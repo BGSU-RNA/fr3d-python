@@ -1,0 +1,17 @@
+{
+"name": "symbolic_2_sO", 
+"numpositions": 2, 
+"searchFiles": ["7K00"], 
+"constraintMatrix,1,1": "glyco RNA", 
+"constraintMatrix,1,2": "s3O s5O", 
+"constraintMatrix,2,2": "RNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

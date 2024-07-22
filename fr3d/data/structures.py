@@ -42,12 +42,46 @@ class Structure(object):
         self._sequence = None
 
     def residues(self, **kwargs):
-        """Get residues from this structure. The keyword arguments work as
-        described by EntitySelector.
+        """
+        Get residues from this structure.
+        The keyword arguments work as described by EntitySelector.
+
+        type refers to _chem_comp.type which varies a lot for modified residues
 
         :kwargs: Keywords for filtering and ordering
         :returns: The requested residues.
         """
+
+        if 'type' in kwargs:
+            desired_types = []
+            if 'RNA' in kwargs['type']:
+                desired_types.extend(['RNA linking', 'RNA OH 3 prime terminus'])
+            if 'DNA' in kwargs['type']:
+                desired_types.extend(['DNA linking', 'DNA OH 3 prime terminus'])
+
+            if len(desired_types) > 0:
+                # special treatment to get all RNA and/or DNA chains
+                # including modified residues with whatever chem_comp.type
+                residues = EntitySelector(self._residues, type = desired_types)
+                chains = set([r.chain for r in residues])
+
+                if 'chain' in kwargs:
+                    # restrict to desired chains
+                    chains = set(kwargs['chain']) & chains
+                    # remove chain from kwargs so we use the new list of chains
+                    kwargs.pop('chain')
+
+                # print('structures.py is using chains %s' % chains)
+
+                # remove type from kwargs, because we select by chain now
+                kwargs.pop('type')
+
+                # print('structures.py is using kwargs %s' % kwargs)
+
+                residues = EntitySelector(self._residues, chain=list(chains), **kwargs)
+
+                return [r for r in residues if not r.index == None]
+
         if 'polymeric' not in kwargs:
             kwargs['polymeric'] = True
         if kwargs.get('polymeric', False) is None:

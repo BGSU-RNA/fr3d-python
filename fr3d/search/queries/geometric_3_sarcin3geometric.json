@@ -1,0 +1,20 @@
+{
+"name": "geometric_3_sarcin3geometric", 
+"numpositions": 3, 
+"unitID": ["4V9F|1|0|G|2692", "4V9F|1|0|U|2693", "4V9F|1|0|A|2702"], 
+"unittype": ["RNA", "RNA", "RNA"], 
+"discrepancy": 0.3, 
+"searchFiles": ["4V9F|1|0", "4V9F|1|9"], 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"constraintMatrix,3,3": "RNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

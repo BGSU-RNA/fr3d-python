@@ -1,0 +1,22 @@
+{
+"name": "symbolic_4_stacked_cWW", 
+"numpositions": 4, 
+"searchFiles": ["4V9F|1|0"], 
+"constraintMatrix,1,2": "s35", 
+"constraintMatrix,1,4": "cWW", 
+"constraintMatrix,2,3": "cWW", 
+"constraintMatrix,3,4": "s35", 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"constraintMatrix,3,3": "RNA", 
+"constraintMatrix,4,4": "RNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

@@ -41,9 +41,10 @@ except:
     inputPath = ""
     outputNAPairwiseInteractions = ""
 
-from NA_pairwise_interactions import load_structure
-from NA_pairwise_interactions import get_parent
-from NA_pairwise_interactions import myTimer
+from fr3d.classifiers.NA_pairwise_interactions import load_structure
+from fr3d.classifiers.NA_pairwise_interactions import get_parent
+from fr3d.classifiers.NA_pairwise_interactions import myTimer
+from fr3d.classifiers.NA_pairwise_interactions import check_base_backbone_interactions
 
 def annotate_bond_orientation(structure,pipeline=False):
 
@@ -170,6 +171,28 @@ def annotate_bond_orientation(structure,pipeline=False):
 
     return bond_annotations, error_message
 
+
+def annotate_self_base_backbone(structure,pipeline=False):
+
+    annotations = []
+    error_message = []
+
+    nts = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+
+    num_nts = 0
+    for nt in nts:
+        num_nts += 1
+
+        datapoint = {}
+
+        interactionbPh, interactionbR, datapoint = check_base_backbone_interactions(nt, nt, lastNT, lastNT2, parent1, parent2, datapoint12)
+
+        bond_annotations.append({'unit_id'    : nt.unit_id(),
+                                'orientation' : 'NA',
+                                'chi_degree'  : None})
+
+    return annotations, error_message
+
 def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,categories):
     """
     Write interactions according to category, and within each
@@ -198,7 +221,9 @@ ShowStructureReadingErrors = True
 
 
 def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat):
-
+    """
+    Calculate the requested annotations at the unit level
+    """
     if isinstance(entry_id,str):
         entry_id = entry_id.split(",")
 
@@ -257,6 +282,12 @@ def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIntera
             timerData = myTimer("Recording interactions",timerData)
             print("  Recording interactions in %s" % outputNAPairwiseInteractions)
             write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,category)
+
+        if 'backbone' in category:
+            timerData = myTimer("Annotating bond orientation",timerData)
+
+            bond_annotations, error_message = annotate_bond_orientation(structure)
+
 
     myTimer("summary",timerData)
 

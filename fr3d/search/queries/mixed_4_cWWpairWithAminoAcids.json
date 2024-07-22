@@ -1,0 +1,21 @@
+{
+"name": "mixed_4_cWWpairWithAminoAcids", 
+"numpositions": 4, 
+"unitID": ["4V9F|1|0|C|2035", "4V9F|1|0|G|1744", "4V9F|1|K|HIS|44", "4V9F|1|K|GLU|13"], 
+"unittype": [null, null, null, null], 
+"discrepancy": 0.5, 
+"searchFiles": ["4V9F|1|0"], 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"constraintMatrix,3,3": "protein", 
+"constraintMatrix,4,4": "protein", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

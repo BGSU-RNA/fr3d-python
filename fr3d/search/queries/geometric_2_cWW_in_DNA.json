@@ -1,0 +1,19 @@
+{
+"name": "geometric_2_cWW_in_DNA", 
+"unitID": ["2N1Q|2|A|G|234", "2N1Q|2|A|C|284"], 
+"numpositions": 2, 
+"discrepancy": 0.4, 
+"searchFiles": ["7JQQ"], 
+"constraintMatrix,1,1": "DNA", 
+"constraintMatrix,1,2": "DA,DT DC,DG", 
+"constraintMatrix,2,2": "DA DC DG DT", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

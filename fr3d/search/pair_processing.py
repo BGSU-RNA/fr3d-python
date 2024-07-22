@@ -1,6 +1,9 @@
+"""
+Process one point on each unit to make lists of pairs of units that could possibly
+be in the same motif instance.  Units that are too far apart can be excluded.
+"""
 
 import numpy as np
-import math
 from collections import defaultdict
 
 
@@ -14,7 +17,7 @@ def get_pairlist(Q, models, centers, alt_index = False):
 
     pairlist = defaultdict(dict)
 
-    if(Q["type"] == "mixed" or Q["type"] == "geometric"):
+    if Q["type"] == "mixed" or Q["type"] == "geometric":
 
         if centers.size > 0:
             min_coord = np.nanmin(centers)
@@ -84,13 +87,13 @@ def get_pairlist(Q, models, centers, alt_index = False):
                         max_squared = Q["requireddistancemaximum"][alt_index.index(i)][alt_index.index(j)]**2
                         pair_list = []
                         for k in max_pair_list:
-                            if(k[2] > min_squared and k[2] < max_squared):
+                            if k[2] > min_squared and k[2] < max_squared:
                                 pair_list.append((alt_index[k[0]], alt_index[k[1]]))
                                 pair_list.append((alt_index[k[1]], alt_index[k[0]]))
                         pairlist[i][j] = pair_list
 
     else:
-        if(alt_index == False):
+        if alt_index == False:
             for i in range(0,Q['numpositions']):
                 for j in range(i+1,Q['numpositions']):
                     pairlist[i][j] = "full"
@@ -100,7 +103,6 @@ def get_pairlist(Q, models, centers, alt_index = False):
                     pairlist[i][j] = "full"
 
     return pairlist
-
 
 
 def fixed_radius_search(num_points, models, positions, max_cutoff, square_size):
@@ -176,8 +178,11 @@ def fixed_radius_search(num_points, models, positions, max_cutoff, square_size):
 
     return pairlist
 
+
 def get_pairlist_old(Q, models, centers, alt_index = False):
     """
+    Deprecated and replaced with a newer version.
+
     Use a fast technique to find all pairs of units whose centers have
     distances within given distance ranges.
     This method uses append to build many short lists, but that is slow,
@@ -186,7 +191,7 @@ def get_pairlist_old(Q, models, centers, alt_index = False):
 
     pairlist = defaultdict(dict)
 
-    if(Q["type"] == "mixed" or Q["type"] == "geometric"):
+    if Q["type"] == "mixed" or Q["type"] == "geometric":
 
         if centers.size > 0:
             min_coord = np.nanmin(centers)
@@ -196,14 +201,14 @@ def get_pairlist_old(Q, models, centers, alt_index = False):
             # get all triples of (index1,index2,distance) where distance is below Q["largestMaxRange"]
             max_pair_list = fixed_radius_search(len(centers), models, centers, Q["largestMaxRange"], square_size)
 
-            if(alt_index == False):
+            if alt_index == False:
                 for i in range(0,Q['numpositions']):
                     for j in range(i+1,Q['numpositions']):
                         min_squared = Q["requireddistanceminimum"][i][j]**2
                         max_squared = Q["requireddistancemaximum"][i][j]**2
                         pair_list = []
                         for k in max_pair_list:
-                            if(k[2] > min_squared and k[2] < max_squared):
+                            if k[2] > min_squared and k[2] < max_squared:
                                 pair_list.append((k[0], k[1]))
                                 pair_list.append((k[1], k[0]))
                         pairlist[i][j] = pair_list
@@ -214,13 +219,13 @@ def get_pairlist_old(Q, models, centers, alt_index = False):
                         max_squared = Q["requireddistancemaximum"][alt_index.index(i)][alt_index.index(j)]**2
                         pair_list = []
                         for k in max_pair_list:
-                            if(k[2] > min_squared and k[2] < max_squared):
+                            if k[2] > min_squared and k[2] < max_squared:
                                 pair_list.append((alt_index[k[0]], alt_index[k[1]]))
                                 pair_list.append((alt_index[k[1]], alt_index[k[0]]))
                         pairlist[i][j] = pair_list
 
     else:
-        if(alt_index == False):
+        if alt_index == False:
             for i in range(0,Q['numpositions']):
                 for j in range(i+1,Q['numpositions']):
                     pairlist[i][j] = "full"
@@ -230,5 +235,3 @@ def get_pairlist_old(Q, models, centers, alt_index = False):
                     pairlist[i][j] = "full"
 
     return pairlist
-
-

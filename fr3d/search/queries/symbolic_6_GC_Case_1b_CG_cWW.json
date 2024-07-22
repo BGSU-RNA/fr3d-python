@@ -1,0 +1,23 @@
+{
+"name": "symbolic_6_GC_Case_1b_CG_cWW", 
+"numpositions": 6, 
+"searchFiles": ["4V9F", "8GLP", "8B0X"], 
+"constraintMatrix,1,6": "cWW AU UA GC CG", 
+"constraintMatrix,2,1": "=1 >", 
+"constraintMatrix,2,3": "~bSS", 
+"constraintMatrix,2,5": "CG", 
+"constraintMatrix,3,2": "=1 >", 
+"constraintMatrix,3,4": "cWW AU UA GC CG", 
+"constraintMatrix,4,5": "bSS", 
+"constraintMatrix,5,4": ">", 
+"constraintMatrix,6,5": "=1 >", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

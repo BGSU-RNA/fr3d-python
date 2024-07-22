@@ -1,0 +1,15 @@
+{
+"name": "symbolic_2_AG_tHS", 
+"numpositions": 2, 
+"searchFiles": ["4V9F|1|9+4V9F|1|0", "5J7L|1|CA+5J7L|1|DA+5J7L|1|DB+5J7L|1|AA+5J7L|1|BA+5J7L|1|CB"], 
+"constraintMatrix,1,2": "AG tHS", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

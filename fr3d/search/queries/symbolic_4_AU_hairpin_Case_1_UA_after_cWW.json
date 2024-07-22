@@ -1,0 +1,19 @@
+{
+"name": "symbolic_4_AU_hairpin_Case_1_UA_after_cWW", 
+"numpositions": 4, 
+"searchFiles": ["4V9F", "8GLP", "8B0X"], 
+"constraintMatrix,1,4": "bSS cWW", 
+"constraintMatrix,2,1": "=1 >", 
+"constraintMatrix,2,3": "UA", 
+"constraintMatrix,3,2": ">", 
+"constraintMatrix,4,3": "=1 >", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

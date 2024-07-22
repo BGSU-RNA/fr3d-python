@@ -1,0 +1,15 @@
+{
+"name": "symbolic_2_AU_cWW", 
+"numpositions": 2, 
+"searchFiles": ["4V9F|1|9"], 
+"constraintMatrix,1,2": "cWW AU", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

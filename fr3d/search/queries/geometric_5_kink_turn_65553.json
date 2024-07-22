@@ -1,0 +1,23 @@
+{
+"name": "geometric_5_kink_turn_65553", 
+"unitID": ["4V9F|1|0|U|1026", "4V9F|1|0|A|1032", "4V9F|1|0|G|1034", "4V9F|1|0|C|936", "4V9F|1|0|G|940"], 
+"numpositions": 5, 
+"discrepancy": 0.6, 
+"searchFiles": ["4V9F", "8GLP", "8B0X"], 
+"constraintMatrix,1,3": "bSS", 
+"constraintMatrix,1,5": "cWW", 
+"constraintMatrix,2,1": ">", 
+"constraintMatrix,3,2": ">", 
+"constraintMatrix,3,4": "cWW", 
+"constraintMatrix,4,5": "bSS", 
+"constraintMatrix,5,4": ">", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

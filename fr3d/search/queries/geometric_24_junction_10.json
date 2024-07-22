@@ -1,0 +1,16 @@
+{
+"name": "geometric_24_junction_10", 
+"discrepancy": 0.15, 
+"unitID": ["5WE4|1|a|A|935", "5WE4|1|a|C|936", "5WE4|1|a|A|937", "5WE4|1|a|A|938", "5WE4|1|a|G|939", "5WE4|1|a|G|1343", "5WE4|1|a|C|1344", "5WE4|1|a|U|1345", "5WE4|1|a|A|1346", "5WE4|1|a|G|1347", "5WE4|1|a|U|1348", "5WE4|1|a|A|1349", "5WE4|1|a|A|1350", "5WE4|1|a|U|1351", "5WE4|1|a|G|1371", "5WE4|1|a|U|1372", "5WE4|1|a|G|1373", "5WE4|1|a|A|1374", "5WE4|1|a|A|1375", "5WE4|1|a|U|1376", "5WE4|1|a|A|1377", "5WE4|1|a|C|1378", "5WE4|1|a|G|1379", "5WE4|1|a|U|1380"], 
+"numpositions": 24, 
+"searchFiles": ["5MDY|1|2"], 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}
