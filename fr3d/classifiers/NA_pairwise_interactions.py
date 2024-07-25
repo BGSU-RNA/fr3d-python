@@ -680,6 +680,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         continue
 
                     parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
+                    if not parent1:
+                        print("  No parent for %s at line AAA" % nt1.unit_id())
+                        continue
+
                     gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
 
                     if len(gly1) < 3:
@@ -738,6 +742,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         reversed_pair = (nt2.unit_id(),nt1.unit_id())
 
                         parent2 = get_parent(nt2.sequence)
+                        if not parent2:
+                            print("  No parent for %s at line BBB" % nt2.unit_id())
+                            continue
+
                         parent_pair = parent1 + "," + parent2
                         parent_pair_reversed = parent2 + "," + parent1
 
@@ -1153,7 +1161,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
             # record AU, GC, GU cWW pairs by index within each chain
             parent1 = get_parent(base1)
+            if not parent1:
+                print("  No parent for %s at line CCC" % base1.unit_id())
+                continue
             parent2 = get_parent(base2)
+            if not parent2:
+                print("  No parent for %s at line DDD" % base2.unit_id())
+                continue
 
             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                 if chain1 == chain2:
@@ -1269,7 +1283,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     if crossing == 0 and interaction.lower() in ['cww','cwwa'] and 'bss' in categories:
                         # record canonical cWW pairs and their endpoints by chain
                         parent1 = get_parent(base1)
+                        if not parent1:
+                            print("  No parent for %s at line EEE" % base1.unit_id())
+                            continue
                         parent2 = get_parent(base2)
+                        if not parent2:
+                            print("  No parent for %s at line FFF" % base2.unit_id())
+                            continue
 
                         if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                             model_chain_to_nested_cWW_endpoints[(model1,chain1)][index1] = (model1,chain2,index2)
@@ -1447,7 +1467,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             u1 = model_chain_index_to_unit_id[(model,chain)][i]
                             u2 = model_chain_index_to_unit_id[(model,chain1)][pc-(i-c)]
                             parent1 = get_parent(u1.split("|")[3])
+                            if not parent1:
+                                print("  No parent for %s at line GGG" % u1)
+                                continue
                             parent2 = get_parent(u2.split("|")[3])
+                            if not parent2:
+                                print("  No parent for %s at line HHH" % u2)
+                                continue
                             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                                 opposite_pairs.append((u1,u2))
                             else:
