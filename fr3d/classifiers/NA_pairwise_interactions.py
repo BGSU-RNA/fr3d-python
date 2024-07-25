@@ -1428,8 +1428,6 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                 if (chain2 or chain3) and not chain2 == chain3:
                     # c and e are in one chain, but pc and pe are in different chains
-                    # u1 = model_chain_index_to_unit_id[(model,chain)][c]
-                    # u2 = model_chain_index_to_unit_id[(model,chain)][e]
 
                     if c == model_chain_to_min_index[(model,chain)]:
                         print("  %-20s bSS %-20s at start of chain &" % (u1,u2))
@@ -1463,19 +1461,24 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             chain1 = chain
                         complementary = True
                         opposite_pairs = []
+
                         for i in range(c+1,e):
-                            u1 = model_chain_index_to_unit_id[(model,chain)][i]
-                            u2 = model_chain_index_to_unit_id[(model,chain1)][pc-(i-c)]
-                            parent1 = get_parent(u1.split("|")[3])
-                            if not parent1:
-                                print("  No parent for %s at line GGG" % u1)
+                            v1 = model_chain_index_to_unit_id[(model,chain)].get(i,None)
+                            if not v1:
                                 continue
-                            parent2 = get_parent(u2.split("|")[3])
+                            v2 = model_chain_index_to_unit_id[(model,chain1)].get(pc-(i-c),None)
+                            if not v2:
+                                continue
+                            parent1 = get_parent(v1.split("|")[3])
+                            if not parent1:
+                                print("  No parent for %s at line GGG" % v1)
+                                continue
+                            parent2 = get_parent(v2.split("|")[3])
                             if not parent2:
-                                print("  No parent for %s at line HHH" % u2)
+                                print("  No parent for %s at line HHH" % v2)
                                 continue
                             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
-                                opposite_pairs.append((u1,u2))
+                                opposite_pairs.append((v1,v2))
                             else:
                                 complementary = False
                                 break
@@ -1487,8 +1490,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             # build pair to interaction mapping if not already built
                             if not unit_id_pair_to_interaction:
                                 for interaction in interaction_to_pair_list.keys():
-                                    for u1,u2 in interaction_to_pair_list[interaction]:
-                                        unit_id_pair_to_interaction[(u1,u2)] = interaction
+                                    for v1,v2 in interaction_to_pair_list[interaction]:
+                                        unit_id_pair_to_interaction[(v1,v2)] = interaction
 
                             for pair in opposite_pairs:
                                 if pair in unit_id_pair_to_interaction:
@@ -1505,27 +1508,17 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                     print("  Found complementary pair %s and %s" % pair)
 
                         if not complementary:
-                            u1 = model_chain_index_to_unit_id[(model,chain)][c]
-                            u2 = model_chain_index_to_unit_id[(model,chain)][e]
                             print('  %-20s bSS %-20s even though symmetric IL' % (u1,u2))
                             bSS_list.append((u1,u2,0))
                             bSS_list.append((u2,u1,0))
                             unitid_to_bss_partner[u1] = u2
 
                     else:
-                        # if not c in model_chain_index_to_unit_id[(model,chain)]:
-                        #     print("Missing %d in %s and %s" % (c,model,chain))
-                        #     for k,u in sorted(model_chain_index_to_unit_id[(model,chain)].items()):
-                        #         print(k,u)
-                        u1 = model_chain_index_to_unit_id[(model,chain)][c]
-                        u2 = model_chain_index_to_unit_id[(model,chain)][e]
                         bSS_list.append((u1,u2,0))
                         bSS_list.append((u2,u1,0))
                         unitid_to_bss_partner[u1] = u2
                         print("  %-20s bSS %-20s gap between cWW's" % (u1,u2))
                 elif abs(pc-pe) > 1:
-                    u1 = model_chain_index_to_unit_id[(model,chain)][c]
-                    u2 = model_chain_index_to_unit_id[(model,chain)][e]
                     if c == model_chain_to_min_index[(model,chain)]:
                         print('  %-20s bSS %-20s at start of chain #' % (u1,u2))
                     else:
@@ -1540,13 +1533,6 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             print("  Last index is %d" % c)
             print("  Max  index is %s" % model_chain_to_max_index[(model,chain)])
 
-            # if c < model_chain_to_max_index[(model,chain)]:
-            #     # last single-stranded region
-            #     u1 = model_chain_index_to_unit_id[(model,chain)][c]
-            #     u2 = model_chain_index_to_unit_id[(model,chain)][model_chain_to_max_index[(model,chain)]]
-            #     print('  %-20s bSS %-20s at end of chain' % (u1,u2))
-            #     bSS_list.append((u1,u2,0))
-            #     bSS_list.append((u2,u1,0))
 
         if len(bSS_list) > 0:
             interaction_to_list_of_tuples['bSS'] = bSS_list
