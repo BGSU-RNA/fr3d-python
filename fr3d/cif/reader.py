@@ -340,7 +340,7 @@ class Cif(object):
         if isinstance(chain, (list, tuple, set)):
             chain_compare = ft.partial(op.contains, set(chain))
 
-        pdb = self.data.getName()
+        # pdb = self.data.getName()
 
         pdb = self.pdb
 
