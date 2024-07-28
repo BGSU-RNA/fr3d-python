@@ -1,10 +1,10 @@
 import itertools as it
-import sys 
+import sys
 if sys.version_info[0] == 2:
     from pdbx.writer.PdbxWriter import PdbxWriter as Writer
     from pdbx.reader.PdbxContainers import DataCategory
     from pdbx.reader.PdbxContainers import DataContainer
-else:    
+else:
     from pdbx.writer import PdbxWriter as Writer
     from pdbx.reader import DataCategory
     from pdbx.reader import DataContainer
@@ -46,15 +46,25 @@ class CifAtom(object):
         if self.unit_ids:
             fields.append('unit_id')
 
-        for field in fields:
-            atoms.appendAttribute(field)
+        if sys.version_info[0] == 2:
+            for field in fields:
+                atoms.appendAttribute(field)
+        else:
+            for field in fields:
+                atoms.append_attribute(field)
 
         def key(atom):
-            return (atom.symmetry, atom.model, atom.chain,
-                    atom.component_number, atom.insertion_code)
-
-        all_atoms = it.imap(lambda r: r.atoms(),
-                            structure.residues(polymeric=None))
+            return (atom.symmetry if atom.symmetry else ' ',
+                    atom.model if atom.model else ' ',
+                    atom.chain if atom.chain else ' ',
+                    atom.component_number if atom.component_number else ' ',
+                    atom.insertion_code if atom.insertion_code else ' ')
+        if sys.version_info[0] == 2:
+            all_atoms = it.imap(lambda r: r.atoms(),
+                                structure.residues(polymeric=None))
+        else:
+            all_atoms = map(lambda r: r.atoms(),
+                                structure.residues(polymeric=None))
         all_atoms = it.chain.from_iterable(all_atoms)
         for index, atom in enumerate(sorted(all_atoms, key=key)):
             alt_id = getattr(atom, 'alt_id', '.')
@@ -102,4 +112,7 @@ class CifAtom(object):
         atoms = self.atom_container(structure, self.protect_lists_of_lists)
         container = DataContainer(structure.pdb)
         container.append(atoms)
-        self.writer.writeContainer(container)
+        if sys.version_info[0] == 2:
+            self.writer.writeContainer(container)
+        else:
+            self.writer.write_container(container)
