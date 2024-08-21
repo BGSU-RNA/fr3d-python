@@ -53,7 +53,8 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
       - `-c sO` outputs a file with base-oxygen stacking annotations
       - `-c basepair,sO` outputs both basepair and sO annotation files; don't put spaces between the category types
 
-    - Optional
+    - Optional flag to limit what chains are processed
+      - `--chains A,B` will process only chains A and B.  Author chain names are used.
 
 <details>
   <summary>Notes on updating Docker image in Container registry</summary>
