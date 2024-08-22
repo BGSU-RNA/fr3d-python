@@ -50,10 +50,6 @@ rnaview_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_r
 pdb_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_pdb'
 datmos_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos'
 
-VERSION = 'v6'    # not sure exactly what that was
-VERSION = 'v7'    # only FR3D-annotated basepairs, show hDistAngle, omit C-H.. bonds
-VERSION = 'v8'    # show FR3D or datmos annotated basepairs or demoted, show hDist, hDistAngle, include C-H.. bonds
-
 OUTPUTPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/output/"
 
 #Updated modified nucleotide mappings from atom_mappings_refined.txt
@@ -284,7 +280,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
     if 'FR3D' in option_set:
         candidatelist += '<th onclick="sortTable(14,\'instances\',\'alpha\')">New FR3D</th>'
-        candidatelist += '<th onclick="sortTable(15,\'instances\',\'alpha\')">Newest FR3D</th>'
+        candidatelist += '<th onclick="sortTable(15,\'instances\',\'alpha\')">FR3D detail</th>'
         candidatelist += '<th onclick="sortTable(16,\'instances\',\'alpha\')">Subcat</th>'
         candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">cut dist</th>'
         candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">x</th>'
@@ -474,7 +470,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
 
         # hbond3 has an additional penalty for the maxgap
-        z_score += 5*max(0.0,candidate['maxgap']-0.8)
+        z_score += 4*max(0.0,candidate['maxgap']-0.8)
         z_count += 1
         candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
 
@@ -1306,14 +1302,14 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
                 if not math.isnan(hbond["angle"]) and hbond["angle"] < min_angle:
                     min_angle = hbond["angle"]
 
-    # check new cutoffs in every case, call that "Newest FR3D"
+    # check new cutoffs in every case, call that "FR3D detail"
     disqualified_hbond = False
     keep_reasons = []
     best_cutoff_distance = 9999
     best_interaction = ''
     new_python_subcat = -1
 
-    near_discrepancy_cutoff = 1.0     # maximum discrepancy to report as a near pair
+    near_discrepancy_cutoff = 2.0     # maximum discrepancy to report as a near pair
 
     # try all variations of this basepair type, including csS and cSs
     possible_interactions = []
@@ -1379,19 +1375,20 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
                 reasons.append("nmax")
 
             if 'angle_in_plane' in datapoint:
+                angle_penalty = 0.1
                 if cutoff["anglemin"] < cutoff["anglemax"]:
                     # usual order where min < max
                     if datapoint['angle_in_plane'] < cutoff["anglemin"]:
-                        cutoff_distance += 0.05*(cutoff["anglemin"] - datapoint['angle_in_plane'])
+                        cutoff_distance += angle_penalty*(cutoff["anglemin"] - datapoint['angle_in_plane'])
                         reasons.append("angle")
                     if datapoint['angle_in_plane'] > cutoff["anglemax"]:
-                        cutoff_distance += 0.05*(datapoint['angle_in_plane'] - cutoff["anglemax"])
+                        cutoff_distance += angle_penalty*(datapoint['angle_in_plane'] - cutoff["anglemax"])
                         reasons.append("angle")
                 else:
                     # min might be 260 and max might be -60, looking for angles above 260 or below -60
                     if datapoint['angle_in_plane'] < cutoff["anglemin"] and \
                        datapoint['angle_in_plane'] > cutoff["anglemax"]:
-                        cutoff_distance += 0.05*min(cutoff["anglemin"]-datapoint["angle_in_plane"],datapoint['angle_in_plane']-cutoff["anglemax"])
+                        cutoff_distance += angle_penalty*min(cutoff["anglemin"]-datapoint["angle_in_plane"],datapoint['angle_in_plane']-cutoff["anglemax"])
                         reasons.append("angle")
             else:
                 cutoff_distance += 1
@@ -1519,8 +1516,8 @@ if __name__=="__main__":
     make_plots = True
 
     all_agree = '11111'            # indicates how many annotators are being compared
-    compare_annotators = False     # write HTML pages for internal evaluation of FR3D annotations
     compare_annotators = True      # write HTML pages to compare FR3D, RNAview, DSSR, PDB, datmos for basepair group
+    compare_annotators = False     # write HTML pages for internal evaluation of FR3D annotations
 
     only_modified = True           # only show basepairs involving modified nucleotides
     only_modified = False
@@ -1530,6 +1527,11 @@ if __name__=="__main__":
 
     DNA = True
     DNA = False
+
+    VERSION = 'v6'    # not sure exactly what that was
+    VERSION = 'v7'    # only FR3D-annotated basepairs, show hDistAngle, omit C-H.. bonds
+    VERSION = 'v8'    # show FR3D or datmos annotated basepairs or demoted, show hDist, hDistAngle, include C-H.. bonds
+    VERSION = ''      # not comparing annotators
 
     # temporary focus on this pair and interaction
     # base_combination_list = ['A,G']
@@ -1570,13 +1572,13 @@ if __name__=="__main__":
             data_file = []
         else:
             if resolution == '1.5A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/1.5A/csv']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
             elif resolution == '2.0A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.0A/csv']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.0A/csv']
             elif resolution == '2.5A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.5A/csv','8GLP','8B0X']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','8GLP','8B0X']
             elif resolution == '3.0A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/3.0A/csv','8GLP','8B0X']
+                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8GLP','8B0X']
             data_file = readPDBDatafile(os.path.join(fr3d_pickle_path,'units'))  # available PDB structures, resolutions, chains
 
         PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
@@ -2067,6 +2069,7 @@ if __name__=="__main__":
                         print('Skipping %s-%s %s because the chains may be from different bundles' % (pair[0],pair[1],interaction))
                         continue
 
+                    # special versions for comparing annotators
                     if VERSION in ['v7']:
                         # in v7 we only look at FR3D annotated pairs
                         if not python_true:
@@ -2099,7 +2102,6 @@ if __name__=="__main__":
                             pass
                         else:
                             continue
-
 
                     # since PDB annotations only tell the family and since we are only going to list
                     # each pair once, only record a PDB annotation when you can tell what edges are used
@@ -2184,8 +2186,8 @@ if __name__=="__main__":
                     if python_near:
                         python_near_count += 1
 
-                    if (annotator_count > 0) or \
-                        (python_true or Matlab or dssr or rnaview_true or pdb or datmos) or \
+                    if (python_true) or (annotator_count > 0 and compare_annotators) or \
+                        (compare_annotators and (Matlab or dssr or rnaview_true or pdb or datmos)) or \
                         (not compare_annotators and python_near):
 
                         # evaluate the quality of the match to the current pair, for scatterplots and all
@@ -2230,10 +2232,8 @@ if __name__=="__main__":
                             or (datmos and best_cutoff_distance < 2) \
                             or (matlab_annotation and not "n" in matlab_annotation and best_cutoff_distance < 2):
 
-
                             # store for h-bond routine
                             pdata['python_true'] = python_true
-
 
                             pdata['unit_id_1'] = pair[0]
                             pdata['unit_id_2'] = pair[1]
