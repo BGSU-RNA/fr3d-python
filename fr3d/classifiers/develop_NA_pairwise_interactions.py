@@ -146,14 +146,13 @@ from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.308/3.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
-PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/3.333/1.5A/csv']
-
 PDB_list = ['4V9F','6AZ3','6GYV','7O7Y','7OYC','7QI4','7QIW','7V9E','8A98','8AZW','8GLP','5J7L','7RQB']
+PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8B0X','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
 
 # zzz
 
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
