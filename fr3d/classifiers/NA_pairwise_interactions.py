@@ -1459,7 +1459,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 if found_other_interaction:
                                     print('  Found other interaction in this IL')
                                 print('  Recording bSS between %s and %s' % (u1,u2))
-                                input('  Press enter to continue')
+                                # input('  Press enter to continue')
                             else:
                                 pass
                                 # for pair in opposite_pairs:
@@ -2490,10 +2490,10 @@ def calculate_base_min_distances(nt1, nt2, base_points2 = [], atomname2 = []):
                     #         print("Minimum at %s" % (atom.name))
 
     # investigate a concern with this calculation
-    if "6ERI|1|AA|U|1241" in nt1.unit_id() or "6ERI|1|AA|U|1241" in nt2.unit_id():
-        if "6ERI|1|AA|A|558" in nt1.unit_id() or "6ERI|1|AA|A|558" in nt2.unit_id():
-            print("  %s %s base_min_distance = %f" % (nt1.unit_id(),nt2.unit_id(),base_min_distance))
-            print("  %s %s heavy_min_distance = %f" % (nt1.unit_id(),nt2.unit_id(),heavy_min_distance))
+    # if "6ERI|1|AA|U|1241" in nt1.unit_id() or "6ERI|1|AA|U|1241" in nt2.unit_id():
+    #     if "6ERI|1|AA|A|558" in nt1.unit_id() or "6ERI|1|AA|A|558" in nt2.unit_id():
+    #         print("  %s %s base_min_distance = %f" % (nt1.unit_id(),nt2.unit_id(),base_min_distance))
+    #         print("  %s %s heavy_min_distance = %f" % (nt1.unit_id(),nt2.unit_id(),heavy_min_distance))
             # for atom1 in nt1.atoms():
             #     if atom1.name in base1_atoms:
             #         print("atom1.name = %s" % atom1.name)
@@ -3082,6 +3082,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             # check cutoffs for each interaction type
             if datapoint:
                 cutoff_distance_max = 5.0    # keep checking up to this number to have the data
+                cutoff_distance_max = near_discrepancy_cutoff    # keep checking up to this number to have the data
             else:
                 cutoff_distance_max = near_discrepancy_cutoff # faster annotation
 
@@ -3193,6 +3194,11 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             for interaction,subcategory,cut,cutoff_distance in ok_angle_in_plane:
                 if pair_data["min_distance"] < 0.5:
                     # unrealistically close to one another, cannot be a basepair
+                    cutoff_distance += near_discrepancy_cutoff
+
+                if pair_data["heavy_min_distance"] < 1.5:
+                    # unrealistically close to one another, cannot be a basepair
+                    # distance could be set more carefully
                     cutoff_distance += near_discrepancy_cutoff
 
                 if cut['gapmax'] > 0.1:
@@ -3505,6 +3511,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         if datapoint:
             datapoint['basepair'] = LW
             datapoint['basepair_subcategory'] = match[0][1]
+            datapoint['cut_dist'] = match[0][2]
             #datapoint['hbond'] = LW_bonds[interaction]
             #datapoint['hbond_messages'] = LW_bond_messages[interaction]
         return LW, subcategory, quality, datapoint
@@ -3525,6 +3532,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             if datapoint:
                 datapoint['basepair'] = LW
                 datapoint['basepair_subcategory'] = subcategory
+                datapoint['cut_dist'] = cutoff_distance
                 #datapoint['hbond'] = LW_bonds[LW]
                 #datapoint['hbond_messages'] = LW_bond_messages[LW]
             return LW, subcategory, quality, datapoint
@@ -3540,6 +3548,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                         if datapoint:
                             datapoint['basepair'] = LW
                             datapoint['basepair_subcategory'] = subcategory
+                            datapoint['cut_dist'] = cutoff_distance
                             #datapoint['hbond'] = LW_bonds[LW]
                             #datapoint['hbond_messages'] = LW_bond_messages[LW]
                         print("  Using %s\n" % LW)
@@ -3557,6 +3566,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             if datapoint:
                 datapoint['basepair'] = LW
                 datapoint['basepair_subcategory'] = subcategory
+                datapoint['cut_dist'] = cutoff_distance
                 #datapoint['hbond'] = LW_bonds[LW]
                 #datapoint['hbond_messages'] = LW_bond_messages[LW]
             return LW, subcategory, quality, datapoint
