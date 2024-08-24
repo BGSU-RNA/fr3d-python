@@ -3,7 +3,7 @@ from fr3d.data.base import AtomProxy
 from fr3d.data.atoms import Atom
 from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
-from fr3d.geometry import angleofrotation as angrot
+from fr3d.geometry import angleofrotation
 import numpy as np
 import sys
 from fr3d.unit_ids import encode
@@ -210,7 +210,7 @@ class Component(EntitySelector):
         """
 
         name = kwargs.get('name')
-        
+
         if sys.version_info[0] < 3:
             if isinstance(name, basestring):
                 definition = self.centers.definition(name)
@@ -221,8 +221,8 @@ class Component(EntitySelector):
                 definition = self.centers.definition(name)
                 if definition:
                     kwargs['name'] = definition
-            
-            
+
+
         return EntitySelector(self._atoms, **kwargs)
 
     def coordinates(self, **kwargs):
@@ -300,7 +300,7 @@ class Component(EntitySelector):
             # loop over mapped base atoms in the modified nucleotide
             # parent base atom
             for atom in self.atoms(name=list(modified_base_atom_list[self.sequence])):
-                #redundant. Last check should be sufficient. 
+                #redundant. Last check should be sufficient.
                 parent_atom_name = modified_atom_to_parent[self.sequence][atom.name]
                 #if atom.name in defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]:
                 if parent_atom_name in baseheavy:
@@ -368,14 +368,14 @@ class Component(EntitySelector):
         def get_amino_hydrogen_coords(self, heavy, amino1, amino2):
             """
             Helper function to retrieve the coordinates of amino hydrogens and specified heavy atom.
-            Seperate processing for modified nucleotides. 
+            Seperate processing for modified nucleotides.
             If modified nucleotide has a mapping, checks to see if the atom maps to the name of the passed in parent.
             Returns 3 triples of atom coordinates of a (heavy_atom, amino_hydrogen_#1, amino_hydrogen_#2)
             """
             amino1coords = None
             amino2coords = None
             # Standard base
-            if self.sequence in defs.NAbasehydrogens:         
+            if self.sequence in defs.NAbasehydrogens:
                 for atom in self._atoms:
                     if atom.name == heavy:
                         heavy = (atom.x, atom.y, atom.z)
@@ -387,14 +387,14 @@ class Component(EntitySelector):
             elif self.sequence in modified_base_to_parent:
                 for atom in self._atoms:
                     if atom.name in modified_base_atom_list[self.sequence]: # Weed out backbone atoms
-                        if parent_atom_to_modified[self.sequence][atom.name] == heavy: # parent_atom_to_modified[PSU][C5] would return N1 of parent 
+                        if parent_atom_to_modified[self.sequence][atom.name] == heavy: # parent_atom_to_modified[PSU][C5] would return N1 of parent
                             heavy = (atom.x, atom.y, atom.z)
                         elif parent_atom_to_modified[self.sequence][atom.name] == amino1:
                             amino1coords = (atom.x, atom.y, atom.z)
                         elif parent_atom_to_modified[self.sequence][atom.name] == amino2:
                             amino2coords = (atom.x, atom.y, atom.z)
             return heavy, amino1coords, amino2coords
-        
+
         amino1coords = None
         amino2coords = None
         heavy = None
@@ -1111,7 +1111,7 @@ class Component(EntitySelector):
     def angle_between_normals(self, aa_residue):
         vec1 = self.normal_calculation()
         vec2 = aa_residue.normal_calculation()
-        return angrot.angle_between_planes(vec1, vec2)
+        return angleofrotation.angle_between_planes(vec1, vec2)
 
     def normal_calculation(self):
         key = self.sequence
