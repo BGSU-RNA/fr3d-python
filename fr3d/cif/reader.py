@@ -432,22 +432,51 @@ class Cif(object):
         def ordering_key(atoms):
             return atoms[0].alt_id
 
-        alt_ids = coll.defaultdict(list)
+        alt_id_to_atoms = coll.defaultdict(list)
         for atom in atoms:
-            alt_ids[atom.alt_id].append(atom)
+            alt_id_to_atoms[atom.alt_id].append(atom)
 
-        if len(alt_ids) == 1:
-            return list(alt_ids.values())
+        if len(alt_id_to_atoms) == 1:
+            # only one alt_id, all atoms go with that one
+            return list(alt_id_to_atoms.values())
 
-        if None in alt_ids:
-            common = alt_ids.pop(None)
-            for alt_id, specific_atoms in list(alt_ids.items()):
-                for common_atom in common:
-                    copied = copy.deepcopy(common_atom)
-                    copied.alt_id = alt_id
-                    specific_atoms.append(copied)
+        # print('Incoming atoms:')
+        # for alt_id in alt_id_to_atoms.keys():
+        #     print("alt_id: ", alt_id)
+        #     for atom in alt_id_to_atoms[alt_id]:
+        #         print(atom.pdb,atom.model,atom.chain,atom.component_id,atom.component_number,atom.alt_id, atom.name)
 
-        return sorted(list(alt_ids.values()), key=ordering_key)
+        # there is more than one alt_id, which could be None(.), A, B, C, etc.
+
+        # search for the alt_id for common atoms, which are . in the .cif file
+        # Python 2 gave alt_id None, Python 3 gives alt_id '' for . in the .cif file
+        if None in alt_id_to_atoms:
+            common_key = None
+        elif '' in alt_id_to_atoms:
+            common_key = ''
+        else:
+            # for example, alt_id values A and B and no common atoms
+            return sorted(list(alt_id_to_atoms.values()), key=ordering_key)
+
+        # print(alt_id_to_atoms[common_key])
+
+        # at least one atom has alt_id equal to . in the .cif file
+        # take those atoms out of the dictionary, so there is no . alt_id
+        common_atoms = alt_id_to_atoms.pop(common_key)
+
+        # add common atoms to each alt_id
+        for alt_id, specific_atoms in list(alt_id_to_atoms.items()):
+            for common_atom in common_atoms:
+                copied = copy.deepcopy(common_atom)
+                copied.alt_id = alt_id
+                specific_atoms.append(copied)
+
+            # print("Final atom set for alt_id ", alt_id)
+            # print("Total of %d atoms" % len(specific_atoms))
+            # for atom in specific_atoms:
+            #     print(atom.pdb,atom.model,atom.chain,atom.component_id,atom.component_number,atom.alt_id, atom.name)
+
+        return sorted(list(alt_id_to_atoms.values()), key=ordering_key)
 
     def __residues__(self, pdb):
         key = op.attrgetter(
@@ -499,12 +528,14 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
+        # Some old structures need special processing for the sake of the BGSU RNA server and
+        # naming conventions. Default to this for these structures.
         if self.pdb in oldStructures:
             if hasattr(self, '_assemblies.values()'):
                 max_operators = max(len(op) for op in list(self._assemblies.values()))
             else:
-                max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
+                # if there aren't any operators, there should be one operator applied and it's the identity
+                max_operators=1
             if not max_operators:
                 raise ValueError("Could not find any operators")
 
@@ -535,12 +566,13 @@ class Cif(object):
                     filtered = filter(None, with_operators)
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
-        ###########################################################################
-        # Otherwise, this is the default way to handle this
+
+        # Otherwise, this is the way to get the atoms
         try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         except:
-            max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
+            #if there aren't any operators, there should be one operator applied and it's the identity
+            max_operators=1
 
         if not self._assemblies:
             if sys.version_info[0] < 3:
@@ -595,12 +627,13 @@ class Cif(object):
             index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
+
         ins_code = atom['pdbx_PDB_ins_code'] if 'pdbx_PDB_ins_code' in atom else '?'
         if ins_code == '?':
             ins_code = None #Maybe this should be "" in python 3
 
         alt_id = atom['label_alt_id'] if 'label_alt_id' in atom else '.'
-        if alt_id == '.':
+        if alt_id == '' or alt_id == '.':
             alt_id = None
 
         model = atom['pdbx_PDB_model_num'] if 'pdbx_PDB_model_num' in atom else 1
