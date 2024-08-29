@@ -12,10 +12,10 @@ python -m SimpleHTTPServer
 """
 
 from collections import defaultdict
+import gc
 import json
 import math
 import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import os
 import pickle
@@ -274,13 +274,13 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">DSSR</th>'
     candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">PDB</th>'
     candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">datmos</th>'
-    candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">Number</th>'
+    candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">#</th>'
     candidatelist += '<th onclick="sortTable(11,\'instances\',\'alpha\')">Which</th>'
     candidatelist += '<th onclick="sortTable(12,\'instances\',\'alpha\')">Glyco 1</th>'
     candidatelist += '<th onclick="sortTable(13,\'instances\',\'alpha\')">Glyco 2</th>'
 
     if 'FR3D' in option_set:
-        candidatelist += '<th onclick="sortTable(14,\'instances\',\'alpha\')">New FR3D</th>'
+        candidatelist += '<th onclick="sortTable(14,\'instances\',\'alpha\')">Newest</th>'
         candidatelist += '<th onclick="sortTable(15,\'instances\',\'alpha\')">FR3D detail</th>'
         candidatelist += '<th onclick="sortTable(16,\'instances\',\'alpha\')">Subcat</th>'
         candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">cut dist</th>'
@@ -290,8 +290,8 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += '<th onclick="sortTable(21,\'instances\',\'numeric\')">r</th>'
         candidatelist += '<th onclick="sortTable(22,\'instances\',\'numeric\')">maxgap</th>'
         candidatelist += '<th onclick="sortTable(23,\'instances\',\'numeric\')">angle</th>'
-        candidatelist += '<th onclick="sortTable(24,\'instances\',\'numeric\')">hmindist</th>'
-        candidatelist += '<th onclick="sortTable(25,\'instances\',\'numeric\')">normal_z</th>'
+        candidatelist += '<th onclick="sortTable(24,\'instances\',\'numeric\')">normal_z</th>'
+        candidatelist += '<th onclick="sortTable(25,\'instances\',\'numeric\')">hmindist</th>'
         current_column = 26   # next column after the one list above, keep track manually
         if 'css' in Q['name'].lower():
             candidatelist += '<th onclick="sortTable(26,\'instances\',\'alpha\')">SR12</th>'
@@ -344,7 +344,6 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
     candidatelist += "</tr>\n"
 
-    # not sure what this code is doing, because first_listed_base is always A
     first_listed_base = 'A'
     for i in range(0,len(candidates)):
         candidate = candidates[i]
@@ -352,11 +351,11 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         if first_listed_base in ['A','C','G','U','DA','DC','DG','DT']:
             break
 
-    # list bases in the order they appear in the filename
-    if first_listed_base == base_combination.split(",")[0]:
+    if first_listed_base == base_combination.split(",")[0] or 'FR3D' in option_set:
         id_1 = 'unit_id_1'
         id_2 = 'unit_id_2'
     else:
+        # switch order of bases to match the order they appear in the filename
         id_1 = 'unit_id_2'
         id_2 = 'unit_id_1'
 
@@ -366,14 +365,6 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     for i in range(0,len(candidates)):
 
         candidate = candidates[i]
-
-        # try to understand why OK pairs are demoted
-        # if 'demoted' in candidate['new_python_annotation']:
-        #     print_dictionary(candidate)
-        #     print()
-        # elif 'ncWW' in candidate['python_annotation']:
-        #     print_dictionary(candidate)
-        #     print()
 
         candidatelist += '<tr><td>'+str(i+1)+'.</td>'
         candidatelist += '<td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
@@ -395,15 +386,21 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
             candidatelist += "<td>%s</td>" % candidate['python_annotation'].replace("a","")  # python FR3D, with w, h, s
             candidatelist += "<td>%s</td>" % candidate['rnaview_annotation']  # rnaview
             candidatelist += "<td>%s</td>" % candidate['dssr_annotation']  # dssr
-            candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
+
+            # candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
+            candidatelist += "<td>-</td>"  # suppress pdb to save horizontal space for now
+
             # candidatelist += "<td>%s</td>" % candidate['contacts_annotation']  # contacts
             candidatelist += "<td>%s</td>" % candidate['datmos_annotation']  # datmos
         else:
             # used to replace "a" with "" but that starts to be more confusing than it's worth
-            candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'])  # python FR3D, with w, h, s
+            candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'].replace("a",""))  # python FR3D, with w, h, s
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['rnaview_annotation'])  # rnaview
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['dssr_annotation'])  # dssr
-            candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
+
+            # candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
+            candidatelist += "<td>?</td>"  # suppress pdb to save horizontal space for now
+
             # candidatelist += "<td>%s</td>" % reverse_edges(candidate['contacts_annotation'])  # contacts
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['datmos_annotation'])  # datmos
 
@@ -414,9 +411,9 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += "<td>%s</td>" % candidate['glycosidic2']  # unit 2 glycosidic bond
 
         if 'FR3D' in option_set:
-            candidatelist += "<td>%s</td>" % candidate['python_annotation']  # python
-            candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # after checks in this program
-            candidatelist += "<td>%d</td>" % candidate['basepair_subcat']  # python subcategory
+            candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # python
+            candidatelist += "<td>%s</td>" % candidate['new_fr3d_detail']  # after checks in this program
+            candidatelist += "<td>%d</td>" % candidate['new_basepair_subcat']  # python subcategory
             candidatelist += "<td>%0.4f</td>" % candidate['cut_dist']  #
             candidatelist += "<td>%0.2f</td>" % candidate['x']  #
             candidatelist += "<td>%0.2f</td>" % candidate['y']  #
@@ -424,12 +421,12 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
             candidatelist += "<td>%0.2f</td>" % (math.sqrt(candidate['x']**2 + candidate['y']**2))
             candidatelist += "<td>%0.2f</td>" % candidate['maxgap']  #
             candidatelist += "<td>%0.2f</td>" % candidate['angle_in_plane']  #
+            candidatelist += "<td>%0.2f</td>" % candidate['normal_Z']  #
 
             if not 'heavy_min_distance' in candidate:
                 candidate['heavy_min_distance'] = -1.0
 
             candidatelist += "<td>%0.2f</td>" % candidate['heavy_min_distance']  #
-            candidatelist += "<td>%0.2f</td>" % candidate['normal_Z']  #
 
             if 'css' in Q['name'].lower():
                 if 'sugar_ribose' in candidate:
@@ -448,10 +445,13 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
         # hDist is zero when there are two good hydrogen bonds, and non-zero to the extent that the second hydrogen bond is bad
         if len(dist2_list) >= 2:
+            dist2 = sorted(dist2_list)[1]   # second shortest distance
             candidatelist += "<td>%0.2f</td>" % (sorted(dist2_list)[1])   # second shortest distance
         elif len(dist2_list) == 1:
+            dist2 = dist2_list[0]   # the only distance
             candidatelist += "<td>%0.2f</td>" % (dist2_list[0])   # the only distance
         else:
+            dist2 = 99.9
             candidatelist += "<td></td>"
 
         # hDistAngle is zero when there are two good hydrogen bonds, and non-zero to the extent that the second hydrogen bond is bad
@@ -473,6 +473,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         # hbond3 has an additional penalty for the maxgap
         z_score += 4*max(0.0,candidate['maxgap']-0.8)
         z_count += 1
+
         candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
 
         if not Q['DNA']:
@@ -879,6 +880,9 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables,angle_o
 
                             if "radiusmax" in limits:
                                 ax.plot([min([t1,t2,t3,t4]),max([t1,t2,t3,t4])],[limits["radiusmax"],limits["radiusmax"]],color[cc])
+
+                            if "radiusmin" in limits:
+                                ax.plot([min([t1,t2,t3,t4]),max([t1,t2,t3,t4])],[limits["radiusmin"],limits["radiusmin"]],color[cc])
 
                             #ax.text(0,cc*0.7,"%s %d" % (LW,subcategory),color = color[cc],fontsize=12)
                             cc += 1
@@ -1289,19 +1293,15 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
 
     if 'basepair' in datapoint:
         python_annotation = datapoint['basepair']
-        new_python_annotation = datapoint['basepair']
-        basepair = datapoint['basepair']
-        basepair_subcat = datapoint['basepair_subcategory']
     else:
         python_annotation = ''
-        new_python_annotation = ''
-        basepair = "   "
-        basepair_subcat = '0'
+
+    new_python_annotation = python_annotation  # in case nothing else is set
 
     # find worst hydrogen bond
-    max_badness = -1.0
-    max_distance = -1.0
-    min_angle = 180
+    max_badness = -1.0       # calculated by hydrogen_bonds.py
+    # max_distance = -1.0
+    # min_angle = 180
     if 'hbond' in datapoint:
         for hbond in datapoint['hbond']:
             # hbond is like
@@ -1309,16 +1309,14 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
             if hbond["bond_checked"]:    # able to check the hydrogen bond
                 if hbond["badness"] > max_badness:
                     max_badness = hbond["badness"]
-                if hbond["distance"] > max_distance:
-                    max_distance = hbond["distance"]
-                if not math.isnan(hbond["angle"]) and hbond["angle"] < min_angle:
-                    min_angle = hbond["angle"]
+                # if hbond["distance"] > max_distance:
+                #     max_distance = hbond["distance"]
+                # if not math.isnan(hbond["angle"]) and hbond["angle"] < min_angle:
+                #     min_angle = hbond["angle"]
 
     # check new cutoffs in every case, call that "FR3D detail"
-    disqualified_hbond = False
     keep_reasons = []
-    best_cutoff_distance = 9999
-    best_interaction = ''
+    new_cutoff_distance = 9999
     new_python_subcat = -1
 
     near_discrepancy_cutoff = 2.0     # maximum discrepancy to report as a near pair
@@ -1356,14 +1354,19 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
                 cutoff_distance += cutoff["ymin"] - datapoint['y']
                 reasons.append("ymin")
             elif datapoint['y'] > cutoff["ymax"]:
-                cutoff_distance +=  datapoint['y'] - cutoff["ymax"]
+                cutoff_distance += datapoint['y'] - cutoff["ymax"]
                 reasons.append("ymax")
 
             if "radiusmax" in cutoff:
                 radius = math.sqrt(datapoint['x']**2 + datapoint['y']**2)
                 if radius > cutoff["radiusmax"]:
-                    cutoff_distance +=  radius - cutoff["radiusmax"]
+                    cutoff_distance += radius - cutoff["radiusmax"]
                     reasons.append("radiusmax")
+
+                if "radiusmin" in cutoff:
+                    if radius < cutoff["radiusmin"]:
+                        cutoff_distance += cutoff["radiusmin"] - radius
+                        reasons.append("radiusmin")
 
             if datapoint['z'] < cutoff["zmin"]:
                 cutoff_distance += cutoff["zmin"] - datapoint['z']
@@ -1424,46 +1427,42 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
             if datapoint["mingap"] > cutoff['gapmax']:
                 cutoff_distance += 3*(datapoint["mingap"] - cutoff['gapmax'])
 
-            if cutoff_distance < best_cutoff_distance:
+            if cutoff_distance < new_cutoff_distance:
                 # met cutoffs better than with previous subcategory
                 keep_reasons = reasons
-                new_python_annotation = bp   # interaction or reason for rejection
-                if cutoff_distance > near_discrepancy_cutoff and not 'n' in bp:
+                if cutoff_distance > near_discrepancy_cutoff:
+                    new_python_annotation = ''
+                elif cutoff_distance > 0 and not 'n' in bp:
                     new_python_annotation = 'n' + bp
-
+                else:
+                    new_python_annotation = bp
                 new_python_subcat = bpsc
-                best_interaction = bp
-                best_cutoff_distance = cutoff_distance
+                new_cutoff_distance = cutoff_distance
 
-
-    if best_cutoff_distance > 0:
-        new_python_annotation = ",".join(keep_reasons)
-
-    # if max_distance > 4 or min_angle < 100 or max_badness > 3:
-    #     disqualified_hbond = True
-    #     new_python_annotation += ',hbond'
+    if new_cutoff_distance > 0:
+        new_fr3d_detail = ",".join(keep_reasons)
+    else:
+        new_fr3d_detail = new_python_annotation
 
     if 'demoted_hbond' in datapoint:
-        new_python_annotation = 'demoted,' + new_python_annotation
-
-    datapoint['best_interaction'] = best_interaction
-    datapoint['best_subcategory'] = new_python_subcat
-    datapoint['best_cutoff_distance'] = best_cutoff_distance
-    datapoint['keep_reasons'] = keep_reasons
-    datapoint['disqualified_hbond'] = disqualified_hbond
+        new_fr3d_detail = 'demoted,' + new_fr3d_detail
+        if not 'n' in new_python_annotation:
+            new_python_annotation = "n" + new_python_annotation
 
     # keep data to put in scatterplots and HTML pages
     # only keep pairs if their parameters are somewhat close to the cutoffs for some category
 
     # store data about this pair for output
     pdata = datapoint
-    pdata['max_distance'] = max_distance
-    pdata['min_angle'] = min_angle
+    # pdata['max_distance'] = max_distance
+    # pdata['min_angle'] = min_angle
     pdata['max_badness'] = max_badness
     pdata['python_annotation'] = python_annotation          # original annotation from NA_pairwise_interactions
-    pdata['new_python_annotation'] = new_python_annotation
-    pdata['basepair_subcat'] = new_python_subcat
-    pdata['best_cutoff_distance'] = best_cutoff_distance
+    pdata['new_python_annotation'] = new_python_annotation  # new from checking cutoffs above
+    pdata['new_fr3d_detail'] = new_fr3d_detail              # new from checking cutoffs above
+    pdata['new_basepair_subcat'] = new_python_subcat
+    pdata['new_cutoff_distance'] = new_cutoff_distance
+    pdata['keep_reasons'] = keep_reasons
 
     if 'sugar_ribose' in datapoint:
         pdata['sugar_ribose'] = datapoint['sugar_ribose']
@@ -1472,7 +1471,6 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
 
     if not 'angle_in_plane' in pdata:
         pdata['angle_in_plane'] = 0.0  # so distance can be calculated
-
 
     return datapoint, pdata, angle_out_of_order
 
@@ -1572,7 +1570,9 @@ if __name__=="__main__":
     resolution_list = ['2.0A']
     resolution_list = ['2.5A']
     resolution_list = ['1.5A','2.0A','2.5A','3.0A']
+    resolution_list = ['1.5A','3.0A']
     resolution_list = ['3.0A']
+    resolution_list = ['1.5A','3.0A','2.0A','2.5']
 
     if compare_annotators:
         make_plots = False
@@ -1724,9 +1724,12 @@ if __name__=="__main__":
         # loop over specified base combinations
         for bc_num, base_combination in enumerate(base_combination_list):
 
-            # put '3.0A' in the list on the next line to load one base combination at a time; memory
-            resolution_memory_challenge_list = ['3.0A']
-            resolution_memory_challenge_list = []
+            # put '3.0A' or other resolution in the list to load one base combination at a time; memory
+            if compare_annotators:
+                # will need to keep many additional pairs for comparison
+                resolution_memory_challenge_list = ['3.0A']
+            else:
+                resolution_memory_challenge_list = []
 
             if bc_num == 0 or resolution in resolution_memory_challenge_list:
 
@@ -1738,7 +1741,7 @@ if __name__=="__main__":
                 for PDB_id in all_PDB_ids:
                     c += 1
                     if c % 1 == 0:
-                        print('Reading file %4s # %4d of %d for %s at %s, estimated total time %8.0f seconds' % (PDB_id,c,len(all_PDB_ids),base_combination,resolution,(time.time()-st)*(len(all_PDB_ids)/c)))
+                        print('Reading file %4s # %4d of %d for %s at %s, estimated total time %8.0f seconds, estimated remaining %8.0f seconds' % (PDB_id,c,len(all_PDB_ids),base_combination,resolution,(time.time()-st)*(len(all_PDB_ids)/c),(time.time()-st)*((len(all_PDB_ids)-c)/c)))
                     pair_to_datapoint_file = outputNAPairwiseInteractions + "%s_datapoint.pickle" % PDB_id
 
                     if os.path.exists(pair_to_datapoint_file):
@@ -1776,7 +1779,7 @@ if __name__=="__main__":
                                     if not chain2 in representative_chains and not DNA:
                                         continue
 
-                                    # for resolution 3.0, focus on one base combination at a time
+                                    # for some resolutions, focus on one base combination at a time
                                     if not DNA and resolution in resolution_memory_challenge_list:
                                         b1 = fields1[3]
                                         b2 = fields2[3]
@@ -2023,11 +2026,14 @@ if __name__=="__main__":
 
                     # check different annotation schemes to decide how to show this datapoint
                     # check python_fr3d annotation that generated pair_to_datapoint
+                    direct_near = False
                     if 'basepair' in datapoint and interaction_lower in datapoint['basepair'].lower():
                         python_fr3d = True
                         if "n" in datapoint['basepair']:
                             python_near = True
                             python_true = False
+                            if 'cut_dist' in datapoint and datapoint['cut_dist'] == 0:
+                                direct_near = True
                         else:
                             python_near = False
                             python_true = True
@@ -2139,8 +2145,8 @@ if __name__=="__main__":
                             datapoint, pdata, angle_order = evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs[base_combination])
                             #print("evaluated datapoint:")
                             #print_dictionary(datapoint)
-                            if not interaction in datapoint['best_interaction']:
-                                print('Delaying %s-%s with %s in category %s' % (pair[0],pair[1],datapoint['best_interaction'],interaction))
+                            if not interaction in pdata['new_python_interaction']:
+                                print('Delaying %s-%s with %s in category %s' % (pair[0],pair[1],pdata['new_python_interaction'],interaction))
                                 continue
 
                     if interaction in ['csS','tsS'] and not nt1_seq == nt2_seq and not compare_annotators:
@@ -2209,33 +2215,33 @@ if __name__=="__main__":
                             angle_out_of_order = True
 
                         # use the reversed pair here?
-                        if nt1_seq == nt2_seq and interaction in symmetric_basepair_list and datapoint['best_cutoff_distance'] > 0:
+                        if nt1_seq == nt2_seq and interaction in symmetric_basepair_list and pdata['new_cutoff_distance'] > 0:
                             #print('Evaluating reversed pair %s - %s' % reverse(pair))
                             r_datapoint, r_pdata, angle_order = evaluate_pair_from_datapoint(r_datapoint,interaction,nt_nt_cutoffs[base_combination])
                             # print_dictionary(r_datapoint)
                             # print()
                             # if new match is better and still matches interaction, reverse the pair, use r_datapoint, etc.
-                            if r_datapoint["best_cutoff_distance"] < datapoint["best_cutoff_distance"]:
+                            if r_pdata['new_cutoff_distance'] < pdata['new_cutoff_distance']:
                                 if r_datapoint["python_annotation"].lower() == interaction_lower:
                                     print("Pair %s - %s from %s is better reversed and makes %s" % (pair[0],pair[1],interaction,python_annotation))
                                     pair = reverse(pair)
                                     datapoint = r_datapoint
                                     pdata = r_pdata
-                                    pdata['python_annotation'] = reverse_edges(python_annotation)
+                                    # pdata['python_annotation'] = reverse_edges(python_annotation)
 
                             elif nt1_seq == 'G' and interaction == 'cWW' and rnaview_annotation == 'cHW':
                                 print("Using reversed pair for %s - %s with cWW and rnaview cHW but I don't remember why" % pair)
                                 pair = reverse(pair)
                                 datapoint = r_datapoint
                                 pdata = r_pdata
-                                pdata['python_annotation'] = reverse_edges(python_annotation)
+                                # pdata['python_annotation'] = reverse_edges(python_annotation)
 
-                        # best_cutoff_distance is calculated locally in this program
-                        best_cutoff_distance = datapoint["best_cutoff_distance"]
+                        # new_cutoff_distance is calculated locally in this program
+                        new_cutoff_distance = pdata['new_cutoff_distance']
 
                         # cut_dist is calculated by NA_pairwise_interactions
-                        if not "cut_dist" in datapoint:
-                            datapoint['cut_dist'] = best_cutoff_distance
+                        if not 'cut_dist' in datapoint:
+                            datapoint['cut_dist'] = new_cutoff_distance
 
                         # save the pair if it is good enough to list in the table
                         if python_true \
@@ -2304,7 +2310,6 @@ if __name__=="__main__":
                                             atom_set_to_d_atoms[str(atom_set)] = result["donor_acceptor_atoms"]
                                             atom_set_to_a_atoms[str(atom_set)] = result["heavy_donor_acceptor_atoms"]
 
-
                             # if desired, focus on pairs with long or short O2' bond lengths
                             if O2_bond_length:
                                 if "atom_set_to_results" in pdata:
@@ -2320,7 +2325,6 @@ if __name__=="__main__":
                             else:
                                 pdata['annotator_all'] = 0
 
-                            # yyy
                             # get second-best hydrogen bond distance and angle
                             # use default target distance and angle
                             dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count = get_dist2_angle_penalty(interaction_to_atom_sets,pdata,None,None)
@@ -2346,8 +2350,6 @@ if __name__=="__main__":
                                 if not (bc_filename[2] in ['C','U'] and inter_filename == 'cSS'):
                                     big_min_distance_list.append((datapoint['min_distance'],bc_filename,inter_filename,pdata['python_annotation']))
 
-                            keep_reasons = datapoint['keep_reasons']
-
                             # collect data for scatterplots
                             if make_plots and 'angle_in_plane' in datapoint and abs(datapoint['angle_in_plane']) > 0.0001:
                                 xvalues.append(datapoint['x'])
@@ -2369,21 +2371,22 @@ if __name__=="__main__":
                                 nvalues.append(datapoint['normal_Z'])
 
                                 # colors and sizes for scatterplots
-                                if 'gap' in datapoint['keep_reasons']:
+                                if 'gap' in pdata['keep_reasons']:
                                     color = "#ff6db6"  # pink
+                                    color = [1,0,0]  # red
                                     size = 10
-                                elif len(datapoint['keep_reasons']) > 0:
-                                    color = cyan
-                                    size = 10
-                                elif python_true:
-                                    color = black
-                                    size = 1
-                                elif 'demoted' in datapoint['new_python_annotation']:
+                                elif 'demoted_hbond' in datapoint or 'demoted' in pdata['new_fr3d_detail']:
                                     color = orange  # orange
                                     size = 10       # medium
+                                elif len(pdata['keep_reasons']) > 0:
+                                    color = cyan
+                                    size = 10
+                                elif python_true or direct_near:
+                                    color = black
+                                    size = 1
                                 else:
-                                    # python near or other or demoted
-                                    color = [1,0,0]  # red
+                                    # python near or other or demoted or newly true
+                                    color = "#b66dff"  # violet
                                     size = 10       # medium
 
                                 if VERSION in ['v8']:
@@ -2774,17 +2777,18 @@ if __name__=="__main__":
 
                     print("Finding order for %d basepairs" % n)
 
-                    order = treePenalizedPathLength(dista,min(n,40))
+                    order = treePenalizedPathLength(dista,min(n,100))
                     order = standardOrder(dista,order)
 
                     if not compare_annotators:
                         # color entries on diagonal according to matching annotations
                         for i in range(0,n):
-                            if "gap" in order_pair_data[i]['new_python_annotation']:
-                                dista[i][i] = -2  # dark pink for bad gap
-                            elif 'demoted' in order_pair_data[i]['new_python_annotation']:
+                            if "gap" in order_pair_data[i]['new_fr3d_detail']:
+                                # dista[i][i] = -2  # dark pink for bad gap
+                                dista[i][i] = -1  # red for bad gap
+                            elif 'demoted' in order_pair_data[i]['new_fr3d_detail']:
                                dista[i][i] = -9  # orange for bad h-bond
-                            elif "min" in order_pair_data[i]['new_python_annotation'] or "max" in order_pair_data[i]['new_python_annotation'] or "angle" in order_pair_data[i]['new_python_annotation']:
+                            elif "min" in order_pair_data[i]['new_fr3d_detail'] or "max" in order_pair_data[i]['new_fr3d_detail'] or "angle" in order_pair_data[i]['new_fr3d_detail']:
                                 dista[i][i] = -6  # sky blue for other cutoff problem
                             #elif len(order_pair_data[i]['matlab_annotation']) > 0 and len(order_pair_data[i]['python_annotation']) == 0:
                             #    dista[i][i] = -1  # reddish when matlab annotates but python_fr3d does not
@@ -2827,9 +2831,20 @@ if __name__=="__main__":
             for b in big_min_distance_list:
                 print("big_min_distance %8.2f %s %5s %5s" % b)
 
-        # write a table that tells how the second hbond distance tails off
-
-
+            # remove this base combination from pair_to_datapoint to save memory
+            # does not seem to reduce overall RAM usage, and garbage collection takes time
+            # c = 0
+            # print('Removing %s from pair_to_datapoint' % base_combination)
+            # for u1,u2 in bc_to_pairs_in_order.get(base_combination,[]):
+            #     if (u1,u2) in pair_to_datapoint:
+            #         del pair_to_datapoint[(u1,u2)]
+            #         c += 1
+            #     if (u2,u1) in pair_to_datapoint:
+            #         del pair_to_datapoint[(u2,u1)]
+            #         c += 1
+            # print("Removed %d instances for %s, %d remain" % (c,base_combination,len(pair_to_datapoint.keys())))
+            # print('Garbage collecting')
+            # gc.collect()
 
         # write a table of counts of each basepair family and base combination
         if compare_annotators:
