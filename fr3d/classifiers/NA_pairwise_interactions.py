@@ -109,46 +109,44 @@ def focus_basepair_cutoffs(basepair_cutoffs,interactions):
     """
 
     focused_basepair_cutoffs = {}
-
-    lower_interactions = set([])
+    desired_families_lower = set([])
 
     if interactions:
+        # reduced set of interactions is passed in, like maybe only cWW
         for interaction in interactions:
-            lower_interactions.add(interaction.lower())
+            desired_families_lower.add(interaction.lower())
     else:
         # use all available interactions
         for combination in basepair_cutoffs.keys():
             for interaction in basepair_cutoffs[combination]:
-                lower_interactions.add(interaction.lower())
+                desired_families_lower.add(interaction.lower())
 
     for combination in basepair_cutoffs.keys():
         focused_basepair_cutoffs[combination] = {}
         focused_basepair_cutoffs[combination][1] = {}   # interactions with positive normal
         focused_basepair_cutoffs[combination][-1] = {}  # interactions with negative normal
         for interaction in basepair_cutoffs[combination].keys():
-            family = interaction.lower()[0:3]   # take off alternative category a, b, etc.
+            # extract just the family, to compare to the input list
+            family = interaction.lower().replace("a","").replace("b","").replace("n","")
 
-            if family in lower_interactions:
+            if family in desired_families_lower or interaction.lower() in desired_families_lower:
                 subcat = list(basepair_cutoffs[combination][interaction].keys())[0]
                 if basepair_cutoffs[combination][interaction][subcat]["normalmin"] > 0:
                     focused_basepair_cutoffs[combination][1][interaction] = {}   # interactions with positive normal
                     for subcategory in basepair_cutoffs[combination][interaction]:
                         focused_basepair_cutoffs[combination][1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
-
                 else:
                     focused_basepair_cutoffs[combination][-1][interaction] = {}   # interactions with negative normal
                     for subcategory in basepair_cutoffs[combination][interaction]:
                         focused_basepair_cutoffs[combination][-1][interaction][subcategory] = basepair_cutoffs[combination][interaction][subcategory]
 
-    """
     # check how this worked
-    for combination in focused_basepair_cutoffs:
-        for normal in focused_basepair_cutoffs[combination]:
-            for interaction in focused_basepair_cutoffs[combination][normal]:
-                for subcategory in focused_basepair_cutoffs[combination][normal][interaction]:
-                    print(combination, normal, interaction, subcategory, focused_basepair_cutoffs[combination][normal][interaction][subcategory])
-                    pass
-    """
+    # for combination in focused_basepair_cutoffs:
+    #     for normal in focused_basepair_cutoffs[combination]:
+    #         for interaction in focused_basepair_cutoffs[combination][normal]:
+    #             for subcategory in focused_basepair_cutoffs[combination][normal][interaction]:
+    #                 print(combination, normal, interaction, subcategory, focused_basepair_cutoffs[combination][normal][interaction][subcategory])
+    #                 pass
 
     return focused_basepair_cutoffs
 
@@ -548,7 +546,8 @@ def map_unit_id_to_previous_O3(bases):
 
 def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=False):
     """
-    Loop over nucleotides, find those with two or more interactions on the same edge, choose the best, remove the others
+    Loop over nucleotides, find those with two or more interactions on the same edge,
+    choose the best, remove the others
     """
 
     # set of tuples of unit ids to leave out of the basepair list
@@ -557,14 +556,16 @@ def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=F
 
     for unit_id, basepairs in unit_id_to_basepairs.items():
         if len(basepairs) > 1:
+            # unit_id makes more than one basepair
             for i in range(len(basepairs)-1):
-                basepair = basepairs[i]
                 interaction_1, quality_1, unit_id_1 = basepairs[i]
 
-                e1 = interaction_1.replace("n","")[1].lower()   # base edge
-
                 if (unit_id,unit_id_1) in remove_pairs:
+                    # pair is already set to be removed
                     continue
+
+                e1 = interaction_1.replace("n","")[1].lower()   # base edge
+                f1 = unit_id_1.split("|")
 
                 for j in range(i+1,len(basepairs)):
                     interaction_2, quality_2, unit_id_2 = basepairs[j]
@@ -582,6 +583,17 @@ def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=F
                     if not e1 == e2:
                         # different edges
                         continue
+
+                    if len(f1) >= 7:
+                        # possible to have an alternate id
+                        f2 = unit_id_2.split("|")
+                        if len(f1) == len(f2):
+                            # possible to be the same unit with different alternate ids
+                            f1[6] = ''
+                            f2[6] = ''
+                            if f1 == f2:
+                                # same unit with different alternate ids
+                                continue
 
                     common_atoms = set(quality_1['atoms1']) & set(quality_2['atoms1'])
 
@@ -615,23 +627,31 @@ def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=F
                                     if quality_2['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                         remove_pairs.add((unit_id,unit_id_2))
                                         remove_pairs.add((unit_id_2,unit_id))
-                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, max gap" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, both near" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                        print("")
                                 else:
                                     if quality_1['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                         remove_pairs.add((unit_id,unit_id_1))
                                         remove_pairs.add((unit_id_1,unit_id))
-                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, max gap" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, both near" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                        print("")
 
                             elif not interaction_1.startswith("n") and not interaction_2.startswith("n"):
                                 # both true, make one near
                                 if quality_1['max_gap'] < quality_2['max_gap']:
                                     make_near_pairs.add((unit_id,unit_id_2))
                                     make_near_pairs.add((unit_id_2,unit_id))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge, max gap" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not switched" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                    print("")
                                 else:
                                     make_near_pairs.add((unit_id,unit_id_1))
                                     make_near_pairs.add((unit_id_1,unit_id))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge, max gap" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not switched" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                    print("")
 
                             else:
                                 # one near, one true, remove the near one if it's bad
@@ -639,10 +659,12 @@ def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=F
                                     remove_pairs.add((unit_id,unit_id_2))
                                     remove_pairs.add((unit_id_2,unit_id))
                                     print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, cutoffs" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
                                 elif quality_1['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                     remove_pairs.add((unit_id,unit_id_1))
                                     remove_pairs.add((unit_id_1,unit_id))
                                     print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, cutoffs" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
 
     return remove_pairs, make_near_pairs
 
@@ -1757,7 +1779,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                         if len(full_loop['merged_from']) > 2:
                             print('  Merged from these loop indices: %s' % full_loop['merged_from'])
-                            input('  Press enter to continue')
+                            # input('  Press enter to continue')
 
         # stuff the loops in here, even though they don't fit the rest of the pattern
         interaction_to_list_of_tuples['loops'] = all_loops
@@ -3063,6 +3085,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         normal_sgn = -1
         possible_interactions = list(cutoffs[-1].keys())
 
+    # if nt1.unit_id() == '4V9F|1|0|A|2649' and nt2.unit_id() == '4V9F|1|0|G|2094':
+    #     print(possible_interactions)
+    #     input("Press Enter to continue...")
+
     if datapoint:
         datapoint['normal_Z'] = normal_Z
 
@@ -3086,6 +3112,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             else:
                 cutoff_distance_max = near_discrepancy_cutoff # faster annotation
 
+            if nt1.unit_id() == '4V9F|1|0|A|2649' and nt2.unit_id() == '4V9F|1|0|G|2094':
+                print(possible_interactions)
+
             ok_normal_displ = []   # interactions with OK normal and displacement
             for interaction in possible_interactions:
                 for subcategory in cutoffs[normal_sgn][interaction].keys():
@@ -3107,6 +3136,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                         radius = math.sqrt(displ[0,0]**2 + displ[0,1]**2)
                         cutoff_distance += max(0,radius - cut['radiusmax'])  # how far above radiusmax
 
+                        if 'radiusmin' in cut:
+                            cutoff_distance += max(0,cut['radiusmin'] - radius)  # how far below radiusmin
+
                     if cutoff_distance >= cutoff_distance_max:
                         continue
 
@@ -3120,9 +3152,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                     cutoff_distance += 3*max(0,cut['normalmin'] - normal_Z)  # how far below normalmin
                     cutoff_distance += 3*max(0,normal_Z - cut['normalmax'])  # how far above normalmax
 
-                    if abs(normal_Z) < 0.4:
-                        # bases are too close to being perpendicular
-                        cutoff_distance += near_discrepancy_cutoff
+                    # if abs(normal_Z) < 0.4:
+                    #     # bases are too close to being perpendicular
+                    #     # but in some categories, these are important, so comment this out
+                    #     cutoff_distance += near_discrepancy_cutoff
 
                     # cutoffs are met or close enough for now
                     if cutoff_distance < cutoff_distance_max:
@@ -3217,6 +3250,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 elif interaction == 'csS' and pair_data['parent2'] == 'U':
                     cSS_one_hbond = True
 
+                # if nt1.unit_id() == '4V9F|1|0|A|2649' and nt2.unit_id() == '4V9F|1|0|G|2094':
+                #     print(nt1.unit_id(),nt2.unit_id(),interaction,cutoff_distance,subcategory,cut['gapmax'],pair_data["gap12"],pair_data["gap21"],pair_data["min_distance"],pair_data["heavy_min_distance"],cSS_one_hbond)
+                #     input("Press Enter to continue...")
+
                 if cutoff_distance > 0:
                     # impose the near discrepancy cutoff now, must be near a true category, not near a near category
                     if cutoff_distance < near_discrepancy_cutoff and not interaction.startswith("n"):
@@ -3229,6 +3266,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                     # directly classified as near, like for certain single h-bonds
                     # trust it and don't check hydrogen bonds
                     direct_near_match.append([interaction,subcategory,cutoff_distance])
+                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  directly classified as near" % (interaction,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
                 elif pair_data['heavy_min_distance'] > true_heavy_distance_cutoff and not cSS_one_hbond:
                     # matches a true category but the bases are too far apart for a good basepair
                     near_match.append([interaction,subcategory,cutoff_distance])
@@ -3377,11 +3415,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                             second_badness = sorted(badnesses)[1]
                         LW_bond_counter.append((LW,bond_counter,checked_counter,second_badness))
 
-                    # if bond_counter == 0 and checked_counter > 0:
-                    #     if datapoint:
-                    #         message = 'Rejecting %s basepair since it has no hydrogen bonds' % LW
-                    #         LW_bond_messages[LW].append(message)
-
                     # this is where the decision is made
                     if checked_counter == 1 and bond_counter == 1:
                         hbond_interactions.add(LW)
@@ -3455,8 +3488,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         # check hydrogen bond lengths, then
         # sort near matches by cutoff_distance
 
-        if len(near_match) > 0:
-            print("        %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  near match %s" % (nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),near_match))
+        # if len(near_match) > 0:
+        #     print("        %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  near match %s" % (nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),near_match))
 
         near_matches = []
         for LW, subcategory, cutoff_distance in near_match:
@@ -3475,7 +3508,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 # be ready to rank both by cutoff_distance and dist2
                 near_matches.append(("n"+LW,subcategory,cutoff_distance,dist2))
             else:
-                print("  %5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  rejected h-bonds %8.2f" % (LW,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),dist2))
+                print("  %5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  rejected h-bonds, length %8.2f" % (LW,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),dist2))
                 pass
 
         # if nt1.unit_id() in ['5J7L|1|CA|A|2176','5J7L|1|CA|U|2122']:
@@ -3501,6 +3534,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         interaction,subcategory,cutoff_distance = match[0]
         if cutoff_distance > 0 and not "n" in interaction:
             LW = "n" + interaction
+            print('Pair was in match but cutoff_distance > 0')
+            input("Press Enter to continue...")
         else:
             LW = interaction
 
@@ -3899,8 +3934,8 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
                     quads_to_write.append((a,inter,b,c))
 
-        # sort quads by model, first chain, first number, interaction
-        ordered = sorted(quads_to_write, key=lambda x: (x[0].split("|")[1],x[0].split("|")[2],int(x[0].split("|")[4]),x[1]))
+        # sort quads by model, first chain, first number, first unit id (for alt id, insertion code, symmetry), interaction
+        ordered = sorted(quads_to_write, key=lambda x: (x[0].split("|")[1],x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1],x[2]))
         with open(filename,'w') as f:
             for a,b,c,d in ordered:
                 f.write("%s\t%s\t%s\t%s\n" % (a,b,c,d))
