@@ -2299,26 +2299,32 @@ nt_nt_cutoffs["C,U"]["tHH"][1]["gapmax"] = 1.20
 nt_nt_cutoffs["C,U"]["tHH"][1]["radiusmax"] = 10.1
 
 nt_nt_cutoffs["G,C"]["tHH"] = {}
-nt_nt_cutoffs["G,C"]["tHH"][0] = {}                    # N4-H42..N7 h-bond *** *** did not get classified!
+nt_nt_cutoffs["G,C"]["tHH"][0] = {}                    # N4-H42..N7 single h-bond
 nt_nt_cutoffs["G,C"]["tHH"][0]["xmin"] = -4.80
 nt_nt_cutoffs["G,C"]["tHH"][0]["xmin"] = -4.40         # tighten 2023-07-19 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["xmax"] = -3.00         # split categories on x 2023-07-19 CLZ
+nt_nt_cutoffs["G,C"]["tHH"][0]["xmax"] = -2.25         # change split 2024-08-29 CLZ ***
 nt_nt_cutoffs["G,C"]["tHH"][0]["ymin"] = 6.80
+nt_nt_cutoffs["G,C"]["tHH"][0]["ymin"] = 6.75          # expand 2024-08-29 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["ymax"] = 7.90
 nt_nt_cutoffs["G,C"]["tHH"][0]["ymax"] = 8.30          # expand 2023-04-06 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["ymax"] = 8.60          # expand 2023-07-19 CLZ
+nt_nt_cutoffs["G,C"]["tHH"][0]["ymax"] = 8.80          # expand 2024-08-29 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["zmin"] = -3.00
 nt_nt_cutoffs["G,C"]["tHH"][0]["zmax"] = 3.00
 nt_nt_cutoffs["G,C"]["tHH"][0]["normalmin"] = 0.70
 nt_nt_cutoffs["G,C"]["tHH"][0]["normalmax"] = 1.10
 nt_nt_cutoffs["G,C"]["tHH"][0]["anglemin"] = 175.00    # new angle 2023-07-22 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["anglemax"] = 200.00    # new angle 2023-07-22 CLZ
+nt_nt_cutoffs["G,C"]["tHH"][0]["anglemax"] = 210.00    # expand 2024-08-29 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["gapmax"] = 1.60
 nt_nt_cutoffs["G,C"]["tHH"][0]["gapmax"] = 1.20        # tighten 2023-04-06 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][0]["radiusmax"] = 9.1      # new 2023-07-19 CLZ
+nt_nt_cutoffs["G,C"]["tHH"][0]["radiusmax"] = 9.3      # expand 2024-08-29 CLZ
 
 nt_nt_cutoffs["G,C"]["tHH"][1] = {}                    # makes N4-H42..N7 h-bond and C5-H5..O6 bond 2023-04-06 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][1]["xmin"] = -3.00         # split categories on x 2023-07-19 CLZ
+nt_nt_cutoffs["G,C"]["tHH"][1]["xmin"] = -2.50         # change split 2024-08-29 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][1]["xmax"] = -0.80
 nt_nt_cutoffs["G,C"]["tHH"][1]["ymin"] = 7.50          # new 2023-07-19 CLZ
 nt_nt_cutoffs["G,C"]["tHH"][1]["ymax"] = 9.00          # new 2023-07-19 CLZ
@@ -2336,8 +2342,8 @@ nt_nt_cutoffs["G,C"]["tHH"][1]["radiusmax"] = 9.3      # expand 2024-03-06 CLZ
 
 nt_nt_cutoffs["G,C"]["ntHH"] = {}
 nt_nt_cutoffs["G,C"]["ntHH"][2] = {}                    # C5-H5..O6 bond like other tHH pairs 2023-04-06 CLZ
-                                                        # call it near so it doesn't get wrecked by h bonds
-														# Nearly all from one place in the LSU
+                                                        # call it near so it doesn't get rejected by h bonds
+														# Nearly all from one place in the LSU; not ready for tHHa
 nt_nt_cutoffs["G,C"]["ntHH"][2]["xmin"] = -1.30
 nt_nt_cutoffs["G,C"]["ntHH"][2]["xmax"] = 2.50
 nt_nt_cutoffs["G,C"]["ntHH"][2]["ymin"] = 9.00
@@ -2360,17 +2366,34 @@ nt_nt_cutoffs["G,G"]["tHh"][0]["xmin"] = -1.00         # expand 2023-04-06 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["xmin"] = -1.20         # expand 2023-07-19 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["xmax"] = 0.40
 nt_nt_cutoffs["G,G"]["tHh"][0]["xmax"] = 0.60          # expand 2023-07-19 CLZ
+nt_nt_cutoffs["G,G"]["tHh"][0]["xmax"] = 1.00          # expand 2024-08-29 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["ymin"] = 7.50
 nt_nt_cutoffs["G,G"]["tHh"][0]["ymax"] = 8.70
 nt_nt_cutoffs["G,G"]["tHh"][0]["zmin"] = -3.00
 nt_nt_cutoffs["G,G"]["tHh"][0]["zmax"] = 3.00
 nt_nt_cutoffs["G,G"]["tHh"][0]["normalmin"] = 0.70
+nt_nt_cutoffs["G,G"]["tHh"][0]["normalmin"] = 0.60     # expand 2024-08-29 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["normalmax"] = 1.10
 nt_nt_cutoffs["G,G"]["tHh"][0]["anglemin"] = 100.00    # new angle 2023-07-22 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["anglemax"] = 120.00    # new angle 2023-07-22 CLZ
+nt_nt_cutoffs["G,G"]["tHh"][0]["anglemax"] = 125.00    # expand 2024-08-29 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["gapmax"] = 1.60
 nt_nt_cutoffs["G,G"]["tHh"][0]["gapmax"] = 1.20        # tighten 2023-04-06 CLZ
 nt_nt_cutoffs["G,G"]["tHh"][0]["radiusmax"] = 8.7      # new 2023-07-19 CLZ
+
+nt_nt_cutoffs["G,G"]["tHh"][1] = {}                    # new 2024-08-29 CLZ, high x, y, angle version ***
+nt_nt_cutoffs["G,G"]["tHh"][1]["xmin"] = 0.40
+nt_nt_cutoffs["G,G"]["tHh"][1]["xmax"] = 1.30
+nt_nt_cutoffs["G,G"]["tHh"][1]["ymin"] = 8.20
+nt_nt_cutoffs["G,G"]["tHh"][1]["ymax"] = 9.00
+nt_nt_cutoffs["G,G"]["tHh"][1]["zmin"] = -3.00
+nt_nt_cutoffs["G,G"]["tHh"][1]["zmax"] = 3.00
+nt_nt_cutoffs["G,G"]["tHh"][1]["normalmin"] = 0.60
+nt_nt_cutoffs["G,G"]["tHh"][1]["normalmax"] = 1.10
+nt_nt_cutoffs["G,G"]["tHh"][1]["anglemin"] = 110.00
+nt_nt_cutoffs["G,G"]["tHh"][1]["anglemax"] = 135.00
+nt_nt_cutoffs["G,G"]["tHh"][1]["gapmax"] = 1.20
+nt_nt_cutoffs["G,G"]["tHh"][1]["radiusmax"] = 9.0
 
 nt_nt_cutoffs["A,A"]["cHS"] = {}
 nt_nt_cutoffs["A,A"]["cHS"][0] = {}
