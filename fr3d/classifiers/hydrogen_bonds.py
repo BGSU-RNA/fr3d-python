@@ -59,7 +59,7 @@ def load_ideal_basepair_hydrogen_bonds(def_mind=0.0,def_maxd=3.6,def_C_maxd=4.2,
                         c = row[6].replace('*',"'")
                         d = row[7].replace('-','').replace('*',"'")
 
-                        print(combination,LW,a,b,c,d)
+                        # print(combination,LW,a,b,c,d)
 
                         if "C" in a or "C" in d:
                             maxd = def_C_maxd    # default maximum heavy atom distance for C-H contacts
@@ -137,9 +137,6 @@ def load_ideal_basepair_hydrogen_bonds(def_mind=0.0,def_maxd=3.6,def_C_maxd=4.2,
         for LW in hbond[combination]:
             print(combination, LW, hbond[combination][LW])
     """
-    for combination in hbond:
-        for LW in hbond[combination]:
-            print(combination, LW, hbond[combination][LW])
 
     return hbond
 
