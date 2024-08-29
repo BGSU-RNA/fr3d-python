@@ -2244,6 +2244,7 @@ nt_nt_cutoffs["A,U"]["tHH"][0]["gapmax"] = 1.20        # tighten 2023-03-03 CLZ
 nt_nt_cutoffs["A,U"]["tHH"][0]["gapmax"] = 1.30        # expand 2024-08-29 CLZ
 nt_nt_cutoffs["A,U"]["tHH"][0]["radiusmax"] = 10.7     # new 2023-07-19 CLZ
 
+nt_nt_cutoffs["A,U"]["ntHH"] = {}
 nt_nt_cutoffs["A,U"]["ntHH"][1] = {}                   # new category for interaction on "wrong" side 2024-08-29 CLZ
 nt_nt_cutoffs["A,U"]["ntHH"][1]["xmin"] = -0.40        # ***
 nt_nt_cutoffs["A,U"]["ntHH"][1]["xmax"] = 1.50
