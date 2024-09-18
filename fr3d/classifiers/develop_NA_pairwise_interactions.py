@@ -28,6 +28,8 @@ python311 develop_NA_pairwise_interactions.py 5
 # python NA_pairwise_interactions.py -i "C:\Users\zirbel\Documents\FR3D\PDBFiles" -o "C:\Users\zirbel\Documents\FR3D\NAPairwiseInteractions" user_test.pdb
 # python NA_pairwise_interactions.py -i "C:\Users\zirbel\Documents\FR3D\PDBFiles" -o "C:\Users\zirbel\Documents\FR3D\NAPairwiseInteractions" user_test.pdb.gz
 
+import os
+
 from NA_pairwise_interactions import *
 from NA_unit_annotation import generateUnitAnnotation
 
@@ -58,7 +60,7 @@ else:
     categories['basepair'] = []
     categories['basepair_detail'] = []
     # categories['stacking'] = []
-    # categories['backbone'] = []
+    categories['backbone'] = []
     # categories['sO'] = []        # annotate all sO interactions
     # categories['sugar_ribose']   = []
 

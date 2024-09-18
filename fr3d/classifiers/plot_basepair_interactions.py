@@ -12,7 +12,6 @@ python -m SimpleHTTPServer
 """
 
 from collections import defaultdict
-import gc
 import json
 import math
 import matplotlib.pyplot as plt
@@ -176,8 +175,13 @@ def get_dist2_angle_penalty(interaction_to_atom_sets,candidate,target_distance=N
 
     candidatelist = ""
 
-    # todo: when more than one interaction, only show the hydrogen bonds that match the best
+    # todo: when more than one interaction for this base combination,
+    # only show the hydrogen bonds that match the best
     # this is a problem when there are pairs that are not true FR3D pairs
+    # or when there are cWW and cWWa pairs on the same page
+
+    distances_this_interaction = 0
+    ok_distances_this_interaction = 0
 
     for interaction in interaction_to_atom_sets.keys():
         # loop over hydrogen bond atom sets for this interaction
@@ -212,6 +216,15 @@ def get_dist2_angle_penalty(interaction_to_atom_sets,candidate,target_distance=N
                     dist2_list.append(result["donor_acceptor_distance"])     # distance
                     bad += (max(0.0, abs(result["heavy_donor_acceptor_angle"] - 120) - 20))/20.0  # more than 20 degrees from 120
                     hDistAngle_list.append(bad)
+
+                    distances_this_interaction += 1
+                    if candidate["python_annotation"].replace("n","") == interaction:
+                        if "C" in result["donor_acceptor_atoms"]:
+                            if result["donor_acceptor_distance"] < 4.2:
+                                ok_distances_this_interaction += 1
+                        elif result["donor_acceptor_distance"] < 3.6:
+                            ok_distances_this_interaction += 1
+
             else:
                 candidatelist += "<td></td><td></td>"  # no hydrogen bond information
                 z_score = 99.99  # bad
@@ -232,7 +245,13 @@ def get_dist2_angle_penalty(interaction_to_atom_sets,candidate,target_distance=N
         z_score = 99.99
         z_count = 1
 
-    return dist2_list, hDistAngle_list, extra_penalty, candidatelist, z_score, z_count
+    ok_hbonds = False
+    if distances_this_interaction == 1 and ok_distances_this_interaction == 1:
+        ok_hbonds = True
+    elif distances_this_interaction >= 2 and ok_distances_this_interaction >= 2:
+        ok_hbonds = True
+
+    return dist2_list, hDistAngle_list, extra_penalty, candidatelist, z_score, z_count, ok_hbonds
 
 
 def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_messages,allvsallmatrix=np.empty( shape=(0, 0) ),option_set=set()):
@@ -325,6 +344,10 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     #candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">SBHBB</th>' % (current_column)  # second best hydrogen bond badness
     candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">Dist2</th>' % (current_column)  #
     current_column += 1
+    if 'FR3D' in option_set:
+        candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">h OK</th>' % (current_column)  #
+        current_column += 1
+
     candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">hDistAngle</th>' % (current_column)  #
     current_column += 1
     candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">hbond1</th>' % (current_column)  #
@@ -439,7 +462,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
                 else:
                     candidatelist += "<td></td>"
 
-        dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count = get_dist2_angle_penalty(interaction_to_atom_sets,candidate,Q['target_distance'],Q['target_angle'])
+        dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count, ok_hbonds = get_dist2_angle_penalty(interaction_to_atom_sets,candidate,Q['target_distance'],Q['target_angle'])
 
         candidatelist += cl
 
@@ -453,6 +476,12 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         else:
             dist2 = 99.9
             candidatelist += "<td></td>"
+
+        if 'FR3D' in option_set:
+            if candidate['ok_hbonds']:
+                candidatelist += "<td>OK</td>"
+            else:
+                candidatelist += "<td>No</td>"
 
         # hDistAngle is zero when there are two good hydrogen bonds, and non-zero to the extent that the second hydrogen bond is bad
         if len(hDistAngle_list) >= 2:
@@ -1386,9 +1415,9 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
                     cutoff_distance += 3*(datapoint['normal_Z'] - cutoff["normalmax"])
                     reasons.append("nmax")
 
-                if abs(datapoint['normal_Z']) < 0.4:
-                    cutoff_distance += near_discrepancy_cutoff
-                    reasons.append("normZ")
+                # if abs(datapoint['normal_Z']) < 0.4:
+                #     cutoff_distance += near_discrepancy_cutoff
+                #     reasons.append("normZ")
             else:
                 cutoff_distance += 1
                 reasons.append("nmax")
@@ -1573,6 +1602,7 @@ if __name__=="__main__":
     resolution_list = ['1.5A','3.0A']
     resolution_list = ['3.0A']
     resolution_list = ['1.5A','3.0A','2.0A','2.5']
+    resolution_list = ['1.5A','2.0A','3.0A','2.5A']
 
     if compare_annotators:
         make_plots = False
@@ -2327,7 +2357,14 @@ if __name__=="__main__":
 
                             # get second-best hydrogen bond distance and angle
                             # use default target distance and angle
-                            dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count = get_dist2_angle_penalty(interaction_to_atom_sets,pdata,None,None)
+                            dist2_list, hDistAngle_list, extra_penalty, cl, z_score, z_count, ok_hbonds = get_dist2_angle_penalty(interaction_to_atom_sets,pdata,None,None)
+
+                            if not ok_hbonds and not 'dem' in pdata['new_fr3d_detail']:
+                                if pdata['cut_dist'] > 0:
+                                    # some are directly in a near category, should not be marked
+                                    pdata['new_fr3d_detail'] = 'dem,' + pdata['new_fr3d_detail']
+
+                            pdata['ok_hbonds'] = ok_hbonds
 
                             if len(dist2_list) >= 2:
                                 pdata['dist2'] = sorted(dist2_list)[1]
@@ -2371,13 +2408,13 @@ if __name__=="__main__":
                                 nvalues.append(datapoint['normal_Z'])
 
                                 # colors and sizes for scatterplots
-                                if 'gap' in pdata['keep_reasons']:
+                                if 'demoted_hbond' in datapoint or 'dem' in pdata['new_fr3d_detail']:
+                                    color = orange  # orange
+                                    size = 5        # medium
+                                elif 'gap' in pdata['keep_reasons']:
                                     color = "#ff6db6"  # pink
                                     color = [1,0,0]  # red
-                                    size = 10
-                                elif 'demoted_hbond' in datapoint or 'demoted' in pdata['new_fr3d_detail']:
-                                    color = orange  # orange
-                                    size = 10       # medium
+                                    size = 5
                                 elif len(pdata['keep_reasons']) > 0:
                                     color = cyan
                                     size = 10
@@ -2733,19 +2770,22 @@ if __name__=="__main__":
 
                     elif len(pair_data) > 300:
                         # sort by hydrogen bond badness, putting priority on ones that are not Matlab near
-                        pair_data = sorted(pair_data, key=lambda p: p['max_badness']+0.0001*random.uniform(0,1)+10*(len(p['matlab_annotation'])==0)+10*(not "n" in p['matlab_annotation']))
+                        # pair_data = sorted(pair_data, key=lambda p: p['max_badness']+0.0001*random.uniform(0,1)+10*(len(p['matlab_annotation'])==0)+10*(not "n" in p['matlab_annotation']))
 
-                        # sort by second-best hydrogen bond distance
-                        pair_data = sorted(pair_data, key=lambda p: p['dist2'])
+                        # sort by true or not, then by second-best hydrogen bond distance
+                        pair_data = sorted(pair_data, key=lambda p: (p['python_true'],p['dist2']))
 
                         # keep 50 of the best pairs, and the 250 worst
                         order_pair_data = pair_data[0:50] + pair_data[-250:]
 
-                        # sort the other pairs by python_fr3d annotation and then by badness
+                        # sort pairs 301 to up to 1300 by python_fr3d annotation and then by badness
                         other_pair_data = sorted(pair_data[51:-251], key=lambda p: (p['python_annotation'],p['dist2']+0.0001*random.uniform(0,1)))
 
+                        # sort pairs 301 to up to 1300 randomly so you get a selection
+                        other_pair_data = sorted(pair_data[51:-251], key=lambda p: (random.uniform(0,1),p['python_annotation'],p['dist2']+0.0001*random.uniform(0,1)))
+
                         if len(other_pair_data) > 1000:
-                            # keep the worst 1000 of them, otherwise you get 30,000 GC cWW or something
+                            # keep 1000 of them, otherwise you get 30,000 GC cWW or something
                             other_pair_data = other_pair_data[-1000:]
                     else:
                         order_pair_data = pair_data
@@ -2783,11 +2823,11 @@ if __name__=="__main__":
                     if not compare_annotators:
                         # color entries on diagonal according to matching annotations
                         for i in range(0,n):
-                            if "gap" in order_pair_data[i]['new_fr3d_detail']:
+                            if 'dem' in order_pair_data[i]['new_fr3d_detail']:
+                               dista[i][i] = -9  # orange for bad h-bond
+                            elif "gap" in order_pair_data[i]['new_fr3d_detail']:
                                 # dista[i][i] = -2  # dark pink for bad gap
                                 dista[i][i] = -1  # red for bad gap
-                            elif 'demoted' in order_pair_data[i]['new_fr3d_detail']:
-                               dista[i][i] = -9  # orange for bad h-bond
                             elif "min" in order_pair_data[i]['new_fr3d_detail'] or "max" in order_pair_data[i]['new_fr3d_detail'] or "angle" in order_pair_data[i]['new_fr3d_detail']:
                                 dista[i][i] = -6  # sky blue for other cutoff problem
                             #elif len(order_pair_data[i]['matlab_annotation']) > 0 and len(order_pair_data[i]['python_annotation']) == 0:
