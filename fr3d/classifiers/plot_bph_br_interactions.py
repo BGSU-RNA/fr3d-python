@@ -20,7 +20,6 @@ from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
-from class_limits import nt_nt_cutoffs
 
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
@@ -58,20 +57,23 @@ def load_Matlab_FR3D_pairs(PDBID):
 
     interactionToTriples = defaultdict(list)
 
-    pairsFileName = PDBID + '_RNA_pairs' + '.pickle'
-    pathAndFileName = storeMatlabFR3DPairs + pairsFileName
+    pairsFileName = PDBID + '_NA_pairs' + '.pickle'
+    pathAndFileName = os.path.join(storeMatlabFR3DPairs,pairsFileName)
 
     if not os.path.exists(pathAndFileName):
-        print("Downloading %s to %s" % (pairsFileName,pathAndFileName))
+        url = "https://rna.bgsu.edu/pairs/"+pairsFileName
+        print("Downloading from %s to %s" % (url,pathAndFileName))
+
         if sys.version_info[0] < 3:
-            urllib.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+            urllib.urlretrieve(url, pathAndFileName) # testing
         else:
-            urllib.request.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+            urllib.request.urlretrieve(url, pathAndFileName) # testing
 
         # note:  if the file is not present on the server, a text file with a 404 error will be downloaded
         # so it will look like a file was downloaded, but it's not the file you need!
 
     if os.path.exists(pathAndFileName):
+        print("Loading %s" % (pathAndFileName))
         if sys.version_info[0] < 3:
             try:
                 interactionToTriples = pickle.load(open(pathAndFileName,"rb"))
@@ -94,6 +96,7 @@ def load_Matlab_FR3D_pairs(PDBID):
                     print("Could not remove file %" % pathAndFileName)
 
     interactionToPairs = {}
+    print("Interaction keys %s" % sorted(interactionToTriples.keys()))
     for interaction in interactionToTriples.keys():
         interactionToPairs[interaction] = [(a,b) for a,b,c in interactionToTriples[interaction]]
 
@@ -212,6 +215,7 @@ if __name__=="__main__":
     PDB_list = ['7K00']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
     PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv']
+    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.350/2.5A/csv']
     PDB_list = ['4V9F']
 
     #PDB LIST and Skip Files####
