@@ -51,7 +51,7 @@ from fr3d.definitions import aa_backbone
 from fr3d.definitions import planar_atoms
 from fr3d.definitions import NAbaseMassiveAndHydrogens
 
-from fr3d.classifiers.class_limits_2023 import nt_nt_cutoffs   # use latest cutoffs
+from fr3d.classifiers.class_limits_2024 import nt_nt_cutoffs   # use the latest cutoffs
 from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
 
