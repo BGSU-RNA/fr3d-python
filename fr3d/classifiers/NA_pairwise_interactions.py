@@ -3,9 +3,11 @@
 This program reads one or more CIF/PDB files and produces annotations
 of nucleotide-nucleotide interactions.
 Basepairs are annotated with Leontis-Westhof annotations like cWW, tHS, ...
-Basepairs might also be annotated as "near" with ncWW, ntHS; ask for basepair_detail.
-A few basepair categories have "alternative" geometries like cWWa.
-cWB is for Table 13 in Leontis-Stombaugh-Westhof, bifurcated interactions.
+Many interactions are annotated as "near" basepairs like ncWW, ntHS; use "near" in the category list
+In families like cWW some basepairs are annotated like AA cWw to show which base does what; basepair,lower
+A few basepairs have "alternative" geometries like cWWa; use basepair,alternative in the category list
+cWB is for Table 13 in Leontis-Stombaugh-Westhof, WC-bifurcated interactions; use basepair,cwb
+To get near, lower, alternative, and cwb use category basepair_detail
 
 Usage examples:
 python NA_pairwise_interactions.py 4TNA
@@ -169,7 +171,7 @@ def myTimer(state,data={}):
 
         print("Summary of time taken:")
         for state in data["allStates"]:
-            if not state == "lastTime" and not state == "currentState":
+            if not state == "lastTime" and not state == "currentState" and not state == "start":
                 print("%-31s: %10.3f seconds %10.3f minutes %10.3f%% of total" % (state,data[state],data[state]/60,100*data[state]/total))
 
         print("%-31s: %10.3f seconds %10.3f minutes %10.3f%% of total" % ("Total",total,total/60,100))
@@ -1870,10 +1872,9 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
     if not timerData:
         timerData = myTimer("start")
 
-    timerData = myTimer("Building cubes",timerData)
+    timerData = myTimer("Build cubes for neighbors",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
     # annotate nt-nt interactions
-    timerData = myTimer("Annotating interactions",timerData)
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_interactions(bases, nt_nt_screen_distance, baseCubeList, baseCubeNeighbors, categories, focused_basepair_cutoffs, ideal_hydrogen_bonds, timerData, get_datapoint)
 
     # annotate covalent connections
@@ -3737,28 +3738,34 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
     category, write by annotation.
     """
 
-    # if "near" in categories:
-    #     true_near = ["","n"]
-    # else:
-    #     true_near = [""]
-
     # loop over types of output files requested
     for category in categories:
-        if category == "near":
+        if category in ["near","lower","alternative","cwb"]:
             continue
+
         filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + category + ".txt")
 
         quads_to_write = []
         # loop over all interactions found in this category
         for interaction in sorted(category_to_interactions[category]):
-            if category == 'basepair':
+            if category == 'basepair' and not "near" in categories and "n" in interaction:
+                continue
+
+            if category == 'basepair' and not 'cwb' in categories and ('cWB' in interaction or 'cBW' in interaction):
+                continue
+
+            inter = interaction
+
+            if category == 'basepair' and not "lower" in categories:
                 # capitalize base edges to simplify
                 inter = interaction.replace("w","W").replace("s","S").replace("h","H")
-            else:
-                inter = interaction
+
+            if category == 'basepair' and not "alternative" in categories:
+                # remove "alternative" designations
+                inter = inter.replace("a","")
 
             # if this category has a restricted list of interactions to output
-            if len(categories[category]) == 0 or inter in categories[category] or ("near" in categories and "n" in interaction and inter.replace('n','') in categories[category]):
+            if len(categories[category]) == 0 or inter in categories[category]:
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
                     quads_to_write.append((a,inter,b,c))
 
@@ -3848,6 +3855,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
     else:
         # default is to annotate and write just "true" basepairs
         categories['basepair'] = Leontis_Westhof_basepairs
+        categories['basepair'] = []
 
     if 'loop' in categories or 'loops' in categories:
         categories['loops'] = []
@@ -3856,15 +3864,19 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
         categories['bss'] = []
         categories['stacking'] = []
         categories['basepair'] = Leontis_Westhof_basepairs
+        categories['basepair'] = []
 
     if 'bss' in categories:
         categories['basepair_detail'] = []
         categories['basepair'] = Leontis_Westhof_basepairs + ['cWB','cBW']  # bifurcated pairs
+        categories['basepair'] = []
 
     if 'basepair_detail' in categories:
         categories['basepair'] = Leontis_Westhof_basepairs + ['cWB','cBW']  # bifurcated pairs
+        categories['basepair'] = []
     elif 'basepair' in categories:
         categories['basepair'] = Leontis_Westhof_basepairs
+        categories['basepair'] = []
 
 
     # check existence of input path
@@ -3926,7 +3938,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
 
         if verbose >= 1:
             print("  Reading file %s, which is number %d out of %d" % (filename, counter, len(PDBs)))
-        timerData = myTimer("Reading CIF files",timerData)
+        timerData = myTimer("Read CIF files",timerData)
 
         # suppress error messages, but report failures at the end
         structure, messages = load_structure(filename,file_id)
@@ -3937,7 +3949,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
             continue
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
-        timerData = myTimer("Recording interactions",timerData)
+        timerData = myTimer("Record interactions",timerData)
         if verbose >= 1:
             print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
