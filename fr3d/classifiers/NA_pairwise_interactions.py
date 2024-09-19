@@ -2563,8 +2563,7 @@ def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrog
 
 def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoint):
     """
-    Function to check base backbone interactions
-    nt1 base checked for hydrogen bonds with phosphate and ribose of nt2
+    Function to check base backbone interactions between the base of nt1 and backbone oxygens of nt2
     """
 
     # annotations to return
@@ -3906,7 +3905,6 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
     """
     Write interactions according to category, and within each
     category, write by annotation.
-    Other than that, the interactions are listed in no particular order.
     """
 
     # if "near" in categories:
