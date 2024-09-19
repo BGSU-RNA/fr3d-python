@@ -91,6 +91,10 @@ nt_reference_point = "base"
 atom_atom_min_distance = 5    # minimum distance between atoms in nts to consider them interacting
 base_seq_list = []                     # for all nucleic acids, modified or not
 
+verbose = 2  # also print diagnostic information about basepairs
+verbose = 3  # also print information about loops
+verbose = 0  # do not print much at all
+verbose = 1  # print basic information about input, output, and number of interactions
 
 def print_dictionary(datapoint):
     for key,value in sorted(datapoint.items()):
@@ -211,7 +215,8 @@ def load_structure(filename,file_id="",preferred_id=None):
     elif os.path.exists(filename+".pdb"):
         filename = filename + ".pdb"
 
-    print("  NA_pairwise_interactions: filename is %s" % filename)
+    if verbose >= 1:
+        print("  NA_pairwise_interactions: filename is %s" % filename)
 
     # if still not available, try to download from PDB and save locally
     # download .gz version when possible for speed and to save disk space
@@ -230,7 +235,7 @@ def load_structure(filename,file_id="",preferred_id=None):
             download_id = file_id + '.cif.gz'
             filename = filename + '.cif.gz'
 
-        url = "http://files.rcsb.org/download/%s" % download_id
+        url = "https://files.rcsb.org/download/%s" % download_id
 
         try:
             urlretrieve(url, filename)
@@ -293,12 +298,14 @@ def load_structure(filename,file_id="",preferred_id=None):
             with gzip.open(filename, rm) as raw:
                 from fr3d.pdb.pdb_reader import PDBStructure
                 structure = PDBStructure(file_id,raw).structures()
-                print("  No symmetry operators applied to .pdb files")
+                if verbose >=1:
+                    print("  No symmetry operators applied to .pdb files")
         elif filename.lower().endswith('.pdb'):
             with open(filename, rm) as raw:
                 from fr3d.pdb.pdb_reader import PDBStructure
                 structure = PDBStructure(file_id,raw).structures()
-                print("  No symmetry operators applied to .pdb files")
+                if verbose >=1:
+                    print("  No symmetry operators applied to .pdb files")
 
         message.append("Loaded " + filename)
         return structure, message
@@ -334,8 +341,6 @@ def build_atom_to_unit_part_list():
             atom_to_part_list[(aa,atom)] = "aa_linker"
         for atom in aa_fg[aa]:
             atom_to_part_list[(aa,atom)] = "aa_fg"
-
-#    print(atom_to_part_list)
 
     return atom_to_part_list
 
@@ -521,18 +526,10 @@ def map_unit_id_to_previous_O3(bases):
 
     for model,symmetry,chain,index,unit_id,O3_coordinates,P in list_of_nucleotides:
 
-        #print(model,symmetry,chain,index,unit_id,O3_coordinates)
-
         if model == previous_model and symmetry == previous_symmetry and chain == previous_chain and index == previous_index + 1:
             unit_id_to_previous_O3[unit_id] = previous_O3_coordinates
-
-            # if P.any():
-            #     print("%-20s distance from P to previous O3' is %f" % (unit_id,np.linalg.norm(P-previous_O3_coordinates)))
-            # else:
-            #     print(P)
         else:
             unit_id_to_previous_O3[unit_id] = np.empty([1,3])
-            # print("%-20s has no previous O3' see http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s" % (unit_id,unit_id))
 
         # save current values for next nucleotide
         previous_model = model
@@ -601,20 +598,21 @@ def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=F
 
                         if get_datapoint:
                             unit_id_list = unit_id
-                            print("  Base %s makes multiple basepairs listed %d and %d below" % (unit_id,i,j))
+                            if verbose >= 2:
+                                print("  Base %s makes multiple basepairs listed %d and %d below" % (unit_id,i,j))
 
-                            for bp in basepairs:
-                                print(bp)
-                                interaction, quality, u1 = bp
-                                unit_id_list += "," + u1
+                                for bp in basepairs:
+                                    print(bp)
+                                    interaction, quality, u1 = bp
+                                    unit_id_list += "," + u1
 
-                            print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s" % unit_id_list)
-                            print('  Common atoms %s' % common_atoms)
+                                print("  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s" % unit_id_list)
+                                print('  Common atoms %s' % common_atoms)
 
                         atom_names = "".join(common_atoms)
                         if "H" in atom_names or len(common_atoms) > 1:
 
-                            if get_datapoint:
+                            if verbose >= 2:
                                 if "H" in atom_names:
                                     print('  Common atoms %s include a hydrogen, checking for conflicts' % common_atoms)
                                 else:
@@ -627,44 +625,46 @@ def check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint=F
                                     if quality_2['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                         remove_pairs.add((unit_id,unit_id_2))
                                         remove_pairs.add((unit_id_2,unit_id))
-                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, both near" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
-                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
-                                        print("")
+                                        if verbose >= 2:
+                                            print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, both near" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                            print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
                                 else:
                                     if quality_1['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                         remove_pairs.add((unit_id,unit_id_1))
                                         remove_pairs.add((unit_id_1,unit_id))
-                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, both near" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
-                                        print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
-                                        print("")
+                                        if verbose >= 2:
+                                            print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, both near" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                            print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
 
                             elif not interaction_1.startswith("n") and not interaction_2.startswith("n"):
                                 # both true, make one near
                                 if quality_1['max_gap'] < quality_2['max_gap']:
                                     make_near_pairs.add((unit_id,unit_id_2))
                                     make_near_pairs.add((unit_id_2,unit_id))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not switched" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
-                                    print("")
+                                    if verbose >= 2:
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not switched" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
                                 else:
                                     make_near_pairs.add((unit_id,unit_id_1))
                                     make_near_pairs.add((unit_id_1,unit_id))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not switched" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
-                                    print("")
+                                    if verbose >= 2:
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to conflicting edge" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not switched" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
 
                             else:
                                 # one near, one true, remove the near one if it's bad
                                 if quality_2['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                     remove_pairs.add((unit_id,unit_id_2))
                                     remove_pairs.add((unit_id_2,unit_id))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, cutoffs" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                    if verbose >= 2:
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, cutoffs" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
                                 elif quality_1['cutoff_distance'] > 0.5 * near_discrepancy_cutoff:
                                     remove_pairs.add((unit_id,unit_id_1))
                                     remove_pairs.add((unit_id_1,unit_id))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, cutoffs" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
-                                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
+                                    if verbose >= 2:
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  removed due to conflicting edge, cutoffs" % (interaction_1,unit_id,unit_id_1,unit_id,unit_id_1))
+                                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  not removed" % (interaction_2,unit_id,unit_id_2,unit_id,unit_id_2))
 
     return remove_pairs, make_near_pairs
 
@@ -701,19 +701,22 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                 for nt1 in baseCubeList[nt1key]:        # first nt of a potential pair
 
                     if len(nt1.centers["base"]) < 3:
-                        print("  Missing base center for %s" % nt1.unit_id())
-                        print(nt1.centers["base"])
+                        if verbose >= 2:
+                            print("  Missing base center for %s" % nt1.unit_id())
+                            print(nt1.centers["base"])
                         continue
 
                     parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
                     if not parent1:
-                        print("  No parent for %s at line AAA" % nt1.unit_id())
+                        if verbose >= 2:
+                            print("  No parent for %s" % nt1.unit_id())
                         continue
 
                     gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
 
                     if len(gly1) < 3:
-                        print("  Missing glycosidic atom for %s" % nt1.unit_id())
+                        if verbose >= 2:
+                            print("  Missing glycosidic atom for %s" % nt1.unit_id())
                         continue
 
                     number1 = nt1.number                 # nucleotide number
@@ -729,8 +732,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 continue
 
                         if len(nt2.centers["base"]) < 3:
-                            print("  Missing base center for %s" % nt2.unit_id())
-                            print(nt2.centers["base"])
+                            if verbose >= 2:
+                                print("  Missing base center for %s" % nt2.unit_id())
+                                print(nt2.centers["base"])
                             continue
 
                         # vector displacement between base centers
@@ -769,7 +773,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         parent2 = get_parent(nt2.sequence)
                         if not parent2:
-                            print("  No parent for %s at line BBB" % nt2.unit_id())
+                            if verbose >= 2:
+                                print("  No parent for %s" % nt2.unit_id())
                             continue
 
                         parent_pair = parent1 + "," + parent2
@@ -785,7 +790,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             datapoint12['nt2_seq'] = nt2.sequence
                             datapoint12['nt1_parent'] = parent1
                             datapoint12['nt2_parent'] = parent2
-                            datapoint12['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+                            datapoint12['url'] = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
 
                             datapoint21 = {}
                             datapoint21['center_center_distance'] = center_center_distance
@@ -793,7 +798,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             datapoint21['nt2_seq'] = nt1.sequence
                             datapoint21['nt1_parent'] = parent2
                             datapoint21['nt2_parent'] = parent1
-                            datapoint21['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt2.unit_id(),nt1.unit_id())
+                            datapoint21['url'] = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt2.unit_id(),nt1.unit_id())
 
                         else:
                             datapoint12 = None
@@ -878,7 +883,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
                         if len(gly2) < 3:
-                            print("  Missing glycosidic atom for %s" % nt2.unit_id())
+                            if verbose >= 2:
+                                print("  Missing glycosidic atom for %s" % nt2.unit_id())
                             continue
 
                         # always annotate cWW basepairs to be able to calculate crossing numbers
@@ -912,25 +918,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                             interaction12_reversed = reverse_edges(interaction12)
 
-                            # record basepairs made by modified nucleotides
-                            if False and len(interaction) > 0 and not (nt1.sequence in standard_bases and nt2.sequence in standard_bases):
-                                print('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
-                                try:
-                                    with open('C:/Users/zirbel/Documents/FR3D/Modified Nucleotides/list.txt','a') as file:
-                                        file.write('%s\t%s\t%s\t%s\t%s\t%s\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")\n' % (nt1.sequence,interaction[0],nt2.sequence,nt1.unit_id(),nt2.unit_id(),interaction,nt1.unit_id(),nt2.unit_id()))
-                                except:
-                                    pass
-
-                            if False and len(interaction12) > 0 and 'gap12' in pair_data:
-                                print("  Identified parents as %s and %s" % (parent1,parent2))
-                                print("  Found %s interaction between %-18s and %-18s" % (interaction12,nt1.unit_id(),nt2.unit_id()))
-                                print("  Gap value %0.8f" % pair_data["gap12"])
-                                #print("  Coplanar Boolean %s" % pair_data["coplanar"])
-                                #if 'coplanar_value' in pair_data and pair_data["coplanar_value"]:
-                                #    print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
-                                print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-                                print("")
-
                         else:
                             interaction12 = ""
                             interaction12_reversed = ""
@@ -962,23 +949,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                             interaction21_reversed = reverse_edges(interaction21)
 
-                            if False and len(interaction21) > 1 and 'gap12' in pair_data:
-                                print("  Identified parents as %s and %s" % (parent2,parent1))
-                                print("  Found %s interaction between %-18s and %-18s" % (interaction21,nt2.unit_id(),nt1.unit_id()))
-                                print("  Gap value %0.8f" % pair_data["gap12"])
-                                #print("  Coplanar Boolean %s" % pair_data["coplanar"])
-                                #if 'coplanar_value' in pair_data and pair_data["coplanar_value"]:
-                                #    print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
-                                print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-                                print("")
-
                         else:
                             interaction21 = ""
                             interaction21_reversed = ""
 
                         # if annotated interaction in both pair orders, choose the better one
                         if len(interaction12) > 0 and len(interaction21) > 0:
-                            conflict_message = "%-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  duplicate interaction %-5s in second direction" % (interaction21,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),interaction12_reversed)
+                            conflict_message = "%5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  duplicate interaction %-5s in second direction" % (interaction21,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),interaction12_reversed)
 
                             if interaction12_reversed.lower() == interaction21.lower():
                                 # same annotation, just different in order of edges
@@ -1006,7 +983,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 else:
                                     conflict_message += "  Using %s" % interaction12_reversed
 
-                                print(conflict_message)
+                                if verbose >= 2:
+                                    print(conflict_message)
 
                                 # record conflicting interactions if desired
                                 if False and get_datapoint:
@@ -1087,9 +1065,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     category_to_interactions['basepair_detail'].add(interaction)
                     category_to_interactions['basepair_detail'].add(interaction_reversed)
 
-    print("  Found %d nucleotide-nucleotide interactions" % count_pair)
+    if verbose >= 1:
+        print("  Found %d nucleotide-nucleotide interactions" % count_pair)
 
-    if False:
+    if verbose >= 3:
         print("  Maximum screen distance for actual contacts is %8.4f" % max_center_center_distance)
 
     # calculate and save crossing numbers for each annoated interaction
@@ -1137,8 +1116,6 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
         unit_id_to_fields[unit_id] = (model,chain,nt.index,base,symmetry)
 
-        # print("  %s %s %s %s" % (model,chain,nt.index,base))
-
         MCS = (model,chain,symmetry)
         MCS_to_min_index[MCS] = min(MCS_to_min_index[MCS],nt.index)
         MCS_to_max_index[MCS] = max(MCS_to_max_index[MCS],nt.index)
@@ -1154,7 +1131,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
     MCS_to_nested_cWW_endpoints = {}
     MCS_to_endpoints = defaultdict(set)
     for MCS, index_to_unit_id in sorted(MCS_index_to_unit_id.items()):
-        print("  MCS %s has %4d nucleotides" % (MCS,len(index_to_unit_id)))
+        if verbose >= 3:
+            print("  MCS %s has %4d nucleotides" % (MCS,len(index_to_unit_id)))
 
         # at first, each index maps to itself
         nested_cWW_endpoints = []
@@ -1201,7 +1179,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
     # by mapping one index to the other in MCS_to_nested_cWW_endpoints
     bss_endpoints = set()
     for MCS, pairs in MCS_to_canonical_cWW_indices.items():
-        print("  Getting nested for model %s chain %s symmetry %s" % MCS)
+        if verbose >=3:
+            print("  Getting nested for model %s chain %s symmetry %s" % MCS)
         cWW_pairs = sorted(pairs, key=lambda p: (p[1]-p[0],p[0]))
 
         # loop over cWW pairs and if no conflict, record as being nested
@@ -1213,11 +1192,6 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
             if i == index2:
                 # this pair is nested, so record the endpoints
-
-                #print("index1",index1)
-                #print("index2",index2)
-                #print("list length",len(nested_cWW_endpoints))
-
                 MCS_to_nested_cWW_endpoints[MCS][index1] = index2
                 MCS_to_nested_cWW_endpoints[MCS][index2] = index1
 
@@ -1227,16 +1201,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     bss_endpoints.add((MCS,index1,MCS,index2))
 
             else:
-                #print("cWW pair %s,%s is not nested" % (index1,index2))
                 pass
-
-    # process canonical pairs between chains ... why?
-    # for model,chain1,chain2,index1,index2 in sorted(two_chain_pairs):
-    #     pass
-
-    #print('MCS_to_max_index.keys()',MCS_to_max_index.keys())
-    #print('MCS_to_canonical_cWW_indices.keys()',MCS_to_canonical_cWW_indices.keys())
-    #print('MCS_to_nested_cWW_endpoints.keys()',MCS_to_nested_cWW_endpoints.keys())
 
     # loop over all pairs, calculate crossing number, the number of nested pairs crossed
     # record interacting pairs and their crossing number as triples
@@ -1278,8 +1243,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             if not isinstance(j,tuple) and (j < index1 or j > index2):
                                 crossing += 1
 
-                        if False and crossing > 0:
-                            print("%-20s and %-20s make %s and have crossing number %d" % (u1,u2,interaction,crossing))
+                        if verbose >= 3 and crossing > 0:
+                            print("%-20s and %-20s make %5s and have crossing number %3d" % (u1,u2,interaction,crossing))
                 else:
                     # different chains or different symmetries
                     # we know model1 == model2 already
@@ -1315,9 +1280,6 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             # that might be faster, but it does add a layer of complexity
                             MCS_to_nested_cWW_endpoints[MCS1][index1] = (MCS2,index2)
                             MCS_to_nested_cWW_endpoints[MCS2][index2] = (MCS1,index1)
-                            # print('  Identified a canonical pair between %s and %s with crossing=0' % (u1,u2))
-                            # print('  model1, chain1, index1 are %s, %s, %d' % (model1,chain1,index1))
-                            # print('  model1, chain2, index2 are %s, %s, %d' % (model1,chain2,index2))
 
                             bss_endpoints.add((MCS1,index1,MCS2,index2))
 
@@ -1354,13 +1316,15 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         unitid_to_bss_partner = {}
         bSS_list = []
         for MCS, endpoints in MCS_to_endpoints.items():
-            print("  Getting bSS for %s %s %s" % MCS)
+            if verbose >= 3:
+                print("  Getting bSS for %s %s %s" % MCS)
 
             # c is the "lower" index; we increase it in this process
             c = MCS_to_min_index[MCS]
 
             if not c == 1:
-                print('  Minimum index is %d' % c)
+                if verbose >=3:
+                    print('  Minimum index is %d' % c)
 
             # highest index in the chain is also an endpoint
             all_endpoints = sorted(endpoints - set([c])) + [MCS_to_max_index[MCS]]
@@ -1387,33 +1351,35 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 u1 = MCS_index_to_unit_id[MCS][c]
                 u2 = MCS_index_to_unit_id[MCS][e]
 
-                # if c < 100:
-                    # print('  Thinking about bSS between %s and %s' % (u1,u2))
-                    # print('  chain2 is %s and chain3 is %s' % (chain2,chain3))
-                    # print('  c is %d, pc is %d, e is %d, pe is %d' % (c,pc,e,pe))
+                if c < 100 and verbose >= 3:
+                    print('  Thinking about bSS between %-20s and %-20s' % (u1,u2), end=" ")
+                    print('  c is %d, pc is %d, e is %d, pe is %d' % (c,pc,e,pe))
 
                 if (MCS2 or MCS3) and not MCS2 == MCS3:
                     # c and e are in one chain, but pc and pe are in different chains
 
-                    if c == MCS_to_min_index[MCS]:
-                        print("  %-20s bSS %-20s at start of chain &" % (u1,u2))
-                    elif e == MCS_to_max_index[MCS]:
-                        print("  %-20s bSS %-20s at end of chain &" % (u1,u2))
-                    else:
-                        print("  %-20s bSS %-20s between chains" % (u1,u2))
+                    if verbose >= 3:
+                        if c == MCS_to_min_index[MCS]:
+                            print("  %-20s bSS %-20s at start of chain &" % (u1,u2))
+                        elif e == MCS_to_max_index[MCS]:
+                            print("  %-20s bSS %-20s at end of chain &" % (u1,u2))
+                        else:
+                            print("  %-20s bSS %-20s between chains" % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
                     unitid_to_bss_partner[u1] = u2
                 elif c == MCS_to_min_index[MCS] and pc == c and not MCS2:
                     # c is at start of chain but does not make a cWW pair
-                    print("  %-20s bSS %-20s at start of chain *" % (u1,u2))
-                    print(c,pc,e,pe,MCS,MCS2,MCS3)
+                    if verbose >= 3:
+                        print("  %-20s bSS %-20s at start of chain *" % (u1,u2))
+                        print(c,pc,e,pe,MCS,MCS2,MCS3)
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
                     unitid_to_bss_partner[u1] = u2
                 elif e == MCS_to_max_index[MCS] and pe == e and not MCS3:
                     # e is at end of chain but does not make a cWW pair
-                    print("  %-20s bSS %-20s at end of chain *" % (u1,u2))
+                    if verbose >= 3:
+                        print("  %-20s bSS %-20s at end of chain *" % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
                     unitid_to_bss_partner[u1] = u2
@@ -1475,36 +1441,38 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 for (v1,v2) in opposite_pairs:
                                     int1 = unit_id_pair_to_interaction.get((v1,v2),None)
                                     int2 = unit_id_pair_to_interaction.get((v2,v1),None)
-                                    print("  Found complementary pair %s and %s making %s or %s" % (v1,v2,int1,int2))
-                                # if not found_ncWW:
-                                #     print('  No ncWW interaction found in this IL')
+                                    if verbose >= 3:
+                                        print("  Found complementary pair %s and %s making %s or %s" % (v1,v2,int1,int2))
                                 if found_other_interaction:
-                                    print('  Found other interaction in this IL')
-                                print('  Recording bSS between %s and %s' % (u1,u2))
-                                # input('  Press enter to continue')
+                                    if verbose >= 3:
+                                        print('  Found other interaction in this IL')
+                                if verbose >= 3:
+                                    print('  Recording bSS between %s and %s' % (u1,u2))
                             else:
                                 pass
                                 # for pair in opposite_pairs:
                                 #     print("  Found complementary pair %s and %s" % pair)
                                 # print('  Not recording bSS between %s and %s' % (u1,u2))
-                                # input('  Press enter to continue')
 
                         if not complementary:
                             bSS_list.append((u1,u2,0))
                             bSS_list.append((u2,u1,0))
                             unitid_to_bss_partner[u1] = u2
-                            print('  %-20s bSS %-20s from symmetric IL' % (u1,u2))
+                            if verbose >= 3:
+                                print('  %-20s bSS %-20s from symmetric IL' % (u1,u2))
 
                     else:
                         bSS_list.append((u1,u2,0))
                         bSS_list.append((u2,u1,0))
                         unitid_to_bss_partner[u1] = u2
-                        print("  %-20s bSS %-20s gap between cWW's" % (u1,u2))
+                        if verbose >= 3:
+                            print("  %-20s bSS %-20s gap between cWW's" % (u1,u2))
                 elif abs(pc-pe) > 1:
-                    if c == MCS_to_min_index[MCS]:
-                        print('  %-20s bSS %-20s at start of chain #' % (u1,u2))
-                    else:
-                        print('  %-20s bSS %-20s distance 1 apart' % (u1,u2))
+                    if verbose >= 3:
+                        if c == MCS_to_min_index[MCS]:
+                            print('  %-20s bSS %-20s at start of chain #' % (u1,u2))
+                        else:
+                            print('  %-20s bSS %-20s distance 1 apart' % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
                     unitid_to_bss_partner[u1] = u2
@@ -1512,8 +1480,9 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 # move up the "lower" index
                 c = e
 
-            print("  Last index is %d" % c)
-            print("  Max  index is %s" % MCS_to_max_index[MCS])
+            if verbose >= 3:
+                print("  Last index is %d" % c)
+                print("  Max  index is %s" % MCS_to_max_index[MCS])
 
         if len(bSS_list) > 0:
             interaction_to_list_of_tuples['bSS'] = bSS_list
@@ -1556,11 +1525,9 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             if unitid1 == unitid_to_cww_partner[unitid2]:
                 # hairpin loop
                 loop = [unitid1,unitid2]
-                # print('  Found hairpin loop %s and %s' % (unitid1,unitid2))
             else:
                 # walk from unitid1 to unitid2, collecting all nucleotides
                 loop = [unitid1,unitid2]
-                # print(loop)
                 start = unitid1
                 unitid1 = ''
                 while start != unitid1:
@@ -1570,9 +1537,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             unitid2 = unitid_to_bss_partner[unitid1]
                             loop.append(unitid1)
                             loop.append(unitid2)
-                            # print(loop)
                             bss_done.add((unitid1,unitid2))
-                            # print(unitid1,unitid2)
                             if unitid2 in unitid_to_cww_partner:
                                 unitid1 = unitid_to_cww_partner[unitid2]
 
@@ -1589,9 +1554,10 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     full_loop['merged_from'] = [len(all_loops)]
                     all_loops.append(full_loop)
 
-                    for i, unitid in enumerate(full_loop['unit_ids']):
-                        print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
-                    print()
+                    if verbose >= 3:
+                        for i, unitid in enumerate(full_loop['unit_ids']):
+                            print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
+                        print()
 
         # map flanking cWW pairs to list of loop indices, to find shared cWW pairs
         flanking_cWW_pair_to_loop = defaultdict(list)
@@ -1622,15 +1588,17 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             if len(triple_list) == 2:
                 cWW_pairs_to_check.append(cWW_pair)
             elif len(triple_list) > 2:
-                print('  Too many loops between %s and %s' % cWW_pair)
-                for index, v1, v2 in triple_list:
-                    print(all_loops[index])
+                if verbose >= 3:
+                    print('  Too many loops between %s and %s' % cWW_pair)
+                    for index, v1, v2 in triple_list:
+                        print(all_loops[index])
 
         # if some loops share a cWW pair, check if they should be merged
         if len(cWW_pairs_to_check) > 0:
             # record unit id pairs to interactions
             unit_id_pair_to_interaction = {}
-            print("Setting up unit_id_pair_to_interaction")
+            if verbose >= 3:
+                print("Setting up unit_id_pair_to_interaction")
             for interaction in sorted(interaction_to_pair_list.keys()):
                 # print("  Processing %s" % interaction)
                 # if interaction in ["s33","s35","s53","s55"]+Leontis_Westhof_basepairs:
@@ -1661,7 +1629,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 loop0 = all_loops[index0]
                 loop1 = all_loops[index1]
 
-                print('  Found %s and %s sharing cWW pair %s and %s' % (loop0['type'],loop1['type'],u1,u2))
+                if verbose >= 3:
+                    print('  Found %s and %s sharing cWW pair %s and %s' % (loop0['type'],loop1['type'],u1,u2))
 
                 loop0_unit_ids = set(loop0['unit_ids']) - set([u1,u2])
                 loop1_unit_ids = set(loop1['unit_ids']) - set([u1,u2])
@@ -1674,11 +1643,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         if (v1,v2) in unit_id_pair_to_interaction:
                             interaction = unit_id_pair_to_interaction[(v1,v2)]
                             merge_loops = True
-                            print('    Found interaction %s between %s and %s' % (interaction,v1,v2))
+                            if verbose >= 3:
+                                print('    Found interaction %s between %s and %s' % (interaction,v1,v2))
                         if (v2,v1) in unit_id_pair_to_interaction:
                             interaction = unit_id_pair_to_interaction[(v2,v1)]
                             merge_loops = True
-                            print('    Found interaction %s between %s and %s' % (interaction,v2,v1))
+                            if verbose >= 3:
+                                print('    Found interaction %s between %s and %s' % (interaction,v2,v1))
 
                 # is there a stacking interaction to the opposite side of the cWW pair?
                 # this happens often enough that we need to check for it; e.g., IL_4V9F_008 and IL_4V9F_009
@@ -1690,19 +1661,23 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 intersect = unitid_face_to_stacking_partners[(a1,'5')] & loop1_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    print("    Found 5' face of %s stacking on %s" % (a1,str(intersect)))
+                    if verbose >= 3:
+                        print("    Found 5' face of %s stacking on %s" % (a1,str(intersect)))
                 intersect = unitid_face_to_stacking_partners[(a2,'3')] & loop1_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    print("    Found 3' face of %s stacking on %s" % (a2,str(intersect)))
+                    if verbose >= 3:
+                        print("    Found 3' face of %s stacking on %s" % (a2,str(intersect)))
                 intersect = unitid_face_to_stacking_partners[(b1,'5')] & loop0_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    print("    Found 5' face of %s stacking on %s" % (b1,str(intersect)))
+                    if verbose >= 3:
+                        print("    Found 5' face of %s stacking on %s" % (b1,str(intersect)))
                 intersect = unitid_face_to_stacking_partners[(b2,'3')] & loop0_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    print("    Found 3' face of %s stacking on %s" % (b2,str(intersect)))
+                    if verbose >= 3:
+                        print("    Found 3' face of %s stacking on %s" % (b2,str(intersect)))
 
                 if merge_loops:
                     ids0 = loop0['border_unit_ids']
@@ -1713,12 +1688,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     # ids0 = keep_loop_ids(ids0,u1,u2)
                     # ids1 = keep_loop_ids(ids1,u1,u2)
 
-                    print('    Merging loops')
-                    print('    ids0 is %s' % ids0)
-                    print('    ids1 is %s' % ids1)
-                    print('    cWW pair to merge on is %s to %s' % (u1,u2))
-                    print('    ids0 is %s' % ids0)
-                    print('    ids1 is %s' % ids1)
+                    if verbose >= 3:
+                        print('    Merging loops')
+                        print('    ids0 is %s' % ids0)
+                        print('    ids1 is %s' % ids1)
+                        print('    cWW pair to merge on is %s to %s' % (u1,u2))
+                        print('    ids0 is %s' % ids0)
+                        print('    ids1 is %s' % ids1)
 
                     if len(ids0) == 2:
                         # easy to merge HL into IL or junction
@@ -1757,7 +1733,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             new_loop.append(ids0[i])
                             i += 1
 
-                    print("    new loop is: %s" % new_loop)
+                    if verbose >= 3:
+                        print("    new loop is: %s" % new_loop)
 
                     full_loop, loop_counter = fill_in_strands_of_loop(new_loop,unit_id_to_fields,MCS_index_to_unit_id,loop_counter)
                     if full_loop:
@@ -1773,13 +1750,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 if t[0] == index0 or t[0] == index1:
                                     flanking_cWW_pair_to_loop[cWW_pair][i] = (loop_index,t[1],t[2])
 
-                        for i, unitid in enumerate(full_loop['unit_ids']):
-                            print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
-                        print()
+                        if verbose >= 3:
+                            for i, unitid in enumerate(full_loop['unit_ids']):
+                                print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
+                            print()
 
-                        if len(full_loop['merged_from']) > 2:
-                            print('  Merged from these loop indices: %s' % full_loop['merged_from'])
-                            # input('  Press enter to continue')
+                            if len(full_loop['merged_from']) > 2:
+                                print('  Merged from these loop indices: %s' % full_loop['merged_from'])
 
         # stuff the loops in here, even though they don't fit the rest of the pattern
         interaction_to_list_of_tuples['loops'] = all_loops
@@ -1816,7 +1793,6 @@ def fill_in_strands_of_loop(loop,unit_id_to_fields,MCS_index_to_unit_id,loop_cou
                     all_border_indicators.append('0')
                 else:
                     missing_index.append(index)
-                    # print('  Missing index %d after %s in %s' % (index,loop[0],MCS))
 
     if len(missing_index) > 0:
         # do not create a loop when there are missing nucleotides
@@ -1868,7 +1844,6 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
                     interaction = "p_" + str(chain_distance)
                     interaction_to_list_of_tuples[interaction].append((u1,u2,0))
                     category_to_interactions["covalent"].add(interaction)
-                    #print("%s\t%s\t%s" % (u1,interaction,u2))
 
     return interaction_to_list_of_tuples, category_to_interactions, timerData
 
@@ -1891,9 +1866,6 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
     else:
         # bases = structure.residues(type = ["RNA linking","DNA linking"])  # load nice RNA/DNA nucleotides
         bases = structure.residues(type = ["RNA","DNA"])  # load all RNA/DNA nucleotides
-
-    # for base in bases:
-    #     print("  Testing %s %s %s %s" % (base.unit_id(),base.chain,base.model,base.symmetry))
 
     if not timerData:
         timerData = myTimer("start")
@@ -2126,7 +2098,7 @@ def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
                 interaction_reversed = "ns" + oxygenmin + "5"
 
     if False and len(interaction) > 0:
-        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,xmin,ymin,zmin,nt1.unit_id(),nt2.unit_id()))
+        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,xmin,ymin,zmin,nt1.unit_id(),nt2.unit_id()))
 
     if datapoint:
         if len(interaction) > 0:
@@ -2190,7 +2162,8 @@ def check_convex_hull_atoms(x,y,z, parent):
                                 if  1.687080*x +  1.205236*y +  3.097805 > 0:  # Left of C6-C1'
                                     inside = True
         else:
-            print("  Unrecognized parent " + parent + " in function check_convex_hull_atoms. FR3D is currently unable to recognize this modified base.")
+            if verbose >= 2:
+                print("  Unrecognized parent " + parent + " in function check_convex_hull_atoms. FR3D is currently unable to recognize this modified base.")
             return False
     return inside
 
@@ -2222,7 +2195,7 @@ def return_overlap(listOfAtoms, nt1, nt2, parent):
                 min_z = z
                 retValue = [x,y,z]
 
-            # check to see if a nt has points on both sides of the plane of a nt. See http://rna.bgsu.edu/rna3dhub/display3D/unitid/6ZMI%7C1%7CL5%7CG%7C2605,6ZMI%7C1%7CL5%7CG%7C2668 for an example.
+            # check to see if a nt has points on both sides of the plane of a nt. See https://rna.bgsu.edu/rna3dhub/display3D/unitid/6ZMI%7C1%7CL5%7CG%7C2605,6ZMI%7C1%7CL5%7CG%7C2668 for an example.
             if z < minz:
                 minz = z
             if z > maxz:
@@ -2260,7 +2233,8 @@ def get_base_atom_names(sequence):
                 base_atoms.add(parent_atom_to_modified[sequence][parent_atom])
 
     else:
-        print('  Not able to identify base atoms for %s' % sequence)
+        if verbose >= 2:
+            print('  Not able to identify base atoms for %s' % sequence)
         base_atoms = set()
 
     return base_atoms
@@ -2301,13 +2275,15 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
     nt1baseAtomsList = get_base_atom_names(nt1.sequence)
 
     if len(nt1baseAtomsList) == 0:
-        print("  Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
+        if verbose >= 2:
+            print("  Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
 
     nt2baseAtomsList = get_base_atom_names(nt2.sequence)
 
     if len(nt2baseAtomsList) == 0:
-        print("  Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
+        if verbose >= 2:
+            print("  Can't check base stacking for %s and %s" % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint, ""
 
     #Variables to flag if an atom from nt2 was projected onto nt1 and to check if nt1 atoms project onto nt2
@@ -2384,8 +2360,8 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         if abs(min_distance) < 1 or abs(normal_Z) < 0.5:
             return "", datapoint, ""
 
-    if len(interaction) > 0 and False:
-        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
+    if False and len(interaction) > 0:
+        print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
     if datapoint and len(interaction) > 0:
         datapoint['gap12'], base_points2, atomname2 = calculate_basepair_gap(nt1,nt2)
@@ -2507,22 +2483,6 @@ def calculate_base_min_distances(nt1, nt2, base_points2 = [], atomname2 = []):
                 if d < heavy_min_distance and heavy1 and not atomname2[i].startswith("H"):
                     heavy_min_distance = d
 
-                    # if "6ERI|1|AA|U|1241" in nt1.unit_id() or "6ERI|1|AA|U|1241" in nt2.unit_id():
-                    #     if "6ERI|1|AA|A|558" in nt1.unit_id() or "6ERI|1|AA|A|558" in nt2.unit_id():
-                    #         print("Minimum at %s" % (atom.name))
-
-    # investigate a concern with this calculation
-    # if "6ERI|1|AA|U|1241" in nt1.unit_id() or "6ERI|1|AA|U|1241" in nt2.unit_id():
-    #     if "6ERI|1|AA|A|558" in nt1.unit_id() or "6ERI|1|AA|A|558" in nt2.unit_id():
-    #         print("  %s %s base_min_distance = %f" % (nt1.unit_id(),nt2.unit_id(),base_min_distance))
-    #         print("  %s %s heavy_min_distance = %f" % (nt1.unit_id(),nt2.unit_id(),heavy_min_distance))
-            # for atom1 in nt1.atoms():
-            #     if atom1.name in base1_atoms:
-            #         print("atom1.name = %s" % atom1.name)
-            # for atom2 in nt2.atoms():
-            #     if atom2.name in base2_atoms:
-            #         print("atom2.name = %s" % atom2.name)
-
     return base_min_distance, heavy_min_distance, base_points1, atomname1
 
 
@@ -2606,7 +2566,6 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
         # use O3' coordinates of nucleotide before nt2 if available
         if previousO3.any():
             phosphateOxygens.append(previousO3)
-            #print('Found O3 of nucleotide before %s' % nt2.unit_id())
 
         # if nt2 has a P atom and it is far from the plane of base 1, don't look for BPh interactions
         Pcoord = get_one_atom_coordinates(nt2, "P")
@@ -2616,7 +2575,8 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
                 if abs(p_standard[2]) > 4.5: # phosphorus far from plane
                     phosphateOxygens = []
             except:
-                print("  Phosphorus calculation failed for %s,%s" % (nt1.unit_id(),nt2.unit_id()))
+                if verbose >= 2:
+                    print("  Phosphorus calculation failed for %s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
         # Loop through each donor-hydrogen site on base 1
         for sites in NAbaseMassiveAndHydrogens[parent1]:
@@ -2716,8 +2676,6 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
 
         if datapoint:
             if phosphate:
-                #print(true_phosphate)
-                #print(near_phosphate)
                 datapoint['BPh'] = phosphate
                 if phosphate in ['4BPh','8BPh']:
                     datapoint['BPh_oxygen'] = []
@@ -2725,22 +2683,17 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
                         if i in distinct_oxygens:
                             a = translate_rotate_point(nt1, oxygen_coordinates)
                             datapoint['BPh_oxygen'].append(a)
-                            #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
+                            #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
                 else:
                     a = translate_rotate_point(nt1, phosphate_oxygen)
                     datapoint['BPh_oxygen'] = [a]
-                    #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
+                    #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
 
             if ribose:
-                #print(true_ribose)
-                #print(near_ribose)
                 datapoint['BR'] = ribose
                 a = translate_rotate_point(nt1, ribose_oxygen)
                 datapoint['BR_oxygen'] = [a]
-                #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),ribose,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
-
-            #datapoint['gap12'], base_points2, atomname2 = calculate_basepair_gap(nt1,nt2)
-            #datapoint['url'] = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id())
+                #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),ribose,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
 
     return phosphate, ribose, datapoint
 
@@ -2924,34 +2877,12 @@ def calculate_basepair_gap(nt1,nt2,base_points2=[],atomname=[]):
 
     m = min(3,len(indices))
 
-    #print(len(indices))
-    #print(displacements)
-    #print(nt1.unit_id())
-    #print(nt2.unit_id())
-
-    #units = ["7O7Y|1|A2|A|1081","7O7Y|1|A2|PSU|1082"]
-    #units = ["8BUU|1|a|A|76","8BUU|1|a|U|77"]
-
     gap12 = 100
     for k in range(0,m):              # 3 nearest points
         p = displacements[indices[k]]
         z = abs(np.dot(p,nt1.rotation_matrix[:,2])[0,0])  # distance out of plane of nt1
         if z < gap12:
             gap12 = z                 # gap is smallest z value
-
-        #if nt1.unit_id() in units and nt2.unit_id() in units:
-        #    print("Atom %s of %s is %8.4f from plane of %s" % (atomname[indices[k]],nt2.unit_id(),z,nt1.unit_id()))
-
-    """
-    if nt1.unit_id() in units and nt2.unit_id() in units:
-        print(base_points2)
-        print(displacements)
-        print(distances)
-        print(nt1.centers["base"])
-        for atom in nt1.atoms():
-            print(nt1.unit_id(),atom.name,atom.x,atom.y,atom.z)
-        print("Compare %-24s %-24s gap %8.4f nt1_x %8.3f nt2_x %8.3f" % (nt1.unit_id(), nt2.unit_id(), gap12, nt1.centers["C1'"][0], nt2.centers["C1'"][0]))
-    """
 
     return gap12, base_points2, atomname
 
@@ -3027,14 +2958,15 @@ def check_sugar_ribose(nt1,nt2,parent1,datapoint):
             # trans case, base flipped over compared to cSS
             annotation = 'tSR'
     else:
-        print('  Not able to calculate orientation of SR annotation for %s-%s' % (nt1.unit_id(),nt2.unit_id()))
+        if verbose >= 2:
+            print('  Not able to calculate orientation of SR annotation for %s-%s' % (nt1.unit_id(),nt2.unit_id()))
         return "", datapoint
 
     if datapoint:
         datapoint['sugar_ribose'] = annotation
 
     # if annotation in ['cSR','tSR']:
-    #     print('%s %8.4f %8.4f %8.4f %8.4f %s-%s http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (annotation,o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+    #     print('%s %8.4f %8.4f %8.4f %8.4f %s-%s https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s https://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique' % (annotation,o2p_o2p_distance,base_o2p_distance,z,angle,nt1.sequence,nt2.sequence,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
 
     return annotation, datapoint
 
@@ -3084,10 +3016,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         normal_sgn = -1
         possible_interactions = list(cutoffs[-1].keys())
 
-    # if nt1.unit_id() == '4V9F|1|0|A|2649' and nt2.unit_id() == '4V9F|1|0|G|2094':
-    #     print(possible_interactions)
-    #     input("Press Enter to continue...")
-
     if datapoint:
         datapoint['normal_Z'] = normal_Z
 
@@ -3110,9 +3038,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 cutoff_distance_max = near_discrepancy_cutoff    # keep checking up to this number to have the data
             else:
                 cutoff_distance_max = near_discrepancy_cutoff # faster annotation
-
-            if nt1.unit_id() == '4V9F|1|0|A|2649' and nt2.unit_id() == '4V9F|1|0|G|2094':
-                print(possible_interactions)
 
             ok_normal_displ = []   # interactions with OK normal and displacement
             for interaction in possible_interactions:
@@ -3163,9 +3088,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             # if not close to meeting any cutoffs and we are not collecting data, return now to save time
             if len(ok_normal_displ) == 0 and not datapoint:
                 return "", "", quality, datapoint
-
-            if False and datapoint and len(possible_interactions) > 0:
-                print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
             # calculation revised to have the right sense to it 2023-07-19 CLZ
             # it was OK for cWW and other families where you see 3 and 5 faces
@@ -3249,10 +3171,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 elif interaction == 'csS' and pair_data['parent2'] == 'U':
                     cSS_one_hbond = True
 
-                # if nt1.unit_id() == '4V9F|1|0|A|2649' and nt2.unit_id() == '4V9F|1|0|G|2094':
-                #     print(nt1.unit_id(),nt2.unit_id(),interaction,cutoff_distance,subcategory,cut['gapmax'],pair_data["gap12"],pair_data["gap21"],pair_data["min_distance"],pair_data["heavy_min_distance"],cSS_one_hbond)
-                #     input("Press Enter to continue...")
-
                 if cutoff_distance > 0:
                     # impose the near discrepancy cutoff now, must be near a true category, not near a near category
                     if cutoff_distance < near_discrepancy_cutoff and not interaction.startswith("n"):
@@ -3265,12 +3183,14 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                     # directly classified as near, like for certain single h-bonds
                     # trust it and don't check hydrogen bonds
                     direct_near_match.append([interaction,subcategory,cutoff_distance])
-                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  directly classified as near" % (interaction,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                    if verbose >= 2:
+                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  directly classified as near" % (interaction,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
                 elif pair_data['heavy_min_distance'] > true_heavy_distance_cutoff and not cSS_one_hbond:
                     # matches a true category but the bases are too far apart for a good basepair
                     near_match.append([interaction,subcategory,cutoff_distance])
                     check_hbonds.append(interaction)
-                    print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to minimum distance" % (interaction,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
+                    if verbose >= 2:
+                        print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  switched to near due to minimum distance" % (interaction,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
                 else:
                     # true pair; could conceivably match more than one category
                     match.append([interaction,subcategory,cutoff_distance])
@@ -3284,7 +3204,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
         else:
             # check hydrogen bonds
-            #print("Checking hydrogen bonds for http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
+            #print("Checking hydrogen bonds for https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
             atom_set_to_bond_parameters = {}
             LW_to_atom_sets = {}
@@ -3314,35 +3234,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
                             # result is a dictionary with many fields
                             atom_set_to_bond_parameters[atom_set] = result
-
-                        # old code to avoid choosing a worse acceptor for a given donor-hydrogen pair
-                        # store the lowest "badness" for this donor-hydrogen pair
-                        # over all acceptors; avoids identifying a worse option
-                        # if result["bond_checked"]:
-                        #     donor     = atom_set[0]
-                        #     hydrogen  = atom_set[1]
-                        #     direction = atom_set[3]
-
-                        #     # also calculate a boolean to tell whether the bond meets the
-                        #     # specific criteria to form a hydrogen bond for this LW family
-
-                        #     # store according to donor and direction to disqualify worse acceptors
-                        #     if (donor,hydrogen,direction) in donor_hydrogen_to_badness:
-                        #         if result["badness"] < donor_hydrogen_to_badness[(donor,hydrogen,direction)]:
-                        #             donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result["badness"]
-                        #     else:
-                        #         donor_hydrogen_to_badness[(donor,hydrogen,direction)] = result["badness"]
-
-                #             if datapoint:
-                #                 message = '%4s %-4s, %-3s, %-4s, %s bond, distance %6.3f, hydrogen angle %6.1f, badness %6.3f, donor-acceptor %8s, heavy distance %6.3f, angle atoms %12s, heavy angle %6.1f' % (LW,atom_set[0],atom_set[1],atom_set[2],atom_set[3],result["distance"],result["angle"],result["badness"],result["donor_acceptor_atoms"],result["donor_acceptor_distance"],result["heavy_donor_acceptor_atoms"],result["heavy_donor_acceptor_angle"])
-                #                 # print(message)
-                #                 LW_bonds[LW].append(result)
-                #                 LW_bond_messages[LW].append(message)
-
-                # elif datapoint:
-                #     message = 'No hydrogen bonds to check for %s %s %s' % (nt1.unit_id(),nt2.unit_id(),LW)
-                #     LW_bond_messages[LW].append(message)
-                    #print(message)
 
             # store all information about hydrogen bonds checked
             if datapoint:
@@ -3390,19 +3281,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                                 hb_angle = result["heavy_donor_acceptor_angle"]
                                 if mina <= hb_angle and hb_angle <= maxa:
                                     bond_counter += 1
-                                    # print('Found a hydrogen bond for %s with %s' % (LW,atom_set))
-                                # else:
-                                #     print('!!!!!!!!!!! Rejection due to bond angle')
-
-                            # elif datapoint:
-                            #     message = 'Rejected %s, %s, %s, %s bond with distance %0.4f, angle %0.4f, badness %0.4f' % (atom_set[0],atom_set[1],atom_set[2],atom_set[3],result["distance"],result["angle"],result["badness"])
-                            #     print(message)
-                            #     # LW_bond_messages[LW].append(message)
-
-                    # if datapoint:
-                    #     message = '%s has %d out of %s checked hydrogen bonds' % (LW,bond_counter,checked_counter)
-                    #     #print(message)
-                    #     LW_bond_messages[LW] = [message] + LW_bond_messages[LW]
 
                     # this is some older diagnostics
                     if checked_counter > 0:
@@ -3435,7 +3313,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
                 if LW_bond_rank[0][3] < 2.0:
                     # if second_badness is not horrible
-                    #print("\nhttp://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
                     if datapoint:
                         datapoint['hbond_best_pair'] = LW
                     #datapoint['hbond'] = LW_bonds[LW]
@@ -3446,25 +3323,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     demotion = False
     for m in range(0,len(match)):
         # if not already near, if not enough hydrogen bonds, and if not a basepair subcategory
-
-        # if match[m][0] == 'cWWa':
-        #     for key, value in datapoint.items():
-        #         if type(value) == dict:
-        #             print(key)
-        #             for key2, value2 in value.items():
-        #                 print("   ",key2,value2)
-        #         else:
-        #             print(key,value)
-
-
         if not match[m][0].startswith("n") and not match[m][0] in hbond_interactions:
-            print("  %-5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  demoted to near by hydrogen bonds" % (match[m][0],nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
-            # if len(match) > 1:
-            #     print('  All current matches', match)
-            # if datapoint:
-            #     print_dictionary(datapoint)
-            #     print()
-            # match[m][0] = "n" + match[m][0]
+            if verbose >= 2:
+                print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  demoted to near by hydrogen bonds" % (match[m][0],nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id()))
 
             # move to the near match list, don't keep in the match list
             near_match.append(match[m])
@@ -3487,9 +3348,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         # check hydrogen bond lengths, then
         # sort near matches by cutoff_distance
 
-        # if len(near_match) > 0:
-        #     print("        %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  near match %s" % (nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),near_match))
-
         near_matches = []
         for LW, subcategory, cutoff_distance in near_match:
             # check hydrogen bond lengths
@@ -3507,16 +3365,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 # be ready to rank both by cutoff_distance and dist2
                 near_matches.append(("n"+LW,subcategory,cutoff_distance,dist2))
             else:
-                print("  %5s %-22s %-22s  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  rejected h-bonds, length %8.2f" % (LW,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),dist2))
+                if verbose >= 2:
+                    print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  rejected h-bonds, length %8.2f" % (LW,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),dist2))
                 pass
-
-        # if nt1.unit_id() in ['5J7L|1|CA|A|2176','5J7L|1|CA|U|2122']:
-        #     print("displ", displ)
-        #     print("angle_in_plane",angle_in_plane)
-        #     print("near_matches")
-        #     print(near_matches)
-        #     print(LW_to_distances)
-        #     input('Study the one above')
 
         if len(near_matches) > 0:
             # sort by product of cutoff distance and second shortest hydrogen bond
@@ -3533,14 +3384,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         interaction,subcategory,cutoff_distance = match[0]
         if cutoff_distance > 0 and not "n" in interaction:
             LW = "n" + interaction
-            print('Pair was in match but cutoff_distance > 0')
-            input("Press Enter to continue...")
         else:
             LW = interaction
 
         quality = store_basepair_quality(cutoff_distance,pair_data,LW,hydrogen_bonds)
-
-        #print(quality)
 
         if datapoint:
             datapoint['basepair'] = LW
@@ -3554,7 +3401,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
         LW_remaining = set([i.replace("n","") for i,s,cd in match])
         if len(LW_remaining) == 1:
             # one family, mutiple subcategories, quite OK, they are designed to overlap
-            #print("  Family %s, multiple subcategories, using %d" % (match[0][0],match[0][1]))
             interaction,subcategory,cutoff_distance = match[0]
             if cutoff_distance > 0 and not "n" in interaction:
                 LW = "n" + interaction
@@ -3572,8 +3418,6 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             return LW, subcategory, quality, datapoint
 
         else:
-            print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-            print("  Multiple annotations meet all cutoffs, %s" % LW_remaining)
             # loop over hydrogen bond sets from best to worst
             for LW,bond_counter,checked_counter,max_badness in LW_bond_rank:
                 for LW2,subcategory,cutoff_distance in match:
@@ -3585,10 +3429,12 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                             datapoint['cut_dist'] = cutoff_distance
                             #datapoint['hbond'] = LW_bonds[LW]
                             #datapoint['hbond_messages'] = LW_bond_messages[LW]
-                        print("  Using %s\n" % LW)
+                        if verbose >= 2:
+                            print("  %5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  multiple annotations meet cutoffs: %s" % (LW,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),LW_remaining))
                         return LW, subcategory, quality, datapoint
 
-            print("  No match between all cutoffs and all hydrogen bonds, using first match")
+            if verbose >= 2:
+                print("  No match between all cutoffs and all hydrogen bonds, using first match")
             interaction,subcategory,cutoff_distance = match[0]
             if cutoff_distance > 0 and not "n" in interaction:
                 LW = "n" + interaction
@@ -3657,24 +3503,6 @@ def get_axis_angle_from_rotation_matrix(rotation):
     b = np.zeros((3,1))                # column vector of zeros
     b[i[1],0] = axis[i[2],0]
     b[i[2],0] = -axis[i[1],0]
-
-    """
-    print(values)
-    print(vectors)
-    print("    Eigenvalue with smallest imaginary part is %d" % min_imag)
-
-    print("Axis:")
-    print(axis)
-    print(np.absolute(axis))
-    print(i)
-    print(b)
-    print(b.T)
-    print((b.T * rotation * b)[0,0])
-    print(b.T.dot(b))
-
-    print(np.dot(np.dot(b.T,rotation),b)[0,0])
-    print(np.dot(b.T,b)[0,0])
-    """
 
     angle = math.acos(np.dot(np.dot(b.T,rotation),b)[0,0] / np.dot(b.T,b)[0,0]).real
     angle = angle * np.sign(np.linalg.det(np.concatenate((b,np.dot(rotation,b),axis),axis=1)))
@@ -3834,7 +3662,8 @@ def map_PDB_list_to_PDB_IFE_dict(PDB_list):
             else:
                 PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
         except:
-            print("  Not able to map %s to its IFEs" % PDB)
+            if verbose >= 0:
+                print("  Not able to map %s to its IFEs" % PDB)
 
     # remove leading + signs
     for PDB in PDB_IFE_Dict:
@@ -3898,7 +3727,8 @@ def write_unit_data_file(PDB,unit_data_path,structure):
                 # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
                 pickle.dump(rsset, fh, 2)
 
-            print("  Wrote unit data file %s" % filename)
+            if verbose >= 1:
+                print("  Wrote unit data file %s" % filename)
 
 
 def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions):
@@ -3939,7 +3769,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                 f.write("%s\t%s\t%s\t%s\n" % (a,b,c,d))
 
     if 'loops' in interaction_to_list_of_tuples:
-        # follow format used by http://rna.bgsu.edu/rna3dhub/loops/download_with_breaks/8GLP
+        # follow format used by https://rna.bgsu.edu/rna3dhub/loops/download_with_breaks/8GLP
         filename = os.path.join(outputNAPairwiseInteractions,file_id + "_loops.txt")
         with open(filename,'w') as f:
             for full_loop in interaction_to_list_of_tuples['loops']:
@@ -3997,8 +3827,6 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
 
         output["annotations"] = annotations
 
-        #print(json.dumps(output))
-
         with open(filename,'w') as f:
             f.write(json.dumps(output))
 
@@ -4041,12 +3869,14 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
-        print("  Attempting to create input path %s" % inputPath)
+        if verbose >= 1:
+            print("  Attempting to create input path %s" % inputPath)
         os.mkdir(inputPath)
 
     # check existence of output path
     if len(outputNAPairwiseInteractions) > 0 and not os.path.exists(outputNAPairwiseInteractions):
-        print("  Attempting to create output path %s" % outputNAPairwiseInteractions)
+        if verbose >= 1:
+            print("  Attempting to create output path %s" % outputNAPairwiseInteractions)
         os.mkdir(outputNAPairwiseInteractions)
 
     # process additional arguments as PDB files
@@ -4068,7 +3898,8 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
 
     if chain_id:
         if len(entry_id) > 1:
-            print("  Chain argument can only be used with a single PDB file")
+            if verbose >= 0:
+                print("  Chain argument can only be used with a single PDB file")
             PDBs = []
         else:
             chains = chain_id.split(",")
@@ -4093,7 +3924,8 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
 
         filename = os.path.join(path,PDB)
 
-        print("  Reading file %s, which is number %d out of %d" % (filename, counter, len(PDBs)))
+        if verbose >= 1:
+            print("  Reading file %s, which is number %d out of %d" % (filename, counter, len(PDBs)))
         timerData = myTimer("Reading CIF files",timerData)
 
         # suppress error messages, but report failures at the end
@@ -4106,7 +3938,8 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
 
         interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
         timerData = myTimer("Recording interactions",timerData)
-        print("  Recording interactions in %s" % outputNAPairwiseInteractions)
+        if verbose >= 1:
+            print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
         if output_format == 'txt':
             write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions)
@@ -4138,23 +3971,17 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
                 write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
 
         else:
-            print('  Output format %s not recognized' % output_format)
+            if verbose >= 0:
+                print('  Output format %s not recognized' % output_format)
 
-    myTimer("summary",timerData)
-
-    if len(failed_structures) > 0:
-        print("  Error messages:")
-        for message in failed_structures:
-            print("  %s %s" % message)
-    else:
-        print("All files read successfully")
-
-    # note status of stacking annotations
-    if 'stacking' in categories:
-        print("  Stacking annotations are not yet finalized")
-
-    if 'basepair' in categories:
-        print("  Basepair annotations are not yet finalized")
+    if verbose >= 1:
+        myTimer("summary",timerData)
+        if len(failed_structures) > 0:
+            print("  Error messages:")
+            for message in failed_structures:
+                print("  %s %s" % message)
+        else:
+            print("All files read successfully")
 
 if __name__=="__main__":
 
@@ -4165,12 +3992,13 @@ if __name__=="__main__":
     parser.add_argument('-i', "--input", help='Input Path')
     parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,loops)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
+    parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2,3)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
     problem = False
     args = parser.parse_args()
 
-    # Following if statements deal with command line arguments.
+    # Process command line arguments
     if args.input:
         inputPath = args.input
     else:
@@ -4197,6 +4025,9 @@ if __name__=="__main__":
         category = args.category.replace("-","_")
     else:
         category = 'basepair'
+
+    if args.verbose:
+        verbose = int(args.verbose)
 
     entry_id = args.PDBfiles
 
