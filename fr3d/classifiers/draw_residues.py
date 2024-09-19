@@ -5,7 +5,7 @@ from fr3d.definitions import NAconnections
 from fr3d.definitions import NAbasecoordinates
 from fr3d.definitions import NAbasecolor
 
-def draw_base(base_seq,colorscheme,dimensions,ax,zorder=1):
+def draw_base(base_seq,colorscheme,dimensions,ax,zorder=1,origin='glycosidic'):
     """
     Connects atoms to draw one base in the specified number of dimensions
     base_seq is A, C, G, U, DA, DC, DG, DT
@@ -19,14 +19,22 @@ def draw_base(base_seq,colorscheme,dimensions,ax,zorder=1):
     new_base_y = []
     new_base_z = []
 
-    # put the glycosidic atom at the origin
-    if base_seq in ['A','G']:
-        origin = NAbasecoordinates[base_seq]['N9']
-    elif base_seq in ['C','U']:
-        origin = NAbasecoordinates[base_seq]['N1']
+    if origin == 'glycosidic':
+        # put the glycosidic atom at the origin
+        if base_seq in ['A','G']:
+            origin = NAbasecoordinates[base_seq]['N9']
+        elif base_seq in ['C','U']:
+            origin = NAbasecoordinates[base_seq]['N1']
+        else:
+            # use the zero vector
+            origin = np.array([0,0,0])
     else:
-        # use the zero vector
-        origin = np.array([0,0,0])
+        points = []
+        for atomname in NAconnections[base_seq]:
+            if not "H" in atomname and not atomname == "C1'":
+                points.append(NAbasecoordinates[base_seq][atomname])
+        # average the points:
+        origin = np.mean(points, axis=0)
 
     if colorscheme == 'default':
         for atomname in NAconnections[base_seq]:
