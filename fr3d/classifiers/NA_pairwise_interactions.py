@@ -2533,7 +2533,7 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
 
     # if the bases are far away from one another, don't check for base backbone interactions
     dis = distance_between_vectors(nt1.centers["base"], nt2.centers["base"])
-    if abs(dis) < 16:   # Initial cutoff
+    if dis and abs(dis) < 16:   # Initial cutoff
 
         # places to store interactions meeting the requirements
         site_to_phosphate_oxygens = {}
@@ -2573,7 +2573,9 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
         if Pcoord.any():
             try:
                 p_standard = translate_rotate_point(nt1, Pcoord)
-                if abs(p_standard[2]) > 4.5: # phosphorus far from plane
+                if not p_standard:
+                    phosphateOxygens = []
+                elif abs(p_standard[2]) > 4.5: # phosphorus far from plane
                     phosphateOxygens = []
             except:
                 if verbose >= 2:
@@ -3740,7 +3742,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
 
     # loop over types of output files requested
     for category in categories:
-        if category in ["near","lower","alternative","cwb"]:
+        if category in ["near","lower","alternative","cwb","loops"]:
             continue
 
         filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + category + ".txt")
