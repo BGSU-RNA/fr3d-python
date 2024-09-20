@@ -62,6 +62,9 @@ from fr3d.classifiers.NA_pairwise_interactions import map_unit_id_to_previous_O3
 
 ShowStructureReadingErrors = True
 
+verbose = 2  # also print diagnostic information
+verbose = 0  # do not print much at all
+verbose = 1  # print basic information about input, output, and number of interactions
 
 def annotate_bond_orientation(structure,pipeline=False):
 
@@ -188,7 +191,7 @@ def annotate_bond_orientation(structure,pipeline=False):
         else:
             if pipeline:
                 error_message.append('%s had a calculation error' % nt.unit_id())
-            else:
+            elif verbose >= 2:
                 print('%s had a calculation error' % nt.unit_id())
 
             bond_annotations.append({'unit_id'    : nt.unit_id(),
@@ -342,6 +345,7 @@ if __name__=="__main__":
     parser.add_argument('-i', "--input", help='Input Path')
     parser.add_argument('-c', "--category", help='Interaction category or categories (glycosidic,self_backbone)')
     parser.add_argument('-f', "--format", help='Output format (txt)')
+    parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one file')
 
     # process command line arguments
@@ -377,6 +381,9 @@ if __name__=="__main__":
         chain_id = args.chain
     else:
         chain_id = None
+
+    if args.verbose:
+        verbose = int(args.verbose)
 
     entry_id = args.PDBfiles[0].split(",")
 
