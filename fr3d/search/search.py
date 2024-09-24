@@ -10,10 +10,10 @@ import numpy as np
 import sys
 from time import time
 
-from discrepancy import matrix_discrepancy_cutoff
-from myTimer import myTimer
-from query_processing import synonym
-from pair_processing import get_pairlist
+from fr3d.geometry.discrepancy import matrix_discrepancy_cutoff
+from fr3d.search.myTimer import myTimer
+from fr3d.search.query_processing import synonym
+from fr3d.search.pair_processing import get_pairlist
 
 if sys.version_info[0] < 3:
     from time import clock as cputime  # true cpu time
