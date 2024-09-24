@@ -29,7 +29,7 @@ def checkDirectories(Q):
         DATAPATHUNITS = Q["DATAPATHUNITS"]
     else:
         try:
-            from fr3d_configuration import DATAPATHUNITS
+            from fr3d.search.fr3d_configuration import DATAPATHUNITS
             Q["DATAPATHUNITS"] = DATAPATHUNITS
         except:
             print("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
@@ -469,15 +469,12 @@ def processPDBFile(Q,structure_filename,file_id=None,pairs_only=False):
     return chains, file_id, messages
 
 
-def readPDBDatafile(DATAPATHUNITS=None):
+def readPDBDatafile(DATAPATHUNITS):
     """
     Read .pickle file containing data about each nucleic-
     acid-containing PDB file.
     This file is produced by pipeline stage NA_datafile
     """
-
-    if not DATAPATHUNITS:
-        DATAPATHUNITS = get_DATAPATHUNITS({})[1]
 
     datafile = {}
 
