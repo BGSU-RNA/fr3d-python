@@ -19,19 +19,20 @@ import sys
 from time import time
 
 from fr3d.search.myTimer import myTimer
-from fr3d.search.write_output import writeHTMLOutput
-from fr3d.search.write_output import writeCSVOutput
+
+from fr3d.search.query_processing import readQueryFromJSON
+from fr3d.search.file_reading import checkDirectories
+from fr3d.search.query_processing import retrieveQueryInformation
+from fr3d.search.query_processing import calculateQueryConstraints
+from fr3d.search.ifedata import readPositionsAndInteractions
+from fr3d.search.file_reading import readNAPairsFile
 
 from fr3d.geometry.discrepancy import matrix_discrepancy
 from fr3d.search.orderBySimilarity import treePenalizedPathLength
 from fr3d.search.orderBySimilarity import reorderSymmetricMatrix
 
-from fr3d.search.query_processing import retrieveQueryInformation
-from fr3d.search.query_processing import calculateQueryConstraints
-from fr3d.search.query_processing import readQueryFromJSON
-from fr3d.search.ifedata import readPositionsAndInteractions
-from fr3d.search.file_reading import readNAPairsFile
-from fr3d.search.file_reading import checkDirectories
+from fr3d.search.write_output import writeHTMLOutput
+from fr3d.search.write_output import writeCSVOutput
 
 from fr3d.search.fr3d_configuration import SERVER
 from fr3d.search.fr3d_configuration import MAXTIME
