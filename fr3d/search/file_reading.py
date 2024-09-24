@@ -242,9 +242,8 @@ def writeNAPairwiseInteractions(structure,DATAPATHPAIRS,messages=[]):
 
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories)
 
-    # use RNA_pairs for now until _NA_pairs is established
-
-    pdb_filename = os.path.join(DATAPATHPAIRS,structure.pdb+'_RNA_pairs.pickle')
+    # used RNA_pairs until September 2024
+    pdb_filename = os.path.join(DATAPATHPAIRS,structure.pdb+'_NA_pairs.pickle')
     with open(pdb_filename, 'wb') as fh:
         # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
         pickle.dump(interaction_to_list_of_tuples, fh, 2)
@@ -737,8 +736,8 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
     pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
 
     if not os.path.exists(pathAndFileName):
-        # old standard was _RNA_ but that is being phased out
-        pairsFileName = file_id + '_RNA_pairs.pickle'
+        # old standard was _RNA_ but that is being phased out in September 2024
+        pairsFileName = file_id + '_NA_pairs.pickle'
         pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
 
         if not os.path.exists(pathAndFileName) and not SERVER:
@@ -756,7 +755,7 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
                 # compute pairwise interactions locally and store locally
 
                 # continue with old standard until we switch over completely
-                pairsFileName = file_id + '_RNA_pairs.pickle'
+                pairsFileName = file_id + '_NA_pairs.pickle'
                 pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
 
                 not_chains, file_id, messages = processPDBFile(Q,file_id,file_id,pairs_only=True)
