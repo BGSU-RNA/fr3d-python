@@ -3,27 +3,17 @@
 import numpy as np
 import os
 from collections import defaultdict
-from fr3d_configuration import SERVER
-from fr3d_configuration import OUTPUTPATH
-from fr3d_configuration import TEMPLATEPATH
-from fr3d_configuration import JS1
-from fr3d_configuration import JS2
-from fr3d_configuration import JS3
-from fr3d_configuration import JS4
-from fr3d_configuration import JS5
-from fr3d_configuration import REFRESHTIME
 
 def getCSVfilename(Q):
-    if SERVER:
-        csvfilename = Q['queryID'] + "/" + Q['queryID'] + ".csv"
-        csvlink     = Q['queryID'] + ".csv"
+    if "CSVFILENAME" in Q:
+        csvfilename = Q['CSVFILENAME']
+        csvlink     = os.path.split(csvfilename)[1]
     else:
-        csvfilename = "%s.csv" % Q['name'].encode('ascii', 'ignore')
         csvfilename = "%s.csv" % Q['name']
         csvfilename = csvfilename.replace(" ","_")
         csvlink     = csvfilename
 
-    return(csvfilename, csvlink)
+    return csvfilename, csvlink
 
 def format_resolution(data):
 
@@ -41,7 +31,8 @@ def format_resolution(data):
     return s
 
 def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
-    """ Write the list of candidates in an HTML format that also shows
+    """
+    Write the list of candidates in an HTML format that also shows
     the coordinate window and a heat map of all-against-all distances.
     """
 
@@ -64,10 +55,9 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
     pagetitle = "FR3D %s" % Q['name'].encode('ascii','ignore')
 
-    if SERVER:
-        htmlfilename = Q['queryID'] + "/" + Q['queryID']
+    if "HTMLFILENAME" in Q:
+        htmlfilename = Q['HTMLFILENAME']
     else:
-        htmlfilename = Q['name'].replace(" ","_").encode('ascii', 'ignore')
         htmlfilename = Q['name'].replace(" ","_")
 
     candidatelist = '<table id="instances"; style="white-space:nowrap;">\n'
@@ -206,13 +196,16 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
             else:
                 discrepancydata += "]\n]" # end list of instances, end list of data
 
-    # get the path of the current program
-    current_path,current_program = os.path.split(os.path.abspath(__file__))
-
-    filename = os.path.join(current_path,'template.html')
+    # find the location of the template for the HTML file
+    if "TEMPLATEPATH" in Q:
+        template_filename = Q["TEMPLATEPATH"]
+    else:
+        # get the path of the current program
+        current_path,current_program = os.path.split(os.path.abspath(__file__))
+        template_filename = os.path.join(current_path,'template.html')
 
     # read template.html into one string
-    with open(filename, 'r') as myfile:
+    with open(template_filename, 'r') as myfile:
         template = myfile.read()
 
     # replace ###PAGETITLE### with pagetitle
@@ -238,8 +231,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
     template = template.replace("###QUERYNAME###",str(queryNote.encode('ascii','ignore')))
 
-    if SERVER:
-        seeModifyQuery = '<a href="http://rna.bgsu.edu/webfr3d/fr3d.php?id=%s">See and modify query</a> ' % Q["queryID"]
+    if "seeModifyQuery" in Q:
+        seeModifyQuery = Q["seeModifyQuery"]
     else:
         seeModifyQuery = ''
 
@@ -257,10 +250,57 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     # replace ###CANDIDATELIST### with candidatelist
     template = template.replace("###CANDIDATELIST###",candidatelist)
 
+    if "JS1" in Q:
+        JS1 = Q["JS1"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import JS1
+        except:
+            JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
+
+    if "JS2" in Q:
+        JS2 = Q["JS2"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import JS2
+        except:
+            JS2 = '  <script src="./js/jquery.jmolTools.js"></script>'
+
+    if "JS3" in Q:
+        JS3 = Q["JS3"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import JS3
+        except:
+            JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
+
+    if "JS4" in Q:
+        JS4 = Q["JS4"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import JS4
+        except:
+            JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
+    if "JS5" in Q:
+        JS5 = Q["JS5"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import JS5
+        except:
+            JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+
     template = template.replace("###JS1###",JS1)
     template = template.replace("###JS2###",JS2)
     template = template.replace("###JS3###",JS3)
     template = template.replace("###JS4###",JS4)
+
+    if "REFRESHTIME" in Q:
+        REFRESHTIME = Q["REFRESHTIME"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import REFRESHTIME
+        except:
+            REFRESHTIME = 2
 
     refresh = ""
     if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
@@ -275,12 +315,14 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         template = template.replace("###DISCREPANCYDATA###","")
         template = template.replace("###JS5###","")    # do not display a heat map
 
-    if "OUTPUTPATH" in Q:
-        OUTPUTPATH = Q["OUTPUTPATH"]
+    if "HTMLFILENAME" in Q:
+        outputfilename = Q["HTMLFILENAME"]
     else:
-        from fr3d_configuration import OUTPUTPATH
-
-    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
+        if "OUTPUTPATH" in Q:
+            OUTPUTPATH = Q["OUTPUTPATH"]
+        else:
+            from fr3d.search.fr3d_configuration import OUTPUTPATH
+        outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
 
     if Q.get('printFileOperations',False):
         print("Writing to %s" % outputfilename)
@@ -300,8 +342,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     with open(outputfilename, 'w') as myfile:
         myfile.write(template)
 
-    if SERVER:
-        os.system("rm %s.gz" % outputfilename)
+    if "gzip" in Q and Q["gzip"]:
+        os.system("rm -f %s.gz" % outputfilename)
         os.system("gzip %s" % outputfilename)
 
 
@@ -421,19 +463,19 @@ def writeCSVOutput(Q,candidates):
 
         # make link to view
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
-            candidatelist += '"http://rna.bgsu.edu/rna3dhub/display3D/unitid/' + unit_id_list + '",'
+            candidatelist += '"https://rna.bgsu.edu/rna3dhub/display3D/unitid/' + unit_id_list + '",'
         else:
             candidatelist += ','
 
         # make link to coordinates
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
-            candidatelist += '"http://rna.bgsu.edu/rna3dhub/rest/getCoordinates?coord=' + unit_id_list + '",'
+            candidatelist += '"https://rna.bgsu.edu/rna3dhub/rest/getCoordinates?coord=' + unit_id_list + '",'
         else:
             candidatelist += ','
 
         # make link to sequence variability server
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
-            candidatelist += '"http://rna.bgsu.edu/correspondence/variability?id=' + unit_id_list + '&format=unique",'
+            candidatelist += '"https://rna.bgsu.edu/correspondence/variability?id=' + unit_id_list + '&format=unique",'
         else:
             candidatelist += ','
 
@@ -441,12 +483,14 @@ def writeCSVOutput(Q,candidates):
 
     csvfilename,csvlink = getCSVfilename(Q)
 
-    if "OUTPUTPATH" in Q:
-        OUTPUTPATH = Q["OUTPUTPATH"]
+    if "CSVFILENAME" in Q:
+        outputfilename = Q["CSVFILENAME"]
     else:
-        from fr3d_configuration import OUTPUTPATH
-
-    outputfilename = os.path.join(OUTPUTPATH,csvfilename)
+        if "OUTPUTPATH" in Q:
+            OUTPUTPATH = Q["OUTPUTPATH"]
+        else:
+            from fr3d.search.fr3d_configuration import OUTPUTPATH
+        outputfilename = os.path.join(OUTPUTPATH,csvfilename)
 
     if not 'server' in Q:
         print("Writing to %s" % outputfilename)
@@ -454,22 +498,12 @@ def writeCSVOutput(Q,candidates):
     with open(outputfilename, 'w') as myfile:
         myfile.write(candidatelist)
 
-    """
-    # Unfortunately, this doesn't work in practice, because the downloaded file is
-    # unzipped but still has the .gz extension and does not have .csv.gz extension.
-    # Don't know why.  If you rename it from .gz to .csv, it's fine.
-    if SERVER:
-        os.system("rm %s" % (OUTPUTPATH+csvfilename+'.gz'))
-        os.system("gzip %s" % (OUTPUTPATH+csvfilename))
-    """
 
 def writeCandidateOutput(candidates, Q, ifedata):
     queryName = Q['name']
     fileName =   '../output/' + queryName.encode('ascii','ignore') + '_python_output.txt'
     file = open(fileName, 'w')
     file.write("Found " + str(len(candidates)) + " candidates\n")
-
-
 
     for candidate in candidates:
         dataLine = ""
