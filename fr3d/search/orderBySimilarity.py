@@ -1,14 +1,15 @@
+"""
+Given an n by n distance (or dissimilarity) matrix,
+reorder the rows and columns to put similar points near each other.
+"""
+
 import numpy as np
 from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.spatial.distance import squareform
 import random
-from myTimer import myTimer
-# see https://matplotlib.org/users/pyplot_tutorial.html
-# from tspy import TSP
 
 def treePenalty(distance):
     Z = linkage(squareform(distance), "average")
-#    print("regular",Z)
 
     penalty = np.zeros(distance.shape)
 
@@ -124,27 +125,20 @@ def example():
 
 def testRuntime():
     sizes = [10, 20, 40, 80, 160, 320, 640]
-    timerData = myTimer("start")
     numReplications = 10
 
     print("orderBySimilarity: testRuntime")
 
     for rep in range(0,numReplications):
         for size in sizes:
-            timerData = myTimer("generate_"+str(size))
             points, distance = generateUniformDataset(size,3)
 
-            timerData = myTimer("treepenalty_"+str(size))
             penalizedMatrix = distance + 5*treePenalty(distance)
 
-            timerData = myTimer("OLO_"+str(size))
             order = optimalLeafOrder(distance)
 
-            timerData = myTimer("tpTSP_"+str(size))
             penalizedMatrix = distance + 5*penalizedMatrix
             order = multipleGreedyInsertionPathLength(distance,2)
-
-        print(myTimer("summary"))
 
     methods = ["generate","treepenalty","OLO","tpTSP"]
     times = {}
