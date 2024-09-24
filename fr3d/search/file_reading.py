@@ -41,7 +41,7 @@ def checkDirectories(Q):
         DATAPATHPAIRS = Q["DATAPATHPAIRS"]
     else:
         try:
-            from fr3d_configuration import DATAPATHPAIRS
+            from fr3d.search.fr3d_configuration import DATAPATHPAIRS
             Q["DATAPATHPAIRS"] = DATAPATHPAIRS
         except:
             print("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
@@ -53,7 +53,7 @@ def checkDirectories(Q):
         OUTPUTPATH = Q["OUTPUTPATH"]
     else:
         try:
-            from fr3d_configuration import OUTPUTPATH
+            from fr3d.search.fr3d_configuration import OUTPUTPATH
             Q["OUTPUTPATH"] = OUTPUTPATH
         except:
             print("Error: Could not find OUTPUTPATH in query or in fr3d_configuration.py")
@@ -88,7 +88,7 @@ def get_DATAPATHUNITS(Q):
         DATAPATHUNITS = Q["DATAPATHUNITS"]
     else:
         try:
-            from fr3d_configuration import DATAPATHUNITS
+            from fr3d.search.fr3d_configuration import DATAPATHUNITS
         except:
             print("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
             Q["errorMessage"].append("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
@@ -123,7 +123,7 @@ def get_DATAPATHPAIRS(Q):
         DATAPATHPAIRS = Q["DATAPATHPAIRS"]
     else:
         try:
-            from fr3d_configuration import DATAPATHPAIRS
+            from fr3d.search.fr3d_configuration import DATAPATHPAIRS
         except:
             print("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
             Q["errorMessage"].append("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
@@ -157,7 +157,7 @@ def get_CIFPATH(Q):
         CIFPATH = Q["CIFPATH"]
     else:
         try:
-            from fr3d_configuration import CIFPATH
+            from fr3d.search.fr3d_configuration import CIFPATH
             Q["CIFPATH"] = CIFPATH
         except:
             print("Error: Could not find CIFPATH in query or in fr3d_configuration.py")
