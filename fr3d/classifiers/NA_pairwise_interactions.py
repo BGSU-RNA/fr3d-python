@@ -3809,9 +3809,14 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
         annotations = []
         for interaction in category_to_interactions[category]:
             inter = interaction
+            if "n" in interaction:
+                continue
+            if "cWB" in interaction or "cBW" in interaction:
+                continue
             if category == 'basepair':
                 # capitalize base edges
                 inter = interaction.replace("w","W").replace("s","S").replace("h","H")
+                inter = interaction.replace("a","")
             # if this category has a restricted list of interactions to output
             if len(categories[category]) == 0 or inter in categories[category]:
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
