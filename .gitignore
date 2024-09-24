@@ -15,6 +15,7 @@ __pycache__/
 localpath.py
 fr3d/localpath.py
 fr3d/cif/oldStructures.py
+fr3d/search/fr3d_configuration.py
 
 # C extensions
 *.so
