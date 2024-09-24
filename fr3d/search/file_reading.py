@@ -82,6 +82,8 @@ def get_DATAPATHUNITS(Q):
     the centers and rotation matrices.
     """
 
+    DATAPATHUNITS = None
+
     if "DATAPATHUNITS" in Q:
         DATAPATHUNITS = Q["DATAPATHUNITS"]
     else:
@@ -92,18 +94,19 @@ def get_DATAPATHUNITS(Q):
             Q["errorMessage"].append("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
             Q["errorStatus"] = "write and exit"
 
-    directory = DATAPATHUNITS
-    try:
-        os.stat(directory)
-    except:
+    if DATAPATHUNITS:
+        directory = DATAPATHUNITS
         try:
-            os.mkdir(directory)
-            print("Made " + directory + " directory")
+            os.stat(directory)
         except:
-            print("Error: Could not make " + directory + " directory")
-            Q["errorMessage"].append("Error: Could not make " + directory + " directory")
-            Q["errorStatus"] = "write and exit"
-            return Q
+            try:
+                os.mkdir(directory)
+                print("Made " + directory + " directory")
+            except:
+                print("Error: Could not make " + directory + " directory")
+                Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+                Q["errorStatus"] = "write and exit"
+                return Q
 
     return Q, DATAPATHUNITS
 
@@ -113,6 +116,8 @@ def get_DATAPATHPAIRS(Q):
     Figure out where to look for files containing information on individual units,
     the centers and rotation matrices.
     """
+
+    DATAPATHPAIRS = None
 
     if "DATAPATHPAIRS" in Q:
         DATAPATHPAIRS = Q["DATAPATHPAIRS"]
@@ -124,18 +129,19 @@ def get_DATAPATHPAIRS(Q):
             Q["errorMessage"].append("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
             Q["errorStatus"] = "write and exit"
 
-    directory = DATAPATHPAIRS
-    try:
-        os.stat(directory)
-    except:
+    if DATAPATHPAIRS:
+        directory = DATAPATHPAIRS
         try:
-            os.mkdir(directory)
-            print("Made " + directory + " directory")
+            os.stat(directory)
         except:
-            print("Error: Could not make " + directory + " directory")
-            Q["errorMessage"].append("Error: Could not make " + directory + " directory")
-            Q["errorStatus"] = "write and exit"
-            return Q
+            try:
+                os.mkdir(directory)
+                print("Made " + directory + " directory")
+            except:
+                print("Error: Could not make " + directory + " directory")
+                Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+                Q["errorStatus"] = "write and exit"
+                return Q
 
     return Q, DATAPATHPAIRS
 
@@ -463,12 +469,15 @@ def processPDBFile(Q,structure_filename,file_id=None,pairs_only=False):
     return chains, file_id, messages
 
 
-def readPDBDatafile(DATAPATHUNITS):
+def readPDBDatafile(DATAPATHUNITS=None):
     """
     Read .pickle file containing data about each nucleic-
     acid-containing PDB file.
     This file is produced by pipeline stage NA_datafile
     """
+
+    if not DATAPATHUNITS:
+        DATAPATHUNITS = get_DATAPATHUNITS({})[1]
 
     datafile = {}
 
