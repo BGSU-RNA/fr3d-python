@@ -12,13 +12,11 @@ import pickle
 import sys
 import urllib
 
-from file_reading import readNAPositionsFile
-from file_reading import readProteinPositionsFile
-from file_reading import readPDBDatafile
-from file_reading import get_DATAPATHUNITS
-from file_reading import get_CIFPATH
-
-from fr3d_configuration import SERVER
+from fr3d.search.file_reading import readNAPositionsFile
+from fr3d.search.file_reading import readProteinPositionsFile
+from fr3d.search.file_reading import readPDBDatafile
+from fr3d.search.file_reading import get_DATAPATHUNITS
+from fr3d.search.file_reading import get_CIFPATH
 
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
@@ -1304,7 +1302,7 @@ def calculateQueryConstraints(Q):
 
         # on the server, only PDB files will be searched
         # if we got this far, no PDB file will be found
-        if SERVER:
+        if "PDBONLY" in Q and Q["PDBONLY"]:
             print('  Unknown file %s' % search_file)
             Q["errorMessage"].append("Did not recognize %s as a file from the Protein Data Bank" % search_file)
             continue
