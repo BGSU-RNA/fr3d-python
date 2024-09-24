@@ -4,12 +4,12 @@ Read centers and rotations and pairwise interactions for an IFE or entire 3D str
 
 import numpy as np
 
-from file_reading import readNAPairsFile
-from file_reading import readNAPositionsFile
-from file_reading import readProteinPositionsFile
-from file_reading import readUnitAnnotations
+from fr3d.search.file_reading import readNAPairsFile
+from fr3d.search.file_reading import readNAPositionsFile
+from fr3d.search.file_reading import readProteinPositionsFile
+from fr3d.search.file_reading import readUnitAnnotations
 
-from query_processing import getMoleculeType
+from fr3d.search.query_processing import getMoleculeType
 
 
 def combine_dicts(x,y):
