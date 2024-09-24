@@ -34,12 +34,6 @@ from fr3d.search.orderBySimilarity import reorderSymmetricMatrix
 from fr3d.search.write_output import writeHTMLOutput
 from fr3d.search.write_output import writeCSVOutput
 
-from fr3d.search.fr3d_configuration import SERVER
-from fr3d.search.fr3d_configuration import MAXTIME
-from fr3d.search.fr3d_configuration import MAXCANDIDATES
-from fr3d.search.fr3d_configuration import MAXCANDIDATESHEATMAP
-from fr3d.search.fr3d_configuration import REFRESHTIME
-
 from fr3d.search.search import FR3D_search
 
 if sys.version_info[0] < 3:
@@ -129,13 +123,32 @@ def fr3d_search(Q,timerData=None):
 
     # pass along information to be able to terminate long, slow searches
     if not "MAXTIME" in Q:
+        try:
+            from fr3d.search.fr3d_configuration import MAXTIME
+        except:
+            MAXTIME = 300
         Q["MAXTIME"] = MAXTIME
 
     if not "MAXCANDIDATES" in Q:
+        try:
+            from fr3d.search.fr3d_configuration import MAXCANDIDATES
+        except:
+            MAXCANDIDATES = 10000
         Q["MAXCANDIDATES"] = MAXCANDIDATES
 
     if not "MAXCANDIDATESHEATMAP" in Q:
+        try:
+            from fr3d.search.fr3d_configuration import MAXCANDIDATESHEATMAP
+        except:
+            MAXCANDIDATESHEATMAP = 300
         Q["MAXCANDIDATESHEATMAP"] = MAXCANDIDATESHEATMAP
+
+    if not "REFRESHTIME" in Q:
+        try:
+            from fr3d.search.fr3d_configuration import REFRESHTIME
+        except:
+            REFRESHTIME = 2
+        Q["REFRESHTIME"] = REFRESHTIME
 
     Q["FR3Dstarttime"] = time()           # clock time when this job started
     Q["CPUTimeUsed"] = 0                  # charge users for searching, not file loading
@@ -236,7 +249,7 @@ def fr3d_search(Q,timerData=None):
 
         # write out a provisional list of candidates if enough time has elapsed,
         # using clock time not CPU time
-        if cputime() - lastWriteTime > REFRESHTIME:
+        if cputime() - lastWriteTime > Q["REFRESHTIME"]:
             # for geometric or mixed searches, sort candidates by discrepancy from query
             if((Q["type"] == "geometric" or Q["type"] == "mixed")):
                 candidates.sort(key = lambda candidate: candidate["discrepancy"])
