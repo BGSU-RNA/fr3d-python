@@ -1178,8 +1178,6 @@ def calculateQueryConstraints(Q):
         # Example: 	"https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/3.0A/csv"
         # Example:  "https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/NMR/csv"
         if "nrlist" in search_file:           # referring to lists that are posted online
-            listLoaded = False
-            pathAndFileName = os.path.join(Q["DATAPATHUNITS"],'Representative_sets.pickle')
 
             # make sure that search_file fits the pattern; avoid code injection
             fields = search_file.split("/")
@@ -1192,6 +1190,8 @@ def calculateQueryConstraints(Q):
             search_file = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (fields[6],fields[7])
 
             # check in local file of representative sets first, in case already loaded
+            listLoaded = False
+            pathAndFileName = os.path.join(Q["OUTPUTPATH"],'Representative_sets.pickle')
             if os.path.exists(pathAndFileName):
                 with open(pathAndFileName, 'rb') as fh:
                     representativeSets = pickle.load(fh)
