@@ -76,74 +76,74 @@ def checkDirectories(Q):
     return Q
 
 
-def get_DATAPATHUNITS(Q):
-    """
-    Figure out where to look for files containing information on individual units,
-    the centers and rotation matrices.
-    """
+# def get_DATAPATHUNITS(Q):
+#     """
+#     Figure out where to look for files containing information on individual units,
+#     the centers and rotation matrices.
+#     """
 
-    DATAPATHUNITS = None
+#     DATAPATHUNITS = None
 
-    if "DATAPATHUNITS" in Q:
-        DATAPATHUNITS = Q["DATAPATHUNITS"]
-    else:
-        try:
-            from fr3d.search.fr3d_configuration import DATAPATHUNITS
-        except:
-            print("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
-            Q["errorMessage"].append("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
-            Q["errorStatus"] = "write and exit"
+#     if "DATAPATHUNITS" in Q:
+#         DATAPATHUNITS = Q["DATAPATHUNITS"]
+#     else:
+#         try:
+#             from fr3d.search.fr3d_configuration import DATAPATHUNITS
+#         except:
+#             print("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
+#             Q["errorMessage"].append("Error: Could not find DATAPATHUNITS in query or in fr3d_configuration.py")
+#             Q["errorStatus"] = "write and exit"
 
-    if DATAPATHUNITS:
-        directory = DATAPATHUNITS
-        try:
-            os.stat(directory)
-        except:
-            try:
-                os.mkdir(directory)
-                print("Made " + directory + " directory")
-            except:
-                print("Error: Could not make " + directory + " directory")
-                Q["errorMessage"].append("Error: Could not make " + directory + " directory")
-                Q["errorStatus"] = "write and exit"
-                return Q
+#     if DATAPATHUNITS:
+#         directory = DATAPATHUNITS
+#         try:
+#             os.stat(directory)
+#         except:
+#             try:
+#                 os.mkdir(directory)
+#                 print("Made " + directory + " directory")
+#             except:
+#                 print("Error: Could not make " + directory + " directory")
+#                 Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+#                 Q["errorStatus"] = "write and exit"
+#                 return Q
 
-    return Q, DATAPATHUNITS
+#     return Q, DATAPATHUNITS
 
 
-def get_DATAPATHPAIRS(Q):
-    """
-    Figure out where to look for files containing information on individual units,
-    the centers and rotation matrices.
-    """
+# def get_DATAPATHPAIRS(Q):
+#     """
+#     Figure out where to look for files containing information on individual units,
+#     the centers and rotation matrices.
+#     """
 
-    DATAPATHPAIRS = None
+#     DATAPATHPAIRS = None
 
-    if "DATAPATHPAIRS" in Q:
-        DATAPATHPAIRS = Q["DATAPATHPAIRS"]
-    else:
-        try:
-            from fr3d.search.fr3d_configuration import DATAPATHPAIRS
-        except:
-            print("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
-            Q["errorMessage"].append("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
-            Q["errorStatus"] = "write and exit"
+#     if "DATAPATHPAIRS" in Q:
+#         DATAPATHPAIRS = Q["DATAPATHPAIRS"]
+#     else:
+#         try:
+#             from fr3d.search.fr3d_configuration import DATAPATHPAIRS
+#         except:
+#             print("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
+#             Q["errorMessage"].append("Error: Could not find DATAPATHPAIRS in query or in fr3d_configuration.py")
+#             Q["errorStatus"] = "write and exit"
 
-    if DATAPATHPAIRS:
-        directory = DATAPATHPAIRS
-        try:
-            os.stat(directory)
-        except:
-            try:
-                os.mkdir(directory)
-                print("Made " + directory + " directory")
-            except:
-                print("Error: Could not make " + directory + " directory")
-                Q["errorMessage"].append("Error: Could not make " + directory + " directory")
-                Q["errorStatus"] = "write and exit"
-                return Q
+#     if DATAPATHPAIRS:
+#         directory = DATAPATHPAIRS
+#         try:
+#             os.stat(directory)
+#         except:
+#             try:
+#                 os.mkdir(directory)
+#                 print("Made " + directory + " directory")
+#             except:
+#                 print("Error: Could not make " + directory + " directory")
+#                 Q["errorMessage"].append("Error: Could not make " + directory + " directory")
+#                 Q["errorStatus"] = "write and exit"
+#                 return Q
 
-    return Q, DATAPATHPAIRS
+#     return Q, DATAPATHPAIRS
 
 
 def get_CIFPATH(Q):
@@ -498,7 +498,7 @@ def readPDBDatafile(DATAPATHUNITS):
         if download_needed:
             try:
                 print("Downloading %s" % filename)
-                urlretrieve("http://rna.bgsu.edu/" + filename, pathAndFileName)
+                urlretrieve("https://rna.bgsu.edu/" + filename, pathAndFileName)
                 download_needed = False
             except:
                 pass
@@ -506,7 +506,7 @@ def readPDBDatafile(DATAPATHUNITS):
         if download_needed:
             try:
                 print("Downloading %s" % filename)
-                urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+                urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
                 download_needed = False
             except:
                 print("Unable to download %s" % filename)
@@ -545,16 +545,14 @@ def readNAPositionsFile(Q, chainString, starting_index):
     # filename = chainString.replace('|','-') + '_RNA.pickle'  # old, uses base center
     filename = chainString.replace('|','-') + '_NA.pickle'   # new on 2023-02-20, covers RNA and DNA, uses glycosidic atom
 
-    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
-
-    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
+    pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
     if not os.path.exists(pathAndFileName) and not SERVER:
         # try to download .pickle file of RNA/DNA base center and rotation matrix
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
             try:
                 print("Attempting to download "+filename+" from BGSU RNA site")
-                urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+                urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
                 print("Downloaded "+filename)
             except:
                 print("Could not download %s from BGSU RNA site" % filename)
@@ -630,12 +628,11 @@ def readNABackboneFile(Q, chainString, starting_index):
     id_to_index = defaultdict()
     index_to_id = defaultdict()
 
-    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
     filename = chainString + "_NA_phosphate_sugar.pickle"
-    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
+    pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
     if not os.path.exists(pathAndFileName) and not SERVER:
-        urlretrieve("http://rna.bgsu.edu/units/"+filename, pathAndFileName)
+        urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
         print("Downloaded "+filename)
 
     if os.path.exists(pathAndFileName):
@@ -679,12 +676,11 @@ def readProteinPositionsFile(Q, file_id, starting_index):
     id_to_index = defaultdict()
     index_to_id = defaultdict()
 
-    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
     filename = file_id + "_protein.pickle"
-    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
+    pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
     if not os.path.exists(pathAndFileName) and not SERVER:
-        urlretrieve("http://rna.bgsu.edu/units/"+filename, pathAndFileName)
+        urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
         print("Downloaded "+filename)
 
     if os.path.exists(pathAndFileName):
@@ -735,23 +731,21 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
 
     justDownloaded = False
 
-    Q, DATAPATHPAIRS = get_DATAPATHPAIRS(Q)
-
-    # new standard filename does not say RNA or DNA or NA
-    pairsFileName = file_id + '_pairs.pickle'
-    pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
+    # new standard filename says NA
+    pairsFileName = file_id + '_NA_pairs.pickle'
+    pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
     if not os.path.exists(pathAndFileName):
         # old standard was _RNA_ but that is being phased out in September 2024
         pairsFileName = file_id + '_NA_pairs.pickle'
-        pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
+        pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
         if not os.path.exists(pathAndFileName) and not SERVER:
             if Q.get("printFileOperations",False):
-                print("  file_reading: Could not find "+pairsFileName+" in "+DATAPATHPAIRS+alternate)
+                print("  file_reading: Could not find "+pairsFileName+" in "+Q["DATAPATHPAIRS"]+alternate)
             if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
                 # try to download annotations of this structure from BGSU RNA site
-                url = "http://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
+                url = "https://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
                 urlretrieve(url, pathAndFileName) # testing
                 if Q.get("printFileOperations",False):
                     print("  file_reading: downloaded "+pairsFileName)
@@ -762,13 +756,13 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
 
                 # continue with old standard until we switch over completely
                 pairsFileName = file_id + '_NA_pairs.pickle'
-                pathAndFileName = os.path.join(DATAPATHPAIRS+alternate,pairsFileName)
+                pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
                 not_chains, file_id, messages = processPDBFile(Q,file_id,file_id,pairs_only=True)
                 Q['userMessage'] += messages
 
     if Q.get("printFileOperations",False):
-        print("  file_reading: reading "+pairsFileName+" from "+DATAPATHPAIRS+alternate)
+        print("  file_reading: reading "+pairsFileName+" from "+Q["DATAPATHPAIRS"]+alternate)
 
     interactionToTriples = defaultdict(list)
 
@@ -872,7 +866,7 @@ def readUnitAnnotations(Q, ifename):
         pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
         if not os.path.exists(pathAndFileName) and not SERVER:
-            urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+            urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
             if Q.get("printFileOperations",False):
                 print("Downloaded "+filename)
 

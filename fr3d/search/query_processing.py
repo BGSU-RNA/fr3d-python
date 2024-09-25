@@ -15,7 +15,6 @@ import urllib
 from fr3d.search.file_reading import readNAPositionsFile
 from fr3d.search.file_reading import readProteinPositionsFile
 from fr3d.search.file_reading import readPDBDatafile
-from fr3d.search.file_reading import get_DATAPATHUNITS
 from fr3d.search.file_reading import get_CIFPATH
 
 from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
@@ -164,9 +163,7 @@ def readUnitFileNames(Q,PDB_data_file):
 
     import glob
 
-    Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
-
-    units_path = os.path.join(DATAPATHUNITS,'*')
+    units_path = os.path.join(Q["DATAPATHUNITS"],'*')
     allfiles = glob.glob(units_path)
     print("  query_processing: There are %d files in %s" % (len(allfiles),units_path))
 
@@ -1180,8 +1177,7 @@ def calculateQueryConstraints(Q):
         # look up representative sets, if requested, and replace with IFE names
         if "nrlist" in search_file:           # referring to lists that are posted online
             listLoaded = False
-            Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
-            pathAndFileName = os.path.join(DATAPATHUNITS,'Representative_sets.pickle')
+            pathAndFileName = os.path.join(Q["DATAPATHUNITS"],'Representative_sets.pickle')
 
             # check in local file of representative sets first, in case already loaded
             if os.path.exists(pathAndFileName):
@@ -1307,8 +1303,7 @@ def calculateQueryConstraints(Q):
             continue
 
         # look for .pickle files for search_file in the units directory
-        Q, DATAPATHUNITS = get_DATAPATHUNITS(Q)
-        units_path = os.path.join(DATAPATHUNITS)
+        units_path = os.path.join(Q["DATAPATHUNITS"])
         if os.path.exists(units_path):
 
             # read the units folder to see what chains are available and list those
