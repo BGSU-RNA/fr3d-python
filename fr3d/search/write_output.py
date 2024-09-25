@@ -197,8 +197,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
                 discrepancydata += "]\n]" # end list of instances, end list of data
 
     # find the location of the template for the HTML file
-    if "TEMPLATEPATH" in Q:
-        template_filename = Q["TEMPLATEPATH"]
+    if "TEMPLATEFILENAME" in Q:
+        template_filename = Q["TEMPLATEFILENAME"]
     else:
         # get the path of the current program
         current_path,current_program = os.path.split(os.path.abspath(__file__))
