@@ -255,9 +255,9 @@ def fr3d_search(Q,timerData=None):
                 candidates.sort(key = lambda candidate: candidate["discrepancy"])
 
             # limit the number of candidates to output
-            if len(candidates) > MAXCANDIDATES:
-                print("Found %d candidates but MAXCANDIDATES is %d" % (len(candidates), MAXCANDIDATES))
-                candidates = candidates[:MAXCANDIDATES]
+            if len(candidates) > Q["MAXCANDIDATES"]:
+                print("Found %d candidates but MAXCANDIDATES is %d" % (len(candidates), Q["MAXCANDIDATES"]))
+                candidates = candidates[:Q["MAXCANDIDATES"]]
                 Q["hitMaxCandidates"] = True
 
             # write output with just the candidates, no heat map, for default ordering
@@ -268,11 +268,11 @@ def fr3d_search(Q,timerData=None):
             writeHTMLOutput(Q, candidates)
             lastWriteTime = cputime()
 
-        if len(candidates) > MAXCANDIDATES or "hitMaxCandidates" in Q:
-            print("Found %d candidates but MAXCANDIDATES is %d" % (len(candidates), MAXCANDIDATES))
+        if len(candidates) > Q["MAXCANDIDATES"] or "hitMaxCandidates" in Q:
+            print("Found %d candidates but MAXCANDIDATES is %d" % (len(candidates), Q["MAXCANDIDATES"]))
             Q["hitMaxCandidates"] = True
             Q["userMessage"].append("Found %d candidates; maximum number to output is %d" %
-                (len(candidates), MAXCANDIDATES))
+                (len(candidates), Q["MAXCANDIDATES"]))
             break
 
         if Q["CPUTimeUsed"] > Q["MAXTIME"]:
@@ -314,15 +314,15 @@ def fr3d_search(Q,timerData=None):
         candidates.sort(key = lambda candidate: candidate["discrepancy"])
 
     # limit the number of candidates to output
-    if len(candidates) > MAXCANDIDATES:
-        candidates = candidates[:MAXCANDIDATES]
+    if len(candidates) > Q["MAXCANDIDATES"]:
+        candidates = candidates[:Q["MAXCANDIDATES"]]
 
     timerData = myTimer("Calculate all vs all matrix")
 
     if Q["numpositions"] > 1 and len(candidates) > 1:
         # compute all against all discrepancies, up to a certain limit;
         # more than 600 is too large even locally, and too hard to see in a heat map
-        matrix_dim = min(MAXCANDIDATESHEATMAP, len(candidates))
+        matrix_dim = min(Q["MAXCANDIDATESHEATMAP"], len(candidates))
         allvsallmatrix = np.zeros((matrix_dim, matrix_dim))
 
         # TODO: future plan for faster all against all comparisons:
