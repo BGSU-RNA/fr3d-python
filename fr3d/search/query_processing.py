@@ -1182,11 +1182,11 @@ def calculateQueryConstraints(Q):
             # make sure that search_file fits the pattern; avoid code injection
             fields = search_file.split("/")
             if not len(fields[6].split(".")) == 2 or not fields[6].split(".")[0].isdigit() or not fields[6].split(".")[1].isdigit():
-                fields[6] = 3.300
                 Q['errorMessage'].append("Invalid representative set %s, using 3.300" % fields[6])
-            if not fields[7] in ["1.5A","2.0A","2.5","3.0A","3.5A","4.0A","all","NMR"]:
-                fields[7] = "3.0A"
+                fields[6] = "3.300"
+            if not fields[7] in ["1.5A","2.0A","2.5A","3.0A","3.5A","4.0A","all","NMR"]:
                 Q['errorMessage'].append("Invalid resolution %s, using 3.0A" % fields[7])
+                fields[7] = "3.0A"
             search_file = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (fields[6],fields[7])
 
             # check in local file of representative sets first, in case already loaded
