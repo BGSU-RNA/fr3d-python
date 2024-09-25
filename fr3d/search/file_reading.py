@@ -21,10 +21,6 @@ def checkDirectories(Q):
     check for required directories for data and output
     """
 
-    if SERVER or Q.get('server', False):
-        # on the server, the directories are already set up; save time
-        return Q
-
     if "DATAPATHUNITS" in Q:
         DATAPATHUNITS = Q["DATAPATHUNITS"]
     else:
