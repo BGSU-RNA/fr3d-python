@@ -460,7 +460,7 @@ def retrieveQueryInformation(Q):
             if len(file_id) == 4:
                 # read information about PDB files, if not already done
                 if not "PDB_data_file" in Q:
-                    Q["PDB_data_file"] = readPDBDatafile(Q["DATAPATHUNITS"])  # available PDB structures, resolutions, chains
+                    Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
                 if file_id.upper() in Q["PDB_data_file"]:
                     # use uppercase for PDB identifiers
@@ -1227,7 +1227,7 @@ def calculateQueryConstraints(Q):
                                 file_id = IFE.split("|")[0]
                                 if len(file_id) == 4:
                                     if not "PDB_data_file" in Q:
-                                        Q["PDB_data_file"] = readPDBDatafile(Q["DATAPATHUNITS"])  # available PDB structures, resolutions, chains
+                                        Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
                                     file_id = IFE[0:4]
                                     if file_id in list(Q["PDB_data_file"]):
@@ -1276,7 +1276,7 @@ def calculateQueryConstraints(Q):
 
             # load mapping from PDB id to chain and other information, if not already done
             if not "PDB_data_file" in Q:
-                Q["PDB_data_file"] = readPDBDatafile(Q["DATAPATHUNITS"])  # available PDB structures, resolutions, chains
+                Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
             search_file_id_upper = search_file_id.upper()
 
