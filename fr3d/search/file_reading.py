@@ -482,7 +482,7 @@ def readPDBDatafile(Q):
 
     if "PDBDATAFILEPATH" in Q:
         # used on the server, or if you are managing this well yourself
-        pathAndFileName = os.path.join(Q["PDBDATAFILELOCATION"],filename)
+        pathAndFileName = os.path.join(Q["PDBDATAFILEPATH"],filename)
     else:
         pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
