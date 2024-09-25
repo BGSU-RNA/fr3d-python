@@ -1191,7 +1191,7 @@ def calculateQueryConstraints(Q):
 
             # check in local file of representative sets first, in case already loaded
             listLoaded = False
-            pathAndFileName = os.path.join(Q["OUTPUTPATH"],'Representative_sets.pickle')
+            pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
             if os.path.exists(pathAndFileName):
                 with open(pathAndFileName, 'rb') as fh:
                     representativeSets = pickle.load(fh)
