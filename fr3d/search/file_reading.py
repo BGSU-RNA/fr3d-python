@@ -469,7 +469,7 @@ def processPDBFile(Q,structure_filename,file_id=None,pairs_only=False):
     return chains, file_id, messages
 
 
-def readPDBDatafile(DATAPATHUNITS):
+def readPDBDatafile(Q):
     """
     Read .pickle file containing data about each nucleic-
     acid-containing PDB file.
@@ -479,11 +479,14 @@ def readPDBDatafile(DATAPATHUNITS):
     datafile = {}
 
     filename = "NA_datafile.pickle"
-    pathAndFileName = os.path.join(DATAPATHUNITS,filename)
 
-    #if not os.path.exists(pathAndFileName) and not SERVER:
-    # try to update the file for a local installation, but not too often
-    if not SERVER:
+    if "PDBDATAFILEPATH" in Q:
+        # used on the server, or if you are managing this well yourself
+        pathAndFileName = os.path.join(Q["PDBDATAFILELOCATION"],filename)
+    else:
+        pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
+
+        # try to update the file for a local installation, but not too often
         download_needed = True
 
         if os.path.exists(pathAndFileName):
@@ -499,14 +502,6 @@ def readPDBDatafile(DATAPATHUNITS):
             try:
                 print("Downloading %s" % filename)
                 urlretrieve("https://rna.bgsu.edu/" + filename, pathAndFileName)
-                download_needed = False
-            except:
-                pass
-
-        if download_needed:
-            try:
-                print("Downloading %s" % filename)
-                urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
                 download_needed = False
             except:
                 print("Unable to download %s" % filename)
