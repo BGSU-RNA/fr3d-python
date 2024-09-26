@@ -229,6 +229,8 @@ def readQueryFromJSON(JSONfilename):
 
     filename = None
 
+    print("readQueryFromJSON")
+
     if os.path.exists(JSONfilename):
         # when given a direct reference to the JSON file, use that
         filename = JSONfilename
@@ -236,7 +238,7 @@ def readQueryFromJSON(JSONfilename):
     if not filename:
         # look in the usual places for the file
         try:
-            from fr3d_configuration import JSONPATH
+            from fr3d.search.fr3d_configuration import JSONPATH
             pathAndFileName = os.path.join(JSONPATH,JSONfilename)
             if os.path.exists(pathAndFileName):
                 filename = pathAndFileName
@@ -244,6 +246,7 @@ def readQueryFromJSON(JSONfilename):
             pass
 
     if not filename:
+        # look in the fr3d-python distribution for this as a standard example
         pathAndFileName = os.path.join('queries',JSONfilename)
         if os.path.exists(pathAndFileName):
             filename = pathAndFileName
@@ -262,18 +265,19 @@ def readQueryFromJSON(JSONfilename):
             Q["errorMessage"].append("Error: Could not create directory " + JSONPATH + " to store query files")
             return Q
 
+        # extract the randomly-generated id from the filename
         id = JSONfilename.replace("Query_","").replace(".json","")
 
         if JSONfilename.startswith("Query_"):
             # old format
-            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
+            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + id + ".json"
         elif len(id) == 14:
             # new format
-            queryURL = "https://rna.bgsu.edu/fr3d/results/" + JSONfilename
+            queryURL = "https://rna.bgsu.edu/fr3d/results/" + id + ".json"
 
+        print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
+        pathAndFileName = os.path.join(JSONPATH,JSONfilename)
         try:
-            print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
-            pathAndFileName = os.path.join(JSONPATH,JSONfilename)
 
             if sys.version_info[0] < 3:
                 urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
