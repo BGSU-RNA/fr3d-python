@@ -161,6 +161,20 @@ def fr3d_search(Q,timerData=None):
     # check directories needed for data files and output
     Q = checkDirectories(Q)
 
+    # determine output filenames
+    if "FILENAME" in Q:
+        filename = Q['FILENAME']
+    elif "name" in Q:
+        filename = Q['name'].replace(" ","_")
+    else:
+        filename = Q['JSONFILENAME'].replace(".json","")
+
+    if not "HTMLFILENAME" in Q:
+        Q['HTMLFILENAME'] = os.path.join(Q['OUTPUTPATH'], filename + ".html")
+
+    if not "CSVFILENAME" in Q:
+        Q['CSVFILENAME'] = os.path.join(Q['OUTPUTPATH'], filename + ".csv")
+
     # retrieve information about query nucleotides, if any
     Q = retrieveQueryInformation(Q)
     if "errorStatus" in Q:
@@ -205,6 +219,7 @@ def fr3d_search(Q,timerData=None):
     numFilesSearched = 0
     # loop over the 3D structure files or IFEs to be searched
     for ifename in ife_search_list:
+
         if Q.get("printCumulativeCandidates", False) and numFilesSearched > 0:
             if len(candidates) == 1:
                 print("Found %d candidate from %d of %d files in %0.0f seconds so far." % (len(candidates),numFilesSearched,len(Q["searchFiles"]),time() - overallStartTime))
@@ -376,6 +391,19 @@ def fr3d_search(Q,timerData=None):
         print(myTimer("summary"))
 
     return timerData
+
+
+def fr3d_search_stdout(Q):
+    """
+    Direct stdout to a file while running fr3d_search
+    """
+
+    with open(Q['stdout'], 'w') as f:
+        sys.stdout = f
+        try:
+            fr3d_search(Q)
+        finally:
+            sys.stdout = sys.__stdout__
 
 
 def fr3d_search_from_query_names(queryNames):
