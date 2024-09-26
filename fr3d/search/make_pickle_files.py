@@ -1,13 +1,16 @@
+"""
+Read .cif or .pdb file and produce the .pickle files used by FR3D for fast searching
+But ... this may not be used in fact.  Several things look old, and no other program imports from this.
+"""
+
 import numpy as np
 import os.path
 from collections import defaultdict
-from time import time
 import pickle
-import urllib
 import sys
-from fr3d_configuration import CIFPATH
-from fr3d_configuration import DATAPATH
-from fr3d_configuration import SERVER
+from fr3d.search.fr3d_configuration import CIFPATH
+from fr3d.search.fr3d_configuration import DATAPATH
+from fr3d.search.fr3d_configuration import SERVER
 
 # import the version of urlretrieve appropriate to the Python version
 if sys.version_info[0] < 3:
@@ -16,8 +19,7 @@ else:
     from urllib.request import urlretrieve as urlretrieve
 
 
-
-def readPDBDatafile():
+def readPDBDatafile(Q):
     """
     Read .pickle file containing data about each nucleic-
     acid-containing PDB file.
@@ -28,13 +30,13 @@ def readPDBDatafile():
     filename = "NA_datafile.pickle"
     pathAndFileName = os.path.join(DATAPATH,'units',filename)
 
-    #if not os.path.exists(pathAndFileName) and not SERVER:
-    try:
-        if not SERVER:
-            urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
-            print("Downloaded %s because it changes every week" % filename)
-    except:
-        print("Unable to download %s" % filename)
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+        try:
+            if not SERVER:
+                urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
+                print("Downloaded %s because it changes every week" % filename)
+        except:
+            print("Unable to download %s" % filename)
 
     if os.path.exists(pathAndFileName):
         try:
@@ -69,9 +71,9 @@ def readNAPositionsFile(Q, chainString, starting_index):
     filename = chainString + "_RNA" + '.pickle'
     pathAndFileName = os.path.join(DATAPATH,'units',filename)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
         try:
-            urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName) # testing
+            urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName) # testing
             print("Downloaded "+filename)
         except:
             print("Unable to download %s" % filename)
@@ -120,8 +122,8 @@ def readNABackboneFile(Q, chainString, starting_index):
     filename = chainString + "_protein" + '.pickle'
     pathAndFileName = os.path.join(DATAPATH,'units',filename)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
-        urlretrieve("http://rna.bgsu.edu/units/"+filename, pathAndFileName)
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+        urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
         print("Downloaded "+filename)
 
     if os.path.exists(pathAndFileName):
@@ -168,8 +170,8 @@ def readProteinPositionsFile(Q, PDBID, starting_index):
     filename = PDBID + "_protein" + '.pickle'
     pathAndFileName = os.path.join(DATAPATH,'units',filename)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
-        urlretrieve("http://rna.bgsu.edu/units/"+filename, pathAndFileName)
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+        urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
         print("Downloaded "+filename)
 
     if os.path.exists(pathAndFileName):
@@ -215,8 +217,8 @@ def readNAPairsFile(Q, PDBID, id_to_index, alternate = ""):
     pairsFileName = PDBID + '_RNA_pairs' + alternate + '.pickle'
     pathAndFileName = os.path.join(DATAPATH,'pairs',pairsFileName)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
-        urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+        urlretrieve("https://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
         print("Downloaded "+pairsFileName)
 
     # note:  if the file is not present on the server, a text file with a 404 error will be downloaded
@@ -297,8 +299,8 @@ def readUnitAnnotations(Q, ifename):
         filename        = "%s_NA_unit_annotations.pickle" % chain.replace("|","-")
         pathAndFileName = os.path.join(DATAPATH,'units',filename)
 
-        if not os.path.exists(pathAndFileName) and not SERVER:
-            urlretrieve("http://rna.bgsu.edu/units/" + filename, pathAndFileName)
+        if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+            urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
             print("Downloaded "+filename)
 
         # note:  if the file is not present on the server, a text file with a 404 error will be downloaded
