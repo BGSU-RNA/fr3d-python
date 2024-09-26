@@ -66,10 +66,12 @@ def getMoleculeType(unitType):
         return ""
 
 # synonyms and abbreviations for pairwise constraints
+# might be better to make these sets instead of lists
 synonym = {}
-synonym["pair"] = ['cWW','acWW','cWWa','tWW','tWWa','cHH','tHH','cSS','tSS','cWH','cHW','tWH','tHW','cWS','cSW','tWS','tSW','cHS','cSH','tHS','tSH']
-synonym["cis"] = ['cWW','acWW','cWWa','cHH','cSS','cWH','cHW','cWS','cSW','cHS','cSH']
-synonym["trans"] = ['tWW','tHH','tSS','tWH','tHW','tWS','tSW','tHS','tSH']
+# synonym["pair"] = ['cWW','cWWa','cWw','cwW','tWW','tWWa','cHH','tHH','cSS','tSS','cWH','cHW','tWH','tHW','cWS','cSW','tWS','tSW','cHS','cSH','tHS','tSH']
+synonym["cis"] = ['cWW','cWw','cwW','cWWa','cHH','cHh','chH','cHHa','cSS','cSs','csS','cWH','cHW','cWS','cSW','cHS','cSH']
+synonym["trans"] = ['tWW','tWWa','tHH','tHh','thH','tSS','tSs','tsS','tWH','tHW','tWS','tWSa','tSW','tSWa','tHS','tHSa','tSH','tSHa']
+synonym["pair"]  = synonym["cis"] + synonym["trans"]
 synonym["stack"] = ['s35','s53','s33','s55']
 synonym["BPh"] = ['0BPh','1BPh','2BPh','3BPh','4BPh','5BPh','6BPh','7BPh','8BPh','9BPh']
 synonym["BR"] = ['0BR','1BR','2BR','3BR','4BR','5BR','6BR','7BR','8BR','9BR']
@@ -165,7 +167,8 @@ def readUnitFileNames(Q,PDB_data_file):
 
     units_path = os.path.join(Q["DATAPATHUNITS"],'*')
     allfiles = glob.glob(units_path)
-    print("  query_processing: There are %d files in %s" % (len(allfiles),units_path))
+    if Q.get('printQueryDetails',False):
+        print("  query_processing: There are %d files in %s" % (len(allfiles),units_path))
 
     # mimic the structure of PDB_data_file; map file_id to list of chains
     unit_data_file = {}
@@ -229,8 +232,6 @@ def readQueryFromJSON(JSONfilename):
 
     filename = None
 
-    print("readQueryFromJSON")
-
     if os.path.exists(JSONfilename):
         # when given a direct reference to the JSON file, use that
         filename = JSONfilename
@@ -252,8 +253,6 @@ def readQueryFromJSON(JSONfilename):
             filename = pathAndFileName
 
     if not filename:
-        # name could be from a WebFR3D search, so try to download it
-
         # make a place to save the JSON file if successful
         try:
             if not os.path.exists(JSONPATH):
@@ -270,26 +269,34 @@ def readQueryFromJSON(JSONfilename):
 
         if JSONfilename.startswith("Query_"):
             # old format
-            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + id + ".json"
-        elif len(id) == 14:
+            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
+        elif JSONfilename.startswith("fr3d_"):
             # new format
             queryURL = "https://rna.bgsu.edu/fr3d/results/" + id + ".json"
+        else:
+            queryURL = ""
 
-        print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
-        pathAndFileName = os.path.join(JSONPATH,JSONfilename)
-        try:
+        if queryURL:
+            print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
+            pathAndFileName = os.path.join(JSONPATH,JSONfilename)
+            try:
 
-            if sys.version_info[0] < 3:
-                urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
-            else:
-                urllib.request.urlretrieve(queryURL, pathAndFileName)  # python 3
+                if sys.version_info[0] < 3:
+                    urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
+                else:
+                    urllib.request.urlretrieve(queryURL, pathAndFileName)  # python 3
 
-            filename = JSONPATH + JSONfilename
-        except:
-            print("Error: Could not find or download query file " + JSONfilename)
+                filename = JSONPATH + JSONfilename
+            except:
+                print("Error: Could not find or download query file " + JSONfilename)
+        else:
+            print("Error: Could not find a URL to download " + JSONfilename)
 
     # read the json file
     if filename:
+        fn = os.path.basename(filename)
+        Q["JSONFILENAME"] = fn
+
         try:
             with open(filename) as json_file:
                 lines = json_file.readlines()
@@ -330,13 +337,6 @@ def readQueryFromJSON(JSONfilename):
         Q["numFilesSearched"] = 0
         Q["elapsedClockTime"] = 0
         Q["userMessage"] = ["Error: Could not find query file " + JSONfilename]
-
-    # use the filename if no name is specified
-    if not "name" in Q:
-        Q["name"] = os.path.basename(JSONfilename).replace(".json","")
-
-    if not Q["name"]:
-        Q["name"] = os.path.basename(JSONfilename).replace(".json","")
 
     if not filename:
         return Q
@@ -479,8 +479,8 @@ def retrieveQueryInformation(Q):
             foundID = False
             for mt in moleculeTypes:
                 if moleculeType == '' or moleculeType == mt:
-
-                    print("  query_processing: Retrieving data about %s in chain %s" % (unitID,chainString))
+                    if Q.get('printQueryDetails',False):
+                        print("  query_processing: Retrieving data about %s in chain %s" % (unitID,chainString))
 
                     if not chainString in chainData:         # only load the chain once
                         if mt == "RNA" or mt == "DNA":
@@ -509,7 +509,7 @@ def retrieveQueryInformation(Q):
                     if unitID in id_to_index:
                         foundID = True
                         moleculeType = getMoleculeType(index_to_id[id_to_index[unitID]])
-                        if originalUnitID != unitID:
+                        if originalUnitID != unitID and Q.get('printQueryDetails',False):
                             print("Given " + originalUnitID + ", converted to " + unitID + ", using " + index_to_id[id_to_index[unitID]])
 
                         Q['centers'].append(centers[id_to_index[unitID]])
@@ -517,11 +517,11 @@ def retrieveQueryInformation(Q):
                             Q['rotations'].append(rotations[id_to_index[unitID]])
                         elif moleculeType == "protein":
                             Q['rotations'].append(np.empty( shape=(0, 0) ))
-                        else:
-                            print("Unknown molecule type " + moleculeType + "**********")
+                        elif Q.get('printQueryDetails',False):
+                            print("Unknown molecule type " + moleculeType)
 
             if not foundID:
-                print("Not able to find coordinates for unit ID " + unitID + " ************** ")
+                print("Error: Not able to find coordinates for unit ID " + unitID)
                 Q["errorMessage"].append("Not able to find coordinates for unit ID " + unitID)
                 Q["errorStatus"] = "write and exit"
     return Q
@@ -728,8 +728,6 @@ def calculateQueryConstraints(Q):
         for i in range(Q["numpositions"]):
             for j in range(Q["numpositions"]):
 
-                #print("interactions",i,j)
-
                 requiredInteractions = []
                 prohibitedInteractions = []
                 combinationConstraints = []
@@ -749,8 +747,6 @@ def calculateQueryConstraints(Q):
                             interactionConstraints.append(constraint)
 
                     for constraint in interactionConstraints:
-                        #print("Constraint: " + constraint)
-
                         # enable reading alternate annotations from different annotation files
                         # these are distinguished by "_" in the annotation and search terms
                         constraintType = ""
@@ -799,9 +795,9 @@ def calculateQueryConstraints(Q):
                                     foundCrossingNumber = True
                                 elif "crossing" in constraint:
                                     limits = constraint.replace("crossing","").split("_")
-                                    print("Crossing number limits " + str(limits))
+                                    # print("Crossing number limits " + str(limits))
                                     Q["crossingNumber"][i][j] = [int(limits[1]),int(limits[2])]
-                                    print("Crossing number limits " + str(Q["crossingNumber"][i][j]))
+                                    # print("Crossing number limits " + str(Q["crossingNumber"][i][j]))
                                     foundCrossingNumber = True
                                 elif j>i and "," in constraint:
                                     units = constraint.split(",")
@@ -1141,19 +1137,22 @@ def calculateQueryConstraints(Q):
     # process any wildcards
     for search_file in Q["searchFiles"]:
         if "*" in search_file:
-            print('  query_processing: Found wildcard in %s' % search_file)
+            if Q.get('printQueryDetails',False):
+                print('  query_processing: Found wildcard in %s' % search_file)
 
             search_file = search_file.strip()
 
             (path_to_file,search_filename) = os.path.split(search_file)
 
             if os.path.exists(path_to_file):
-                print('  query_processing: Found path %s' % path_to_file)
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Found path %s' % path_to_file)
                 file_list = os.listdir(path_to_file)
 
                 import fnmatch
 
-                print('  query_processing: Found %d files to search' % len(file_list))
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Found %d files to search' % len(file_list))
 
                 # Loop over the filenames
                 for filename in file_list:
@@ -1221,12 +1220,12 @@ def calculateQueryConstraints(Q):
                     myfile = f.read()
                 except Exception as e:
                     Q["errorMessage"].append("Not able to download representative set %s" % search_file)
-                    print("Not able to download representative set; check the internet connection.")
+                    print("Error: Not able to retrieve or download representative set")
                     print(e)
                     myfile = []
 
                 if "Arial" in str(myfile):
-                    print("Problem with downloading representative set, got:")
+                    print("Error: Problem with downloading representative set, got:")
                     print(myfile)
                 elif len(myfile) > 0:
                     allLines = myfile.split(b'\n')
@@ -1267,8 +1266,6 @@ def calculateQueryConstraints(Q):
 
             continue
 
-        # print('  query_processing: search_file_id is %s' % search_file_id)
-
         if "|" in search_file:
             # a chain or IFE is specified
             chains = search_file.split("+")
@@ -1296,22 +1293,21 @@ def calculateQueryConstraints(Q):
             if search_file_id_upper in Q["PDB_data_file"].keys():
                 chains = []
 
-                #print(Q["PDB_data_file"][search_file])
-
                 if searchingRNA and 'RNA' in Q["PDB_data_file"][search_file_id_upper]['chains']:
                     chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['RNA']]
                 if searchingDNA and 'DNA' in Q["PDB_data_file"][search_file_id_upper]['chains']:
                     chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['DNA']]
                 IFEList.append("+".join(chains))
 
-                print("  query_processing: Found chains %s in PDB file %s" % (chains,search_file_id_upper))
+                if Q.get('printQueryDetails',False):
+                    print("  query_processing: Found chains %s in PDB file %s" % (chains,search_file_id_upper))
 
                 continue
 
         # on the server, only PDB files will be searched
         # if we got this far, no PDB file will be found
         if "PDBONLY" in Q and Q["PDBONLY"]:
-            print('  Unknown file %s' % search_file)
+            print('Error: Unknown file %s' % search_file)
             Q["errorMessage"].append("Did not recognize %s as a file from the Protein Data Bank" % search_file)
             continue
 
@@ -1322,7 +1318,8 @@ def calculateQueryConstraints(Q):
             # read the units folder to see what chains are available and list those
             # read directory listing for units directory, get filenames that include search_file in the name
             if not unit_data_file:
-                print('  query_processing: Running readUnitFilenames to find previously processed unit files')
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Running readUnitFilenames to find previously processed unit files')
                 if "PDB_data_file" in Q:
                     unit_data_file = readUnitFileNames(Q,Q["PDB_data_file"])
                 else:
@@ -1340,42 +1337,19 @@ def calculateQueryConstraints(Q):
 
                 continue
 
-            # other code that tries to do the same thing but not as well!
-            # get directory listing
-
-            # print('  query_processing: Looking for unit file for %s in %s' % (search_file_id,units_path))
-
-            # if not unit_file_id_to_chains:
-            #     file_list = os.listdir(units_path)
-            #     # Loop over the filenames
-            #     for filename in file_list:
-            #         fields = filename.split("_")
-            #         # use all but last three fields as the file_id
-            #         file_id = "_".join(fields[0:-3])
-            #         # print(fields)
-            #         # print(file_id)
-            #         # print("_".join(fields[0:-1]))
-            #         # store file_id, model, and chain
-            #         unit_file_id_to_chains[file_id].append("_".join(fields[0:-1]))
-
-
-            # if search_file_id in unit_file_id_to_chains:
-            #     chains = unit_file_id_to_chains[search_file_id]
-            #     IFEList.append("+".join(chains))
-            #     print("  query_processing: Found chains %s in units directory for %s" % (chains,search_file_id_upper))
-            #     continue
-
         # if search_file already has a path and the file exists
         if os.path.exists(search_file) or os.path.exists(search_file + ".gz"):
-            from file_reading import processPDBFile
+            from fr3d.search.file_reading import processPDBFile
 
-            print('  query_processing: About to run processPDBFile')
+            if Q.get('printQueryDetails',False):
+               print('  query_processing: About to run processPDBFile')
             chains, file_id, messages = processPDBFile(Q,search_file,search_file_id)
 
-            print('  query_processing: Ran processPDBFile')
-            # print(chains)
-            # print(file_id)
-            # print(messages)
+            if Q.get('printQueryDetails',False):
+                print('  query_processing: Ran processPDBFile')
+                # print(chains)
+                # print(file_id)
+                # print(messages)
 
             IFEList.append("+".join(chains))
             continue
@@ -1385,26 +1359,29 @@ def calculateQueryConstraints(Q):
         Q, CIFPATH = get_CIFPATH(Q)
 
         if CIFPATH and os.path.exists(CIFPATH):
-            print('  query_processing: Looking for %s in %s' % (search_file_id,CIFPATH))
+            if Q.get('printQueryDetails',False):
+               print('  query_processing: Looking for %s in %s' % (search_file_id,CIFPATH))
 
             CIFPATH_search_file = os.path.join(CIFPATH,search_file)
 
             if os.path.exists(CIFPATH_search_file):
 
-                from file_reading import processPDBFile
+                from fr3d.search.file_reading import processPDBFile
 
-                print('  query_processing: about to run processPDBFile')
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: about to run processPDBFile')
                 chains, file_id, messages = processPDBFile(Q,CIFPATH_search_file)
 
-                print('  query_processing: Ran processPDBFile')
-                print(chains)
-                print(file_id)
-                print(messages)
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Ran processPDBFile')
+                    print(chains)
+                    print(file_id)
+                    print(messages)
 
                 IFEList.append("+".join(chains))
                 continue
 
-        print('Unable to find search file %s' % search_file)
+        print('Error: Unable to find search file %s' % search_file)
         Q["errorMessage"].append("Unable to find search file %s" % search_file)
 
     # finalize the list of IFEs to search
