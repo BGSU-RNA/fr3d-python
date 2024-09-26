@@ -229,12 +229,28 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
     template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
 
-    csvlink = os.path.split(Q["CSVFILENAME"])[1]
+    if "CSVFILENAME" in Q:
+        csvlink = os.path.split(Q["CSVFILENAME"])[1]
+        seeCSVOutput = '<a href="%s">See CSV output</a>' % csvlink
+    else:
+        seeCSVOutput = ""
 
-    seeCSVOutput = '<a href="%s">See CSV output</a>' % csvlink
     template = template.replace("###seeCSVOutput###",seeCSVOutput)
 
-    description = "<br>Columns of the table show candidate number in similarity order, checkbox to display coordinates or not, structure resolution, discrepancy from query in geometric or mixed searches, units matching each position in the query, sequence of the units and backbone connectivity, glycosidic bond conformation if requested, pair and stack interactions present, base-phosphate interactions, base-ribose interactions, oxygen stacking interactions, and the number of nested AU, GC, GU Watson-Crick pairs crossed by each annotated interaction.<br>"
+    description = """
+    <br>Columns of the table show candidate number in geometric similarity order,
+    checkbox to display coordinates or not, structure resolution,
+    discrepancy from query in geometric or mixed searches,
+    unit ids matching each position in the query,
+    sequence of the units and backbone connectivity,
+    glycosidic bond conformation if requested,
+    basepair and stack interactions present, base-phosphate interactions,
+    base-ribose interactions, oxygen stacking interactions,
+    and the number of nested AU, GC, GU Watson-Crick pairs crossed by each annotated interaction.<br>
+    Click on a column header to sort by that column.
+    Click on the diagonal of the heatmap to select an instance; right click to de-select.
+    Click above the diagonal to select a range of instances, below the diagonal to compare two instances.
+    """
 
     template = template.replace("###DESCRIPTION###",description)
 
@@ -253,7 +269,7 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
 
     JS2 = '<script src="%sjs/jquery.jmolTools.WebFR3D.js"></script>' % JSLOCATION
-    if JSLOCATION == ".":
+    if JSLOCATION == "./":
         JS1 = '<script src="%sjs/JSmol.min.nojq.js"></script>' % JSLOCATION
         JS3 = '<script src="%sjs/imagehandlinglocal.js"></script>' % JSLOCATION
     else:
