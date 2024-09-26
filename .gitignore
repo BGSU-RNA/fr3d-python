@@ -8,13 +8,14 @@ fr3d.egg-info/
 files/*.cifatoms
 .agignore
 tags
+localpath.py
+oldStructures.py
+*fr3d_configuration.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-localpath.py
-oldStructures.py
-fr3d_configuration.py
 
 # C extensions
 *.so
