@@ -184,7 +184,8 @@ def sameAlternateId(Q, ifedata, possibilities):
             ids = []
             for index in possibility:
                 ids.append(ifedata['index_to_id'][index])
-            print("Found multiple alternate ids", ids)
+            if Q.get('printMinorSearchIssues',False):
+                print("Found multiple alternate ids", ids)
             del possibilities[i]
 
     return possibilities
@@ -242,7 +243,8 @@ def oneSymmetryVersion(Q, ifedata, possibilities, index_to_id):
             while j < len(possibilities):
                 sd = symmetryDifference(index_to_id[possibilities[i][0]],index_to_id[possibilities[j][0]])
                 if len(sd) > 0:
-                    print("Matching %s inside %s" % (index_to_id[possibilities[i][0]],index_to_id[possibilities[j][0]]))
+                    if Q.get('printMinorSearchIssues',False):
+                        print("Matching %s inside %s" % (index_to_id[possibilities[i][0]],index_to_id[possibilities[j][0]]))
                     k = 0
                     sdk = sd
                     while k+1 < n and sdk == sd:
@@ -250,7 +252,8 @@ def oneSymmetryVersion(Q, ifedata, possibilities, index_to_id):
                         sdk = symmetryDifference(index_to_id[possibilities[i][k]],index_to_id[possibilities[j][k]])
                     if k == n-1 and sdk == sd:
                         toRemove.append(j)
-                        print("Removing %s" % sd)
+                        if Q.get('printMinorSearchIssues',False):
+                            print("Removing %s" % sd)
                 j = j + 1
 
         if len(toRemove) > 0:
