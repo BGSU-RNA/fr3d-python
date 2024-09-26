@@ -103,9 +103,9 @@ def fr3d_search(Q,timerData=None):
 
     # print the name of the query being run
     if "name" in Q and Q["name"]:
-        print("Running query: %s" % Q["name"])
-    elif "queryID" in Q and Q["queryID"]:
-        print("Running query: %s" % Q["queryID"])
+        print("Query name: %s" % Q["name"])
+    elif Q.get('description',None):
+        print("Query description: %s" % Q["description"])
 
     if Q.get("printInputQuery", False):
         print("Input query:")
@@ -154,9 +154,6 @@ def fr3d_search(Q,timerData=None):
     Q["CPUTimeUsed"] = 0                  # charge users for searching, not file loading
     Q["userMessage"] = []
     Q["errorMessage"] = []
-
-    # if SERVER:
-    #     Q['server'] = True
 
     # check directories needed for data files and output
     Q = checkDirectories(Q)
@@ -320,9 +317,10 @@ def fr3d_search(Q,timerData=None):
 
     # process the list of candidates
     if len(candidates) == 1:
-        print("Found %d candidate from %d files in %0.2f seconds." % (len(candidates),Q["numFilesSearched"],time() - overallStartTime))
+        s_text = ""
     else:
-        print("Found %d candidates from %d files in %0.2f seconds." % (len(candidates),Q["numFilesSearched"],time() - overallStartTime))
+        s_text = "s"
+    print("Found %d candidate%s from %d files in %0.2f seconds." % (len(candidates),s_text,Q["numFilesSearched"],time() - overallStartTime))
 
     # for geometric or mixed searches, sort candidates by discrepancy from query
     if((Q["type"] == "geometric" or Q["type"] == "mixed")):
@@ -416,6 +414,18 @@ def fr3d_search_from_query_names(queryNames):
 
     for queryName in queryNames:
 
+        if "rna.bgsu.edu/fr3d/results" in queryName:
+            # apparently the URL of a WebFR3D query
+            fields = queryName.split("/")
+            queryName = fields[-1]
+            queryName = queryName.replace(".html","").replace(".csv","")
+        elif "rna.bgsu.edu/fr3d/modify" in queryName:
+            fields = queryName.split("=")
+            queryName = fields[-1]
+
+        if not queryName.lower().endswith(".json"):
+            queryName += ".json"
+
         timerData = myTimer("Loading query file")
         print("Loading query file: %s" % queryName)
         Q = readQueryFromJSON(queryName)
@@ -423,7 +433,7 @@ def fr3d_search_from_query_names(queryNames):
         if "errorStatus" in Q:
             Q["numFilesSearched"] = 0
             Q["elapsedClockTime"] = 0
-            writeHTMLOutput(Q, [])
+
             continue    # go on to the next query in the loop
 
         timerData = fr3d_search(Q,timerData)
