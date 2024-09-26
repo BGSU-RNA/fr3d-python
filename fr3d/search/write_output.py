@@ -4,17 +4,6 @@ import numpy as np
 import os
 from collections import defaultdict
 
-def getCSVfilename(Q):
-    if "CSVFILENAME" in Q:
-        csvfilename = Q['CSVFILENAME']
-        csvlink     = os.path.split(csvfilename)[1]
-    else:
-        csvfilename = "%s.csv" % Q['name']
-        csvfilename = csvfilename.replace(" ","_")
-        csvlink     = csvfilename
-
-    return csvfilename, csvlink
-
 def format_resolution(data):
 
     r = data['resolution']
@@ -53,12 +42,12 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
                          and interactions[(a,b,pairType)][0] != 'None':
                             pairsToPrint[pairType].append((a,b))
 
-    pagetitle = "FR3D %s" % Q['name'].encode('ascii','ignore')
-
-    if "HTMLFILENAME" in Q:
-        htmlfilename = Q['HTMLFILENAME']
+    if Q.get('name',None):
+        pagetitle = "FR3D %s" % Q['name']
+    elif Q.get('description',None):
+        pagetitle = "FR3D %s" % Q['description']
     else:
-        htmlfilename = Q['name'].replace(" ","_")
+        pagetitle = "FR3D search results"
 
     candidatelist = '<table id="instances"; style="white-space:nowrap;">\n'
 
@@ -212,24 +201,26 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     template = template.replace("###PAGETITLE###",pagetitle)
     template = template.replace("###sequencecolumn###",str(sequence_column))
 
+    if Q.get('name',None):
+        name_text = "Query name: " + Q['name']
+    elif Q.get('description',None):
+        name_text = "Query description: " + Q['description']
+    else:
+        name_text = "FR3D search results"
+
     if len(candidates) == 1:
-        queryNote = "Query name: %s.  Found %d candidate from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
-        queryNote = "Query name: %s.  Found %d candidate from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+        s_text = ""
     else:
-        queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
-        queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+        s_text = "s"
 
-    if len(Q["errorMessage"]) > 0:
-        queryNote += "<br>\n"
-        queryNote += "Error Message:<br>\n"
-        for line in Q["errorMessage"]:
-            queryNote += line + "<br>\n"
+    queryNote = "%s.  Found %d candidate%s from %d of %d files in %0.0f seconds." % (name_text,len(candidates),s_text,Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+
     if "moreCandidatesThanHeatMap" in Q:
-        queryNote += " " + Q["moreCandidatesThanHeatMap"] + "\n"
+        queryNote += " " + Q["moreCandidatesThanHeatMap"]
     else:
-        queryNote += "\n"
+        queryNote += ""
 
-    template = template.replace("###QUERYNAME###",str(queryNote.encode('ascii','ignore')))
+    template = template.replace("###QUERYNAME###",str(queryNote))
 
     if "seeModifyQuery" in Q:
         seeModifyQuery = Q["seeModifyQuery"]
@@ -238,7 +229,7 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
     template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
 
-    csvfilename,csvlink = getCSVfilename(Q)
+    csvlink = os.path.split(Q["CSVFILENAME"])[1]
 
     seeCSVOutput = '<a href="%s">See CSV output</a>' % csvlink
     template = template.replace("###seeCSVOutput###",seeCSVOutput)
@@ -250,49 +241,35 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     # replace ###CANDIDATELIST### with candidatelist
     template = template.replace("###CANDIDATELIST###",candidatelist)
 
-    if "JS1" in Q:
-        JS1 = Q["JS1"]
+    # identify the location of js folder for interactivity, coordinates
+    JSLOCATION = '.'           # js folder is in HTML directory
+    if Q.get('JSLOCATION',None):
+        JSLOCATION = Q['JSLOCATION']
     else:
         try:
-            from fr3d.search.fr3d_configuration import JS1
+            from fr3d.search.fr3d_configuration import JSLOCATION
         except:
-            JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
+            pass
 
-    if "JS2" in Q:
-        JS2 = Q["JS2"]
-    else:
-        try:
-            from fr3d.search.fr3d_configuration import JS2
-        except:
-            JS2 = '  <script src="./js/jquery.jmolTools.js"></script>'
 
-    if "JS3" in Q:
-        JS3 = Q["JS3"]
+    JS2 = '<script src="%sjs/jquery.jmolTools.WebFR3D.js"></script>' % JSLOCATION
+    if JSLOCATION == ".":
+        JS1 = '<script src="%sjs/JSmol.min.nojq.js"></script>' % JSLOCATION
+        JS3 = '<script src="%sjs/imagehandlinglocal.js"></script>' % JSLOCATION
     else:
-        try:
-            from fr3d.search.fr3d_configuration import JS3
-        except:
-            JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
-
-    if "JS4" in Q:
-        JS4 = Q["JS4"]
-    else:
-        try:
-            from fr3d.search.fr3d_configuration import JS4
-        except:
-            JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
-    if "JS5" in Q:
-        JS5 = Q["JS5"]
-    else:
-        try:
-            from fr3d.search.fr3d_configuration import JS5
-        except:
-            JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+        JS1 = '<script src="%sjs/jsmol/JSmol.min.nojq.js"></script>' % JSLOCATION
+        JS3 = '<script src="%sjs/imagehandling.js"></script>' % JSLOCATION
+    JS4 = '<script src="%sjs/jmolplugin.js" type="text/javascript"></script>' % JSLOCATION
+    JS5 = '<script src="%sjs/heatmap_2024.js" type="text/javascript"></script>' % JSLOCATION
+    JS6 = '<script src="%sjs/sort.table.js" type="text/javascript"></script>' % JSLOCATION
+    JS7 = '<script src="%sjs/shift.click.checkbox.js" type="text/javascript"></script>' % JSLOCATION
 
     template = template.replace("###JS1###",JS1)
     template = template.replace("###JS2###",JS2)
     template = template.replace("###JS3###",JS3)
     template = template.replace("###JS4###",JS4)
+    template = template.replace("###JS6###",JS6)
+    template = template.replace("###JS7###",JS7)
 
     if "REFRESHTIME" in Q:
         REFRESHTIME = Q["REFRESHTIME"]
@@ -315,36 +292,31 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         template = template.replace("###DISCREPANCYDATA###","")
         template = template.replace("###JS5###","")    # do not display a heat map
 
-    if "HTMLFILENAME" in Q:
-        outputfilename = Q["HTMLFILENAME"]
-    else:
-        if "OUTPUTPATH" in Q:
-            OUTPUTPATH = Q["OUTPUTPATH"]
-        else:
-            from fr3d.search.fr3d_configuration import OUTPUTPATH
-        outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
-
-    if Q.get('printFileOperations',False):
-        print("Writing to %s" % outputfilename)
-
     messages = ""
-
-    messages += "\n<br>"
+    messages += "<br>"
+    if len(Q["errorMessage"]) > 0:
+        messages += "Error messages:<br>"
+        for line in Q["errorMessage"]:
+            messages += line + "<br>"
     if len(Q["userMessage"]) > 0:
-        messages += "User messages:<br>\n"
+        messages += "User messages:<br>"
         for line in Q["userMessage"]:
-            messages += line + "<br>\n"
+            messages += line + "<br>"
     else:
         messages += "No error or warning messages.<br>\n"
 
     template = template.replace("###MESSAGES###",messages)
 
-    with open(outputfilename, 'w') as myfile:
+    if Q.get('printFileOperations',False):
+        print("Writing to %s" % Q['HTMLFILENAME'])
+
+    # could write directly to .gz when desired
+    with open(Q['HTMLFILENAME'], 'w') as myfile:
         myfile.write(template)
 
     if "gzip" in Q and Q["gzip"]:
-        os.system("rm -f %s.gz" % outputfilename)
-        os.system("gzip %s" % outputfilename)
+        os.system("rm -f %s.gz" % Q['HTMLFILENAME'])
+        os.system("gzip %s" % Q['HTMLFILENAME'])
 
 
 def writeCSVOutput(Q,candidates):
@@ -363,8 +335,6 @@ def writeCSVOutput(Q,candidates):
                 for b in range(0,len(candidate['indices'])):    # second position
                     if (a,b,pairType) in interactions:
                         pairsToPrint[pairType].append((a,b))
-
-    pagetitle = "FR3D %s" % Q['name'].encode('ascii','ignore')
 
     candidatelist = ''
 
@@ -481,40 +451,29 @@ def writeCSVOutput(Q,candidates):
 
         candidatelist += '\n'
 
-    csvfilename,csvlink = getCSVfilename(Q)
+    if Q.get('printFileOperations',False):
+        print("Writing to %s" % Q["CSVFILENAME"])
 
-    if "CSVFILENAME" in Q:
-        outputfilename = Q["CSVFILENAME"]
-    else:
-        if "OUTPUTPATH" in Q:
-            OUTPUTPATH = Q["OUTPUTPATH"]
-        else:
-            from fr3d.search.fr3d_configuration import OUTPUTPATH
-        outputfilename = os.path.join(OUTPUTPATH,csvfilename)
-
-    if not 'server' in Q:
-        print("Writing to %s" % outputfilename)
-
-    with open(outputfilename, 'w') as myfile:
+    with open(Q["CSVFILENAME"], 'w') as myfile:
         myfile.write(candidatelist)
 
 
-def writeCandidateOutput(candidates, Q, ifedata):
-    queryName = Q['name']
-    fileName =   '../output/' + queryName.encode('ascii','ignore') + '_python_output.txt'
-    file = open(fileName, 'w')
-    file.write("Found " + str(len(candidates)) + " candidates\n")
+# def writeCandidateOutput(candidates, Q, ifedata):
+#     queryName = Q['name']
+#     fileName =   '../output/' + queryName.encode('ascii','ignore') + '_python_output.txt'
+#     file = open(fileName, 'w')
+#     file.write("Found " + str(len(candidates)) + " candidates\n")
 
-    for candidate in candidates:
-        dataLine = ""
+#     for candidate in candidates:
+#         dataLine = ""
 
-        indices = ""
-        for index in candidate['indices']:
-            indices += "%6s" % str(index)
+#         indices = ""
+#         for index in candidate['indices']:
+#             indices += "%6s" % str(index)
 
-        dataLine += indices
+#         dataLine += indices
 
-        file.write(dataLine + '\n')
-    file.close()
+#         file.write(dataLine + '\n')
+#     file.close()
 
 
