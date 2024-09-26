@@ -204,12 +204,6 @@ def readUnitFileNames(Q,PDB_data_file):
                 chain = chain_fields[-1]
                 file_id = '-'.join(chain_fields[0:-2])
 
-                # print(chain_filename)
-                # print(chain_id)
-                # print(model)
-                # print(chain)
-                # print(file_id)
-
                 # skip files that are already in PDB_data_file
                 if not file_id in PDB_data_file:
                     if not file_id in unit_data_file:
@@ -221,8 +215,6 @@ def readUnitFileNames(Q,PDB_data_file):
 
                     unit_data_file[file_id]['chains'][molecule_type].append(chain)
                     unit_data_file[file_id]['model'].add(model)
-
-                    # print('  query_processing: readUnitFileNames: chain_filename %s has file_id %s and molecule_type %s' % (chain_filename,file_id,molecule_type))
 
     return unit_data_file
 
@@ -258,34 +250,39 @@ def readQueryFromJSON(JSONfilename):
 
     if not filename:
         # name could be from a WebFR3D search, so try to download it
+
+        # make a place to save the JSON file if successful
+        try:
+            if not os.path.exists(JSONPATH):
+                os.makedirs(JSONPATH)
+        except:
+            print("Error: Could not create directory " + JSONPATH + " to store query files")
+            Q = {}
+            Q["errorMessage"] = []
+            Q["errorMessage"].append("Error: Could not create directory " + JSONPATH + " to store query files")
+            return Q
+
+        id = JSONfilename.replace("Query_","").replace(".json","")
+
         if JSONfilename.startswith("Query_"):
+            # old format
+            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
+        elif len(id) == 14:
+            # new format
+            queryURL = "https://rna.bgsu.edu/fr3d/results/" + JSONfilename
 
-            try:
-                if not os.path.exists(JSONPATH):
-                    os.makedirs(JSONPATH)
-            except:
-                print("Error: Could not create directory " + JSONPATH + " to store query files")
-                Q = {}
-                Q["errorMessage"] = []
-                Q["errorMessage"].append("Error: Could not create directory " + JSONPATH + " to store query files")
-                return Q
+        try:
+            print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
+            pathAndFileName = os.path.join(JSONPATH,JSONfilename)
 
-            try:
-                id = JSONfilename.replace("Query_","").replace(".json","")
+            if sys.version_info[0] < 3:
+                urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
+            else:
+                urllib.request.urlretrieve(queryURL, pathAndFileName)  # python 3
 
-                queryURL = "http://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
-                print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
-
-                pathAndFileName = os.path.join(JSONPATH,JSONfilename)
-
-                if sys.version_info[0] < 3:
-                    urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
-                else:
-                    urllib.request.urlretrieve(queryURL, pathAndFileName)  # python 3
-
-                filename = JSONPATH + JSONfilename
-            except:
-                print("Error: Could not find or download query file " + JSONfilename)
+            filename = JSONPATH + JSONfilename
+        except:
+            print("Error: Could not find or download query file " + JSONfilename)
 
     # read the json file
     if filename:
