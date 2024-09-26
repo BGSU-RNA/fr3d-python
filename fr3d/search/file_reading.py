@@ -7,8 +7,6 @@ import pickle
 import sys
 from time import time
 
-from fr3d.search.fr3d_configuration import SERVER
-
 # import the version of urlretrieve appropriate to the Python version
 if sys.version_info[0] < 3:
     from urllib import urlretrieve as urlretrieve
@@ -538,7 +536,7 @@ def readNAPositionsFile(Q, chainString, starting_index):
 
     pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
         # try to download .pickle file of RNA/DNA base center and rotation matrix
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
             try:
@@ -549,7 +547,7 @@ def readNAPositionsFile(Q, chainString, starting_index):
                 print("Could not download %s from BGSU RNA site" % filename)
                 pass
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
         # try to download .cif file and all related .pickle files
         if Q.get("printFileOperations",False):
             print("No positions file found for %s, attempting to create it from .cif or .pdb" % chainString)
@@ -622,7 +620,8 @@ def readNABackboneFile(Q, chainString, starting_index):
     filename = chainString + "_NA_phosphate_sugar.pickle"
     pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+        # try to download .pickle file of phosphate and sugar centers
         urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
         print("Downloaded "+filename)
 
@@ -670,7 +669,8 @@ def readProteinPositionsFile(Q, file_id, starting_index):
     filename = file_id + "_protein.pickle"
     pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
-    if not os.path.exists(pathAndFileName) and not SERVER:
+    if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+        # try to download .pickle file of protein unit centers
         urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
         print("Downloaded "+filename)
 
@@ -731,7 +731,8 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
         pairsFileName = file_id + '_NA_pairs.pickle'
         pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
-        if not os.path.exists(pathAndFileName) and not SERVER:
+        if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+            # try to download .pickle file of pairwise interactions
             if Q.get("printFileOperations",False):
                 print("  file_reading: Could not find "+pairsFileName+" in "+Q["DATAPATHPAIRS"]+alternate)
             if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
@@ -854,9 +855,10 @@ def readUnitAnnotations(Q, ifename):
 
     for chain in chains:
         filename        = "%s_NA_unit_annotations.pickle" % chain.replace("|","-")
-        pathAndFileName = os.path.join(DATAPATHUNITS,filename)
+        pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
-        if not os.path.exists(pathAndFileName) and not SERVER:
+        if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
+            # try to download .pickle file of unit annotations
             urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
             if Q.get("printFileOperations",False):
                 print("Downloaded "+filename)
