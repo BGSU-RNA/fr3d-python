@@ -10,7 +10,7 @@ files/*.cifatoms
 tags
 localpath.py
 oldStructures.py
-*fr3d_configuration.py
+fr3d/search/fr3d_configuration.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
