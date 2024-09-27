@@ -252,48 +252,11 @@ def readQueryFromJSON(JSONfilename):
         if os.path.exists(pathAndFileName):
             filename = pathAndFileName
 
-    if not filename:
-        # make a place to save the JSON file if successful
-        try:
-            if not os.path.exists(JSONPATH):
-                os.makedirs(JSONPATH)
-        except:
-            print("Error: Could not create directory " + JSONPATH + " to store query files")
-            Q = {}
-            Q["errorMessage"] = []
-            Q["errorMessage"].append("Error: Could not create directory " + JSONPATH + " to store query files")
-            return Q
+    query_loaded = False
+    error_message = ""
 
-        # extract the randomly-generated id from the filename
-        id = JSONfilename.replace("Query_","").replace(".json","")
-
-        if JSONfilename.startswith("Query_"):
-            # old format
-            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
-        elif JSONfilename.startswith("fr3d_"):
-            # new format
-            queryURL = "https://rna.bgsu.edu/fr3d/results/" + id + ".json"
-        else:
-            queryURL = ""
-
-        if queryURL:
-            print("Downloading %s from %s to %s" % (JSONfilename,queryURL,JSONPATH))
-            pathAndFileName = os.path.join(JSONPATH,JSONfilename)
-            try:
-
-                if sys.version_info[0] < 3:
-                    urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
-                else:
-                    urllib.request.urlretrieve(queryURL, pathAndFileName)  # python 3
-
-                filename = JSONPATH + JSONfilename
-            except:
-                print("Error: Could not find or download query file " + JSONfilename)
-        else:
-            print("Error: Could not find a URL to download " + JSONfilename)
-
-    # read the json file
     if filename:
+        # open and read the json file
         fn = os.path.basename(filename)
         Q["JSONFILENAME"] = fn
 
@@ -311,34 +274,52 @@ def readQueryFromJSON(JSONfilename):
                     cleaned_lines.append(line)
 
             Q = json.loads("\n".join(cleaned_lines))
-
+            query_loaded = True
         except:
-            print("Error: Could not read query file " + JSONfilename)
-            Q = {}
-            Q["errorMessage"] = []
-            Q["errorMessage"].append("Error: Could not read query file " + JSONfilename)
-            Q["errorStatus"] = "write and exit"
-            Q["numpositions"] = 0
-            Q["type"] = "symbolic"
-            Q["searchFiles"] = []
-            Q["numFilesSearched"] = 0
-            Q["elapsedClockTime"] = 0
-            Q["userMessage"] = ["Error: Could not read query file " + JSONfilename]
+            error_message = "Error: Could not read query file " + JSONfilename
 
     else:
-        print("Error: Could not find query file " + JSONfilename)
+        # try to download the JSON file directly from the web
+
+        # extract the randomly-generated id from the filename
+        id = JSONfilename.replace("Query_","").replace(".json","")
+
+        if JSONfilename.startswith("Query_"):
+            # format before 2024
+            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
+        elif JSONfilename.startswith("fr3d_"):
+            # format as of 2024
+            queryURL = "https://rna.bgsu.edu/fr3d/results/" + id + ".json"
+        else:
+            # unrecognized format
+            queryURL = ""
+
+        if queryURL:
+            print("Downloading %s from %s" % (JSONfilename,queryURL))
+            try:
+                # download the file directly to a variable
+                response = urllib.request.urlopen(queryURL)
+                data = response.read()
+                text = data.decode('utf-8')
+                Q = json.loads(text)
+                query_loaded = True
+            except:
+                error_message = "Error: Could not find or download query file " + JSONfilename
+        else:
+            error_message = "Error: Could not find a URL to download " + JSONfilename
+
+    if not query_loaded:
+        print(error_message)
         Q = {}
         Q["errorMessage"] = []
-        Q["errorMessage"].append("Error: Could not find query file " + JSONfilename)
+        Q["errorMessage"].append(error_message)
         Q["errorStatus"] = "write and exit"
         Q["numpositions"] = 0
         Q["type"] = "symbolic"
         Q["searchFiles"] = []
         Q["numFilesSearched"] = 0
         Q["elapsedClockTime"] = 0
-        Q["userMessage"] = ["Error: Could not find query file " + JSONfilename]
-
-    if not filename:
+        Q["userMessage"] = [error_message]
         return Q
 
     if "queryMoleculeType" in Q:
