@@ -40,8 +40,8 @@ def get_pairlist(Q, models, centers, alt_index = False):
                 both_pairs_list.append((b,a))
 
             if alt_index == False:
-                for i in range(0,Q['numpositions']):
-                    for j in range(i+1,Q['numpositions']):
+                for i in range(0,Q['numPositions']):
+                    for j in range(i+1,Q['numPositions']):
                         min_squared = Q["requireddistanceminimum"][i][j]**2
                         max_squared = Q["requireddistancemaximum"][i][j]**2
 
@@ -94,8 +94,8 @@ def get_pairlist(Q, models, centers, alt_index = False):
 
     else:
         if alt_index == False:
-            for i in range(0,Q['numpositions']):
-                for j in range(i+1,Q['numpositions']):
+            for i in range(0,Q['numPositions']):
+                for j in range(i+1,Q['numPositions']):
                     pairlist[i][j] = "full"
         else:
             for i in alt_index:
@@ -202,8 +202,8 @@ def get_pairlist_old(Q, models, centers, alt_index = False):
             max_pair_list = fixed_radius_search(len(centers), models, centers, Q["largestMaxRange"], square_size)
 
             if alt_index == False:
-                for i in range(0,Q['numpositions']):
-                    for j in range(i+1,Q['numpositions']):
+                for i in range(0,Q['numPositions']):
+                    for j in range(i+1,Q['numPositions']):
                         min_squared = Q["requireddistanceminimum"][i][j]**2
                         max_squared = Q["requireddistancemaximum"][i][j]**2
                         pair_list = []
@@ -226,8 +226,8 @@ def get_pairlist_old(Q, models, centers, alt_index = False):
 
     else:
         if alt_index == False:
-            for i in range(0,Q['numpositions']):
-                for j in range(i+1,Q['numpositions']):
+            for i in range(0,Q['numPositions']):
+                for j in range(i+1,Q['numPositions']):
                     pairlist[i][j] = "full"
         else:
             for i in alt_index:

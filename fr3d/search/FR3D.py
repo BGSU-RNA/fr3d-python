@@ -166,11 +166,15 @@ def fr3d_search(Q,timerData=None):
     else:
         filename = Q['JSONFILENAME'].replace(".json","")
 
+    base_filename = os.path.basename(filename)
+
     if not "HTMLFILENAME" in Q:
-        Q['HTMLFILENAME'] = os.path.join(Q['OUTPUTPATH'], filename + ".html")
+        Q['HTMLFILENAME'] = os.path.join(Q['OUTPUTPATH'], base_filename + ".html")
 
     if not "CSVFILENAME" in Q:
-        Q['CSVFILENAME'] = os.path.join(Q['OUTPUTPATH'], filename + ".csv")
+        Q['CSVFILENAME'] = os.path.join(Q['OUTPUTPATH'], base_filename + ".csv")
+
+    Q['seeModifyQuery'] = '<a href="https://rna.bgsu.edu/fr3d/modify?id=%s" target="_blank">See and modify query</a> ' % filename
 
     # retrieve information about query nucleotides, if any
     Q = retrieveQueryInformation(Q)
@@ -239,7 +243,7 @@ def fr3d_search(Q,timerData=None):
         Q, ifedata = readPositionsAndInteractions(Q, ifename)
 
         # if there are not enough units to search, skip the rest of the processing for this IFE
-        if len(ifedata["units"]) < Q["numpositions"]:
+        if len(ifedata["units"]) < Q["numPositions"]:
             if Q.get("printNotEnoughUnits", False):
                 print("%s has only %d units which is not enough for this search" % (ifename,len(ifedata["units"])))
             continue
@@ -332,7 +336,7 @@ def fr3d_search(Q,timerData=None):
 
     timerData = myTimer("Calculate all vs all matrix")
 
-    if Q["numpositions"] > 1 and len(candidates) > 1:
+    if Q["numPositions"] > 1 and len(candidates) > 1:
         # compute all against all discrepancies, up to a certain limit;
         # more than 600 is too large even locally, and too hard to see in a heat map
         matrix_dim = min(Q["MAXCANDIDATESHEATMAP"], len(candidates))

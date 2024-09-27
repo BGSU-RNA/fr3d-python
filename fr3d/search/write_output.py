@@ -51,7 +51,7 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
 
     candidatelist = '<table id="instances"; style="white-space:nowrap;">\n'
 
-    numPositions = Q["numpositions"]
+    numPositions = Q["numPositions"]
 
     # write header line, with instructions about how to sort each column
     candidatelist += "<tr><th onclick=\"sortTable(0,\'instances\',\'numeric\')\">S.</th><th onclick=\"sortTable(1,\'instances\',\'checkbox\')\">Show</th>"
@@ -354,7 +354,7 @@ def writeCSVOutput(Q,candidates):
 
     candidatelist = ''
 
-    numPositions = Q["numpositions"]
+    numPositions = Q["numPositions"]
 
     # write header line
     candidatelist += "Similarity order,"
