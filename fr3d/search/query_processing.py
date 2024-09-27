@@ -258,7 +258,6 @@ def readQueryFromJSON(JSONfilename):
     if filename:
         # open and read the json file
         fn = os.path.basename(filename)
-        Q["JSONFILENAME"] = fn
 
         try:
             with open(filename) as json_file:
@@ -274,6 +273,7 @@ def readQueryFromJSON(JSONfilename):
                     cleaned_lines.append(line)
 
             Q = json.loads("\n".join(cleaned_lines))
+            Q["JSONFILENAME"] = fn
             query_loaded = True
         except:
             error_message = "Error: Could not read query file " + JSONfilename
@@ -310,17 +310,27 @@ def readQueryFromJSON(JSONfilename):
 
     if not query_loaded:
         print(error_message)
+        # place to save all query information
         Q = {}
         Q["errorMessage"] = []
         Q["errorMessage"].append(error_message)
         Q["errorStatus"] = "write and exit"
-        Q["numpositions"] = 0
+        Q["numPositions"] = 0
         Q["type"] = "symbolic"
         Q["searchFiles"] = []
         Q["numFilesSearched"] = 0
         Q["elapsedClockTime"] = 0
         Q["userMessage"] = [error_message]
         return Q
+
+    # fill in defaults for any missing fields
+    try:
+        from fr3d.search.fr3d_configuration import Q as Q_defaults
+        for key in Q_defaults:
+            if not key in Q:
+                Q[key] = Q_defaults[key]
+    except:
+        pass
 
     if "queryMoleculeType" in Q:
         # make sure all keys are numbers and not strings
@@ -339,22 +349,22 @@ def readQueryFromJSON(JSONfilename):
                     Q["requiredMoleculeType"][int(key)] = Q["requiredMoleculeType"][key]
                     del Q["requiredMoleculeType"][key]
 
-    if not "numpositions" in Q:
+    if not "numPositions" in Q:
         if "unitID" in Q:
-            Q["numpositions"] = len(Q["unitID"])
+            Q["numPositions"] = len(Q["unitID"])
         elif "unittype" in Q:
-            Q["numpositions"] = len(Q["unittype"])
+            Q["numPositions"] = len(Q["unittype"])
         elif "interactionMatrix" in Q:
             m = 0
             for key1 in Q["interactionMatrix"].keys():
                 m = max(m,int(key1))
                 for key2 in Q["interactionMatrix"][key1].keys():
                     m = max(m,int(key1))
-            Q["numpositions"] = m + 1
+            Q["numPositions"] = m + 1
         elif "queryMoleculeType" in Q:
-            Q["numpositions"] = max(Q["queryMoleculeType"].keys()) + 1
+            Q["numPositions"] = max(Q["queryMoleculeType"].keys()) + 1
         elif "requiredMoleculeType" in Q:
-            Q["numpositions"] = max(Q["requiredMoleculeType"].keys()) + 1
+            Q["numPositions"] = max(Q["requiredMoleculeType"].keys()) + 1
         else:
             np = 0
             for key in Q.keys():
@@ -362,19 +372,19 @@ def readQueryFromJSON(JSONfilename):
                 if len(fields) == 3 and fields[0] == "constraintMatrix":
                     np = max(np,int(fields[1]),int(fields[2]))
             if np > 0:
-                Q["numpositions"] = np
+                Q["numPositions"] = np
 
-    if not "numpositions" in Q:
+    if not "numPositions" in Q:
         Q["errorMessage"].append("Error: Could not determine number of positions in query")
         return Q
 
     if "interactionMatrix" in Q:
         # make sure all keys are present in interactionMatrix
         # make sure all keys are numbers and not strings
-        iM = emptyInteractionMatrix(Q["numpositions"])
+        iM = emptyInteractionMatrix(Q["numPositions"])
 
-        for i in range(0,Q["numpositions"]):
-            for j in range(0,Q["numpositions"]):
+        for i in range(0,Q["numPositions"]):
+            for j in range(0,Q["numPositions"]):
                 if str(i) in Q["interactionMatrix"]:
                     if str(j) in Q["interactionMatrix"][str(i)]:
                         iM[i][j] = Q["interactionMatrix"][str(i)][str(j)]
@@ -399,7 +409,7 @@ def retrieveQueryInformation(Q):
             i = int(fields[1])-1
             j = int(fields[2])-1
             if not "interactionMatrix" in Q:
-                Q["interactionMatrix"] = emptyInteractionMatrix(Q["numpositions"])
+                Q["interactionMatrix"] = emptyInteractionMatrix(Q["numPositions"])
             Q["interactionMatrix"][i][j] += " " + Q[key]
 
     # infer query type from other fields being present
@@ -423,7 +433,7 @@ def retrieveQueryInformation(Q):
 
         if "unitID" in Q:
             if len(Q["unitID"]) > 0:
-                Q["numpositions"] = len(Q["unitID"])
+                Q["numPositions"] = len(Q["unitID"])
             else:
                 print("Error:  Need to specify unit IDs for geometric or mixed query")
                 Q["errorMessage"].append("Need to specify unit IDs for geometric or mixed query")
@@ -527,17 +537,17 @@ def calculateQueryConstraints(Q):
     if "interactionMatrix" in Q:
 
         # make sure the matrix has all of the entries expected
-        while len(Q["interactionMatrix"]) < Q["numpositions"]:
+        while len(Q["interactionMatrix"]) < Q["numPositions"]:
             Q["interactionMatrix"].append([])
 
-        for i in range(0,Q["numpositions"]):
-            while len(Q["interactionMatrix"][i]) < Q["numpositions"]:
+        for i in range(0,Q["numPositions"]):
+            while len(Q["interactionMatrix"][i]) < Q["numPositions"]:
                 Q["interactionMatrix"][i].append('')
 
         # parse continuity constraints
         Q["continuityConstraint"] = defaultdict(dict)
         foundContinuityConstraint = False
-        for i in range(0,Q["numpositions"]):
+        for i in range(0,Q["numPositions"]):
             for j in range(i):                      # look at entries below the diagonal
 
                 iM = Q["interactionMatrix"][i][j]
@@ -694,10 +704,10 @@ def calculateQueryConstraints(Q):
 
         RNACombinationConstraints = ['AA','AC','AG','AU','CA','CC','CG','CU','GA','GC','GG','GU','UA','UC','UG','UU']
 
-        Q["requiredInteractions"] = emptyInteractionList(Q["numpositions"])
-        Q["prohibitedInteractions"] = emptyInteractionList(Q["numpositions"])
-        Q["crossingNumber"] = emptyInteractionList(Q["numpositions"])
-        Q["combinationConstraint"] = emptyInteractionList(Q["numpositions"])
+        Q["requiredInteractions"] = emptyInteractionList(Q["numPositions"])
+        Q["prohibitedInteractions"] = emptyInteractionList(Q["numPositions"])
+        Q["crossingNumber"] = emptyInteractionList(Q["numPositions"])
+        Q["combinationConstraint"] = emptyInteractionList(Q["numPositions"])
 
         foundRequiredInteraction = False
         foundProhibitedInteraction = False
@@ -706,8 +716,8 @@ def calculateQueryConstraints(Q):
         Q["alternateInteractions"] = set([])       # for _exp and possibly others
         foundAlternateInteractions = False
 
-        for i in range(Q["numpositions"]):
-            for j in range(Q["numpositions"]):
+        for i in range(Q["numPositions"]):
+            for j in range(Q["numPositions"]):
 
                 requiredInteractions = []
                 prohibitedInteractions = []
@@ -840,18 +850,18 @@ def calculateQueryConstraints(Q):
         'N' : ['A', 'C', 'G', 'U']
         }
 
-        Q["requiredUnitType"] = [None] * Q["numpositions"]
-        Q["requiredMoleculeType"] = [None] * Q["numpositions"]
+        Q["requiredUnitType"] = [None] * Q["numPositions"]
+        Q["requiredMoleculeType"] = [None] * Q["numPositions"]
 
-        Q["glycosidicBondOrientation"] = [None] * Q["numpositions"]
+        Q["glycosidicBondOrientation"] = [None] * Q["numPositions"]
         foundGlycosidicBondOrientation = False
-        Q["chiAngle"] = [None] * Q["numpositions"]
-        Q["chainLength"] = [None] * Q["numpositions"]
+        Q["chiAngle"] = [None] * Q["numPositions"]
+        Q["chainLength"] = [None] * Q["numPositions"]
         foundChiAngle = False
         foundChainLength = False
 
         # process unary constraints
-        for i in range(Q["numpositions"]):
+        for i in range(Q["numPositions"]):
             Q["requiredUnitType"][i] = []
             Q["requiredMoleculeType"][i] = []
             Q["glycosidicBondOrientation"][i] = []
@@ -1027,8 +1037,8 @@ def calculateQueryConstraints(Q):
 
     Q["activeInteractions"] = []
 
-    for i in range(0,Q["numpositions"]):
-        for j in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
+        for j in range(0,Q["numPositions"]):
             if 'requiredInteractions' in Q:
                 Q["activeInteractions"].extend(Q["requiredInteractions"][i][j])
             if 'prohibitedInteractions' in Q:
@@ -1040,22 +1050,22 @@ def calculateQueryConstraints(Q):
         Q["activeInteractions"].remove("and")
 
     if not "requiredMoleculeType" in Q or not Q["requiredMoleculeType"]:
-        Q["requiredMoleculeType"] = [["RNA"]] * Q["numpositions"]
+        Q["requiredMoleculeType"] = [["RNA"]] * Q["numPositions"]
 
     if Q["type"] == "mixed" or Q["type"] == "geometric":
         # determine the type of each unit to facilitate retrieving its information
         # this must be fragile with modified nucleotides and amino acids
         if not "queryMoleculeType" in Q:
-            Q["queryMoleculeType"] = [None] * Q["numpositions"]
-            for i in range(Q["numpositions"]):
+            Q["queryMoleculeType"] = [None] * Q["numPositions"]
+            for i in range(Q["numPositions"]):
                 Q["queryMoleculeType"][i] = getMoleculeType(Q["unitID"][i])
 
     if not "locationWeight" in Q:
-        Q["locationWeight"] = [1] * Q["numpositions"]
+        Q["locationWeight"] = [1] * Q["numPositions"]
 
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         s = sum(Q["locationWeight"])
-        Q["locationWeight"][i] = Q["numpositions"] * Q["locationWeight"][i]/s
+        Q["locationWeight"][i] = Q["numPositions"] * Q["locationWeight"][i]/s
 
     # incorporate query units into the search constraints
     if Q["type"] == "geometric" or Q["type"] == "mixed":
@@ -1065,26 +1075,26 @@ def calculateQueryConstraints(Q):
             Q["userMessage"].append("No discrepancy specified, using 0.3")
         Q["requireddistanceminimum"] = defaultdict(dict)
         Q["requireddistancemaximum"] = defaultdict(dict)
-        Q["SSCutoff"] = [None] * Q["numpositions"] # SSCutoff = sum of squares cutoff
+        Q["SSCutoff"] = [None] * Q["numPositions"] # SSCutoff = sum of squares cutoff
         Q["largestMaxRange"] = 0
-        Q["distance"] = np.zeros((Q["numpositions"],Q["numpositions"]))
+        Q["distance"] = np.zeros((Q["numPositions"],Q["numPositions"]))
         s = 0
 
-        for i in range(0,Q["numpositions"]):
+        for i in range(0,Q["numPositions"]):
             s = s + Q["locationWeight"][i]
 
-            Q["SSCutoff"][i] = (Q["numpositions"]**2)*(Q["discrepancy"]**2)*s;
-            for j in range(i+1,Q["numpositions"]):
+            Q["SSCutoff"][i] = (Q["numPositions"]**2)*(Q["discrepancy"]**2)*s;
+            for j in range(i+1,Q["numPositions"]):
 
                 Q["distance"][i][j] = np.linalg.norm(Q["centers"][i] -Q["centers"][j])
                 Q["distance"][j][i] = Q["distance"][i][j]
 
-                if Q["numpositions"] > 2:
+                if Q["numPositions"] > 2:
                     wi = Q["locationWeight"][i]
                     wj = Q["locationWeight"][j]
-                    delta = math.sqrt((wi + wj) / (wi * wj)) * Q["numpositions"] * Q["discrepancy"]
+                    delta = math.sqrt((wi + wj) / (wi * wj)) * Q["numPositions"] * Q["discrepancy"]
                 else:
-                    delta = Q["numpositions"] * Q["discrepancy"]
+                    delta = Q["numPositions"] * Q["discrepancy"]
 
                 Q["requireddistanceminimum"][i][j] = Q["distance"][i][j] - delta
                 Q["requireddistancemaximum"][i][j] = Q["distance"][i][j] + delta
@@ -1096,15 +1106,15 @@ def calculateQueryConstraints(Q):
 
     # note what molecule type we are searching for, to load the right chains
     searchingRNA = False
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         if 'RNA' in Q["requiredMoleculeType"][i]:
             searchingRNA = True
     searchingDNA = False
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         if 'DNA' in Q["requiredMoleculeType"][i]:
             searchingDNA = True
     searchingProtein = False
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         if 'protein' in Q["requiredMoleculeType"][i]:
             searchingProtein = True
 
@@ -1156,6 +1166,8 @@ def calculateQueryConstraints(Q):
             continue
 
         # look up representative sets, if requested, and replace with IFE names
+        # putting the URL in searchFiles is deprecated as of 2024-09-27 because it's too fragile to have users make a URL
+        # but this code stays for backward compatibility
         # Example: 	"https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/3.0A/csv"
         # Example:  "https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/NMR/csv"
         if "nrlist" in search_file:           # referring to lists that are posted online
@@ -1170,80 +1182,11 @@ def calculateQueryConstraints(Q):
                 fields[7] = "3.0A"
             search_file = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (fields[6],fields[7])
 
-            # check in local file of representative sets first, in case already loaded
-            listLoaded = False
-            pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
-            if os.path.exists(pathAndFileName):
-                with open(pathAndFileName, 'rb') as fh:
-                    representativeSets = pickle.load(fh)
-                if search_file in representativeSets and len(representativeSets[search_file]) > 0:
-                    IFEList.extend(representativeSets[search_file])
-                    listLoaded = True
+            if not "repSetRelease" in Q:
+                Q["repSetRelease"] = fields[6]
 
-            if not listLoaded:
-                newList = []
-
-                # requesting NMR structures only
-                # this is a bit of a hack
-                if 'NMR/csv' in search_file:
-                    url = search_file.replace('NMR/csv','all/csv')
-                    NMRonly = True
-                else:
-                    url = search_file
-                    NMRonly = False
-
-                try:
-                    # download representative set list from URL given in search_file variable
-                    if sys.version_info[0] < 3:
-                        f = urllib.urlopen(url)          # python 2
-                    else:
-                        f = urllib.request.urlopen(url)  # python 3
-                    myfile = f.read()
-                except Exception as e:
-                    Q["errorMessage"].append("Not able to download representative set %s" % search_file)
-                    print("Error: Not able to retrieve or download representative set")
-                    print(e)
-                    myfile = []
-
-                if "Arial" in str(myfile):
-                    print("Error: Problem with downloading representative set, got:")
-                    print(myfile)
-                elif len(myfile) > 0:
-                    allLines = myfile.split(b'\n')
-                    for line in allLines:
-                        # CSV file, split by comma
-                        fields = line.split(b",")
-                        if len(fields) > 1:
-                            # second column has representative IFE; remove ""
-                            IFE = fields[1].replace(b'"',b'')
-                            if NMRonly:
-                                file_id = IFE.split("|")[0]
-                                if len(file_id) == 4:
-                                    if not "PDB_data_file" in Q:
-                                        Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
-
-                                    file_id = IFE[0:4]
-                                    if file_id in list(Q["PDB_data_file"]):
-                                        if 'method' in list(Q["PDB_data_file"][file_id]):
-                                            if 'NMR' in Q["PDB_data_file"][file_id]['method']:
-                                                newList.append(IFE.decode("ascii"))
-                                                # newList.append(IFE)
-                            elif len(IFE) > 1:
-                                newList.append(IFE.decode("ascii"))
-                                # newList.append(IFE)
-
-                    IFEList.extend(newList)
-
-                    if os.path.exists(pathAndFileName):
-                        with open(pathAndFileName, 'rb') as fh:
-                            representativeSets = pickle.load(fh)
-                    else:
-                        representativeSets = {}
-
-                    representativeSets[search_file] = newList
-                    pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
-
-            IFEList = sorted(IFEList)
+            if not "repSetResolution" in Q:
+                Q["repSetResolution"] = fields[7]
 
             continue
 
@@ -1261,8 +1204,10 @@ def calculateQueryConstraints(Q):
 
         if len(search_file_id) == 4:
             # process as a PDB id
-            # if RNA or DNA is being searched for, convert any 4-letter PDB IDs to strings with chain strings separated by + signs
-            # which is how RNA chains are stored in .pickle files for speed
+            # if RNA or DNA is being searched for, convert any 4-letter PDB IDs to strings
+            # with chain strings separated by + signs
+            # That way, all chains will be searched together, not individually
+            # Then you can find motifs that have nucleotides from two or more chains
             # not needed for protein because they are not stored by chain
 
             # load mapping from PDB id to chain and other information, if not already done
@@ -1286,12 +1231,13 @@ def calculateQueryConstraints(Q):
                 continue
 
         # on the server, only PDB files will be searched
-        # if we got this far, no PDB file will be found
+        # if we got this far, search_file is not a file from PDB
         if "PDBONLY" in Q and Q["PDBONLY"]:
             print('Error: Unknown file %s' % search_file)
             Q["errorMessage"].append("Did not recognize %s as a file from the Protein Data Bank" % search_file)
             continue
 
+        # Process search_file that is not from PDB
         # look for .pickle files for search_file in the units directory
         units_path = os.path.join(Q["DATAPATHUNITS"])
         if os.path.exists(units_path):
@@ -1307,9 +1253,6 @@ def calculateQueryConstraints(Q):
                     unit_data_file = readUnitFileNames(Q,set())
 
             if search_file_id in unit_data_file:
-
-                # print("  query_processing: found the chains %s in the units directory" % unit_data_file[search_file_id]['chains'])
-
                 # found the list of chains in the /units directory
                 chains = []
                 if (searchingRNA or searchingDNA) and 'NA' in unit_data_file[search_file_id]['chains']:
@@ -1364,6 +1307,95 @@ def calculateQueryConstraints(Q):
 
         print('Error: Unable to find search file %s' % search_file)
         Q["errorMessage"].append("Unable to find search file %s" % search_file)
+
+    # load representative set, if requested
+    # users can directly specify these two variables in Q
+    # repSetResolution can be 'NMR' to get only NMR files
+    if "repSetRelease" in Q and "repSetResolution" in Q:
+        url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
+
+        repSetKey = (Q["repSetRelease"],Q["repSetResolution"])
+
+        # check in local file of representative sets first, in case the list is already downloaded
+        # helps when working offline
+        newList = []
+        pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
+        if os.path.exists(pathAndFileName):
+            with open(pathAndFileName, 'rb') as fh:
+                representativeSets = pickle.load(fh)
+            if repSetKey in representativeSets and len(representativeSets[repSetKey]) > 0:
+                newList = representativeSets[repSetKey]
+
+        if len(newList) == 0:
+            # requesting NMR structures only
+            if Q['repSetResolution'] == 'NMR':
+                # this is a bit of a hack
+                url = url.replace('NMR/csv','all/csv')
+                NMRonly = True
+            else:
+                NMRonly = False
+
+            try:
+                # download representative set list from URL
+                if sys.version_info[0] < 3:
+                    f = urllib.urlopen(url)          # python 2
+                else:
+                    f = urllib.request.urlopen(url)  # python 3
+                myfile = f.read()
+            except Exception as e:
+                Q["errorMessage"].append("Not able to download representative set %s" % url)
+                print("Error: Not able to retrieve or download representative set")
+                print(e)
+                myfile = []
+
+            if "Arial" in str(myfile):
+                print("Error: Problem with downloading representative set, got:")
+                print(myfile)
+            elif len(myfile) > 0:
+                allLines = myfile.split('\n')
+                for line in allLines:
+                    # CSV file, split by comma
+                    fields = line.split(",")
+                    if len(fields) > 1:
+                        # second column has representative IFE; remove ""
+                        IFE = fields[1].replace('"','')
+                        if NMRonly:
+                            file_id = IFE.split("|")[0]
+                            if len(file_id) == 4:
+                                if not "PDB_data_file" in Q:
+                                    Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+
+                                file_id = IFE[0:4]
+                                if file_id in list(Q["PDB_data_file"]):
+                                    if 'method' in list(Q["PDB_data_file"][file_id]):
+                                        if 'NMR' in Q["PDB_data_file"][file_id]['method']:
+                                            newList.append(IFE.decode("ascii"))
+                                            # newList.append(IFE)
+                        elif len(IFE) > 1:
+                            newList.append(IFE)
+
+                if os.path.exists(pathAndFileName):
+                    with open(pathAndFileName, 'rb') as fh:
+                        representativeSets = pickle.load(fh)
+                else:
+                    representativeSets = {}
+
+                representativeSets[repSetKey] = newList
+                pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
+
+        if len(newList) > 0:
+            full_search_file_ifes = "  ".join(IFEList)
+            for IFE in newList:
+                for chain in IFE.split("+"):
+                    if not chain in full_search_file_ifes:
+                        # avoid adding 4V9F|1|0 when the full 4V9F is already specified
+                        # this way, a user can specify a representative set and some
+                        # specific full 3D structure files and not get duplicates
+                        # There are still special cases where this will not work
+                        # and the user will get duplicates, like if they specify 8GLP|1|L5
+                        # in searchFiles, then this code will hit 8GLP|1|L5+8GLP|1|L8 and add
+                        # 8GLP|1|L5+8GLP|1|L8 to IFEList
+                        IFEList.append(IFE)
 
     # finalize the list of IFEs to search
     Q["searchFiles"] = [x for x in IFEList if len(x) > 0]
