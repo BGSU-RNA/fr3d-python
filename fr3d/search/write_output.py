@@ -213,23 +213,18 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     else:
         s_text = "s"
 
-    queryNote = "%s.  Found %d candidate%s from %d of %d files in %0.0f seconds." % (name_text,len(candidates),s_text,Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+    queryNote = "%s.<br>Found %d candidate%s from %d of %d files in %0.0f seconds." % (name_text,len(candidates),s_text,Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
 
     if "moreCandidatesThanHeatMap" in Q:
         queryNote += " " + Q["moreCandidatesThanHeatMap"]
-    else:
-        queryNote += ""
 
     template = template.replace("###QUERYNAME###",str(queryNote))
 
-    if "seeModifyQuery" in Q:
-        seeModifyQuery = Q["seeModifyQuery"]
-    else:
-        seeModifyQuery = ''
+    seeModifyQuery = Q.get("seeModifyQuery","")
 
     template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
 
-    if "CSVFILENAME" in Q:
+    if "CSVFILENAME" in Q and not Q.get("reloadOutputPage",False):
         csvlink = os.path.split(Q["CSVFILENAME"])[1]
         seeCSVOutput = '<a href="%s">See CSV output</a>' % csvlink
     else:
@@ -246,7 +241,7 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     glycosidic bond conformation if requested,
     basepair and stack interactions present, base-phosphate interactions,
     base-ribose interactions, oxygen stacking interactions,
-    and the number of nested AU, GC, GU Watson-Crick pairs crossed by each annotated interaction.<br>
+    and the number of nested AU, GC, GU Watson-Crick pairs crossed by each annotated interaction.
     Click on a column header to sort by that column.
     Click on the diagonal of the heatmap to select an instance; right click to de-select.
     Click above the diagonal to select a range of instances, below the diagonal to compare two instances.
