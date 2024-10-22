@@ -506,10 +506,12 @@ def readPDBDatafile(Q):
                 datafile = pickle.load(open(pathAndFileName,"rb"))
             else:
                 datafile = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
+            Q["PDB_data_file"] = datafile
         except:
+            Q["errorMessage"].append("Could not read "+filename)
             print("Could not read "+filename)
 
-    return datafile
+    return Q
 
 
 def readNAPositionsFile(Q, chainString, starting_index):
