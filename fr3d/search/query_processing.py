@@ -72,6 +72,16 @@ synonym = {}
 synonym["cis"] = ['cWW','cWw','cwW','cWWa','cHH','cHh','chH','cHHa','cSS','cSs','csS','cWH','cHW','cWS','cSW','cHS','cSH']
 synonym["trans"] = ['tWW','tWWa','tHH','tHh','thH','tSS','tSs','tsS','tWH','tHW','tWS','tWSa','tSW','tSWa','tHS','tHSa','tSH','tSHa']
 synonym["pair"]  = synonym["cis"] + synonym["trans"]
+synonym['cWW'] = ['cWW','cWWa','cWw','cwW']
+synonym['tWW'] = ['tWW','tWWa']
+synonym['cHH'] = ['cHH','cHHa','cHh','chH']
+synonym['tHH'] = ['tHH','tHh','thH']
+synonym['cSS'] = ['cSS','cSs','csS']
+synonym['tSS'] = ['tSS','tSs','tsS']
+synonym['tWS'] = ['tWS','tWSa']
+synonym['tSW'] = ['tSW','tSWa']
+synonym['tHS'] = ['tHS','tHSa']
+synonym['tSH'] = ['tSH','tSHa']
 synonym["stack"] = ['s35','s53','s33','s55']
 synonym["BPh"] = ['0BPh','1BPh','2BPh','3BPh','4BPh','5BPh','6BPh','7BPh','8BPh','9BPh']
 synonym["BR"] = ['0BR','1BR','2BR','3BR','4BR','5BR','6BR','7BR','8BR','9BR']
@@ -91,7 +101,11 @@ synonym["sOP2"] = ["sOP23","sOP25"]
 synonym["sOP"] = ["sOP13","sOP23","sOP15","sOP25"]
 synonym["sO"]  = synonym["sO3"] + synonym["sO5"]
 
-# list of interactions, to facilitate reversing them
+# the ones above can also start with "n" for "near"
+for k in list(synonym.keys()):
+    synonym["n"+k] = ["n"+s for s in synonym[k]]
+
+# list of oxygen-face stacking interactions, to facilitate reversing them
 sOF_interactions = ["s3O","s5O","s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2"]
 sFO_interactions = ["sO3","sO5","sO2'3","sO3'3","sO4'3","sO5'3","sOP13","sOP23","sO2'5","sO3'5","sO4'5","sO5'5","sOP15","sOP25"]
 
@@ -99,10 +113,6 @@ map_sFO_to_sOF = {}
 for i in range(0,len(sOF_interactions)):
     map_sFO_to_sOF[sFO_interactions[i]] = sOF_interactions[i]
     map_sFO_to_sOF["n"+sFO_interactions[i]] = "n"+sOF_interactions[i]
-
-# the ones above can also start with "n" for "near"
-for k in list(synonym.keys()):
-    synonym["n"+k] = ["n"+s for s in synonym[k]]
 
 synonym["borderSS"] = ["bSS"]
 synonym["flankSS"] = ["bSS"]
@@ -412,13 +422,23 @@ def retrieveQueryInformation(Q):
                 Q["interactionMatrix"] = emptyInteractionMatrix(Q["numPositions"])
             Q["interactionMatrix"][i][j] += " " + Q[key]
 
+    # check for non-trivial unitIDs
+    if "unitID" in Q:
+        okID = []
+        for u in unitID:
+            if len(u.split("|")) >= 5:
+                okID.append(u)
+        if len(okID) > 0:
+            # strip out any defective unitIDs
+            Q["unitID"] = okID
+        else:
+            # no unitIDs after all, remove this field
+            del Q["unitID"]
+
     # infer query type from other fields being present
     if not "type" in Q:
         if "unitID" in Q:
-            if "interactionMatrix" in Q:
-                Q["type"] = "mixed"
-            else:
-                Q["type"] = "geometric"
+            Q["type"] = "mixed"     # no need to identify "geometric"
         else:
             Q["type"] = "symbolic"
 
@@ -448,68 +468,72 @@ def retrieveQueryInformation(Q):
 
             fields = unitID.split('|')
 
-            file_id = fields[0]
-            if len(file_id) == 4:
-                # read information about PDB files, if not already done
-                if not "PDB_data_file" in Q:
-                    Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+            if len(fields) < 5:
+                # program should not get so far with this problem
+                pass
+            else:
+                file_id = fields[0]
+                if len(file_id) == 4:
+                    # read information about PDB files, if not already done
+                    if not "PDB_data_file" in Q:
+                        Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
-                if file_id.upper() in Q["PDB_data_file"]:
-                    # use uppercase for PDB identifiers
-                    file_id = file_id.upper()
-                    fields[0] = fields[0].upper()
+                    if file_id.upper() in Q["PDB_data_file"]:
+                        # use uppercase for PDB identifiers
+                        file_id = file_id.upper()
+                        fields[0] = fields[0].upper()
 
-            chainString = fields[0] + '|' + fields[1] + '|' + fields[2]
+                chainString = fields[0] + '|' + fields[1] + '|' + fields[2]
 
-            fields[3] = fields[3].upper()                # force unittype to be uppercase, A, PHE, DT, etc.
-            moleculeType = getMoleculeType(fields[3])
+                fields[3] = fields[3].upper()                # force unittype to be uppercase, A, PHE, DT, etc.
+                moleculeType = getMoleculeType(fields[3])
 
-            unitID = "|".join(fields)
+                unitID = "|".join(fields)
 
-            # if unitType is not specified, try finding it as NA, then as protein
-            foundID = False
-            for mt in moleculeTypes:
-                if moleculeType == '' or moleculeType == mt:
-                    if Q.get('printQueryDetails',False):
-                        print("  query_processing: Retrieving data about %s in chain %s" % (unitID,chainString))
+                # if unitType is not specified, try finding it as NA, then as protein
+                foundID = False
+                for mt in moleculeTypes:
+                    if moleculeType == '' or moleculeType == mt:
+                        if Q.get('printQueryDetails',False):
+                            print("  query_processing: Retrieving data about %s in chain %s" % (unitID,chainString))
 
-                    if not chainString in chainData:         # only load the chain once
-                        if mt == "RNA" or mt == "DNA":
-                            Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices = readNAPositionsFile(Q,chainString,0)
-                        elif mt == "protein":
-                            Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q,fields[0],0)
+                        if not chainString in chainData:         # only load the chain once
+                            if mt == "RNA" or mt == "DNA":
+                                Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices = readNAPositionsFile(Q,chainString,0)
+                            elif mt == "protein":
+                                Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q,fields[0],0)
 
-                        chainData[chainString] = [centers,rotations,id_to_index,index_to_id]
+                            chainData[chainString] = [centers,rotations,id_to_index,index_to_id]
 
-                    # this code trusts that centers all have 3 components; might not always be true
-                    centers = chainData[chainString][0]
-                    rotations = chainData[chainString][1]
-                    id_to_index = chainData[chainString][2]
-                    index_to_id = chainData[chainString][3]
+                        # this code trusts that centers all have 3 components; might not always be true
+                        centers = chainData[chainString][0]
+                        rotations = chainData[chainString][1]
+                        id_to_index = chainData[chainString][2]
+                        index_to_id = chainData[chainString][3]
 
-                    if not unitID in id_to_index:            # covers the case that unitType (sequence) is missing
-                        for uid in list(id_to_index.keys()):
-                            f = uid.split("|")
-                            f[3] = ""                        # blank out the unitType
-                            newID = "|".join(f)              # collapse list into string
-                            id_to_index[newID] = id_to_index[uid] # add new unit ids without unit type to dictionary
+                        if not unitID in id_to_index:            # covers the case that unitType (sequence) is missing
+                            for uid in list(id_to_index.keys()):
+                                f = uid.split("|")
+                                f[3] = ""                        # blank out the unitType
+                                newID = "|".join(f)              # collapse list into string
+                                id_to_index[newID] = id_to_index[uid] # add new unit ids without unit type to dictionary
+
+                            if unitID in id_to_index:
+                                newID = index_to_id[id_to_index[unitID]]
 
                         if unitID in id_to_index:
-                            newID = index_to_id[id_to_index[unitID]]
+                            foundID = True
+                            moleculeType = getMoleculeType(index_to_id[id_to_index[unitID]])
+                            if originalUnitID != unitID and Q.get('printQueryDetails',False):
+                                print("Given " + originalUnitID + ", converted to " + unitID + ", using " + index_to_id[id_to_index[unitID]])
 
-                    if unitID in id_to_index:
-                        foundID = True
-                        moleculeType = getMoleculeType(index_to_id[id_to_index[unitID]])
-                        if originalUnitID != unitID and Q.get('printQueryDetails',False):
-                            print("Given " + originalUnitID + ", converted to " + unitID + ", using " + index_to_id[id_to_index[unitID]])
-
-                        Q['centers'].append(centers[id_to_index[unitID]])
-                        if moleculeType == "RNA":
-                            Q['rotations'].append(rotations[id_to_index[unitID]])
-                        elif moleculeType == "protein":
-                            Q['rotations'].append(np.empty( shape=(0, 0) ))
-                        elif Q.get('printQueryDetails',False):
-                            print("Unknown molecule type " + moleculeType)
+                            Q['centers'].append(centers[id_to_index[unitID]])
+                            if moleculeType == "RNA":
+                                Q['rotations'].append(rotations[id_to_index[unitID]])
+                            elif moleculeType == "protein":
+                                Q['rotations'].append(np.empty( shape=(0, 0) ))
+                            elif Q.get('printQueryDetails',False):
+                                print("Unknown molecule type " + moleculeType)
 
             if not foundID:
                 print("Error: Not able to find coordinates for unit ID " + unitID)
@@ -757,6 +781,7 @@ def calculateQueryConstraints(Q):
 
                         if j >= i or asymmetricPair:  # yellow box or special interaction
                             if len(constraint) > 0 and constraint[0] == "~":
+                                # prohibited interaction
                                 constraint = constraint[1:]
                                 if constraint in synonym:
                                     constraints = synonym[constraint]
@@ -773,6 +798,7 @@ def calculateQueryConstraints(Q):
                                     prohibitedInteractions.append(constraint)
                                     foundProhibitedInteraction = True
                             else:
+                                # required interaction
                                 if constraint in synonym:
                                     constraints = synonym[constraint]
                                     requiredInteractions.extend(constraints)
@@ -1126,31 +1152,32 @@ def calculateQueryConstraints(Q):
     search_file_list = []
 
     # process any wildcards
-    for search_file in Q["searchFiles"]:
-        if "*" in search_file:
-            if Q.get('printQueryDetails',False):
-                print('  query_processing: Found wildcard in %s' % search_file)
-
-            search_file = search_file.strip()
-
-            (path_to_file,search_filename) = os.path.split(search_file)
-
-            if os.path.exists(path_to_file):
+    if "searchFiles" in Q:
+        for search_file in Q["searchFiles"]:
+            if "*" in search_file:
                 if Q.get('printQueryDetails',False):
-                    print('  query_processing: Found path %s' % path_to_file)
-                file_list = os.listdir(path_to_file)
+                    print('  query_processing: Found wildcard in %s' % search_file)
 
-                import fnmatch
+                search_file = search_file.strip()
 
-                if Q.get('printQueryDetails',False):
-                    print('  query_processing: Found %d files to search' % len(file_list))
+                (path_to_file,search_filename) = os.path.split(search_file)
 
-                # Loop over the filenames
-                for filename in file_list:
-                    if fnmatch.fnmatch(filename, "*.pdb"):
-                        search_file_list.append(os.path.join(path_to_file,filename))
-        else:
-            search_file_list.append(search_file)
+                if os.path.exists(path_to_file):
+                    if Q.get('printQueryDetails',False):
+                        print('  query_processing: Found path %s' % path_to_file)
+                    file_list = os.listdir(path_to_file)
+
+                    import fnmatch
+
+                    if Q.get('printQueryDetails',False):
+                        print('  query_processing: Found %d files to search' % len(file_list))
+
+                    # Loop over the filenames
+                    for filename in file_list:
+                        if fnmatch.fnmatch(filename, "*.pdb"):
+                            search_file_list.append(os.path.join(path_to_file,filename))
+            else:
+                search_file_list.append(search_file)
 
     # loop over the specified search files
     for search_file in search_file_list:
@@ -1212,7 +1239,7 @@ def calculateQueryConstraints(Q):
 
             # load mapping from PDB id to chain and other information, if not already done
             if not "PDB_data_file" in Q:
-                Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+                Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
             search_file_id_upper = search_file_id.upper()
 
@@ -1312,6 +1339,9 @@ def calculateQueryConstraints(Q):
     # users can directly specify these two variables in Q
     # repSetResolution can be 'NMR' to get only NMR files
     if "repSetRelease" in Q and "repSetResolution" in Q:
+        if not "PDB_data_file" in Q:
+            Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+
         url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
 
         repSetKey = (Q["repSetRelease"],Q["repSetResolution"])
@@ -1327,6 +1357,8 @@ def calculateQueryConstraints(Q):
                 newList = representativeSets[repSetKey]
 
         if len(newList) == 0:
+            # need to get the representative set
+
             # requesting NMR structures only
             if Q['repSetResolution'] == 'NMR':
                 # this is a bit of a hack
@@ -1339,9 +1371,10 @@ def calculateQueryConstraints(Q):
                 # download representative set list from URL
                 if sys.version_info[0] < 3:
                     f = urllib.urlopen(url)          # python 2
+                    myfile = f.read()
                 else:
                     f = urllib.request.urlopen(url)  # python 3
-                myfile = f.read()
+                    myfile = f.read().decode('utf-8')    # decode from bytes to string
             except Exception as e:
                 Q["errorMessage"].append("Not able to download representative set %s" % url)
                 print("Error: Not able to retrieve or download representative set")
@@ -1362,9 +1395,6 @@ def calculateQueryConstraints(Q):
                         if NMRonly:
                             file_id = IFE.split("|")[0]
                             if len(file_id) == 4:
-                                if not "PDB_data_file" in Q:
-                                    Q["PDB_data_file"] = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
-
                                 file_id = IFE[0:4]
                                 if file_id in list(Q["PDB_data_file"]):
                                     if 'method' in list(Q["PDB_data_file"][file_id]):
