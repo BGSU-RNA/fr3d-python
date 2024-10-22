@@ -174,7 +174,7 @@ def fr3d_search(Q,timerData=None):
     if not "CSVFILENAME" in Q:
         Q['CSVFILENAME'] = os.path.join(Q['OUTPUTPATH'], base_filename + ".csv")
 
-    Q['seeModifyQuery'] = '<a href="https://rna.bgsu.edu/fr3d/modify?id=%s" target="_blank">See and modify query</a> ' % filename
+    Q['seeModifyQuery'] = '<a href="https://rna.bgsu.edu/fr3d/modify?id=%s" target="_blank">See and modify query</a> ' % base_filename
 
     # retrieve information about query nucleotides, if any
     Q = retrieveQueryInformation(Q)
@@ -276,7 +276,7 @@ def fr3d_search(Q,timerData=None):
                 candidates = candidates[:Q["MAXCANDIDATES"]]
                 Q["hitMaxCandidates"] = True
 
-            # write output with just the candidates, no heat map, for default ordering
+            # write output with just the candidates, no heat map, no CSV, for default ordering
             Q["reloadOutputPage"] = True
             Q["numFilesSearched"] = numFilesSearched
             Q["elapsedClockTime"] = time() - Q["FR3Dstarttime"]
