@@ -43,15 +43,6 @@ def create_modified_nucleotide_to_parent_mappings():
                 modified_atom_map[fields[2]] = []
             modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
 
-    """
-    for line in mapping_text.split("\n"):
-        fields = line.split()
-        if len(fields) == 4:
-            if not fields[2] in modified_atom_map:
-                modified_atom_map[fields[2]] = []
-            modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
-    """
-
     modified_base_to_hydrogens = {}
     modified_atom_to_parent = {}
     parent_atom_to_modified = {}
@@ -68,20 +59,33 @@ def create_modified_nucleotide_to_parent_mappings():
         modified_atom_to_parent[modified_nucleotide] = {}
         parent_atom_to_modified[modified_nucleotide] = {}
 
-        for atom in modified_atom_map[modified_nucleotide]:
-            if len(atom) == 3:
-                modified_atom_to_parent[modified_nucleotide][atom[2]] = atom[1]
-                parent_atom_to_modified[modified_nucleotide][atom[1]] = atom[2]
-                if atom[1] in defs.NAbaseheavyatoms[atom[0]] or atom[1] in defs.NAbasehydrogens[atom[0]]: # The parent mapping is in the base
-                    modified_base_atom_list[modified_nucleotide].append(atom[2])
-                    modified_base_to_hydrogens[modified_nucleotide].append(atom[2])
-                    modified_base_to_hydrogens_coordinates[modified_nucleotide][atom[2]] = (defs.NAbasecoordinates[atom[0]][atom[1]])
+        for fields in modified_atom_map[modified_nucleotide]:
+            if len(fields) == 3:
+                parent_nucleotide,parent_atom,modified_atom = fields
+                modified_atom_to_parent[modified_nucleotide][modified_atom] = parent_atom
+                parent_atom_to_modified[modified_nucleotide][parent_atom] = modified_atom
+                if parent_atom in defs.NAbaseheavyatoms[parent_nucleotide] or parent_atom in defs.NAbasehydrogens[parent_nucleotide]: # The parent mapping is in the base
+                    modified_base_atom_list[modified_nucleotide].append(modified_atom)
+                    if modified_atom[0] == 'H':
+                        modified_base_to_hydrogens[modified_nucleotide].append(modified_atom)
+                        modified_base_to_hydrogens_coordinates[modified_nucleotide][modified_atom] = (defs.NAbasecoordinates[parent_nucleotide][parent_atom])
 
     return modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates
 
 try:
     modified_base_to_hydrogens, modified_atom_to_parent, parent_atom_to_modified, modified_base_to_parent, modified_base_atom_list,  modified_base_to_hydrogens_coordinates = create_modified_nucleotide_to_parent_mappings()
     # print("Modified nucleotide mappings read successfully.")
+
+    all_parents = set()
+    for modified in modified_base_to_parent.keys():
+        parent = modified_base_to_parent[modified]
+        all_parents.add(parent)
+    print("All parents: %s" % sorted(all_parents))
+
+    modified = 'OMG'
+    print(modified_base_to_hydrogens[modified])
+    print(modified_base_to_hydrogens_coordinates[modified])
+
 except Exception as e:
     print("mapping.py is unable to load mappings for modified nucleotides.")
     print("This can happen after installing with 'python setup.py install' with no known fix.")
