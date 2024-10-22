@@ -22,3 +22,4 @@ JSLOCATION = 'https://rna.bgsu.edu/rna3dhub/'  # get js files from the rna3dhub 
 # default values for query fields
 Q = {}
 Q['downloadDataFiles'] = False      # on the server, if they don't exist, can't download them
+Q["PDBDATAFILEPATH"] = "/var/www/html/"
