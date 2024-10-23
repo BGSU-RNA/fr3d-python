@@ -60,7 +60,7 @@ def getMoleculeType(unitType):
         return "protein"
     elif unitType in RNA_modified_list:
         return "RNA"
-    elif unitType in RNA_modified_list:
+    elif unitType in DNA_modified_list:
         return "DNA"
     else:
         return ""
@@ -908,7 +908,7 @@ def calculateQueryConstraints(Q):
                     if iM == "x" or iM == "X":
                         iM = "protein"
 
-                    if iM.lower() == 'modified':
+                    if iM.lower() == 'modified' or iM.lower() == 'mod':
                         if 'rna' in iMtext.lower():
                             Q["requiredUnitType"][i] += RNA_modified_list
                             if not 'RNA' in Q["requiredMoleculeType"][i]:
