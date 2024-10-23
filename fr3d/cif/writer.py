@@ -57,7 +57,7 @@ class CifAtom(object):
             return (atom.symmetry if atom.symmetry else ' ',
                     atom.model if atom.model else ' ',
                     atom.chain if atom.chain else ' ',
-                    atom.component_number if atom.component_number else ' ',
+                    atom.component_number if atom.component_number else 0,
                     atom.insertion_code if atom.insertion_code else ' ')
         if sys.version_info[0] == 2:
             all_atoms = it.imap(lambda r: r.atoms(),
@@ -66,6 +66,7 @@ class CifAtom(object):
             all_atoms = map(lambda r: r.atoms(),
                                 structure.residues(polymeric=None))
         all_atoms = it.chain.from_iterable(all_atoms)
+
         for index, atom in enumerate(sorted(all_atoms, key=key)):
             alt_id = getattr(atom, 'alt_id', '.')
             data = [atom.group, index, atom.type, atom.name,
