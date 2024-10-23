@@ -3859,6 +3859,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
     if category:
         for category in category.split(","):
             categories[category.lower()] = []
+            categories['basepair'] = []         # always basepairs, to get crossing numbers
     else:
         # default is to annotate and write just "true" basepairs
         categories['basepair'] = Leontis_Westhof_basepairs
