@@ -1,3 +1,7 @@
+"""
+Read a .cif file and write a .cifatoms file with atom information for all residues.
+"""
+
 import os
 import sys
 import argparse
