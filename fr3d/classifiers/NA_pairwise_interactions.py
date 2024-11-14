@@ -58,7 +58,7 @@ from fr3d.classifiers.hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from fr3d.classifiers.hydrogen_bonds import check_hydrogen_bond
 
 # Modified nucleotide mappings
-from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure

@@ -24,7 +24,7 @@ import math
 import os
 
 #from fr3d.modified_parent_mapping import modified_nucleotides
-from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
