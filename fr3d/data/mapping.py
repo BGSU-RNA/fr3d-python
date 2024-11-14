@@ -80,11 +80,11 @@ try:
     for modified in modified_base_to_parent.keys():
         parent = modified_base_to_parent[modified]
         all_parents.add(parent)
-    print("All parents: %s" % sorted(all_parents))
+    # print("All parents: %s" % sorted(all_parents))
 
-    modified = 'OMG'
-    print(modified_base_to_hydrogens[modified])
-    print(modified_base_to_hydrogen_coordinates[modified])
+    # modified = 'OMG'
+    # print(modified_base_to_hydrogens[modified])
+    # print(modified_base_to_hydrogen_coordinates[modified])
 
 except Exception as e:
     print("mapping.py is unable to load mappings for modified nucleotides.")
