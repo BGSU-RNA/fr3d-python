@@ -427,6 +427,7 @@ def retrieveQueryInformation(Q):
 
     # check for non-trivial unitIDs
     if "unitID" in Q:
+        unitID = Q["unitID"]
         okID = []
         for u in unitID:
             if len(u.split("|")) >= 5:
