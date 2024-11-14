@@ -17,7 +17,7 @@ from fr3d.search.file_reading import readProteinPositionsFile
 from fr3d.search.file_reading import readPDBDatafile
 from fr3d.search.file_reading import get_CIFPATH
 
-from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 # identify codes that go with each type of molecule
 RNA_unit_types = set(["A","C","G","U"])
@@ -31,6 +31,9 @@ for modified, parent in modified_base_to_parent.items():
         RNA_modified_list.add(modified)
     else:
         DNA_modified_list.add(modified)
+
+# print("query_processing")
+# print(RNA_modified_list)
 
 protein_unit_types = ["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"]
 # it would be good to have a list of modified amino acids

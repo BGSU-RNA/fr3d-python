@@ -8,16 +8,7 @@ import numpy as np
 import sys
 from fr3d.unit_ids import encode
 
-
-from fr3d.data.mapping import *
-
-# from fr3d.data.mapping import parent_atom_to_modified
-# from fr3d.data.mapping import parent_atom_to_modified
-# from fr3d.data.mapping import modified_atom_to_parent
-# from fr3d.data.mapping import modified_base_to_parent
-# from fr3d.data.mapping import modified_base_atom_list
-# from fr3d.data.mapping import modified_base_to_hydrogens
-# from fr3d.data.mapping import modified_base_to_hydrogens_coordinates
+from fr3d.modified.mapping import *
 
 NHBondLength=1
 

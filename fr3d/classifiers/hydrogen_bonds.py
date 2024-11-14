@@ -8,7 +8,7 @@ There are no angle cutoffs for now.
 import csv
 import numpy as np
 import os
-from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 def load_ideal_basepair_hydrogen_bonds(def_mind=0.0,def_maxd=3.6,def_C_maxd=4.2,def_mina=0.0,def_maxa=180.0):
     """
