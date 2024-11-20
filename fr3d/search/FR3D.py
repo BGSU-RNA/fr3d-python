@@ -456,6 +456,13 @@ if __name__== "__main__":
         print("When running FR3D.py from the command line, specify a query using the name of .json file")
         print("For example:  python311 FR3D.py queries/geometric_5_sarcin_ricin.json")
         print("Separate multiple query names with commas")
+    elif names[0] == "all":
+        # run all queries in the queries directory
+        queryNames = os.listdir("queries")
+        queryNames = [name for name in queryNames if name.endswith(".json")]
+        # put in random order to hit errors faster
+        np.random.shuffle(queryNames)
+        fr3d_search_from_query_names(queryNames)
     else:
         queryNames = names[0].split(",")
         fr3d_search_from_query_names(queryNames)
