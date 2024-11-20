@@ -197,7 +197,8 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
         orientation_error = 0
         angles = []
         for r1, r2 in zip(rotations1, rotations2):
-            if r1.shape[0] > 0 and r2.shape[0] > 0:
+            # test that r1 and r2 are not nonetype, but allow that they are arrays
+            if r1 is not None and r2 is not None and r1.shape[0] > 0 and r2.shape[0] > 0:
                 angle = angle_of_rotation(np.dot(np.dot(rotation_matrix, r2),
                                                  np.transpose(r1)))
                 orientation_error += np.square(angle)
