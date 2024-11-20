@@ -1346,76 +1346,88 @@ def calculateQueryConstraints(Q):
         if not "PDB_data_file" in Q:
             Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
-        url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
+        if "repSetType" in Q:
+            if Q["repSetType"] == "DNA":
+                Q["repSetType"] = ["DNA"]
+            elif Q["repSetType"] == "RNA":
+                Q["repSetType"] = ["RNA"]
+        else:
+            Q["repSetType"] = ["RNA"]
 
-        repSetKey = (Q["repSetRelease"],Q["repSetResolution"])
+        for repSetType in Q["repSetType"]:
+            if repSetType == "RNA":
+                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
+            elif repSetType == "DNA":
+                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/dna/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
 
-        # check in local file of representative sets first, in case the list is already downloaded
-        # helps when working offline
-        newList = []
-        pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
-        if os.path.exists(pathAndFileName):
-            with open(pathAndFileName, 'rb') as fh:
-                representativeSets = pickle.load(fh)
-            if repSetKey in representativeSets and len(representativeSets[repSetKey]) > 0:
-                newList = representativeSets[repSetKey]
+            repSetKey = (repSetType,Q["repSetRelease"],Q["repSetResolution"])
 
-        if len(newList) == 0:
-            # need to get the representative set
+            # check in local file of representative sets first, in case the list is already downloaded
+            # helps when working offline
+            newList = []
+            pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
+            if os.path.exists(pathAndFileName):
+                with open(pathAndFileName, 'rb') as fh:
+                    representativeSets = pickle.load(fh)
+                if repSetKey in representativeSets and len(representativeSets[repSetKey]) > 0:
+                    newList = representativeSets[repSetKey]
 
-            # requesting NMR structures only
-            if Q['repSetResolution'] == 'NMR':
-                # this is a bit of a hack
-                url = url.replace('NMR/csv','all/csv')
-                NMRonly = True
-            else:
-                NMRonly = False
+            if len(newList) == 0:
+                # need to get the representative set
 
-            try:
-                # download representative set list from URL
-                if sys.version_info[0] < 3:
-                    f = urllib.urlopen(url)          # python 2
-                    myfile = f.read()
+                # requesting NMR structures only
+                if Q['repSetResolution'] == 'NMR':
+                    # this is a bit of a hack
+                    url = url.replace('NMR/csv','all/csv')
+                    NMRonly = True
                 else:
-                    f = urllib.request.urlopen(url)  # python 3
-                    myfile = f.read().decode('utf-8')    # decode from bytes to string
-            except Exception as e:
-                Q["errorMessage"].append("Not able to download representative set %s" % url)
-                print("Error: Not able to retrieve or download representative set")
-                print(e)
-                myfile = []
+                    NMRonly = False
 
-            if "Arial" in str(myfile):
-                print("Error: Problem with downloading representative set, got:")
-                print(myfile)
-            elif len(myfile) > 0:
-                allLines = myfile.split('\n')
-                for line in allLines:
-                    # CSV file, split by comma
-                    fields = line.split(",")
-                    if len(fields) > 1:
-                        # second column has representative IFE; remove ""
-                        IFE = fields[1].replace('"','')
-                        if NMRonly:
-                            file_id = IFE.split("|")[0]
-                            if len(file_id) == 4:
-                                file_id = IFE[0:4]
-                                if file_id in list(Q["PDB_data_file"]):
-                                    if 'method' in list(Q["PDB_data_file"][file_id]):
-                                        if 'NMR' in Q["PDB_data_file"][file_id]['method']:
-                                            newList.append(IFE.decode("ascii"))
-                                            # newList.append(IFE)
-                        elif len(IFE) > 1:
-                            newList.append(IFE)
+                try:
+                    # download representative set list from URL
+                    if sys.version_info[0] < 3:
+                        f = urllib.urlopen(url)          # python 2
+                        myfile = f.read()
+                    else:
+                        f = urllib.request.urlopen(url)  # python 3
+                        myfile = f.read().decode('utf-8')    # decode from bytes to string
+                except Exception as e:
+                    Q["errorMessage"].append("Not able to download representative set %s" % url)
+                    print("Error: Not able to retrieve or download representative set")
+                    print(e)
+                    myfile = []
 
-                if os.path.exists(pathAndFileName):
-                    with open(pathAndFileName, 'rb') as fh:
-                        representativeSets = pickle.load(fh)
-                else:
-                    representativeSets = {}
+                if "Arial" in str(myfile):
+                    print("Error: Problem with downloading representative set, got:")
+                    print(myfile)
+                elif len(myfile) > 0:
+                    allLines = myfile.split('\n')
+                    for line in allLines:
+                        # CSV file, split by comma
+                        fields = line.split(",")
+                        if len(fields) > 1:
+                            # second column has representative IFE; remove ""
+                            IFE = fields[1].replace('"','')
+                            if NMRonly:
+                                file_id = IFE.split("|")[0]
+                                if len(file_id) == 4:
+                                    file_id = IFE[0:4]
+                                    if file_id in list(Q["PDB_data_file"]):
+                                        if 'method' in list(Q["PDB_data_file"][file_id]):
+                                            if 'NMR' in Q["PDB_data_file"][file_id]['method']:
+                                                newList.append(IFE.decode("ascii"))
+                                                # newList.append(IFE)
+                            elif len(IFE) > 1:
+                                newList.append(IFE)
 
-                representativeSets[repSetKey] = newList
-                pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
+                    if os.path.exists(pathAndFileName):
+                        with open(pathAndFileName, 'rb') as fh:
+                            representativeSets = pickle.load(fh)
+                    else:
+                        representativeSets = {}
+
+                    representativeSets[repSetKey] = newList
+                    pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
 
         if len(newList) > 0:
             full_search_file_ifes = "  ".join(IFEList)
