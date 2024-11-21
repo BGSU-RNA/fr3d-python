@@ -1197,7 +1197,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 MCS_to_nested_cWW_endpoints[MCS][index1] = index2
                 MCS_to_nested_cWW_endpoints[MCS][index2] = index1
 
-                if 'bss' in categories or 'loop' in categories:
+                if 'bss' in categories:
                     # these are the cWW endpoints that may be bss start and stop points
                     # so they can be in different model, chain, symmetry contexts
                     bss_endpoints.add((MCS,index1,MCS,index2))
@@ -1207,9 +1207,15 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
     # loop over all pairs, calculate crossing number, the number of nested pairs crossed
     # record interacting pairs and their crossing number as triples
+
+    # it's really important to do the cww pairs first, otherwise they get skipped and we lose bss
+    # move cWW, cWw, cwW, cWWa to the beginning of the list
+    interactions = interaction_to_pair_list.keys()
+    interactions = sorted(interactions,key=lambda i: i.lower() not in ['cww','cwwa'])
+
     interaction_to_list_of_tuples = defaultdict(list)
     pairs_to_crossing = {}
-    for interaction in interaction_to_pair_list.keys():
+    for interaction in interactions:
 
         if interaction == "":
             continue
@@ -1303,7 +1309,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 interaction_to_list_of_tuples[reverse_edges(interaction)].append((u2,u1,crossing))
                 pairs_to_crossing[(u2,u1)] = crossing
 
-    if 'bss' in categories or 'loop' in categories:
+    if 'bss' in categories:
         for MCS1,index1,MCS2,index2 in bss_endpoints:
             MCS_to_endpoints[MCS1].add(index1)
             MCS_to_endpoints[MCS2].add(index2)
