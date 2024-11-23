@@ -33,6 +33,9 @@ def read_monomer_cif(mod_nt):
 
     if not os.path.exists(filename):
         # download from RCSB website and store in the cif folder
+        if not os.path.exists("cif"):
+            os.mkdir("cif")
+
         url = "https://files.rcsb.org/ligands/download/%s.cif" % mod_nt
         urlretrieve(url,filename)
 
@@ -451,6 +454,16 @@ def map_all_modified_nucleotides():
         lines = lines.replace('"','')   # remove double quotes
         lines = lines.split("\n")       # split on newline character, return a list
 
+        print(lines)
+
+        if 'Rank' in lines[0]:
+            lines = lines[1:]           # skip the header line
+
+    # prepend standard nucleotides
+    lines = ["0,A,0","0,C,0","0,G,0","0,U,0","0,DA,0","0,DC,0","0,DG,0","0,DT,0"] + lines
+
+    print(lines)
+
     # get information about each modified nucleotide
     output = ""
     skipped_mod_nt = []
@@ -480,6 +493,8 @@ def map_all_modified_nucleotides():
 
             if not new_output:
                 skipped_mod_nt.append(mod_nt)
+                if not os.path.exists("skipped"):
+                    os.mkdir("skipped")
                 svg_filename = os.path.join('skipped',mod_nt + ".svg")
                 if not os.path.exists(svg_filename):
                     svg_url = "https://cdn.rcsb.org/images/ccd/unlabeled/%s/%s.svg" % (mod_nt[0],mod_nt)
@@ -489,17 +504,24 @@ def map_all_modified_nucleotides():
     with open("atom_mappings_provisional.txt","w") as f:
         f.write(output)
 
-    print("Skipped the following %d modified nucleotides:" % len(skipped_mod_nt))
+    print("Skipped the following %d nonstandard residues:" % len(skipped_mod_nt))
     print(sorted(skipped_mod_nt))
+    print("You can view them in skipped/skipped.html")
 
     with open("skipped/skipped.html","w") as f:
+        f.write("<html>\n")
+        f.write("<head>\n")
+        f.write("<title>Skipped residues</title>\n")
+        f.write("</head>\n")
+        f.write("<body>\n")
         c = 0
         for mod_nt in sorted(skipped_mod_nt):
             c += 1
             f.write("<h2>%s number %d of %d</h2>\n" % (mod_nt,c,len(skipped_mod_nt)))
             f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank">%s in ligand explorer</a><br>\n' % (mod_nt,mod_nt))
             f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank"><img src="%s.svg" height="300"></a>\n' % (mod_nt,mod_nt))
-
+        f.write("</body>\n")
+        f.write("</html>\n")
 
 if __name__=="__main__":
 

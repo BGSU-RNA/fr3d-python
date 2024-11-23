@@ -17,69 +17,50 @@ Ideas for the next version:
     Color connection to C1' to acknowledge that it is a connection, but don't color what C1' connects to, too complicated to view
 """
 
-draw_figures = True      # draw new figures if they don't already exist
-draw_figures = False     # don't draw new figures at all
+# user settings below
 
-overwrite_figures = False
-overwrite_figures = True  # draw figures, overwriting existing ones
-
-plot_standard = True     # include the standard base in the plots
-plot_standard = False    # just plot the modified nucleotide
-
-save_as_gif = False
-save_as_gif = True
-
-crop_out_white_space = False
-crop_out_white_space = True
-
-color_scheme = 'diagnostic'  # use many colors, to show the atom mappings
 color_scheme = 'CPK'         # use CPK coloring
+color_scheme = 'diagnostic'  # use many colors, to show the atom mappings
+
+if color_scheme == 'diagnostic':
+    plot_standard = True     # include the standard base in the plots
+    save_as_gif = False      # save as .png, which may be more robust
+    crop_out_white_space = False
+
+    show_figure = True       # pause to show each figure, enable rotation of coordinates
+    show_figure = False
+
+    output_directory = "diagnostic"
+
+else:
+    plot_standard = False    # just plot the modified nucleotide by itself
+    save_as_gif = True       # .gif works a little better online
+    crop_out_white_space = True   # read the image, crop, save again
+
+    output_directory = ""
+
+draw_figures = False     # don't draw new figures at all
+draw_figures = True      # draw new figures if they don't already exist
+
+overwrite_figures = True  # draw figures, overwriting existing ones.  Slow.
+overwrite_figures = False # makes it easier to identify what is new
+
+focus_list = ['MA6']  # list the ones you want to look at specifically, maybe with show_figure = True
+focus_list = []       # process all modified nucleotides
+
+# user settings above, program settings below
 
 atom_label_color = 'black'
 new_atom_point_color = '#80D1E3'   # blue of Argon since that probably won't be added
 
-show_figure = True       # pause to show each figure, enable rotation of coordinates
-show_figure = False
-
-focus_list = ['YYG','MHG','1W5','8NI','TJU']
-focus_list = ['1SC']
-focus_list = ['MA6']
-focus_list = ['OMC']
-focus_list = ['G7M']
-focus_list = ['XGA']
-focus_list = ['1SC']
-focus_list = ['0A','0C','0G','0U']
-focus_list = ['F86']
-focus_list = ['1CC']
-focus_list = ['1FC']
-focus_list = ['2GF']
-focus_list = ['2DT']
-focus_list = ['6MZ']
-focus_list = ['5HC']
-focus_list = ['6HC']
-focus_list = ['C2S']
-focus_list = ['0A','0C','0G','0U']  # chirality changes galore
-focus_list = ['XB9']
-focus_list = ['3DR']
-focus_list = ['C66','E3C']
-focus_list = ['16B','45A','7AT','A2P','A3P','ADS','ANC','APC','ATP','PPS']  # A updates
-focus_list = ['4AC','5IC','6OO','73W','A5M','AI5','LCC','N7X','O2C']  # C updates
-focus_list = ['02I','2BU','2DA','3DA','4EN','6HA','6HB','7DA','A3A','AD2','AF2','FA2','FAX','L3X','MDV','RMP','SMP','TFO','URT','XAD']  # DA updates
-focus_list = []    # process all modified nucleotides
-
 max_count = 99999      # process modified nucleotides with count at or below this number
 
-if color_scheme == 'CPK':
-    output_directory = "C:/users/zirbel/Documents/modified"
-else:
-    output_directory = "C:/users/zirbel/Documents/modified/diagnostic"
-
 # from definitions import NAconnections
-from definitions import NAbasecoordinates
-from definitions import NAbaseheavyatoms
-from definitions import NAbasehydrogens
-from superpositions import besttransformation
-from make_atom_mappings import read_monomer_cif
+from fr3d.definitions import NAbasecoordinates
+from fr3d.definitions import NAbaseheavyatoms
+from fr3d.definitions import NAbasehydrogens
+from fr3d.geometry.superpositions import besttransformation
+from fr3d.modified.make_atom_mappings import read_monomer_cif
 
 import imageio
 import json
@@ -89,7 +70,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import os
 import sys
-import time
 from PIL import Image
 
 if sys.version_info[0] < 3:
@@ -631,9 +611,10 @@ parent_to_modified_atom, modified_to_parent_atom, modified_base_to_parent, not_m
 # read manual mappings
 parent_to_modified_atom_manual, modified_to_parent_atom_manual, modified_base_to_parent_manual, not_mappable_manual = read_atom_mappings("atom_mappings_manual.txt")
 
-# these colors are used for diagnostics
+# these colors are used when color_scheme = diagnostic
 # colors for corresponding atoms and half of their bonds
 color_list = ['red','cyan','orange','blue','pink','wheat','gold','green','brown','purple','lightgrey','lime','lightblue','magenta','teal']
+color_list = ['peru','violet','fuchsia','wheat','gold','brown','purple','lightgrey','magenta','darkgoldenrod','darkkhaki','darkorchid','sienna']
 color_list = color_list + color_list + color_list + color_list + color_list + color_list + color_list  # never run out of colors
 
 ribose = ["C2'","C3'","O3'","C4'","O4'","C5'"]  # for DNA
@@ -648,22 +629,61 @@ parent_atom_to_color = {}
 if color_scheme == 'diagnostic':
     for parent in NAbaseheavyatoms.keys():
         parent_atom_to_color[parent] = {}
-        parent_atom_to_color[parent]["C1'"] = "tan"
+
+        # make sure every atom is colored; this handles the hydrogens
         c = 0
-        #for a in (NAbaseheavyatoms[parent] + NAbasehydrogens[parent] + ["C1'"]):
-        for a in (NAbaseheavyatoms[parent] + NAbasehydrogens[parent]):
+        for a in NAbaseheavyatoms[parent] + NAbasehydrogens[parent]:
             parent_atom_to_color[parent][a] = color_list[c]
             c += 1
 
-        # color backbone non-hydrogen atoms
-        c = 3
+        # restart so every backbone hydrogen is colored the same
+        c = 0
         for a in ribose_full + phosphate_full:
             parent_atom_to_color[parent][a] = color_list[c]
             c += 1
-        if parent in ['A','C','G','U']:
-            parent_atom_to_color[parent]["O2'"] = "red"
-        parent_atom_to_color[parent]["O5'"] = "magenta"
-        parent_atom_to_color[parent]["P"] = "orange"
+
+        # override the default colors for heavy atoms
+        # reddish colors for oxygens, blueish colors for nitrogens, green for carbon, various for hydrogens
+        parent_atom_to_color[parent]["C1'"] = "tan"
+        parent_atom_to_color[parent]["C2'"] = "green"
+        parent_atom_to_color[parent]["C3'"] = "springgreen"
+        parent_atom_to_color[parent]["C4'"] = "teal"
+        parent_atom_to_color[parent]["C5'"] = "chartreuse"
+        parent_atom_to_color[parent]["O2'"] = "red"   # doesn't hurt when it's not there
+        parent_atom_to_color[parent]["O3'"] = "tomato"
+        parent_atom_to_color[parent]["O4'"] = "crimson"
+        parent_atom_to_color[parent]["O5'"] = "deeppink"
+        parent_atom_to_color[parent]["OP1"] = "lightcoral"
+        parent_atom_to_color[parent]["OP2"] = "violet"
+        parent_atom_to_color[parent]["OP3"] = "pink"
+        parent_atom_to_color[parent]["P"] = "tab:orange"
+
+        if parent in ['A','G','DA','DG']:
+            parent_atom_to_color[parent]["N1"] = "mediumblue"
+            parent_atom_to_color[parent]["N2"] = "darkslateblue"
+            parent_atom_to_color[parent]["N3"] = "royalblue"
+            parent_atom_to_color[parent]["N6"] = "cyan"
+            parent_atom_to_color[parent]["N7"] = "deepskyblue"
+            parent_atom_to_color[parent]["N9"] = "cornflowerblue"
+            parent_atom_to_color[parent]["C2"] = "yellowgreen"
+            parent_atom_to_color[parent]["C4"] = "forestgreen"
+            parent_atom_to_color[parent]["C5"] = "palegreen"
+            parent_atom_to_color[parent]["C6"] = "olivedrab"
+            parent_atom_to_color[parent]["C8"] = "lightgreen"
+            parent_atom_to_color[parent]["O6"] = "red"
+        else:
+            parent_atom_to_color[parent]["N1"] = "cornflowerblue"
+            parent_atom_to_color[parent]["N3"] = "royalblue"
+            parent_atom_to_color[parent]["N4"] = "deepskyblue"
+            parent_atom_to_color[parent]["C2"] = "seagreen"
+            parent_atom_to_color[parent]["C4"] = "forestgreen"
+            parent_atom_to_color[parent]["C5"] = "palegreen"
+            parent_atom_to_color[parent]["C6"] = "olivedrab"
+            parent_atom_to_color[parent]["C7"] = "darkgreen"
+            parent_atom_to_color[parent]["O2"] = "red"
+            parent_atom_to_color[parent]["O4"] = "tab:red"
+
+        # parent_atom_to_color[parent][""] = ""
 
         print('Coloring for %s' % parent)
         print(parent_atom_to_color[parent])
@@ -764,9 +784,12 @@ modified_list = []
 # read the list of modified nucleotides and their counts
 with open('modified_nt_list.csv',read_mode) as f:
     lines = f.readlines()
+    if "Rank" in lines[0]:
+        lines = lines[1:]
+    lines = ["0,A,0","0,C,0","0,G,0","0,U,0","0,DA,0","0,DC,0","0,DG,0","0,DT,0"] + lines
+
 
 # loop over modified nucleotides from most common to least
-# plot the modified base
 for line in lines:
 
     local_show_figure = show_figure
@@ -1331,7 +1354,7 @@ if len(focus_list) == 0:
         if parent in modified_to_changes:
             del modified_to_changes[parent]
 
-    changes_file = os.path.join(output_directory,'modified_to_changes.json')
+    changes_file = 'modified_to_changes.json'
     with open(changes_file, write_mode) as f:
         # write modified_to_changes to a file in json format
         f.write(json.dumps(modified_to_changes))
