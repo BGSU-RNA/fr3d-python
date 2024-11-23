@@ -27,23 +27,24 @@ import os
 from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 from fr3d.cif.reader import Cif
-from fr3d.definitions import RNAconnections
-from fr3d.definitions import NAbaseheavyatoms
-from fr3d.definitions import NAbasehydrogens
-from fr3d.definitions import nt_sugar
-from fr3d.definitions import nt_phosphate
-from fr3d.definitions import Ribophos_connect
-from fr3d.definitions import aa_connections
-from fr3d.definitions import aa_backconnect
-from fr3d.definitions import aa_hydrogen_connections
-from fr3d.definitions import aa_fg
-from fr3d.definitions import aa_linker
-from fr3d.definitions import aa_backbone
-from fr3d.definitions import tilt_cutoff
-from fr3d.definitions import planar_atoms
-from fr3d.definitions import HB_donors
-from fr3d.definitions import HB_weak_donors
-from fr3d.definitions import HB_acceptors
+# from fr3d.definitions import RNAconnections
+# from fr3d.definitions import NAbaseheavyatoms
+# from fr3d.definitions import NAbasehydrogens
+# from fr3d.definitions import nt_sugar
+# from fr3d.definitions import nt_phosphate
+# from fr3d.definitions import Ribophos_connect
+# from fr3d.definitions import aa_connections
+# from fr3d.definitions import aa_backconnect
+# from fr3d.definitions import aa_hydrogen_connections
+# from fr3d.definitions import aa_fg
+# from fr3d.definitions import aa_linker
+# from fr3d.definitions import aa_backbone
+# from fr3d.definitions import tilt_cutoff
+# from fr3d.definitions import planar_atoms
+# from fr3d.definitions import HB_donors
+# from fr3d.definitions import HB_weak_donors
+# from fr3d.definitions import HB_acceptors
+from fr3d.definitions import amino_acids
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
@@ -97,6 +98,8 @@ def annotate_bond_orientation(structure,pipeline=False):
             N1N9 = nt.centers["N1"]
             C2C4 = nt.centers["C2"]
             parent = nt.sequence
+        elif nt.sequence in amino_acids:
+            continue
         else:
             parent = get_parent(nt.sequence)
             if parent in ['A','G','DA','DG']:
@@ -126,13 +129,6 @@ def annotate_bond_orientation(structure,pipeline=False):
                         print("%s has no identified parent nucleotide" % (nt.unit_id()))
 
                 continue
-
-                # N1N9 = nt.centers["N9"]      # maybe this is present
-                # if len(N1N9) == 3:
-                #     C2C4 = nt.centers["C4"]
-                # else:
-                #     N1N9 = nt.centers["N1"]
-                #     C2C4 = nt.centers["C2"]
 
         if len(N1N9) == 3 and len(C2C4) == 3:
             C1P = nt.centers["C1'"]
