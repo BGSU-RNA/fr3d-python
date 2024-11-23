@@ -58,6 +58,9 @@ class Structure(object):
                 desired_types.extend(['RNA linking', 'RNA OH 3 prime terminus'])
             if 'DNA' in kwargs['type']:
                 desired_types.extend(['DNA linking', 'DNA OH 3 prime terminus'])
+            if 'PNA' in kwargs['type']:
+                # for PNA like CPN
+                desired_types.extend(['peptide-like'])
 
             if len(desired_types) > 0:
                 # special treatment to get all RNA and/or DNA chains
