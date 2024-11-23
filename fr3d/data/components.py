@@ -319,7 +319,7 @@ class Component(EntitySelector):
             if len(R) != len(S):
                 print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
             elif len(R) < 3:
-                print("%s Rotation matrix calculation failed, %d new atoms" % (self.unit_id(),len(R)))
+                print("%s Rotation matrix calculation failed, %d base atoms" % (self.unit_id(),len(R)))
             elif len(S) < 3:
                 print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
             else:
@@ -378,12 +378,13 @@ class Component(EntitySelector):
             elif self.sequence in modified_base_to_parent:
                 for atom in self._atoms:
                     if atom.name in modified_base_atom_list[self.sequence]: # Weed out backbone atoms
-                        if parent_atom_to_modified[self.sequence][atom.name] == heavy: # parent_atom_to_modified[PSU][C5] would return N1 of parent
-                            heavy = (atom.x, atom.y, atom.z)
-                        elif parent_atom_to_modified[self.sequence][atom.name] == amino1:
-                            amino1coords = (atom.x, atom.y, atom.z)
-                        elif parent_atom_to_modified[self.sequence][atom.name] == amino2:
-                            amino2coords = (atom.x, atom.y, atom.z)
+                        if atom.name in parent_atom_to_modified[self.sequence]:
+                            if parent_atom_to_modified[self.sequence][atom.name] == heavy:
+                                heavy = (atom.x, atom.y, atom.z)
+                            elif parent_atom_to_modified[self.sequence][atom.name] == amino1:
+                                amino1coords = (atom.x, atom.y, atom.z)
+                            elif parent_atom_to_modified[self.sequence][atom.name] == amino2:
+                                amino2coords = (atom.x, atom.y, atom.z)
             return heavy, amino1coords, amino2coords
 
         amino1coords = None
@@ -392,8 +393,11 @@ class Component(EntitySelector):
         dist1 = 0
         dist2 = 0
 
+        if self.rotation_matrix is None:
+            return
+
         try:
-            # add or fix hydrogens for standard bases (only on base)
+            # add or fix base hydrogens for standard bases
             if self.sequence in defs.NAbasehydrogens:
                 hydrogens = set(defs.NAbasehydrogens[self.sequence]) # All hydrogens that should be present on this base
                 already = set([atom.name for atom in self._atoms]) # hydrogens that are already observed in the 3D structure
@@ -452,7 +456,9 @@ class Component(EntitySelector):
                                                 y=newcoordinates[0, 1],
                                                 z=newcoordinates[0, 2]))
 
-            # repeat similar logic but for modified nucleotides. Written out twice so that modified nucleotides logic doesn't slow down normal bases as they're much less frequent.
+            # repeat similar logic but for modified nucleotides.
+            # Code is written out twice so that modified nucleotides logic doesn't slow down
+            # normal bases as they're much less frequent.
             elif self.sequence in modified_base_to_parent:
                 already = []
                 for atom in self._atoms:
@@ -494,9 +500,12 @@ class Component(EntitySelector):
                                             atom.x = amino1coords[0]
                                             atom.y = amino1coords[1]
                                             atom.z = amino1coords[2]
-                else: # hydrogens aren't observed already. If the heavy atom has a mapping to the parent, infer hydrogen with parent hydrogens coordinates with modified hydrogens name
+                else:
+                    # hydrogens aren't observed already.
+                    # If the heavy atom has a mapping to the parent,
+                    # infer hydrogen with parent hydrogen coordinates with modified hydrogen name
                     hydrogens = modified_base_to_hydrogens[self.sequence]
-                    coordinates = modified_base_to_hydrogens_coordinates[self.sequence]
+                    coordinates = modified_base_to_hydrogen_coordinates[self.sequence]
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
                         newcoordinates = self.base_center + \
