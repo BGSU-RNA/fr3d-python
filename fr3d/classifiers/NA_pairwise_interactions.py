@@ -27,6 +27,7 @@ import os
 import pickle
 import sys
 from time import time
+import traceback
 import urllib
 
 # import the version of urlretrieve appropriate to the Python version
@@ -316,6 +317,11 @@ def load_structure(filename,file_id="",preferred_id=None):
         message.append("  Could not load %s due to exception %s: %s" % (filename,type(ex).__name__,ex))
         if type(ex).__name__ == "TypeError":
             message.append("  See suggestions in the fr3d-python Readme file")
+
+        traceback_details = traceback.format_exc()
+        print("Complete Traceback:")
+        print(traceback_details)
+
         return None, message
 
     message.append("Could not load %s" % (filename))
@@ -708,7 +714,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             print(nt1.centers["base"])
                         continue
 
-                    parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt
+                    parent1 = get_parent(nt1.sequence)   # map modified nts to parent nt A, C, G, U, DT
                     if not parent1:
                         if verbose >= 2:
                             print("  No parent for %s" % nt1.unit_id())
@@ -1870,10 +1876,10 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
 
     if chains:
         # bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-        bases = structure.residues(chain = chains, type = ["RNA","DNA"])  # load all RNA/DNA nucleotides from desired chains
+        bases = structure.residues(chain = chains, type = ["RNA","DNA","PNA"])  # load all RNA/DNA nucleotides from desired chains
     else:
         # bases = structure.residues(type = ["RNA linking","DNA linking"])  # load nice RNA/DNA nucleotides
-        bases = structure.residues(type = ["RNA","DNA"])  # load all RNA/DNA nucleotides
+        bases = structure.residues(type = ["RNA","DNA","PNA"])  # load all RNA/DNA nucleotides
 
     if not timerData:
         timerData = myTimer("start")
@@ -1895,16 +1901,18 @@ def get_parent(sequence,if_none=None):
 
     """
 
-    if sequence in ['A','C','G','U']:
+    if sequence in ['A','C','G','U','DT']:
         return sequence
     elif sequence in ['DA','DC','DG']:
         return sequence[1]
-    elif sequence == 'DT':
-        return sequence
     elif sequence in modified_base_to_parent:
-        return modified_base_to_parent[sequence]
-    else:
-        return if_none
+        parent = modified_base_to_parent[sequence]
+        if parent in ['A','C','G','U','DT']:
+            return parent
+        elif parent in ['DA','DC','DG']:
+            return parent[1]
+
+    return if_none
 
 
 def translate_rotate_point(nt,point):
