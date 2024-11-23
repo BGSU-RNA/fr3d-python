@@ -32,7 +32,7 @@ else:
     from urllib.request import urlretrieve as urlretrieve
     from urllib.request import urlopen
 
-from class_limits_2023 import nt_nt_cutoffs
+from class_limits_2024 import nt_nt_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from NA_pairwise_interactions import reverse_edges
 from draw_residues import draw_base
@@ -62,6 +62,9 @@ JS2 = '  <script src="./js/jquery.jmolTools.bp.js"></script>'               # sp
 JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
 JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
 JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+JS6 = '<script src="./js/sort.table.js" type="text/javascript"></script>'
+JS7 = '<script src="./js/shift.click.checkbox.js" type="text/javascript"></script>'
+
 TEMPLATEPATH = '../search/'
 
 near_discrepancy_cutoff = 2.0
@@ -606,6 +609,8 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     template = template.replace("###JS2###",JS2)
     template = template.replace("###JS3###",JS3)
     template = template.replace("###JS4###",JS4)
+    template = template.replace("###JS6###",JS6)
+    template = template.replace("###JS7###",JS7)
 
     refresh = ""
     if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
@@ -1110,7 +1115,7 @@ def load_dssr_basepairs(pdb_id):
         keep_trying = True
         while keep_trying:
 
-            url = 'http://west.nakb.org/x3dssr/%s_%d.json' % (pdb_id,j)
+            url = 'https://www.nakb.org/x3dssr/%s_%d.json' % (pdb_id,j)
 
             time.sleep(0.1)
             try:
@@ -1585,6 +1590,7 @@ if __name__=="__main__":
     VERSION = 'v7'    # only FR3D-annotated basepairs, show hDistAngle, omit C-H.. bonds
     VERSION = 'v8'    # show FR3D or datmos annotated basepairs or demoted, show hDist, hDistAngle, include C-H.. bonds
     VERSION = ''      # not comparing annotators
+    VERSION = 'v9'    # compare FR3D and datmos
 
     # temporary focus on this pair and interaction
     # base_combination_list = ['A,G']
@@ -1595,14 +1601,14 @@ if __name__=="__main__":
 
     # zzz
 
-    resolution_list = ['1.5A']
-    resolution_list = ['2.0A']
-    resolution_list = ['2.5A']
     resolution_list = ['1.5A','2.0A','2.5A','3.0A']
     resolution_list = ['1.5A','3.0A']
     resolution_list = ['3.0A']
-    resolution_list = ['1.5A','3.0A','2.0A','2.5']
     resolution_list = ['1.5A','2.0A','3.0A','2.5A']
+    resolution_list = ['1.5A']
+    resolution_list = ['3.0A','2.0A','2.5A']
+    resolution_list = ['2.0A']
+    resolution_list = ['2.0A','2.5A']
 
     if compare_annotators:
         make_plots = False
@@ -1620,6 +1626,35 @@ if __name__=="__main__":
 
             base_combination_list = ['DA,DA','DA,DC','DA,DG','DA,DT','DC,DC','DG,DC','DC,DT','DG,DG','DG,DT','DT,DT']
             data_file = []
+
+        elif VERSION in []:
+            # read all structures from C:\Users\zirbel\Documents\FR3D\Python FR3D\data\pairs_datmos
+            import glob
+            datmos_list = glob.glob("C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos/*.txt")
+            PDB_list = [os.path.basename(x).split('_')[0].upper() for x in datmos_list]
+            print('Starting with %d files from datmos' % len(PDB_list))
+
+            Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
+
+            data_file = Q["PDB_data_file"]
+
+            # print(data_file)
+
+            print(data_file['4V9F'])
+
+            # PDB_list = [x for x in PDB_list if x in data_file and 'resolution' in data_file[x] and data_file[x]['resolution'] <= float(resolution.replace("A",""))]
+
+            new_list = []
+            for x in PDB_list:
+                # print(x)
+                # print(data_file[x])
+                if 'resolution' in data_file[x]:
+                    if data_file[x]['resolution']:
+                        if data_file[x]['resolution'] <= float(resolution.replace("A","")):
+                            new_list.append(x)
+
+            PDB_list = new_list
+
         else:
             if resolution == '1.5A':
                 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
@@ -1629,7 +1664,9 @@ if __name__=="__main__":
                 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','8GLP','8B0X']
             elif resolution == '3.0A':
                 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8GLP','8B0X']
-            data_file = readPDBDatafile(os.path.join(fr3d_pickle_path,'units'))  # available PDB structures, resolutions, chains
+
+            Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
+            data_file = Q["PDB_data_file"]
 
         PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -1675,6 +1712,7 @@ if __name__=="__main__":
                     glycosidic = fields[1]
                     unit_id_to_glycosidic[unit_id] = glycosidic
 
+        """
         if not DNA and not compare_annotators:
             print('Loading Matlab   annotations')
             for PDB_id in all_PDB_ids:
@@ -1693,6 +1731,7 @@ if __name__=="__main__":
 
             #print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
             #print("Found Matlab annotations in %s files" % (len(all_PDB_ids)-len(PDB_skip_set))
+        """
 
         print('Loading RNAview  annotations from %s' % rnaview_basepair_path)
         for PDB_id in all_PDB_ids:
@@ -1750,7 +1789,7 @@ if __name__=="__main__":
                 if len(new_pairs) > 0:
                     pdb_id_to_annotators[PDB_id].add('datmos')
 
-        # h-bond data takes up so much space, it seems necessary to work one base combination at a time
+        # h-bond data takes up so much space, sometimes it's necessary to work one base combination at a time
         # loop over specified base combinations
         for bc_num, base_combination in enumerate(base_combination_list):
 
@@ -1759,7 +1798,7 @@ if __name__=="__main__":
                 # will need to keep many additional pairs for comparison
                 resolution_memory_challenge_list = ['3.0A']
             else:
-                resolution_memory_challenge_list = []
+                resolution_memory_challenge_list = ['3.0A']
 
             if bc_num == 0 or resolution in resolution_memory_challenge_list:
 
@@ -1801,12 +1840,12 @@ if __name__=="__main__":
                                     # only keep pairs from representative chains
                                     fields1 = u1.split("|")
                                     chain1 = "|".join(fields1[0:3])
-                                    if not chain1 in representative_chains and not DNA:
+                                    if not chain1 in representative_chains and not DNA and not VERSION in ['v9']:
                                         continue
 
                                     fields2 = u2.split("|")
                                     chain2 = "|".join(fields2[0:3])
-                                    if not chain2 in representative_chains and not DNA:
+                                    if not chain2 in representative_chains and not DNA and not VERSION in ['v9']:
                                         continue
 
                                     # for some resolutions, focus on one base combination at a time
@@ -1838,7 +1877,7 @@ if __name__=="__main__":
                 pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_rnaview,2)
                 pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_dssr,3)
                 pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,4)
-                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,5)
+                # pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,5)
 
             # remove pairs with symmetry operators, alternate ids, insertion codes when comparing annotators
             complicated_unit_id = set()
@@ -1885,7 +1924,7 @@ if __name__=="__main__":
 
                 # only keep pairs from representative chains
                 chain1 = "|".join(fields1[0:3])
-                if not chain1 in representative_chains and not DNA:
+                if not chain1 in representative_chains and not DNA and not VERSION in ['v9']:
                     continue
 
                 # DSSR has hyphens because of symmetry operators being applied
@@ -1894,7 +1933,7 @@ if __name__=="__main__":
 
                 fields2 = u2.split("|")
                 chain2 = "|".join(fields2[0:3])
-                if not chain2 in representative_chains and not DNA:
+                if not chain2 in representative_chains and not DNA and not VERSION in ['v9']:
                     continue
 
                 # DSSR has hyphens because of symmetry operators being applied
@@ -1915,8 +1954,8 @@ if __name__=="__main__":
                 if compare_annotators and not len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
                     continue
 
-                # exclude PDB ids where datmos does not annotate a basepair
-                if VERSION in ['v8'] and not 'datmos' in pdb_id_to_annotators[pdb_id]:
+                # exclude PDB ids where datmos does not annotate a single basepair
+                if VERSION in ['v8','v9'] and not 'datmos' in pdb_id_to_annotators[pdb_id]:
                     continue
 
                 # some PDB ids are a problem, just skip them
@@ -2097,7 +2136,7 @@ if __name__=="__main__":
 
                     datmos_annotation = pair_to_interaction_datmos[pair]
                     # match datmos annotation exactly to keep cSs and csS distinct
-                    if len(datmos_annotation) > 0 and interaction_lower in datmos_annotation:
+                    if len(datmos_annotation) > 0 and interaction_lower in datmos_annotation.lower():
                         datmos = True
                     else:
                         datmos = False
@@ -2147,13 +2186,23 @@ if __name__=="__main__":
                             continue
 
                     elif VERSION in ['v9']:
-                        # in v9 we look at true and near, some of which are due to demotion due to h-bonds
+                        # look at fr3d-python true and datmos true
                         if python_true:
                             pass
-                        elif python_near:
+                        elif datmos:
                             pass
                         else:
                             continue
+
+                        if not datmos and '||' in pair[0] or '||' in pair[1]:
+                            # datmos does not consistently get all symmetry operators
+                            # datmos does not have ||A and ||B alternate ids
+                            continue
+
+                        if not datmos and (not pair[0].split("|")[3] in ['A','C','G','U','DA','DC','DG','DT'] or not pair[1].split("|")[3] in ['A','C','G','U','DA','DC','DG','DT']):
+                            # skip modified bases
+                            continue
+
 
                     # since PDB annotations only tell the family and since we are only going to list
                     # each pair once, only record a PDB annotation when you can tell what edges are used
@@ -2275,8 +2324,9 @@ if __name__=="__main__":
 
                         # save the pair if it is good enough to list in the table
                         if python_true \
-                            or (python_near and not compare_annotators and datapoint['cut_dist'] < near_discrepancy_cutoff) \
-                            or ('sugar_ribose' in datapoint and datapoint['sugar_ribose'] == 'cSR' and datapoint['cut_dist'] < near_discrepancy_cutoff) \
+                            or (VERSION in ['v9'] and datmos) \
+                            or (not VERSION in ['v9'] and python_near and not compare_annotators and datapoint['cut_dist'] < near_discrepancy_cutoff) \
+                            or (not VERSION in ['v9'] and 'sugar_ribose' in datapoint and datapoint['sugar_ribose'] == 'cSR' and datapoint['cut_dist'] < near_discrepancy_cutoff) \
                             or compare_annotators \
                             or (compare_annotators and not interaction in nt_nt_cutoffs[base_combination] and (rnaview or pdb or dssr or datmos)) \
                             or (compare_annotators and rnaview and datapoint['cut_dist'] < near_discrepancy_cutoff) \
@@ -2292,6 +2342,7 @@ if __name__=="__main__":
 
                             # store for h-bond routine
                             pdata['python_true'] = python_true
+                            pdata['datmos_true'] = datmos
 
                             pdata['unit_id_1'] = pair[0]
                             pdata['unit_id_2'] = pair[1]
@@ -2426,13 +2477,13 @@ if __name__=="__main__":
                                     color = "#b66dff"  # violet
                                     size = 10       # medium
 
-                                if VERSION in ['v8']:
+                                if VERSION in ['v8','v9']:
                                     if python_true and not datmos:
                                         color = red
-                                        size = 10
+                                        size = 5
                                     elif not python_true and datmos:
                                         color = cyan
-                                        size = 10
+                                        size = 5
                                     else:
                                         color = black
                                         size = 1
@@ -2564,20 +2615,6 @@ if __name__=="__main__":
                     atom_sets = []
                     target_distance = {}
                     target_angle = {}
-
-                    # for candidate in pair_data:
-                    #     if candidate['python_true'] or not compare_annotators:
-                    #         if "atom_sets" in candidate and len(candidate["atom_sets"]) > 0:
-                    #             for atom_set in candidate["atom_sets"]:
-                    #                 result = candidate["atom_set_to_results"][atom_set]
-                    #                 d_atoms = result["donor_acceptor_atoms"]
-                    #                 if "C" in d_atoms and VERSION in ['v7']:
-                    #                     # weak hydrogen bond, ignore in some versions
-                    #                     continue
-                    #                 else:
-                    #                     atom_sets.append(atom_set)
-                    #             print("Found these atom sets %s" % (atom_sets))
-                    #             break
 
                     b1,b2 = bc_filename.split(",")
 
@@ -2823,19 +2860,26 @@ if __name__=="__main__":
                     if not compare_annotators:
                         # color entries on diagonal according to matching annotations
                         for i in range(0,n):
-                            if 'dem' in order_pair_data[i]['new_fr3d_detail']:
-                               dista[i][i] = -9  # orange for bad h-bond
-                            elif "gap" in order_pair_data[i]['new_fr3d_detail']:
-                                # dista[i][i] = -2  # dark pink for bad gap
-                                dista[i][i] = -1  # red for bad gap
-                            elif "min" in order_pair_data[i]['new_fr3d_detail'] or "max" in order_pair_data[i]['new_fr3d_detail'] or "angle" in order_pair_data[i]['new_fr3d_detail']:
-                                dista[i][i] = -6  # sky blue for other cutoff problem
-                            #elif len(order_pair_data[i]['matlab_annotation']) > 0 and len(order_pair_data[i]['python_annotation']) == 0:
-                            #    dista[i][i] = -1  # reddish when matlab annotates but python_fr3d does not
-                            #elif len(order_pair_data[i]['python_annotation']) > 0 and not "n" in order_pair_data[i]['python_annotation'] and len(order_pair_data[i]['matlab_annotation']) == 0:
-                            #    dista[i][i] = -4  # purple when python_fr3d is true and Matlab is nothing
-                            #elif order_pair_data[i]['matlab_annotation'].lower() == "n" + order_pair_data[i]['python_annotation'].lower():
-                            #    dista[i][i] = -2  # dark pink when Matlab is near and python_fr3d is true
+                            if VERSION in ['v8','v9']:
+                                if order_pair_data[i]['python_true'] and not order_pair_data[i]['datmos_true']:
+                                    dista[i][i] = -1  # red for datmos maybe being wrong
+                                elif not order_pair_data[i]['python_true'] and order_pair_data[i]['datmos_true']:
+                                    dista[i][i] = -6  # sky blue for python maybe being wrong
+
+                            else:
+                                if 'dem' in order_pair_data[i]['new_fr3d_detail']:
+                                    dista[i][i] = -9  # orange for bad h-bond
+                                elif "gap" in order_pair_data[i]['new_fr3d_detail']:
+                                    # dista[i][i] = -2  # dark pink for bad gap
+                                    dista[i][i] = -1  # red for bad gap
+                                elif "min" in order_pair_data[i]['new_fr3d_detail'] or "max" in order_pair_data[i]['new_fr3d_detail'] or "angle" in order_pair_data[i]['new_fr3d_detail']:
+                                    dista[i][i] = -6  # sky blue for other cutoff problem
+                                #elif len(order_pair_data[i]['matlab_annotation']) > 0 and len(order_pair_data[i]['python_annotation']) == 0:
+                                #    dista[i][i] = -1  # reddish when matlab annotates but python_fr3d does not
+                                #elif len(order_pair_data[i]['python_annotation']) > 0 and not "n" in order_pair_data[i]['python_annotation'] and len(order_pair_data[i]['matlab_annotation']) == 0:
+                                #    dista[i][i] = -4  # purple when python_fr3d is true and Matlab is nothing
+                                #elif order_pair_data[i]['matlab_annotation'].lower() == "n" + order_pair_data[i]['python_annotation'].lower():
+                                #    dista[i][i] = -2  # dark pink when Matlab is near and python_fr3d is true
 
                     reorder_pairs = [order_pair_data[o] for o in order] + other_pair_data
 
