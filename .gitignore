@@ -10,6 +10,11 @@ files/*.cifatoms
 tags
 localpath.py
 oldStructures.py
+cif/
+skipped/
+diagnostic/
+base_plots/
+backbone_plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
