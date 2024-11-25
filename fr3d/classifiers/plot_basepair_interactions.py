@@ -1603,12 +1603,12 @@ if __name__=="__main__":
 
     resolution_list = ['1.5A','2.0A','2.5A','3.0A']
     resolution_list = ['1.5A','3.0A']
-    resolution_list = ['3.0A']
     resolution_list = ['1.5A','2.0A','3.0A','2.5A']
-    resolution_list = ['1.5A']
     resolution_list = ['3.0A','2.0A','2.5A']
+    resolution_list = ['3.0A']
+    resolution_list = ['1.5A']
     resolution_list = ['2.0A']
-    resolution_list = ['2.0A','2.5A']
+    resolution_list = ['2.5A']
 
     if compare_annotators:
         make_plots = False
@@ -1635,12 +1635,7 @@ if __name__=="__main__":
             print('Starting with %d files from datmos' % len(PDB_list))
 
             Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
-
             data_file = Q["PDB_data_file"]
-
-            # print(data_file)
-
-            print(data_file['4V9F'])
 
             # PDB_list = [x for x in PDB_list if x in data_file and 'resolution' in data_file[x] and data_file[x]['resolution'] <= float(resolution.replace("A",""))]
 
@@ -2284,7 +2279,7 @@ if __name__=="__main__":
 
                     if (python_true) or (annotator_count > 0 and compare_annotators) or \
                         (compare_annotators and (Matlab or dssr or rnaview_true or pdb or datmos)) or \
-                        (not compare_annotators and python_near):
+                        (not compare_annotators and python_near) or (VERSION == 'v9' and datmos):
 
                         # evaluate the quality of the match to the current pair, for scatterplots and all
                         #print('Evaluating pair %s - %s for interaction %s' % (pair[0],pair[1],interaction))
