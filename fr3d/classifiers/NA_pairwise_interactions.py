@@ -1812,6 +1812,12 @@ def fill_in_strands_of_loop(loop,unit_id_to_fields,MCS_index_to_unit_id,loop_cou
     all_unit_ids = []
     all_border_indicators = []
 
+    if len(loop) %2 == 1:
+        # do not create a loop when there are an odd number of nucleotides
+        # should not happen, but sometimes it does, and there just isn't time
+        # to debug every case like that
+        return {}, loop_counter
+
     for i, unitid in enumerate(loop):
         all_unit_ids.append(unitid)
         all_border_indicators.append('1')
