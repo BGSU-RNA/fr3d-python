@@ -490,7 +490,7 @@ class Cif(object):
             )
         # sort atoms by pdb, model, chain and then group by key defined above
         # in Python 3.8, sorted cannot have None values; this also works in 2.7
-        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb,x.model,x.chain,x.component_index or 0,x.component_id,x.insertion_code or '',x.symmetry)), key)
+        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb or '',x.model or '',x.chain or '',x.component_index or 0,x.component_id or '',x.insertion_code or '',x.symmetry or '')), key)
 
         for comp_id, all_atoms in mapping:
             for atoms in self.__group_alt_atoms__(list(all_atoms)):
