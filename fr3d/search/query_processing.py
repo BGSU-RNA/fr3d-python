@@ -354,13 +354,14 @@ def readQueryFromJSON(JSONfilename):
                     del Q["queryMoleculeType"][key]
 
     if "requiredMoleculeType" in Q:
-        # make sure all keys are numbers and not strings
         # if Q["requiredMoleculeType"] is a dictionary, do this:
         if type(Q["requiredMoleculeType"]) is dict:
             for key in list(Q["requiredMoleculeType"].keys()):
                 if type(key) is str:
                     Q["requiredMoleculeType"][int(key)] = Q["requiredMoleculeType"][key]
                     del Q["requiredMoleculeType"][key]
+
+
 
     if not "numPositions" in Q:
         if "unitID" in Q:
@@ -374,10 +375,14 @@ def readQueryFromJSON(JSONfilename):
                 for key2 in Q["interactionMatrix"][key1].keys():
                     m = max(m,int(key1))
             Q["numPositions"] = m + 1
-        elif "queryMoleculeType" in Q:
+        elif "queryMoleculeType" in Q and type(Q["queryMoleculeType"]) is dict:
             Q["numPositions"] = max(Q["queryMoleculeType"].keys()) + 1
-        elif "requiredMoleculeType" in Q:
-            Q["numPositions"] = max(Q["requiredMoleculeType"].keys()) + 1
+        elif "queryMoleculeType" in Q and type(Q["queryMoleculeType"]) is list:
+            Q["numPositions"] = len(Q["queryMoleculeType"])
+        elif "requiredMoleculeType" in Q and type(Q["requiredMoleculeType"]) is dict:
+            Q["numPositions"] = max(Q["requiredMoleculeType"].keys())+1
+        elif "requiredMoleculeType" in Q and type(Q["requiredMoleculeType"]) is list:
+            Q["numPositions"] = len(Q["requiredMoleculeType"])
         else:
             np = 0
             for key in Q.keys():
@@ -390,6 +395,11 @@ def readQueryFromJSON(JSONfilename):
     if not "numPositions" in Q:
         Q["errorMessage"].append("Error: Could not determine number of positions in query")
         return Q
+
+    if "requiredMoleculeType" in Q:
+        if type(Q["requiredMoleculeType"]) is str:
+            # make a list whose entries are that string
+            Q["requiredMoleculeType"] = [Q["requiredMoleculeType"]] * Q["numPositions"]
 
     if "interactionMatrix" in Q:
         # make sure all keys are present in interactionMatrix
@@ -881,7 +891,9 @@ def calculateQueryConstraints(Q):
         }
 
         Q["requiredUnitType"] = [None] * Q["numPositions"]
-        Q["requiredMoleculeType"] = [None] * Q["numPositions"]
+
+        if not "requiredMoleculeType" in Q:
+            Q["requiredMoleculeType"] = [None] * Q["numPositions"]
 
         Q["glycosidicBondOrientation"] = [None] * Q["numPositions"]
         foundGlycosidicBondOrientation = False
@@ -893,12 +905,16 @@ def calculateQueryConstraints(Q):
         # process unary constraints
         for i in range(Q["numPositions"]):
             Q["requiredUnitType"][i] = []
-            Q["requiredMoleculeType"][i] = []
             Q["glycosidicBondOrientation"][i] = []
+            if not i in Q["requiredMoleculeType"]:
+                Q["requiredMoleculeType"][i] = []
             Q["chiAngle"][i] = []
             Q["chainLength"][i] = []
 
             if Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0:
+                if Q["repSetType"] and "DNA" in Q["repSetType"]:
+                    if not "DNA" in Q["requiredMoleculeType"][i]:
+                        Q["requiredMoleculeType"][i].append('DNA')
                 if 'RNA' not in Q["requiredMoleculeType"][i]:
                     Q["requiredMoleculeType"][i].append('RNA')
 
@@ -929,13 +945,13 @@ def calculateQueryConstraints(Q):
                             if not 'DNA' in Q["requiredMoleculeType"][i]:
                                 Q["requiredMoleculeType"][i].append('DNA')
 
-
                     elif iM in RNA_unit_types:
                         Q["requiredUnitType"][i].append(iM)
                         if not 'RNA' in Q["requiredMoleculeType"][i]:
                             Q["requiredMoleculeType"][i].append('RNA')
 
                     elif iM in letterToConstraint:
+                        # IUPAC abbreviations for RNA nucleotides
                         Q["requiredUnitType"][i] += letterToConstraint[iM]
                         if not 'RNA' in Q["requiredMoleculeType"][i]:
                             Q["requiredMoleculeType"][i].append('RNA')
@@ -1080,7 +1096,10 @@ def calculateQueryConstraints(Q):
         Q["activeInteractions"].remove("and")
 
     if not "requiredMoleculeType" in Q or not Q["requiredMoleculeType"]:
-        Q["requiredMoleculeType"] = [["RNA"]] * Q["numPositions"]
+        if "DNA" in Q["repSetType"]:
+            Q["requiredMoleculeType"] = [["DNA"]] * Q["numPositions"]
+        else:
+            Q["requiredMoleculeType"] = [["RNA"]] * Q["numPositions"]
 
     if Q["type"] == "mixed" or Q["type"] == "geometric":
         # determine the type of each unit to facilitate retrieving its information
@@ -1134,7 +1153,7 @@ def calculateQueryConstraints(Q):
                 Q["largestMaxRange"] = max(Q["largestMaxRange"],Q["distance"][i][j] + delta)
 
 
-    # note what molecule type we are searching for, to load the right chains
+    # note what molecule type we are searching for, to load the right chains and restrict to the right residues
     searchingRNA = False
     for i in range(0,Q["numPositions"]):
         if 'RNA' in Q["requiredMoleculeType"][i]:
