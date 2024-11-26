@@ -53,11 +53,13 @@ class Structure(object):
         """
 
         if 'type' in kwargs:
+            # the following need to match how the residues are listed in like 1R3O.cif,
+            # including uppercase and lowercase
             desired_types = []
             if 'RNA' in kwargs['type']:
-                desired_types.extend(['RNA linking', 'RNA OH 3 prime terminus'])
+                desired_types.extend(['RNA linking', 'RNA OH 3 prime terminus', 'L-RNA linking'])
             if 'DNA' in kwargs['type']:
-                desired_types.extend(['DNA linking', 'DNA OH 3 prime terminus'])
+                desired_types.extend(['DNA linking', 'DNA OH 3 prime terminus', 'L-DNA linking'])
             if 'PNA' in kwargs['type']:
                 # for PNA like CPN
                 desired_types.extend(['peptide-like'])
