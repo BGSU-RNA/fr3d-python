@@ -57,9 +57,9 @@ class Structure(object):
             # including uppercase and lowercase
             desired_types = []
             if 'RNA' in kwargs['type']:
-                desired_types.extend(['RNA linking', 'RNA OH 3 prime terminus', 'L-RNA linking'])
+                desired_types.extend(['RNA linking', 'RNA LINKING', 'RNA OH 3 prime terminus', 'L-RNA linking', 'L-RNA LINKING'])
             if 'DNA' in kwargs['type']:
-                desired_types.extend(['DNA linking', 'DNA OH 3 prime terminus', 'L-DNA linking'])
+                desired_types.extend(['DNA linking', 'DNA LINKING', 'DNA OH 3 prime terminus', 'L-DNA linking', 'L-DNA LINKING'])
             if 'PNA' in kwargs['type']:
                 # for PNA like CPN
                 desired_types.extend(['peptide-like'])
