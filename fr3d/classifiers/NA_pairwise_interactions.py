@@ -745,6 +745,26 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 print(nt2.centers["base"])
                             continue
 
+                        # avoid some strange errors
+                        if nt1.pdb == '4KTG':
+                            # both symmetry operators put nucleotides in the same locations
+                            if not nt1.symmetry == nt2.symmetry:
+                                continue
+
+                        if nt1.pdb == '5UA2':
+                            if nt1.chain == nt2.chain and nt1.symmetry != nt2.symmetry:
+                                continue
+
+                        if nt1.pdb == '6KHY':
+                            if nt1.chain == 'G' and nt2.chain == 'H':
+                                continue
+                            elif nt1.chain == 'H' and nt2.chain == 'G':
+                                continue
+                            elif nt1.chain == 'I' and nt2.chain == 'J':
+                                continue
+                            elif nt1.chain == 'J' and nt2.chain == 'I':
+                                continue
+
                         # vector displacement between base centers
                         displacement = abs(nt2.centers["base"]-nt1.centers["base"]) # center-center
 
@@ -1791,6 +1811,7 @@ def fill_in_strands_of_loop(loop,unit_id_to_fields,MCS_index_to_unit_id,loop_cou
     missing_index = []
     all_unit_ids = []
     all_border_indicators = []
+
     for i, unitid in enumerate(loop):
         all_unit_ids.append(unitid)
         all_border_indicators.append('1')
