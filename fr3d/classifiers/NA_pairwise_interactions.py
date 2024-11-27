@@ -1094,7 +1094,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     category_to_interactions['basepair_detail'].add(interaction_reversed)
 
     if verbose >= 1:
-        print("  Found %d nucleotide-nucleotide interactions" % count_pair)
+        for nt in bases:
+            file_id = nt.pdb
+            print("  Found %d nucleotide-nucleotide interactions in %s" % (count_pair,file_id))
+            break
 
     if verbose >= 3:
         print("  Maximum screen distance for actual contacts is %8.4f" % max_center_center_distance)
