@@ -54,7 +54,7 @@ class Structure(object):
 
         if 'type' in kwargs:
             # the following need to match how the residues are listed in like 1R3O.cif,
-            # including uppercase and lowercase
+            # including uppercase and lowercase versions
             desired_types = []
             if 'RNA' in kwargs['type']:
                 desired_types.extend(['RNA linking', 'RNA LINKING', 'RNA OH 3 prime terminus', 'L-RNA linking', 'L-RNA LINKING'])
@@ -63,10 +63,14 @@ class Structure(object):
             if 'PNA' in kwargs['type']:
                 # for PNA like CPN
                 desired_types.extend(['peptide-like'])
+            if 'NON-POLYMER' in kwargs['type']:
+                # for chains like 2N4J made all of 8XA, 8XC, that are "NON-POLYMER"
+                desired_types.extend(['non-polymer','NON-POLYMER'])
 
             if len(desired_types) > 0:
-                # special treatment to get all RNA and/or DNA chains
+                # special treatment to get full RNA and/or DNA chains
                 # including modified residues with whatever chem_comp.type
+                # As long as a chain has one of the desired_types, it should be included
                 residues = EntitySelector(self._residues, type = desired_types)
                 chains = set([r.chain for r in residues])
 
