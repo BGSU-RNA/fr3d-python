@@ -1903,10 +1903,10 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
 
     if chains:
         # bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-        bases = structure.residues(chain = chains, type = ["RNA","DNA","PNA"])  # load all RNA/DNA nucleotides from desired chains
+        bases = structure.residues(chain = chains, type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides from desired chains
     else:
         # bases = structure.residues(type = ["RNA linking","DNA linking"])  # load nice RNA/DNA nucleotides
-        bases = structure.residues(type = ["RNA","DNA","PNA"])  # load all RNA/DNA nucleotides
+        bases = structure.residues(type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides
 
     if not timerData:
         timerData = myTimer("start")
