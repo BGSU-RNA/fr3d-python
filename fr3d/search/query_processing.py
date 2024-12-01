@@ -316,6 +316,7 @@ def readQueryFromJSON(JSONfilename):
                 text = data.decode('utf-8')
                 Q = json.loads(text)
                 query_loaded = True
+                Q["JSONFILENAME"] = JSONfilename
             except:
                 error_message = "Error: Could not find or download query file " + JSONfilename
         else:
@@ -912,7 +913,7 @@ def calculateQueryConstraints(Q):
             Q["chainLength"][i] = []
 
             if Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0:
-                if Q["repSetType"] and "DNA" in Q["repSetType"]:
+                if "repSetType" in Q and "DNA" in Q["repSetType"]:
                     if not "DNA" in Q["requiredMoleculeType"][i]:
                         Q["requiredMoleculeType"][i].append('DNA')
                 if 'RNA' not in Q["requiredMoleculeType"][i]:

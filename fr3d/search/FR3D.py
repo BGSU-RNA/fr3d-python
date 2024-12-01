@@ -163,8 +163,10 @@ def fr3d_search(Q,timerData=None):
         filename = Q['FILENAME']
     elif "name" in Q:
         filename = Q['name'].replace(" ","_")
-    else:
+    elif 'JSONFILENAME' in Q:
         filename = Q['JSONFILENAME'].replace(".json","")
+    else:
+        filename = "unknown_filename"
 
     base_filename = os.path.basename(filename)
 
