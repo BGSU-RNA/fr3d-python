@@ -918,10 +918,11 @@ def calculateQueryConstraints(Q):
             Q["chainLength"][i] = []
 
             if Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0:
-                if "repSetType" in Q and "DNA" in Q["repSetType"]:
-                    Q["requiredMoleculeType"][i].add('DNA')
-                else:
-                    Q["requiredMoleculeType"][i].add('RNA')
+                # if "repSetType" in Q and "DNA" in Q["repSetType"]:
+                #     Q["requiredMoleculeType"][i].add('DNA')
+                # else:
+                #     Q["requiredMoleculeType"][i].add('RNA')
+                pass
 
             else:
                 iMtext = Q["interactionMatrix"][i][i].replace(","," ").upper()
@@ -1118,7 +1119,9 @@ def calculateQueryConstraints(Q):
 
 
             if len(Q["requiredMoleculeType"][i]) == 0:
-                Q["requiredMoleculeType"][i] = ['RNA']               # default constraint
+                # no constraint on UnitType
+                # default constraint on molecule type
+                Q["requiredMoleculeType"][i] = set(['RNA','DNA'])            # default constraint
 
         if not foundGlycosidicBondOrientation:
             del Q["glycosidicBondOrientation"]
