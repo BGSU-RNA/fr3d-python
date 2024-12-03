@@ -694,10 +694,10 @@ def FR3D_search(Q, ifedata, ifename, timerData):
     # use unary constraints to reduce each universe
     if "requiredUnitType" in Q:
         for i in range(0, numPositions):
-            if(len(Q["requiredUnitType"][i]) > 0): # nonempty unit type constraint
+            if len(Q["requiredUnitType"][i]) > 0: # nonempty unit type constraint
                 temp_universe = set([])
                 for index in universe[i]:
-                    if(units[index]['unitType'] in Q["requiredUnitType"][i]):
+                    if units[index]['unitType'] in Q["requiredUnitType"][i]:
                         temp_universe.add(index)
                 universe[i] = universe[i] & temp_universe
 
@@ -706,7 +706,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
             if len(Q["requiredMoleculeType"][i]) > 0: #nonempty molecule type constraint
                 temp_universe = set([])
                 for index in universe[i]:
-                    if(units[index]["moleculeType"] in Q["requiredMoleculeType"][i]):
+                    if units[index]["moleculeType"] in Q["requiredMoleculeType"][i]:
                         temp_universe.add(index)
                 universe[i] = universe[i] & temp_universe
 
