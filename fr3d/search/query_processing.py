@@ -20,22 +20,19 @@ from fr3d.search.file_reading import get_CIFPATH
 from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 # identify codes that go with each type of molecule
-RNA_unit_types = set(["A","C","G","U"])
-DNA_unit_types = set(["DA","DC","DG","DT"])
+RNA_standard = set(["A","C","G","U"])
+DNA_standard = set(["DA","DC","DG","DT"])
 
-RNA_modified_list = set()
-DNA_modified_list = set()
+RNA_modified_set = set()
+DNA_modified_set = set()
 
 for modified, parent in modified_base_to_parent.items():
-    if parent in RNA_unit_types:
-        RNA_modified_list.add(modified)
+    if parent in RNA_standard:
+        RNA_modified_set.add(modified)
     else:
-        DNA_modified_list.add(modified)
+        DNA_modified_set.add(modified)
 
-# print("query_processing")
-# print(RNA_modified_list)
-
-protein_unit_types = ["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"]
+protein_unit_types = set(["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"])
 # it would be good to have a list of modified amino acids
 
 
@@ -55,15 +52,15 @@ def getMoleculeType(unitType):
     # else:
     #     unitType = unitType.upper()
 
-    if unitType in RNA_unit_types:
+    if unitType in RNA_standard:
         return "RNA"
-    elif unitType in DNA_unit_types:
+    elif unitType in DNA_standard:
         return "DNA"
     elif unitType in protein_unit_types:
         return "protein"
-    elif unitType in RNA_modified_list:
+    elif unitType in RNA_modified_set:
         return "RNA"
-    elif unitType in DNA_modified_list:
+    elif unitType in DNA_modified_set:
         return "DNA"
     else:
         return ""
@@ -399,8 +396,14 @@ def readQueryFromJSON(JSONfilename):
 
     if "requiredMoleculeType" in Q:
         if type(Q["requiredMoleculeType"]) is str:
-            # make a list whose entries are that string
-            Q["requiredMoleculeType"] = [Q["requiredMoleculeType"]] * Q["numPositions"]
+            fields = Q["requiredMoleculeType"].split(",")
+            if len(fields) > 1:
+                Q["requiredMoleculeType"] = fields
+                if not "numPositions" in Q:
+                    Q["numPositions"] = len(fields)
+            else:
+                # repeat the string in each position
+                Q["requiredMoleculeType"] = [Q["requiredMoleculeType"]] * Q["numPositions"]
 
     if "interactionMatrix" in Q:
         # make sure all keys are present in interactionMatrix
@@ -874,21 +877,21 @@ def calculateQueryConstraints(Q):
 
         # Parse Unary Constraints
 
-        letterToConstraint ={ 'A': ['A'],
-        'C': ['C'],
-        'G': ['G'],
-        'U': ['U'],
-        'M' :[ 'A', 'C' ],
-        'R' : ['A', 'G'],
-        'W' : ['A' , 'U'],
-        'S' : ['C' , 'G'],
-        'Y' : ['C' , 'U'],
-        'K' : ['G' , 'U'],
-        'V' : ['A', 'C', 'G'],
-        'H' : ['A', 'C', 'U'],
-        'D' : ['A', 'G', 'U'],
-        'B' : ['C', 'G', 'U'],
-        'N' : ['A', 'C', 'G', 'U']
+        letterToConstraint = { 'A': {'A'},
+        'C': {'C'},
+        'G': {'G'},
+        'U': {'U'},
+        'M' :{ 'A', 'C' },
+        'R' : {'A', 'G'},
+        'W' : {'A' , 'U'},
+        'S' : {'C' , 'G'},
+        'Y' : {'C' , 'U'},
+        'K' : {'G' , 'U'},
+        'V' : {'A', 'C', 'G'},
+        'H' : {'A', 'C', 'U'},
+        'D' : {'A', 'G', 'U'},
+        'B' : {'C', 'G', 'U'},
+        'N' : {'A', 'C', 'G', 'U'}
         }
 
         Q["requiredUnitType"] = [None] * Q["numPositions"]
@@ -905,113 +908,169 @@ def calculateQueryConstraints(Q):
 
         # process unary constraints
         for i in range(Q["numPositions"]):
-            Q["requiredUnitType"][i] = []
+            Q["requiredUnitType"][i] = set()
             Q["glycosidicBondOrientation"][i] = []
             if not i in Q["requiredMoleculeType"]:
-                Q["requiredMoleculeType"][i] = []
+                Q["requiredMoleculeType"][i] = set()
+            else:
+                Q["requiredMoleculeType"][i] = set(Q["requiredMoleculeType"][i])
             Q["chiAngle"][i] = []
             Q["chainLength"][i] = []
 
             if Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0:
                 if "repSetType" in Q and "DNA" in Q["repSetType"]:
-                    if not "DNA" in Q["requiredMoleculeType"][i]:
-                        Q["requiredMoleculeType"][i].append('DNA')
-                if 'RNA' not in Q["requiredMoleculeType"][i]:
-                    Q["requiredMoleculeType"][i].append('RNA')
+                    Q["requiredMoleculeType"][i].add('DNA')
+                else:
+                    Q["requiredMoleculeType"][i].add('RNA')
 
             else:
-                iMtext = Q["interactionMatrix"][i][i].replace(","," ")
+                iMtext = Q["interactionMatrix"][i][i].replace(","," ").upper()
 
                 iMarray = iMtext.split(" ")
                 for iM in iMarray:
+                    iMlower = iM.lower()
+
                     if len(iM) == 0:
                         continue
-                    if iM == "x" or iM == "X":
-                        iM = "protein"
 
-                    if iM.lower() == 'modified' or iM.lower() == 'mod':
-                        if 'rna' in iMtext.lower():
-                            Q["requiredUnitType"][i] += RNA_modified_list
-                            if not 'RNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('RNA')
-                        elif 'dna' in iMtext.lower():
-                            Q["requiredUnitType"][i] += DNA_modified_list
-                            if not 'DNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('DNA')
+                    if iM in RNA_standard:
+                        # A, C, G, U
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
+                        elif 'MOD' in iMtext:
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
                         else:
-                            Q["requiredUnitType"][i] += RNA_modified_list
-                            Q["requiredUnitType"][i] += DNA_modified_list
-                            if not 'RNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('RNA')
-                            if not 'DNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('DNA')
-
-                    elif iM in RNA_unit_types:
-                        Q["requiredUnitType"][i].append(iM)
-                        if not 'RNA' in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('RNA')
+                            Q["requiredUnitType"][i].add(iM)
 
                     elif iM in letterToConstraint:
                         # IUPAC abbreviations for RNA nucleotides
-                        Q["requiredUnitType"][i] += letterToConstraint[iM]
-                        if not 'RNA' in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('RNA')
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | letterToConstraint[iM]
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | letterToConstraint[iM]
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent in letterToConstraint[iM]:
+                                    Q["requiredUnitType"][i].add(modified)
+                        elif 'MOD' in iMtext:
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent in letterToConstraint[iM]:
+                                    Q["requiredUnitType"][i].add(modified)
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | letterToConstraint[iM]
 
-                    elif iM in DNA_unit_types:
-                        Q["requiredUnitType"][i].append(iM)
-                        if not 'DNA' in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('DNA')
+                    elif iM in DNA_standard:
+                        # DA, DC, DG, DT
+                        Q["requiredMoleculeType"][i].add('DNA')
 
-                    elif iM in protein_unit_types:
-                        Q["requiredUnitType"][i].append(iM)
-                        if 'protein' not in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('protein')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
+                        elif 'MOD' in iMtext:
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
+                        else:
+                            Q["requiredUnitType"][i].add(iM)
+
+                    elif iM in RNA_modified_set:
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        Q["requiredUnitType"][i].add(iM)
+
+                    elif iM in DNA_modified_set:
+                        Q["requiredMoleculeType"][i].add('DNA')
+                        Q["requiredUnitType"][i].add(iM)
 
                     elif iM == "RNA":
-                        if not 'RNA' in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('RNA')
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | RNA_modified_set
+                        elif 'MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_modified_set
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | RNA_modified_set
 
                     elif iM == "DNA":
-                        if not 'DNA' in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('DNA')
+                        Q["requiredMoleculeType"][i].add('DNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_standard
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_standard | DNA_modified_set
+                        elif 'MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_modified_set
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_standard | DNA_modified_set
 
-                    elif iM == "protein":
-                        if not 'protein' in Q["requiredMoleculeType"][i]:
-                            Q["requiredMoleculeType"][i].append('protein')
+                    elif iM == "NA":
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        Q["requiredMoleculeType"][i].add('DNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | DNA_standard
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | DNA_standard | RNA_modified_set | DNA_modified_set
+                        elif 'MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_modified_set | DNA_modified_set
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | DNA_standard | RNA_modified_set | DNA_modified_set
 
-                    elif iM.lower() == "syn":
+                    elif iM in ["MOD","~MOD","+MOD","MODIFIED","~MODIFIED","+MODIFIED"]:
+                        pass
+
+                    elif iM in protein_unit_types:
+                        Q["requiredUnitType"][i].add(iM)
+                        Q["requiredMoleculeType"][i].add('protein')
+
+                    elif iM == "X" or iMlower == "protein":
+                        Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | protein_unit_types
+                        Q["requiredMoleculeType"][i].add('protein')
+
+                    elif iMlower == "syn":
                         Q["glycosidicBondOrientation"][i].append("syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "anti":
+                    elif iMlower == "anti":
                         Q["glycosidicBondOrientation"][i].append("anti")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "is" or iM.lower() == "int syn" or iM.lower() == "int_syn" or iM.lower() == "int-syn" or iM.lower() == "intermediate syn":
+                    elif iMlower == "is" or iMlower == "int syn" or iMlower == "int_syn" or iMlower == "int-syn" or iMlower == "intermediate syn":
                         Q["glycosidicBondOrientation"][i].append("int_syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "~syn":
+                    elif iMlower == "~syn":
                         Q["glycosidicBondOrientation"][i].append("anti")
                         Q["glycosidicBondOrientation"][i].append("int_syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "~anti":
+                    elif iMlower == "~anti":
                         Q["glycosidicBondOrientation"][i].append("syn")
                         Q["glycosidicBondOrientation"][i].append("int_syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "~is" or iM.lower() == "~int syn" or iM.lower() == "~int_syn" or iM.lower() == "~int-syn" or iM.lower() == "~intermediate syn":
+                    elif iMlower == "~is" or iMlower == "~int syn" or iMlower == "~int_syn" or iMlower == "~int-syn" or iMlower == "~intermediate syn":
                         Q["glycosidicBondOrientation"][i].append("anti")
                         Q["glycosidicBondOrientation"][i].append("syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "glyco" or iM.lower() == "glycosidic":
+                    elif iMlower == "glyco" or iMlower == "glycosidic":
                         Q["showGlycosidicBondOrientation"] = True
                         foundGlycosidicBondOrientation = True
 
-                    elif "chi" in iM.lower():
-                        fields = iM.lower().replace("(","_").replace(")","")
+                    elif "chi" in iMlower:
+                        fields = iMlower.replace("(","_").replace(")","")
                         fields = fields.replace("[","_").replace("]","")
                         fields = fields.replace(":","_")
                         fields = fields.split('_')
@@ -1029,8 +1088,8 @@ def calculateQueryConstraints(Q):
                         else:
                             Q["errorMessage"].append('Could not parse chi constraint %d' % i)
 
-                    elif "chainlength" in iM.lower():
-                        fields = iM.lower().replace("(","_").replace(")","")
+                    elif "chainlength" in iMlower:
+                        fields = iMlower.replace("(","_").replace(")","")
                         fields = fields.replace("[","_").replace("]","")
                         fields = fields.replace(":","_")
                         fields = fields.split('_')
@@ -1055,9 +1114,7 @@ def calculateQueryConstraints(Q):
                             Q["errorMessage"].append('Could not parse chainlength constraint %d' % i)
 
                     else:
-                        # for example an unrecognized modified nucleotide
-                        Q["requiredUnitType"][i].append(iM)
-                        Q["errorMessage"].append('Did not recognize %s' % iM)
+                        Q["errorMessage"].append('Did not recognize constraint %s' % iM)
 
 
             if len(Q["requiredMoleculeType"][i]) == 0:
@@ -1097,7 +1154,9 @@ def calculateQueryConstraints(Q):
         Q["activeInteractions"].remove("and")
 
     if not "requiredMoleculeType" in Q or not Q["requiredMoleculeType"]:
-        if "DNA" in Q["repSetType"]:
+        if "DNA" in Q["repSetType"] and "RNA" in Q["repSetType"]:
+            Q["requiredMoleculeType"] = [["DNA","RNA"]] * Q["numPositions"]
+        elif "DNA" in Q["repSetType"]:
             Q["requiredMoleculeType"] = [["DNA"]] * Q["numPositions"]
         else:
             Q["requiredMoleculeType"] = [["RNA"]] * Q["numPositions"]
@@ -1366,11 +1425,10 @@ def calculateQueryConstraints(Q):
         if not "PDB_data_file" in Q:
             Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
+        # make sure that Q["repSetType"] is a list of "RNA" or "DNA"
         if "repSetType" in Q:
-            if Q["repSetType"] == "DNA":
-                Q["repSetType"] = ["DNA"]
-            elif Q["repSetType"] == "RNA":
-                Q["repSetType"] = ["RNA"]
+            if type(Q["repSetType"]) == str:
+                Q["repSetType"] = Q["repSetType"].upper().split(",")
         else:
             Q["repSetType"] = ["RNA"]
 
