@@ -1,0 +1,16 @@
+{
+"numpositions": 2,
+"constraintMatrix,1,1": "RNA modified",
+"constraintMatrix,1,2": "pair",
+"constraintMatrix,2,2": "modified RNA",
+"searchFiles": ["8GLP"],
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 0,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 0,
+"printTimer": 1
+}

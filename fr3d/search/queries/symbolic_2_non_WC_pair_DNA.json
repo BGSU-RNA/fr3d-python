@@ -1,0 +1,18 @@
+{
+"name": "symbolic_2_non_WC_pair_DNA",
+"numpositions": 2,
+"repSetRelease": "0.5",
+"repSetResolution": "4.0A",
+"repSetType": ["DNA"],
+"constraintMatrix,1,2": "pair ~cWW ~ncWW",
+"requiredMoleculeType" : "DNA",
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 0,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 0,
+"printTimer": 1
+}
