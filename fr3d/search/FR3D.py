@@ -421,11 +421,12 @@ def fr3d_search_from_query_names(queryNames):
     for queryName in queryNames:
 
         if "rna.bgsu.edu/fr3d/results" in queryName:
-            # apparently the URL of a WebFR3D query
+            # URL of a WebFR3D query results page
             fields = queryName.split("/")
             queryName = fields[-1]
             queryName = queryName.replace(".html","").replace(".csv","")
         elif "rna.bgsu.edu/fr3d/modify" in queryName:
+            # URL of a WebFR3D query modify page
             fields = queryName.split("=")
             queryName = fields[-1]
 
