@@ -98,9 +98,9 @@ def myIntersect(a, b):
     possible values
     """
 
-    if("full" in a):
+    if "full" in a:
         return b
-    elif("full" in b):
+    elif "full" in b:
         return a
     elif isinstance(a, set):
         return a.intersection(b)
@@ -275,7 +275,7 @@ def extendFragment(Q, ifedata, perm, currentFragment, secondElementList, possibi
 
     # if the current fragment of a possibility is the full length, return it,
     # nothing more to be added
-    if(len(currentFragment) == numPositions):
+    if len(currentFragment) == numPositions:
         return Q, [currentFragment]
 
     possibilities = []
@@ -733,7 +733,8 @@ def FR3D_search(Q, ifedata, ifename, timerData):
 
     if "glycosidicBondOrientation" in Q:
         for i in range(0, numPositions):
-            if(len(Q["glycosidicBondOrientation"][i]) > 0): # nonempty orientation constraint
+            if len(Q["glycosidicBondOrientation"][i]) > 0:
+                # nonempty orientation constraint
                 temp_universe = set([])
                 for index in universe[i]:
                     if units[index]["glycosidicBondOrientation"] in Q["glycosidicBondOrientation"][i]:
@@ -742,7 +743,8 @@ def FR3D_search(Q, ifedata, ifename, timerData):
 
     if "chiAngle" in Q:
         for i in range(0, numPositions):
-            if(len(Q["chiAngle"][i]) > 0): # nonempty chi angle constraint
+            if len(Q["chiAngle"][i]) > 0:
+                # nonempty chi angle constraint
                 temp_universe = set([])
                 a = Q["chiAngle"][i][1]
                 b = Q["chiAngle"][i][2]
@@ -974,8 +976,8 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                         listOfPairs[i][j] = makeFullList(universe[i], universe[j])
 
                     for pair in listOfPairs[i][j]:
-                        if((ifedata['units'][pair[0]]['unitType'],
-                            ifedata['units'][pair[1]]['unitType']) in Q["combinationConstraint"][i][j]):
+                        if (ifedata['units'][pair[0]]['unitType'],
+                            ifedata['units'][pair[1]]['unitType']) in Q["combinationConstraint"][i][j]:
                             temp_pair_list.append(pair)
 
                     listOfPairs[i][j] = temp_pair_list
@@ -1087,7 +1089,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
 
     # for geometric and mixed searches, compute discrepancy of possibilities to query motif
     # for purely symbolic searches, every possibility is a candidate
-    if((Q["type"] == "geometric" or Q["type"] == "mixed")):
+    if Q["type"] == "geometric" or Q["type"] == "mixed":
         querycenters = [Q["centers"][i] for i in perm]
         queryrotations = [Q["rotations"][i] for i in perm]
         timerData = myTimer("Discrepancy from query")
