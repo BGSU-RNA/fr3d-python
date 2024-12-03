@@ -1451,10 +1451,10 @@ def calculateQueryConstraints(Q):
                 with open(pathAndFileName, 'rb') as fh:
                     representativeSets = pickle.load(fh)
                 if repSetKey in representativeSets and len(representativeSets[repSetKey]) > 0:
-                    newList = representativeSets[repSetKey]
+                    newList = sorted(set(representativeSets[repSetKey]))
 
             if len(newList) == 0:
-                # need to get the representative set
+                # need to download the representative set
 
                 # requesting NMR structures only
                 if Q['repSetResolution'] == 'NMR':
@@ -1507,22 +1507,28 @@ def calculateQueryConstraints(Q):
                     else:
                         representativeSets = {}
 
-                    representativeSets[repSetKey] = newList
+                    # make sure no file is listed twice
+                    # alphabetical order can be nice, but then searches seem to slow down as they run
+                    representativeSets[repSetKey] = sorted(set(newList))
                     pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
 
         if len(newList) > 0:
-            full_search_file_ifes = "  ".join(IFEList)
-            for IFE in newList:
-                for chain in IFE.split("+"):
-                    if not chain in full_search_file_ifes:
-                        # avoid adding 4V9F|1|0 when the full 4V9F is already specified
-                        # this way, a user can specify a representative set and some
-                        # specific full 3D structure files and not get duplicates
-                        # There are still special cases where this will not work
-                        # and the user will get duplicates, like if they specify 8GLP|1|L5
-                        # in searchFiles, then this code will hit 8GLP|1|L5+8GLP|1|L8 and add
-                        # 8GLP|1|L5+8GLP|1|L8 to IFEList
-                        IFEList.append(IFE)
+            if len(IFEList) > 0:
+                full_search_file_ifes = "  ".join(IFEList)
+                for IFE in newList:
+                    for chain in IFE.split("+"):
+                        if not chain in full_search_file_ifes:
+                            # avoid adding 4V9F|1|0 when the full 4V9F is already specified
+                            # this way, a user can specify a representative set and some
+                            # specific full 3D structure files and not get duplicates
+                            # There are still special cases where this will not work
+                            # and the user will get duplicates, like if they specify 8GLP|1|L5
+                            # in searchFiles, then this code will hit 8GLP|1|L5+8GLP|1|L8 and add
+                            # 8GLP|1|L5+8GLP|1|L8 to IFEList
+                            IFEList.append(IFE)
+                            break
+            else:
+                IFEList = newList
 
     # finalize the list of IFEs to search
     Q["searchFiles"] = [x for x in IFEList if len(x) > 0]
