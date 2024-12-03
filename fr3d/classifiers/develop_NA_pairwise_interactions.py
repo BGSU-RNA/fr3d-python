@@ -3,9 +3,9 @@
 """
 When changes are made to other code in fr3d-python, as administrator:
 cd c:/Users/zirbel/Documents/GitHub/fr3d-python
+python311 -m pip install .
 python27 -m pip install .
 python38 -m pip install .
-python311 -m pip install .
 
 To run the code:
 cd c:/Users/zirbel/Documents/GitHub/fr3d-python/fr3d/classifiers
