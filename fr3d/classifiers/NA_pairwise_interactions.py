@@ -1343,6 +1343,45 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             MCS_to_endpoints[MCS1].add(index1)
             MCS_to_endpoints[MCS2].add(index2)
 
+        # add nested AU, GC, GU ncWW pairs adjacent to canonical cWW pairs so we do not
+        # extend a loop past a nested canonical ncWW pair.
+        # There may be two in a row, so check until no more additions
+        pair_added = True
+        while pair_added:
+            pair_added = False
+            for interaction in interaction_to_list_of_tuples.keys():
+                if interaction.lower() in ['ncww','ncwwa']:
+                    for u1,u2,crossing in interaction_to_list_of_tuples[interaction]:
+                        if crossing == 0:
+                            model1,chain1,index1,base1,symmetry1 = unit_id_to_fields[u1]
+                            model2,chain2,index2,base2,symmetry2 = unit_id_to_fields[u2]
+
+                            parent1 = get_parent(base1,'')
+                            parent2 = get_parent(base2,'')
+
+                            if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
+                                MCS1 = (model1,chain1,symmetry1)
+                                MCS2 = (model2,chain2,symmetry2)
+
+                                if (MCS1,index1+1,MCS2,index2-1) in bss_endpoints \
+                                or (MCS1,index1-1,MCS2,index2+1) in bss_endpoints:
+                                    if not index1 in MCS_to_endpoints[MCS1] and not index2 in MCS_to_endpoints[MCS2]:
+                                        if (u1,u2,0) in interaction_to_list_of_tuples.get('cp',[]):
+                                            if MCS1 == MCS2:
+                                                MCS_to_nested_cWW_endpoints[MCS1][index1] = index2
+                                                MCS_to_nested_cWW_endpoints[MCS2][index2] = index1
+                                            else:
+                                                MCS_to_nested_cWW_endpoints[MCS1][index1] = (MCS2,index2)
+                                                MCS_to_nested_cWW_endpoints[MCS2][index2] = (MCS1,index1)
+
+                                            MCS_to_endpoints[MCS1].add(index1)
+                                            MCS_to_endpoints[MCS2].add(index2)
+
+                                            pair_added = True
+
+                                            if index1 <= index2:
+                                                print("Adding %s %s %s to the bSS endpoints" % (u1,interaction,u2))
+
         # identify nucleotides that border a single-stranded region (bSS relation)
         # this includes strands between nested cWW pairs on one chain
         # it also includes cWW pairs with zero crossing number that go between chains
@@ -1394,6 +1433,9 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                 if (MCS2 or MCS3) and not MCS2 == MCS3:
                     # c and e are in one chain, but pc and pe are in different chains
+                    bSS_list.append((u1,u2,0))
+                    bSS_list.append((u2,u1,0))
+                    unitid_to_bss_partner[u1] = u2
 
                     if verbose >= 3:
                         if c == MCS_to_min_index[MCS]:
@@ -1402,9 +1444,6 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             print("  %-20s bSS %-20s at end of chain &" % (u1,u2))
                         else:
                             print("  %-20s bSS %-20s between chains" % (u1,u2))
-                    bSS_list.append((u1,u2,0))
-                    bSS_list.append((u2,u1,0))
-                    unitid_to_bss_partner[u1] = u2
                 elif c == MCS_to_min_index[MCS] and pc == c and not MCS2:
                     # c is at start of chain but does not make a cWW pair
                     if verbose >= 3:
@@ -1526,9 +1565,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
     if 'loops' in categories:
         # map unit ids making nested cWW to their pairing partners
+        # this may pick up cWW pairs that are not GC, AU, or GU but
+        # that is OK because we are only going to use the ones that
+        # come from the bSS relation as we walk along the chain
         unitid_to_cww_partner = {}
-        for interaction in interaction_to_list_of_tuples.keys():
-            if interaction.lower() in ['cww','cwwa']:
+        # store ncww before cww in case of overwriting, which should not happen
+        for interaction in sorted(interaction_to_list_of_tuples.keys(),reverse=True):
+            if interaction.lower() in ['cww','cwwa','ncww','ncwwa']:
                 for unitid1, unitid2, crossing in interaction_to_list_of_tuples[interaction]:
                     if crossing == 0:
                         unitid_to_cww_partner[unitid1] = unitid2
@@ -3913,6 +3956,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
         categories['loops'] = []
 
     if 'loops' in categories:
+        categories['coplanar'] = []
         categories['bss'] = []
         categories['stacking'] = []
         categories['basepair'] = Leontis_Westhof_basepairs
