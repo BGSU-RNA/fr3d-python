@@ -765,6 +765,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             elif nt1.chain == 'J' and nt2.chain == 'I':
                                 continue
 
+                        if nt1.pdb == '4WLS':
+                            if nt1.chain in ['U','V'] and nt2.chain in ['X','Y']:
+                                continue
+                            elif nt1.chain in ['X','Y'] and nt2.chain in ['U','V']:
+                                continue
+
                         # vector displacement between base centers
                         displacement = abs(nt2.centers["base"]-nt1.centers["base"]) # center-center
 
