@@ -745,17 +745,46 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 print(nt2.centers["base"])
                             continue
 
-                        # avoid some strange errors
-                        if nt1.pdb == '4KTG':
+                        # avoid some strange errors due to overlapping nucleotides
+                        if nt1.pdb == '1BVO':
+                            # D pairs with symmetry operated E
+                            # D and E are on top of each other
+                            if nt1.symmetry == nt2.symmetry and nt1.chain != nt2.chain:
+                                continue
+                        elif nt1.pdb == '1R71' and nt1.chain != nt2.chain:
+                            ok_chains = ['EF','FE','GH','HG','IJ','JI','KL','LK']
+                            if not nt1.chain+nt2.chain in ok_chains:
+                                continue
+                        elif nt1.pdb == '3CRX' and nt1.chain != nt2.chain:
+                            # D ASM1 is on top of F ASM2
+                            ok_chains = ['DE','ED','CF','FC']
+                            if not nt1.chain+nt2.chain in ok_chains:
+                                continue
+                        elif nt1.pdb == '4BUL' and nt1.chain != nt2.chain:
+                            ok_chains = ['EF','FE','GH','HG']
+                            if not nt1.chain+nt2.chain in ok_chains:
+                                continue
+                        elif nt1.pdb == '4KTG':
                             # both symmetry operators put nucleotides in the same locations
                             if not nt1.symmetry == nt2.symmetry:
                                 continue
-
-                        if nt1.pdb == '5UA2':
+                        elif nt1.pdb == '4WLS':
+                            if nt1.chain in ['U','V'] and nt2.chain in ['X','Y']:
+                                continue
+                            elif nt1.chain in ['X','Y'] and nt2.chain in ['U','V']:
+                                continue
+                        elif nt1.pdb == '5A39':
+                            ok_chains = ['CG','GC','DH','HD','EF','FE']
+                            if not nt1.chain+nt2.chain in ok_chains:
+                                continue
+                        elif nt1.pdb == '5UA1':
+                            ok_chains = ['CD','DC','EF','FE']
+                            if not nt1.chain+nt2.chain in ok_chains:
+                                continue
+                        elif nt1.pdb == '5UA2':
                             if nt1.chain == nt2.chain and nt1.symmetry != nt2.symmetry:
                                 continue
-
-                        if nt1.pdb == '6KHY':
+                        elif nt1.pdb == '6KHY':
                             if nt1.chain == 'G' and nt2.chain == 'H':
                                 continue
                             elif nt1.chain == 'H' and nt2.chain == 'G':
@@ -763,12 +792,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             elif nt1.chain == 'I' and nt2.chain == 'J':
                                 continue
                             elif nt1.chain == 'J' and nt2.chain == 'I':
-                                continue
-
-                        if nt1.pdb == '4WLS':
-                            if nt1.chain in ['U','V'] and nt2.chain in ['X','Y']:
-                                continue
-                            elif nt1.chain in ['X','Y'] and nt2.chain in ['U','V']:
                                 continue
 
                         # vector displacement between base centers
@@ -1349,6 +1372,10 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             MCS_to_endpoints[MCS1].add(index1)
             MCS_to_endpoints[MCS2].add(index2)
 
+        # make it easy to jump to the cww partner
+        # set this up here to add the special ncww pairs identified in this section
+        unitid_to_cww_partner = {}
+
         # add nested AU, GC, GU ncWW pairs adjacent to canonical cWW pairs so we do not
         # extend a loop past a nested canonical ncWW pair.
         # There may be two in a row, so check until no more additions
@@ -1382,6 +1409,9 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                                             MCS_to_endpoints[MCS1].add(index1)
                                             MCS_to_endpoints[MCS2].add(index2)
+
+                                            unitid_to_cww_partner[u1] = u2
+                                            unitid_to_cww_partner[u2] = u1
 
                                             pair_added = True
 
@@ -1574,10 +1604,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         # this may pick up cWW pairs that are not GC, AU, or GU but
         # that is OK because we are only going to use the ones that
         # come from the bSS relation as we walk along the chain
-        unitid_to_cww_partner = {}
-        # store ncww before cww in case of overwriting, which should not happen
         for interaction in sorted(interaction_to_list_of_tuples.keys(),reverse=True):
-            if interaction.lower() in ['cww','cwwa','ncww','ncwwa']:
+            if interaction.lower() in ['cww','cwwa']:
                 for unitid1, unitid2, crossing in interaction_to_list_of_tuples[interaction]:
                     if crossing == 0:
                         unitid_to_cww_partner[unitid1] = unitid2
@@ -1621,6 +1649,11 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         unitid1 = unitid_to_cww_partner[unitid2]
                         if unitid1 in unitid_to_bss_partner:
                             unitid2 = unitid_to_bss_partner[unitid1]
+                            if unitid1 in loop or unitid2 in loop:
+                                # bad situation, need to avoid infinite while loop
+                                print("  Anomalous loop %s" % ",".join(loop))
+                                loop = []
+                                break
                             loop.append(unitid1)
                             loop.append(unitid2)
                             bss_done.add((unitid1,unitid2))
