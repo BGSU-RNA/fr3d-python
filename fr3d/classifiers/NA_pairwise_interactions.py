@@ -267,7 +267,15 @@ def load_structure(filename,file_id="",preferred_id=None):
         if filename.lower().endswith('.cif.gz'):
             with gzip.open(filename, rm) as raw:
                 from fr3d.cif.reader import Cif
-                structure = Cif(raw,preferred_id=preferred_id).structure()
+                cif_access = Cif(raw,preferred_id=preferred_id)
+                structure = cif_access.structure()
+
+                # here is an example of how to load the assemblies
+                # they simply tell you which chains are to get which symmetry operators
+                # they do not tell you which chains / symmetries form a biological unit
+                # assemblies = cif_access.__load_assemblies__()
+                # for key,value in assemblies.items():
+                #     print(key, value)
         elif filename.lower().endswith('.cif'):
             with open(filename, rm) as raw:
                 from fr3d.cif.reader import Cif
@@ -698,6 +706,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
     basepair_parent_base_combination_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
 
+    # keep track of overlapping chains
+    overlapping_chains = set()
+
     # For base-backbone interactions, we need to know
     if 'backbone' in categories.keys():
         #ntDict = makeListOfNtIndices(baseCubeList, baseCubeNeighbors)
@@ -730,6 +741,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     number1 = nt1.number                 # nucleotide number
 
                     for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
+                        if nt1.unit_id() == nt2.unit_id():
+                            continue
+
                         # only consider each nt1, nt2 pair in one direction
                         # Those in different cubes only occur once
                         # Those from the same cube need a way to select just one pair
@@ -746,6 +760,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             continue
 
                         # avoid some strange errors due to overlapping nucleotides
+                        # not a complete solution, just a first step
                         if nt1.pdb == '1BVO':
                             # D pairs with symmetry operated E
                             # D and E are on top of each other
@@ -821,7 +836,13 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if center_center_distance > center_center_distance_cutoff:
                             continue
 
-                        # some structures have overlapping nucleotides, screen, those out
+                        # too short center_center_distance means overlapping nucleotides
+                        if center_center_distance < 1:
+                            print("Overlapping nucleotides",nt1.unit_id(),nt2.unit_id())
+                            overlapping_chains.add((nt1.symmetry,nt1.chain,nt2.symmetry,nt2.chain))
+                            overlapping_chains.add((nt2.symmetry,nt2.chain,nt1.symmetry,nt1.chain))
+
+                        # some structures have overlapping nucleotides, screen those out
                         if center_center_distance < 2:
                             continue
 
@@ -934,8 +955,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 count_pair += 1
                                 interaction_to_pair_list[interactionbR].append(unit_id_pair)
                                 category_to_interactions['backbone'].add(interactionbR)
-
-                            #     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
 
                         gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
@@ -1099,7 +1118,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             pair_to_data[reversed_pair] = datapoint21
 
     # check for two basepair interactions on the same edge
-    remove_pairs, make_near_pairs = check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint)
+    if len(overlapping_chains) == 0:
+        remove_pairs, make_near_pairs = check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint)
+    else:
+        # when there are overlapping chains, some bases may make two cWW pairs, for example
+        remove_pairs = []
+        make_near_pairs = []
 
     # record remaining basepairs, but each one only once
     already_saved = set()
@@ -1122,18 +1146,27 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     category_to_interactions['basepair_detail'].add(interaction)
                     category_to_interactions['basepair_detail'].add(interaction_reversed)
 
+    for nt in bases:
+        file_id = nt.pdb
+        break
+
     if verbose >= 1:
-        for nt in bases:
-            file_id = nt.pdb
-            print("  Found %d nucleotide-nucleotide interactions in %s" % (count_pair,file_id))
-            break
+        print("  Found %d nucleotide-nucleotide interactions in %s" % (count_pair,file_id))
 
     if verbose >= 3:
         print("  Maximum screen distance for actual contacts is %8.4f" % max_center_center_distance)
 
     # calculate and save crossing numbers for each annoated interaction
     timerData = myTimer("Calculate crossing",timerData)
-    interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,categories)
+    if len(overlapping_chains) == 0:
+        interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,categories)
+    else:
+        interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,{})
+
+        with open('pdb_with_overlapping_chains','a') as f:
+            for s1,c1,s2,c2 in overlapping_chains:
+                f.write("%s\t%s\t%s\t%s\t%s\n" % (file_id,s1,c1,s2,c2))
+
 
     if 'bSS' in interaction_to_list_of_tuples:
         category_to_interactions['bss'] = set(['bSS'])
