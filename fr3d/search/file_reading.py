@@ -561,6 +561,7 @@ def readNAPositionsFile(Q, chainString, starting_index):
             if sys.version_info[0] < 3:
                 ids, chainIndices, centers, rotations = pickle.load(open(pathAndFileName,"rb"))
             else:
+                # note: chainIndices is a list that starts at 0
                 ids, chainIndices, centers, rotations = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
         except:
             print("Could not read "+filename)
@@ -569,12 +570,14 @@ def readNAPositionsFile(Q, chainString, starting_index):
         ok_ids = []
         ok_centers = []
         ok_rotations = []
+        ok_chain_indices = []
 
         for i in range(0,len(ids)):
             if len(centers[i]) == 3 and rotations[i].shape == (3,3):
                 ok_ids.append(ids[i])
                 ok_centers.append(centers[i])
                 ok_rotations.append(rotations[i])
+                ok_chain_indices.append(chainIndices[i])
                 id_to_index[ids[i]] = line_num
                 index_to_id[line_num] = ids[i]
                 line_num += 1
@@ -582,6 +585,7 @@ def readNAPositionsFile(Q, chainString, starting_index):
         ids = ok_ids
         centers = np.asarray(ok_centers)
         rotations = np.asarray(ok_rotations)
+        chainIndices = ok_chain_indices
 
     else:
         print("Could not find "+filename)
