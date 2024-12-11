@@ -165,8 +165,11 @@ class Cif(object):
     def __load_assemblies__(self):
         listOfNumbers = []
         assemblies = coll.defaultdict(list)
-        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-        if self.pdb in oldStructures: # For our database, we have to deal with a small list of structures in an old manner to maintain old unit ids and naming conventions
+        # Some old structures need to have processing for the sake of the server and naming conventions.
+        # Default to this for these structures.
+        if self.pdb in oldStructures:
+            # For our database, we have to deal with a small list of structures in an
+            # old manner to maintain old unit ids and naming conventions
             if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
                 for assembly in self.pdbx_struct_assembly_gen:
                     oper_expression = assembly['oper_expression']
