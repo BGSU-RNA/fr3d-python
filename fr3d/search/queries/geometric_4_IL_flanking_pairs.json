@@ -1,0 +1,23 @@
+{
+"unitID": ["354D|1|A|C|71", "354D|1|A|G|79", "354D|1|B|C|97", "354D|1|B|DG|105"],
+"numpositions": 4,
+"discrepancy": 0.4,
+"searchFiles": ["7K00"],
+"constraintMatrix,1,1": "RNA",
+"constraintMatrix,1,4": "cWW GC CG AU UA GU UG",
+"constraintMatrix,1,2": "bSS",
+"constraintMatrix,2,2": "RNA",
+"constraintMatrix,2,3": "cWW GC CG AU UA GU UG",
+"constraintMatrix,3,3": "RNA",
+"constraintMatrix,3,4": "bSS",
+"constraintMatrix,4,4": "RNA",
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 0,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 0,
+"printTimer": 1
+}
