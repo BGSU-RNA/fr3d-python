@@ -360,7 +360,7 @@ def getPossibilities(Q, ifedata, perm, secondElementList, numPositions, listOfPa
             else:
                 emptyArray = True
         if Q["type"] == "geometric" or Q["type"] == "mixed":
-            distanceError = getDistanceError(Q, ifedata['units'], perm, 0, 1, firstPair[0], firstPair[1])
+            distanceError = getDistanceError(Q, ifedata["units"], perm, 0, 1, firstPair[0], firstPair[1])
         else:
             distanceError = 0
 
@@ -703,7 +703,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
 
     if "requiredMoleculeType" in Q:
         for i in range(0, numPositions):
-            if len(Q["requiredMoleculeType"][i]) > 0: #nonempty molecule type constraint
+            if len(Q["requiredMoleculeType"][i]) > 0: # nonempty molecule type constraint
                 temp_universe = set([])
                 for index in universe[i]:
                     if units[index]["moleculeType"] in Q["requiredMoleculeType"][i]:
@@ -841,16 +841,16 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                         if listOfPairs[i][j] == "full":
                             for m in range(0, len(universe[i])):
                                 a = sorted_universe[i][m]
-                                p = ifedata['units'][a]["chainindex"]  # sequence position
+                                p = units[a]["chainindex"]  # sequence position
                                 n = 0
                                 b = sorted_universe[j][n]
-                                q = ifedata['units'][b]["chainindex"]  # sequence position
+                                q = units[b]["chainindex"]  # sequence position
 
                                 # probe for the first match
                                 while n < len(universe[j]) - 1 and q - p <= constraint[1]:
                                     n += 1
                                     b = sorted_universe[j][n]
-                                    q = ifedata['units'][b]["chainindex"]  # sequence position
+                                    q = units[b]["chainindex"]  # sequence position
 
                                 # accumulate matches
                                 while n < len(universe[j]):
@@ -860,11 +860,11 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                     n += 1
                                     if n < len(universe[j]):
                                         b = sorted_universe[j][n]
-                                        q = ifedata['units'][b]["chainindex"]  # sequence position
+                                        q = units[b]["chainindex"]  # sequence position
                         else:
                             for (a, b) in listOfPairs[i][j]:
-                                p = ifedata['units'][a]["chainindex"]  # sequence position
-                                q = ifedata['units'][b]["chainindex"]  # sequence position
+                                p = units[a]["chainindex"]  # sequence position
+                                q = units[b]["chainindex"]  # sequence position
 
                                 if modelChainSymmetry[a] == modelChainSymmetry[b] and (
                                 q - p > constraint[1]) and q - p < constraint[2]:
@@ -879,16 +879,16 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                             for m in range(0, len(universe[i])):
                                 foundOne = False
                                 a = sorted_universe[i][m]
-                                p = ifedata['units'][a]["chainindex"]  # sequence position
+                                p = units[a]["chainindex"]  # sequence position
                                 n = starting_n
                                 b = sorted_universe[j][n]
-                                q = ifedata['units'][b]["chainindex"]  # sequence position
+                                q = units[b]["chainindex"]  # sequence position
                                 # probe for the first match
                                 while n < len(universe[j]) - 1 and (
                                 modelChainSymmetry[a] != modelChainSymmetry[b] or q - p <= constraint[1]):
                                     n += 1
                                     b = sorted_universe[j][n]
-                                    q = ifedata['units'][b]["chainindex"]  # sequence position
+                                    q = units[b]["chainindex"]  # sequence position
                                 # accumulate matches
                                 while n < len(universe[j]) and (
                                 modelChainSymmetry[a] == modelChainSymmetry[b] and q - p < constraint[2]):
@@ -900,11 +900,11 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                     n += 1
                                     if n < len(universe[j]):
                                         b = sorted_universe[j][n]
-                                        q = ifedata['units'][b]["chainindex"]  # sequence position
+                                        q = units[b]["chainindex"]  # sequence position
                         else:
                             for (a, b) in listOfPairs[i][j]:
-                                p = ifedata['units'][a]["chainindex"]  # sequence position
-                                q = ifedata['units'][b]["chainindex"]  # sequence position
+                                p = units[a]["chainindex"]  # sequence position
+                                q = units[b]["chainindex"]  # sequence position
 
                                 if modelChainSymmetry[a] == modelChainSymmetry[b] and q - p in constraint[3]:
                                     newList.append((a, b))
@@ -918,15 +918,15 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                             for m in range(0, len(universe[i])):
                                 foundOne = False
                                 a = sorted_universe[i][m]
-                                p = ifedata['units'][a]["chainindex"]  # sequence position
+                                p = units[a]["chainindex"]  # sequence position
                                 n = starting_n
                                 b = sorted_universe[j][n]
-                                q = ifedata['units'][b]["chainindex"]  # sequence position
+                                q = units[b]["chainindex"]  # sequence position
                                 # probe for the first match
                                 while n < len(universe[j])-1 and modelChainSymmetry[a] != modelChainSymmetry[b]:
                                     n += 1
                                     b = sorted_universe[j][n]
-                                    q = ifedata['units'][b]["chainindex"]  # sequence position
+                                    q = units[b]["chainindex"]  # sequence position
                                 # accumulate matches
                                 while n < len(universe[j]) and modelChainSymmetry[a] == modelChainSymmetry[b]:
                                     if a != b and (q-p < constraint[1] or q-p > constraint[2]):
@@ -937,11 +937,11 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                     n += 1
                                     if n < len(universe[j]):
                                         b = sorted_universe[j][n]
-                                        q = ifedata['units'][b]["chainindex"]  # sequence position
+                                        q = units[b]["chainindex"]  # sequence position
                         else:
                             for (a, b) in listOfPairs[i][j]:
-                                p = ifedata['units'][a]["chainindex"]  # sequence position
-                                q = ifedata['units'][b]["chainindex"]  # sequence position
+                                p = units[a]["chainindex"]  # sequence position
+                                q = units[b]["chainindex"]  # sequence position
 
                                 if modelChainSymmetry[a] == modelChainSymmetry[b] and (
                                 q-p < constraint[1] or q-p > constraint[2]):
@@ -962,7 +962,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
             if Q.get('printListLengths', False):
                 printListLengths(Q, numPositions, universe, listOfPairs, "After continuity constraints and reducing pairs from universes.")
 
-    # reduce list of pairs subject to a unit type combination constraint, like CG GC
+    # reduce list of pairs subject to a unit type combination constraint, like C,G G,C
     if not emptyUniverse and "combinationConstraint" in Q and numPositions > 1:
         timerData = myTimer("Combination constraints")
         positions_and_counts = []        # keep track of where interactions were imposed
@@ -975,10 +975,40 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                     if listOfPairs[i][j] == "full":
                         listOfPairs[i][j] = makeFullList(universe[i], universe[j])
 
-                    for pair in listOfPairs[i][j]:
-                        if (ifedata['units'][pair[0]]['unitType'],
-                            ifedata['units'][pair[1]]['unitType']) in Q["combinationConstraint"][i][j]:
-                            temp_pair_list.append(pair)
+                    if "+modAsRNA" in Q["combinationConstraint"][i][j]:
+                        # original or parent of modified bases match
+                        for pair in listOfPairs[i][j]:
+                            if (units[pair[0]]['parentAsRNA'],
+                                units[pair[1]]['parentAsRNA']) in Q["combinationConstraint"][i][j]:
+                                temp_pair_list.append(pair)
+                    elif "modAsRNA" in Q["combinationConstraint"][i][j]:
+                        # modified bases match but original do not, will allow PSU,A but not U,A to match U,A
+                        for pair in listOfPairs[i][j]:
+                            if (units[pair[0]]['parentAsRNA'],
+                                units[pair[1]]['parentAsRNA']) in Q["combinationConstraint"][i][j]:
+                                if not (units[pair[0]]['unitType'],
+                                        units[pair[1]]['unitType']) in Q["combinationConstraint"][i][j]:
+                                    temp_pair_list.append(pair)
+                    elif "+mod" in Q["combinationConstraint"][i][j]:
+                        # original or parent of modified bases match
+                        for pair in listOfPairs[i][j]:
+                            if (units[pair[0]]['parentType'],
+                                units[pair[1]]['parentType']) in Q["combinationConstraint"][i][j]:
+                                temp_pair_list.append(pair)
+                    elif "mod" in Q["combinationConstraint"][i][j]:
+                        # modified bases match but original do not, will allow PSU,A but not U,A to match U,A
+                        for pair in listOfPairs[i][j]:
+                            if (units[pair[0]]['parentType'],
+                                units[pair[1]]['parentType']) in Q["combinationConstraint"][i][j]:
+                                if not (units[pair[0]]['unitType'],
+                                        units[pair[1]]['unitType']) in Q["combinationConstraint"][i][j]:
+                                    temp_pair_list.append(pair)
+                    else:
+                        # need an exact sequence match, whatever they typed
+                        for pair in listOfPairs[i][j]:
+                            if (units[pair[0]]['unitType'],
+                                units[pair[1]]['unitType']) in Q["combinationConstraint"][i][j]:
+                                temp_pair_list.append(pair)
 
                     listOfPairs[i][j] = temp_pair_list
 
