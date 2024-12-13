@@ -2043,7 +2043,6 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
 def get_parent(sequence,if_none=None):
     """
     Look up parent sequence for RNA, DNA, and modified nucleotides.
-
     """
 
     if sequence in ['A','C','G','U','DT']:
