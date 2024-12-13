@@ -17,7 +17,7 @@ from fr3d.search.file_reading import readProteinPositionsFile
 from fr3d.search.file_reading import readPDBDatafile
 from fr3d.search.file_reading import get_CIFPATH
 
-from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+from fr3d.modified.mapping import modified_base_to_parent
 
 # identify codes that go with each type of molecule
 RNA_standard = set(["A","C","G","U"])
@@ -516,14 +516,14 @@ def retrieveQueryInformation(Q):
                             print("  query_processing: Retrieving data about %s in chain %s" % (unitID,chainString))
 
                         if not chainString in chainData:         # only load the chain once
-                            if mt == "RNA" or mt == "DNA":
+                            if mt == "RNA" or mt == "DNA" or mt == "PNA":
                                 Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices = readNAPositionsFile(Q,chainString,0)
                             elif mt == "protein":
                                 Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q,fields[0],0)
 
                             chainData[chainString] = [centers,rotations,id_to_index,index_to_id]
 
-                        # this code trusts that centers all have 3 components; might not always be true
+                        # this code trusts that centers all have 3 components; that might not always be true
                         centers = chainData[chainString][0]
                         rotations = chainData[chainString][1]
                         id_to_index = chainData[chainString][2]
@@ -545,8 +545,9 @@ def retrieveQueryInformation(Q):
                             if originalUnitID != unitID and Q.get('printQueryDetails',False):
                                 print("Given " + originalUnitID + ", converted to " + unitID + ", using " + index_to_id[id_to_index[unitID]])
 
-                            Q['centers'].append(centers[id_to_index[unitID]])
-                            if moleculeType == "RNA":
+                            if len(centers[id_to_index[unitID]]) == 3:
+                                Q['centers'].append(centers[id_to_index[unitID]])
+                            if moleculeType in ["DNA","RNA","PNA"]:
                                 Q['rotations'].append(rotations[id_to_index[unitID]])
                             elif moleculeType == "protein":
                                 Q['rotations'].append(np.empty( shape=(0, 0) ))
@@ -557,6 +558,11 @@ def retrieveQueryInformation(Q):
                 print("Error: Not able to find coordinates for unit ID " + unitID)
                 Q["errorMessage"].append("Not able to find coordinates for unit ID " + unitID)
                 Q["errorStatus"] = "write and exit"
+
+        if len(Q['centers']) < len(Q["unitID"]):
+            print("Error: Not able to find coordinates for all unit IDs")
+            Q["errorMessage"].append("Not able to find coordinates for all unit IDs")
+            Q["errorStatus"] = "write and exit"
     return Q
 
 
@@ -742,9 +748,15 @@ def calculateQueryConstraints(Q):
         if not foundContinuityConstraint:
             del Q["continuityConstraint"]          # remove this field so we don't take time to check
 
-        # Parse interaction matrix to look for interaction constraints
+        # Parse interaction matrix to look for interaction and combination constraints
 
         RNACombinationConstraints = ['AA','AC','AG','AU','CA','CC','CG','CU','GA','GC','GG','GU','UA','UC','UG','UU']
+
+        # for bc in RNACombinationConstraints:
+        #     if bc in modified_base_to_parent:
+        #         print(bc,' is a modified base, rats!')
+        #     else:
+        #         print(bc,' is ok!')
 
         Q["requiredInteractions"] = emptyInteractionList(Q["numPositions"])
         Q["prohibitedInteractions"] = emptyInteractionList(Q["numPositions"])
@@ -757,6 +769,8 @@ def calculateQueryConstraints(Q):
         foundCombinationConstraint = False
         Q["alternateInteractions"] = set([])       # for _exp and possibly others
         foundAlternateInteractions = False
+        foundModType = False
+        foundModAsRNA = False
 
         for i in range(Q["numPositions"]):
             for j in range(Q["numPositions"]):
@@ -766,6 +780,8 @@ def calculateQueryConstraints(Q):
                 combinationConstraints = []
 
                 iM = Q["interactionMatrix"][i][j]
+                iM_lower = iM.lower()
+
                 if iM != None and len(iM) > 0:
 
                     rawInteractionConstraints = iM.split(" ")
@@ -834,13 +850,29 @@ def calculateQueryConstraints(Q):
                                     Q["crossingNumber"][i][j] = [int(limits[1]),int(limits[2])]
                                     # print("Crossing number limits " + str(Q["crossingNumber"][i][j]))
                                     foundCrossingNumber = True
-                                elif j>i and "," in constraint:
-                                    units = constraint.split(",")
-                                    combinationConstraints.append((units[0],units[1]))
+                                elif j>i and ("," in constraint or constraint.upper() in RNACombinationConstraints):
                                     foundCombinationConstraint = True
-                                elif j>i and constraint in RNACombinationConstraints:  # for backward compatibility
-                                    combinationConstraints.append((constraint[0],constraint[1]))
-                                    foundCombinationConstraint = True
+                                    # combination constraint, add as a tuple
+                                    if "," in constraint:
+                                        units = constraint.split(",")
+                                        if len(units) == 2:
+                                            combinationConstraints.append((units[0],units[1]))
+                                    else:
+                                        combinationConstraints.append((constraint[0],constraint[1]))
+
+                                    # check for requests for modified versions of these combinations
+                                    if "+modasrna" in iM_lower:
+                                        foundModAsRNA = True
+                                        combinationConstraints.append("+modAsRNA")
+                                    elif "+mod" in iM:
+                                        foundModType = True
+                                        combinationConstraints.append("+mod")
+                                    elif "modasrna" in iM:
+                                        foundModAsRNA = True
+                                        combinationConstraints.append("modAsRNA")
+                                    elif "mod" in iM:
+                                        foundModType = True
+                                        combinationConstraints.append("mod")
                                 elif constraint in allInteractionConstraints:
                                     requiredInteractions.append(constraint)
                                     foundRequiredInteraction = True
@@ -855,10 +887,14 @@ def calculateQueryConstraints(Q):
                         while len(requiredInteractions) > 0 and requiredInteractions[0] == "and":
                             requiredInteractions = requiredInteractions[1:]
 
-
                 Q["requiredInteractions"][i][j] = requiredInteractions
                 Q["prohibitedInteractions"][i][j] = prohibitedInteractions
                 Q["combinationConstraint"][i][j] = combinationConstraints
+
+                if foundModType:
+                    Q["getParentType"] = True
+                if foundModAsRNA:
+                    Q["getParentAsRNA"] = True
 
         if not foundRequiredInteraction:
             del Q["requiredInteractions"]          # remove this field so we don't take time to check
@@ -1332,9 +1368,13 @@ def calculateQueryConstraints(Q):
             if search_file_id_upper in Q["PDB_data_file"].keys():
                 chains = []
 
-                if searchingRNA and 'RNA' in Q["PDB_data_file"][search_file_id_upper]['chains']:
+                pdb_chains = Q["PDB_data_file"][search_file_id_upper]['chains']
+
+                if searchingRNA and 'RNA' in pdb_chains:
                     chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['RNA']]
-                if searchingDNA and 'DNA' in Q["PDB_data_file"][search_file_id_upper]['chains']:
+                if (searchingRNA or searchingDNA) and 'hybrid' in pdb_chains:
+                    chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['hybrid']]
+                if searchingDNA and 'DNA' in pdb_chains:
                     chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['DNA']]
                 IFEList.append("+".join(chains))
 
