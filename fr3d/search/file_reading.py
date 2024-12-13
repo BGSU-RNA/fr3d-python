@@ -1,6 +1,7 @@
 
 from collections import defaultdict
 import datetime
+import gzip
 import numpy as np
 import os.path
 import pickle
@@ -361,9 +362,9 @@ def writeProteinUnitData(structure,DATAPATHUNITS,messages=[]):
             print('file_reading',aa.unit_id,aa.index,aa.centers['aa_fg'],aa.centers['aa_backbone'])
 
     # write chain data out to individual files
-    protein_filename = os.path.join(DATAPATHUNITS,structure.pdb+'_protein.pickle')
+    protein_filename = os.path.join(DATAPATHUNITS,structure.pdb+'_protein.pickle.gz')
 
-    with open(protein_filename, 'wb') as fh:
+    with gzip.open(protein_filename, 'wb') as fh:
         # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
         pickle.dump([aa_unit_ids,aa_indices,aa_centers,aa_backbones], fh, 2)
 
@@ -525,7 +526,6 @@ def readNAPositionsFile(Q, chainString, starting_index):
     chainIndices = []
     centers = []
     rotations = []
-    line_num = starting_index
 
     id_to_index = defaultdict()
     index_to_id = defaultdict()
@@ -542,9 +542,8 @@ def readNAPositionsFile(Q, chainString, starting_index):
         # try to download .pickle file of RNA/DNA base center and rotation matrix
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
             try:
-                print("Attempting to download "+filename+" from BGSU RNA site")
+                print("Downloading "+filename+" from BGSU RNA site")
                 urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
-                print("Downloaded "+filename)
             except:
                 print("Could not download %s from BGSU RNA site" % filename)
                 pass
@@ -571,6 +570,8 @@ def readNAPositionsFile(Q, chainString, starting_index):
         ok_centers = []
         ok_rotations = []
         ok_chain_indices = []
+
+        line_num = starting_index
 
         for i in range(0,len(ids)):
             if len(centers[i]) == 3 and rotations[i].shape == (3,3):
@@ -672,26 +673,34 @@ def readProteinPositionsFile(Q, file_id, starting_index):
     id_to_index = defaultdict()
     index_to_id = defaultdict()
 
-    filename = file_id + "_protein.pickle"
+    # protein unit files are gzipped
+    filename = file_id + "_protein.pickle.gz"
     pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
     if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
         # try to download .pickle file of protein unit centers
-        urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
-        print("Downloaded "+filename)
+        if Q.get("printFileOperations",False):
+            print("  file_reading: Downloading "+filename)
+        try:
+            urlretrieve("https://rna.bgsu.edu/units/"+filename, pathAndFileName)
+        except:
+            if Q.get("printFileOperations",False):
+                print("  file_reading: Could not download "+filename)
 
     if os.path.exists(pathAndFileName):
         item_list = []
         if sys.version_info[0] < 3:
             try:
-                item_list = pickle.load(open(pathAndFileName,"rb"))
+                with gzip.open(pathAndFileName, 'rb') as f:
+                    item_list = pickle.load(f)
             except:
                 print("Could not read "+filename)
                 Q["userMessage"].append("Could not retrieve protein unit file "+filename)
                 return Q, centers, ids, id_to_index, index_to_id, chainIndices
         else:
             try:
-                item_list = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
+                with gzip.open(pathAndFileName, 'rb') as f:
+                    item_list = pickle.load(f)
             except:
                 print("Could not read "+filename)
                 Q["userMessage"].append("Could not retrieve protein unit file "+filename)
@@ -728,15 +737,11 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
 
     justDownloaded = False
 
-    # new standard filename says NA
+    # new standard filename says NA and not RNA
     pairsFileName = file_id + '_NA_pairs.pickle'
     pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
     if not os.path.exists(pathAndFileName):
-        # old standard was _RNA_ but that is being phased out in September 2024
-        pairsFileName = file_id + '_NA_pairs.pickle'
-        pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
-
         if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
             # try to download .pickle file of pairwise interactions
             if Q.get("printFileOperations",False):
@@ -744,15 +749,18 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
             if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
                 # try to download annotations of this structure from BGSU RNA site
                 url = "https://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
-                urlretrieve(url, pathAndFileName) # testing
-                if Q.get("printFileOperations",False):
-                    print("  file_reading: downloaded "+pairsFileName)
+                try:
+                    urlretrieve(url, pathAndFileName) # testing
+                    if Q.get("printFileOperations",False):
+                        print("  file_reading: downloaded "+pairsFileName)
 
-                justDownloaded = True
+                    justDownloaded = True
+                except:
+                    if Q.get("printFileOperations",False):
+                        print("  file_reading: Could not download "+pairsFileName+" from BGSU RNA site")
+                    Q["userMessage"].append("Could not download RNA pairs file "+pairsFileName)
             else:
                 # compute pairwise interactions locally and store locally
-
-                # continue with old standard until we switch over completely
                 pairsFileName = file_id + '_NA_pairs.pickle'
                 pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
