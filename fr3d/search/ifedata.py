@@ -46,6 +46,10 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
     # check to see if RNA or DNA is a required unit type, and if so, read NA data
     if "RNA" in requiredMoleculeTypes or "DNA" in requiredMoleculeTypes:
 
+        if "getParentType" in Q or "getParentAsRNA" in Q:
+            # Modified nucleotide mappings
+            from fr3d.modified.mapping import modified_base_to_parent
+
         # split chains in an IFE, which are separated by the + character
         for chainString in ifename.split("+"):
 
@@ -66,7 +70,18 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
                     unit_information["rotations"] = rotations[id_to_index[unitID]-starting_index]
                     data = unitID.split("|")
                     ifedata['models'].append(data[1])
-                    unit_information["unitType"] = data[3] # extract out base from unitID
+                    unit_information["unitType"] = data[3] # extract out base sequence from unitID
+
+                    if "getParentType" in Q:
+                        unit_information["parentType"] = modified_base_to_parent.get(data[3], data[3])
+
+                    if "getParentAsRNA" in Q:
+                        p = modified_base_to_parent.get(data[3], data[3])
+                        if p in ['DA','DC','DG']:
+                            p = p[1]
+                        elif p == 'DT':
+                            p = 'U'
+                        unit_information["parentAsRNA"] = p
 
                     # use component type to infer RNA or DNA
                     unit_information["moleculeType"] = getMoleculeType(data[3])
@@ -143,7 +158,7 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
                 unit_information["rotations"] = None  # amino acids do not have a rotation matrix
                 data = unitID.split("|")
                 ifedata['models'].append(data[1])
-                unit_information["unitType"] = data[3] #extract out base from unitID
+                unit_information["unitType"] = data[3] # extract out sequence from unitID
                 unit_information["moleculeType"] = "protein"
                 unit_information["chainindex"] = chainIndices[id_to_index[unitID]-starting_index]
 
