@@ -75,7 +75,7 @@ class Structure(object):
                 residues = EntitySelector(self._residues, type = desired_types)
                 chains = set([r.chain for r in residues])
 
-                print('RNA, DNA, PNA chains: %s' % chains)
+                # print('RNA, DNA, PNA chains: %s' % chains)
 
                 # identify non-polymer chains that are not protein chains
                 # upper/lower case matters, which is so fragile!
@@ -85,8 +85,8 @@ class Structure(object):
                 non_polymer_chains = set([r.chain for r in non_polymer])
                 non_polymer_non_protein_chains = non_polymer_chains - protein_chains
 
-                print('protein chains: %s' % sorted(protein_chains))
-                print('non-polymer_non_protein chains: %s' % sorted(non_polymer_non_protein_chains))
+                # print('protein chains: %s' % sorted(protein_chains))
+                # print('non-polymer_non_protein chains: %s' % sorted(non_polymer_non_protein_chains))
 
                 if 'chain' in kwargs:
                     # restrict to desired chains
