@@ -63,9 +63,10 @@ class Structure(object):
             if 'PNA' in kwargs['type']:
                 # for PNA like CPN
                 desired_types.extend(['peptide-like'])
-            if 'NON-POLYMER' in kwargs['type']:
-                # for chains like 2N4J made all of 8XA, 8XC, that are "NON-POLYMER"
-                desired_types.extend(['non-polymer','NON-POLYMER'])
+            # if 'NON-POLYMER' in kwargs['type']:
+            #     # for chains like 2N4J made all of 8XA, 8XC, that are "NON-POLYMER"
+            #     # but NON-POLYMER also picks up lots of protein chains, so that is too broad
+            #     desired_types.extend(['non-polymer','NON-POLYMER'])
 
             if len(desired_types) > 0:
                 # special treatment to get full RNA and/or DNA chains
@@ -74,9 +75,22 @@ class Structure(object):
                 residues = EntitySelector(self._residues, type = desired_types)
                 chains = set([r.chain for r in residues])
 
+                print('RNA, DNA, PNA chains: %s' % chains)
+
+                # identify non-polymer chains that are not protein chains
+                # upper/lower case matters, which is so fragile!
+                amino_acids = EntitySelector(self._residues, type = ['L-peptide linking','L-PEPTIDE LINKING', 'PEPTIDE LINKING', 'L-PEPTIDE OH 3 prime terminus', 'PEPTIDE OH 3 prime terminus'])
+                protein_chains = set([r.chain for r in amino_acids])
+                non_polymer = EntitySelector(self._residues, type = ['non-polymer','NON-POLYMER'])
+                non_polymer_chains = set([r.chain for r in non_polymer])
+                non_polymer_non_protein_chains = non_polymer_chains - protein_chains
+
+                print('protein chains: %s' % sorted(protein_chains))
+                print('non-polymer_non_protein chains: %s' % sorted(non_polymer_non_protein_chains))
+
                 if 'chain' in kwargs:
                     # restrict to desired chains
-                    chains = set(kwargs['chain']) & chains
+                    chains = set(kwargs['chain']) & (chains | non_polymer_non_protein_chains)
                     # remove chain from kwargs so we use the new list of chains
                     kwargs.pop('chain')
 
@@ -87,7 +101,7 @@ class Structure(object):
 
                 # print('structures.py is using kwargs %s' % kwargs)
 
-                residues = EntitySelector(self._residues, chain=list(chains), **kwargs)
+                residues = EntitySelector(self._residues, chain=list(chains | non_polymer_non_protein_chains), **kwargs)
 
                 return [r for r in residues if not r.index == None]
 

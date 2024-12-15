@@ -2026,6 +2026,18 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
         # bases = structure.residues(type = ["RNA linking","DNA linking"])  # load nice RNA/DNA nucleotides
         bases = structure.residues(type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides
 
+    # protein_chains = set()
+    # for base in bases:
+    #     if base.unit_id().split("|")[3] in ["SER","GLN","PRO","GLY","ALA","VAL","LEU","ILE","MET","PHE","TYR","TRP","HIS","LYS","ARG","ASP","GLU","ASN","CYS","THR"]:
+    #         protein_chains.add(base.unit_id().split("|")[2])
+
+    # print('protein_chains',sorted(protein_chains))
+
+    # for base in bases:
+    #     if base.unit_id().split("|")[2] in protein_chains:
+    #         if not base.unit_id().split("|")[3] in ["SER","GLN","PRO","GLY","ALA","VAL","LEU","ILE","MET","PHE","TYR","TRP","HIS","LYS","ARG","ASP","GLU","ASN","CYS","THR"]:
+    #             print('Not an amino acid',base.unit_id())
+
     if not timerData:
         timerData = myTimer("start")
 
