@@ -769,8 +769,8 @@ def calculateQueryConstraints(Q):
         foundCombinationConstraint = False
         Q["alternateInteractions"] = set([])       # for _exp and possibly others
         foundAlternateInteractions = False
-        foundModType = False
-        foundModAsRNA = False
+        foundParentType = False
+        foundParentAsRNA = False
 
         for i in range(Q["numPositions"]):
             for j in range(Q["numPositions"]):
@@ -862,16 +862,16 @@ def calculateQueryConstraints(Q):
 
                                     # check for requests for modified versions of these combinations
                                     if "+modasrna" in iM_lower:
-                                        foundModAsRNA = True
+                                        foundParentAsRNA = True
                                         combinationConstraints.append("+modAsRNA")
-                                    elif "+mod" in iM:
-                                        foundModType = True
+                                    elif "+mod" in iM_lower:
+                                        foundParentType = True
                                         combinationConstraints.append("+mod")
-                                    elif "modasrna" in iM:
-                                        foundModAsRNA = True
+                                    elif "modasrna" in iM_lower:
+                                        foundParentAsRNA = True
                                         combinationConstraints.append("modAsRNA")
-                                    elif "mod" in iM:
-                                        foundModType = True
+                                    elif "mod" in iM_lower:
+                                        foundParentType = True
                                         combinationConstraints.append("mod")
                                 elif constraint in allInteractionConstraints:
                                     requiredInteractions.append(constraint)
@@ -891,9 +891,9 @@ def calculateQueryConstraints(Q):
                 Q["prohibitedInteractions"][i][j] = prohibitedInteractions
                 Q["combinationConstraint"][i][j] = combinationConstraints
 
-                if foundModType:
+                if foundParentType:
                     Q["getParentType"] = True
-                if foundModAsRNA:
+                if foundParentAsRNA:
                     Q["getParentAsRNA"] = True
 
         if not foundRequiredInteraction:
