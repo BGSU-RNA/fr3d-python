@@ -1251,8 +1251,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 continue
 
             # bases could be PSU or other modified base making WC pair
-            parent1 = get_parent(base1,'')
-            parent2 = get_parent(base2,'')
+            parent1 = get_parent_as_RNA(base1,'')
+            parent2 = get_parent_as_RNA(base2,'')
 
             # record AU, GC, GU cWW pairs by index within each chain and symmetry
             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
@@ -1371,8 +1371,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     # note inter-chain nested cWW basepairs for later bSS calculation
                     if crossing == 0 and interaction.lower() in ['cww','cwwa'] and 'bss' in categories:
                         # record canonical cWW pairs and their endpoints by chain
-                        parent1 = get_parent(base1,'')
-                        parent2 = get_parent(base2,'')
+                        parent1 = get_parent_as_RNA(base1,'')
+                        parent2 = get_parent_as_RNA(base2,'')
 
                         if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                             # here we map MCS and index to a tuple, to indicate it crosses chains
@@ -1422,8 +1422,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             model1,chain1,index1,base1,symmetry1 = unit_id_to_fields[u1]
                             model2,chain2,index2,base2,symmetry2 = unit_id_to_fields[u2]
 
-                            parent1 = get_parent(base1,'')
-                            parent2 = get_parent(base2,'')
+                            parent1 = get_parent_as_RNA(base1,'')
+                            parent2 = get_parent_as_RNA(base2,'')
 
                             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                                 MCS1 = (model1,chain1,symmetry1)
@@ -1432,7 +1432,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 if (MCS1,index1+1,MCS2,index2-1) in bss_endpoints \
                                 or (MCS1,index1-1,MCS2,index2+1) in bss_endpoints:
                                     if not index1 in MCS_to_endpoints[MCS1] and not index2 in MCS_to_endpoints[MCS2]:
-                                        if (u1,u2,0) in interaction_to_list_of_tuples.get('cp',[]):
+                                        # if (u1,u2,0) in interaction_to_list_of_tuples.get('cp',[]):
                                             if MCS1 == MCS2:
                                                 MCS_to_nested_cWW_endpoints[MCS1][index1] = index2
                                                 MCS_to_nested_cWW_endpoints[MCS2][index2] = index1
@@ -1442,6 +1442,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                                             MCS_to_endpoints[MCS1].add(index1)
                                             MCS_to_endpoints[MCS2].add(index2)
+
+                                            bss_endpoints.add((MCS1,index1,MCS2,index2))
 
                                             unitid_to_cww_partner[u1] = u2
                                             unitid_to_cww_partner[u2] = u1
@@ -1546,8 +1548,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             v2 = MCS_index_to_unit_id[MCS1].get(pc-(i-c),None)
                             if not v2:
                                 continue
-                            parent1 = get_parent(v1.split("|")[3],'')
-                            parent2 = get_parent(v2.split("|")[3],'')
+                            parent1 = get_parent_as_RNA(v1.split("|")[3],'')
+                            parent2 = get_parent_as_RNA(v2.split("|")[3],'')
                             if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
                                 opposite_pairs.append((v1,v2))
                             else:
@@ -2055,6 +2057,7 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
 def get_parent(sequence,if_none=None):
     """
     Look up parent sequence for RNA, DNA, and modified nucleotides.
+    Return A, C, G, U, DT for cases that treat DT differently than U
     """
 
     if sequence in ['A','C','G','U','DT']:
@@ -2067,7 +2070,29 @@ def get_parent(sequence,if_none=None):
             return parent
         elif parent in ['DA','DC','DG']:
             return parent[1]
+    return if_none
 
+
+def get_parent_as_RNA(sequence,if_none=None):
+    """
+    Look up parent sequence for RNA, DNA, and modified nucleotides.
+    Return A, C, G, U to make it easier
+    """
+
+    if sequence in ['A','C','G','U']:
+        return sequence
+    elif sequence in ['DA','DC','DG']:
+        return sequence[1]
+    elif sequence == 'DT':
+        return 'U'
+    elif sequence in modified_base_to_parent:
+        parent = modified_base_to_parent[sequence]
+        if parent in ['A','C','G','U']:
+            return parent
+        elif parent in ['DA','DC','DG']:
+            return parent[1]
+        elif parent == 'DT':
+            return 'U'
     return if_none
 
 
@@ -2087,9 +2112,9 @@ def translate_rotate_point(nt,point):
 
 
 def check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint):
-    '''
+    """
     Does one of the backbone oxygens of nt2 stack inside a ring on the base of nt1?
-    '''
+    """
 
     true_z_cutoff = 3.5
     near_z_cutoff = 3.6
