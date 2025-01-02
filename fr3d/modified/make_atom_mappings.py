@@ -7,8 +7,10 @@ Read the parent nucleotide .cif file
 Map the atoms of the modified nucleotide to the parent nucleotide
 """
 
+import json
 import os
 import pdbx
+import requests
 import sys
 from sys import argv
 
@@ -411,6 +413,32 @@ def process_one_modified_nt(mod_nt,mappings=[]):
     return output
 
 
+def download_modified_nt_list():
+    # download the current list of modified nucleotides from NAKB
+    # parse JSON object into a dictionary
+    url = "https://www.nakb.org/node/solr/nakb/select?q=status:REL&facet=true&facet.field=nonstandard&facet.limit=100000&rows=0"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        nakb_dict = response.json()
+        nakb_list = nakb_dict['facet_counts']['facet_fields']['nonstandard']
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching the data: {e}")
+    except json.JSONDecodeError as e:
+        print(f"An error occurred while parsing JSON: {e}")
+
+    mod_to_count = {}
+    for i in range(0,len(nakb_list),2):
+        mod_nt = nakb_list[i]
+        mod_nt_count = int(nakb_list[i+1])
+        mod_to_count[mod_nt] = mod_nt_count
+
+    if not "I" in mod_to_count:
+        mod_to_count["I"] = 38
+
+    return mod_to_count
+
+
 def map_all_modified_nucleotides():
     """
     Procedure for mapping atoms of non-standard nucleotides
@@ -445,42 +473,54 @@ def map_all_modified_nucleotides():
                 modified_to_mappings[modified] = []
             modified_to_mappings[modified].append((parent,par_atom,modified,mod_atom))
 
-    print("Found %d modified nucleotides in manual mapping file" % len(modified_to_mappings.keys()))
+    print("Found %4d modified nucleotides in atom_mappings_manual.txt" % len(modified_to_mappings.keys()))
 
+    mod_to_count = {}
 
-    with open('modified_nt_list.csv','r') as f:
-        lines = f.read()                # read the entire file
-        lines = lines.replace("\r","")  # remove \r return characters
-        lines = lines.replace('"','')   # remove double quotes
-        lines = lines.split("\n")       # split on newline character, return a list
+    # read the list of modified nucleotides if it exists
+    if os.path.exists('modified_nt_list.csv'):
+        with open('modified_nt_list.csv','r') as f:
+            lines = f.read()                # read the entire file
+            lines = lines.replace("\r","")  # remove \r return characters
+            lines = lines.replace('"','')   # remove double quotes
+            lines = lines.split("\n")       # split on newline character, return a list
 
-        print(lines)
+            for line in lines:
+                if 'Rank' in line:
+                    continue            # skip the header line
+                fields = line.split(",")
+                mod_nt = fields[1]
+                mod_nt_count = int(fields[2])
+                mod_to_count[mod_nt] = mod_nt_count
 
-        if 'Rank' in lines[0]:
-            lines = lines[1:]           # skip the header line
+    print('Found %4d modified nucleotides in modified_nt_list.csv' % len(mod_to_count.keys()))
 
-    # prepend standard nucleotides
-    lines = ["0,A,0","0,C,0","0,G,0","0,U,0","0,DA,0","0,DC,0","0,DG,0","0,DT,0"] + lines
+    nakb_mod_to_count = download_modified_nt_list()
 
-    print(lines)
+    # use nakb numbers to override local numbers
+    for mod_nt,mod_nt_count in nakb_mod_to_count.items():
+        mod_to_count[mod_nt] = mod_nt_count
 
-    # get information about each modified nucleotide
+    print('Found %4d modified nucleotides between modified_nt_list.csv and NAKB' % len(mod_to_count.keys()))
+
+    # add any mapped nucleotides that are not in the list to the list
+    added_count = 0
+    for mod_nt in modified_to_mappings.keys():
+        if not mod_nt in mod_to_count:
+            mod_to_count[mod_nt] = 0
+            added_count += 1
+            print('  Found %s in atom_mappings_manual.txt' % mod_nt)
+
+    print('Found %4d additional modified nucleotides from atom_mappings_manual.txt' % added_count)
+
+    # process each modified nucleotide and make provisional mappings
     output = ""
-    skipped_mod_nt = []
-    for line in lines:
-        fields = line.split(",")  # split line of data into list, usually length 3
-        if len(fields) == 3:
-            mod_nt = fields[1]
+    unmapped_mod_nt = []
+    c = 1
+    for mod_nt, mod_nt_count in sorted(mod_to_count.items(), key=lambda x: x[1], reverse=True):
             mod_nt_url = "https://www.rcsb.org/ligand/" + mod_nt  # for viewing
-            mod_nt_count = int(fields[2])
-            mod_nt_number = int(fields[0])
             print("")
-            print("Processing number %3d %4s which has count %4d and url %s" % (mod_nt_number,mod_nt,mod_nt_count,mod_nt_url))
-
-            # map the standard nucleotides so we produce images colored just like the modified ones
-            # if mod_nt in ['A','C','G','U','DA','DC','DG','DT']:
-            #     # no need to map these
-            #     continue
+            print("Processing number %3d %4s which has count %4d and url %s" % (c,mod_nt,mod_nt_count,mod_nt_url))
 
             new_output = ""
             if mod_nt in modified_to_mappings:
@@ -492,34 +532,28 @@ def map_all_modified_nucleotides():
                 output += new_output
 
             if not new_output:
-                skipped_mod_nt.append(mod_nt)
-                if not os.path.exists("skipped"):
-                    os.mkdir("skipped")
-                svg_filename = os.path.join('skipped',mod_nt + ".svg")
-                if not os.path.exists(svg_filename):
-                    svg_url = "https://cdn.rcsb.org/images/ccd/unlabeled/%s/%s.svg" % (mod_nt[0],mod_nt)
-                    urlretrieve(svg_url, svg_filename)
+                unmapped_mod_nt.append(mod_nt)
 
 
     with open("atom_mappings_provisional.txt","w") as f:
         f.write(output)
 
-    print("Skipped the following %d nonstandard residues:" % len(skipped_mod_nt))
-    print(sorted(skipped_mod_nt))
-    print("You can view them in skipped/skipped.html")
+    print("Did not map the following %d nonstandard residues:" % len(unmapped_mod_nt))
+    print(sorted(unmapped_mod_nt))
+    print("You can view them in unmapped.html")
 
-    with open("skipped/skipped.html","w") as f:
+    with open("unmapped.html","w") as f:
         f.write("<html>\n")
         f.write("<head>\n")
-        f.write("<title>Skipped residues</title>\n")
+        f.write("<title>Unmapped residues</title>\n")
         f.write("</head>\n")
         f.write("<body>\n")
         c = 0
-        for mod_nt in sorted(skipped_mod_nt):
+        for mod_nt in sorted(unmapped_mod_nt):
             c += 1
-            f.write("<h2>%s number %d of %d</h2>\n" % (mod_nt,c,len(skipped_mod_nt)))
+            f.write("<h2>%s number %d of %d</h2>\n" % (mod_nt,c,len(unmapped_mod_nt)))
             f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank">%s in ligand explorer</a><br>\n' % (mod_nt,mod_nt))
-            f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank"><img src="%s.svg" height="300"></a>\n' % (mod_nt,mod_nt))
+            f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank"><img src="https://cdn.rcsb.org/images/ccd/unlabeled/%s/%s.svg" height="300"></a>\n' % (mod_nt,mod_nt[0],mod_nt))
         f.write("</body>\n")
         f.write("</html>\n")
 

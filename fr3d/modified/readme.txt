@@ -1,17 +1,20 @@
 Methodology for adding modified nucleotides.
 
+Optional step:
+    Go to https://www.nakb.org/searchterms.html
+    Click Nonstandard NA Residues, to get all modified residues that are in polymers
+    Click CSV
+    Save the CSV in this folder as modified_nt_list.csv
+
 If you have never run this code, run these first to establish a baseline:
     python311 make_atom_mappings.py
     python311 refine_atom_mappings.py
 
-Go to https://www.nakb.org/searchterms.html
-Click Nonstandard NA Residues, to get all modified residues that are in polymers
-Click CSV
-Save the CSV in this folder as modified_nt_list.csv
+The program make_atom_mappings.py will also try to download the list of modified nucleotides from NAKB.
 
 Make provisional mappings of all modified nucleotides to standard:
     python311 make_atom_mappings.py
-The program above writes the file atom_mappings_provisional.txt.
+The program make_atom_mappings.py writes the file atom_mappings_provisional.txt.
 Newly appeared modified residues might be processed correctly by this program; we'll check that later.
 
 Have a look at skipped/skipped.html to see non-standard residues that are not being mapped even provisionally.
@@ -25,7 +28,7 @@ Check the file refine_atom_mappings.py to set:
 
 Now process the provisional mappings into the actual mappings by running:
     python311 refine_atom_mappings.py
-The program above writes the files atom_mappings.txt, modified_to_changes.json, and image files.
+The program refine_atom_mappings.py writes the files atom_mappings.txt, modified_to_changes.json, and image files.
 In the folder diagnostic/base_plots, sort the images by modified date to see the most recent ones.
 Each image should show the standard base on the left and the modified base on the right.
 Atoms that are mapped to each other are colored in the same color, even if the element has changed.

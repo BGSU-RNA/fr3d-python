@@ -19,8 +19,8 @@ Ideas for the next version:
 
 # user settings below
 
-color_scheme = 'CPK'         # use CPK coloring
 color_scheme = 'diagnostic'  # use many colors, to show the atom mappings
+color_scheme = 'CPK'         # use CPK coloring
 
 if color_scheme == 'diagnostic':
     plot_standard = True     # include the standard base in the plots
@@ -36,7 +36,7 @@ else:
     plot_standard = False    # just plot the modified nucleotide by itself
     save_as_gif = True       # .gif works a little better online
     crop_out_white_space = True   # read the image, crop, save again
-
+    show_figure = False      # don't stop to show each modified nucleotide
     output_directory = ""
 
 draw_figures = False     # don't draw new figures at all
@@ -53,15 +53,15 @@ focus_list = []       # process all modified nucleotides
 atom_label_color = 'black'
 new_atom_point_color = '#80D1E3'   # blue of Argon since that probably won't be added
 
-max_count = 99999      # process modified nucleotides with count at or below this number
-
 # from definitions import NAconnections
 from fr3d.definitions import NAbasecoordinates
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
 from fr3d.geometry.superpositions import besttransformation
 from fr3d.modified.make_atom_mappings import read_monomer_cif
+from fr3d.modified.make_atom_mappings import download_modified_nt_list
 
+from collections import defaultdict
 import imageio
 import json
 import math
@@ -157,7 +157,7 @@ def element_to_cpk_color(element):
     return rgb
 
 
-def get_cif_data(base):
+def get_cif_data_old(base):
     """
     Read the .cif file and organize its data into data structures for this program
     """
@@ -220,6 +220,87 @@ def get_cif_data(base):
     return coordinates, connections, atom_to_element, atom_to_chirality, par_comp_id, one_letter_code
 
 
+def get_cif_data(base):
+    """
+    Read the .cif file and organize its data into data structures for this program
+    """
+
+    cif_data = read_monomer_cif(base)
+
+    data = {}
+    data['standard_base'] = []  # empty list when no standard base
+    data['changes'] = []  # empty list when no atom changes
+
+    data['pdb'] = {}
+    data['pdb']['name'] = cif_data['chem_comp'][0].get('name',None)
+    data['pdb']['chem_comp_type'] = cif_data['chem_comp'][0].get('type',None)
+    data['pdb']['par_comp_id'] = cif_data['chem_comp'][0].get('mon_nstd_parent_comp_id','No mon_nstd_parent_comp_id line')
+    data['pdb']['one_letter_code'] = cif_data['chem_comp'][0].get('one_letter_code','No one_letter_code line')
+    data['pdb']['pdbx_initial_date'] = cif_data['chem_comp'][0].get('pdbx_initial_date','1900-01-01')
+
+    for descriptor in cif_data['pdbx_chem_comp_descriptor']:
+        t = descriptor['type']
+        if t == "SMILES_CANONICAL":
+            if not t in data:
+                data['pdb'][t] = {}
+            program = descriptor['program']
+            if "openeye" in program.lower():
+                data['pdb'][t][program] = {}
+                data['pdb'][t][program]['program_version'] = descriptor['program_version']
+                data['pdb'][t][program]['descriptor'] = descriptor['descriptor']
+
+    # for k,v in data.items():
+    #     print(k,v)
+    # input("Press enter to continue")
+
+    coordinates = {}
+    coordinates_ideal = {}
+    connections = []
+    atom_to_element = {}
+    atom_to_chirality = {}
+
+    for row in cif_data['chem_comp_atom']:
+        atom = row['atom_id']
+        x = row['model_Cartn_x']
+        y = row['model_Cartn_y']
+        z = row['model_Cartn_z']
+
+        if x and y and z:
+            coordinates[atom] = [float(x),float(y),float(z)]
+        atom_to_element[atom] = row['type_symbol']
+
+        x = row['pdbx_model_Cartn_x_ideal']
+        y = row['pdbx_model_Cartn_y_ideal']
+        z = row['pdbx_model_Cartn_z_ideal']
+
+        if x and y and z:
+            coordinates_ideal[atom] = [float(x),float(y),float(z)]
+
+        chirality = row.get('pdbx_stereo_config',None)
+        atom_to_chirality[atom] = chirality
+
+
+    # not sure why but sometimes the ideal coordinates are more complete
+    if len(coordinates_ideal) > len(coordinates):
+        coordinates = coordinates_ideal
+
+    # see if this fixes some H5' and H5'' labeling discrepancies
+    # if base in ['5HC']:
+    #     coordinates = coordinates_ideal
+
+    for row in cif_data['chem_comp_bond']:
+        atom1 = row['atom_id_1']
+        atom2 = row['atom_id_2']
+        connections.append((atom1,atom2))
+        connections.append((atom2,atom1))
+
+    connections = list(set(connections))
+
+    data['atom_count'] = len(atom_to_element)
+
+    return data, coordinates, connections, atom_to_element, atom_to_chirality
+
+
 def my_norm(x,y):
 
     return math.sqrt((x[0]-y[0])**2+(x[1]-y[1])**2+(x[2]-y[2])**2)
@@ -227,8 +308,9 @@ def my_norm(x,y):
 
 def read_atom_mappings(filename):
     """
-    Read a text file of four columns
+    Read a text file of three or four columns
     (parent,parent atom,modified,modified atom)
+    When the fourth column is missing, it means not to map the parent atom.
     """
     parent_to_modified_atom = {}
     modified_to_parent_atom = {}
@@ -256,9 +338,10 @@ def read_atom_mappings(filename):
 
             parent_atom = fields[1]
             if parent_atom:
-                modified_atom = fields[3]
-                modified_to_parent_atom[modified][modified_atom] = parent_atom
-                parent_to_modified_atom[modified][parent_atom] = modified_atom
+                if len(fields) == 4:
+                    modified_atom = fields[3]
+                    modified_to_parent_atom[modified][modified_atom] = parent_atom
+                    parent_to_modified_atom[modified][parent_atom] = modified_atom
 
     return parent_to_modified_atom, modified_to_parent_atom, modified_base_to_parent, not_mappable
 
@@ -338,11 +421,16 @@ def get_mod_atom_closest_to(atom_list, parent_to_modified_atom, mod_coordinates,
     return min_atom, min_dist, p, q
 
 
-def draw_base_coordinates(base_seq,coordinates,connections,atom_to_display,ax,limits=None):
+def draw_base_coordinates(base_seq,coordinates,connections,atom_to_display,ax,limits=None,shift=(0,0,0)):
     """
     Connects atoms to draw one base
     ax is the current axis
     """
+
+    # shift coordinates to be able to display two nucleotides side by side
+    xs = shift[0]
+    ys = shift[1]
+    zs = shift[2]
 
     if limits:
         xmin,xmax,ymin,ymax = limits
@@ -363,18 +451,20 @@ def draw_base_coordinates(base_seq,coordinates,connections,atom_to_display,ax,li
         fs = 8     # font size for labels
         ds = 6     # display size for points
     else:
-        fs = 16
-        ds = 16
+        fs = 10
+        ds = 8
 
     for atom1,atom2 in connections:
 
         if atom1 in coordinates:
-            p = coordinates[atom1]
+            w = coordinates[atom1]
+            p = np.array([w[0] + xs, w[1] + ys, w[2] + zs])
         else:
             continue
 
         if atom2 in coordinates:
-            q = coordinates[atom2]
+            w = coordinates[atom2]
+            q = np.array([w[0] + xs, w[1] + ys, w[2] + zs])
         else:
             continue
 
@@ -611,10 +701,13 @@ parent_to_modified_atom, modified_to_parent_atom, modified_base_to_parent, not_m
 # read manual mappings
 parent_to_modified_atom_manual, modified_to_parent_atom_manual, modified_base_to_parent_manual, not_mappable_manual = read_atom_mappings("atom_mappings_manual.txt")
 
+# download modified nucleotide counts
+mod_to_count = download_modified_nt_list()
+
 # these colors are used when color_scheme = diagnostic
 # colors for corresponding atoms and half of their bonds
 color_list = ['red','cyan','orange','blue','pink','wheat','gold','green','brown','purple','lightgrey','lime','lightblue','magenta','teal']
-color_list = ['peru','violet','fuchsia','wheat','gold','brown','purple','lightgrey','magenta','darkgoldenrod','darkkhaki','darkorchid','sienna']
+color_list = ['peru','violet','fuchsia','wheat','gold','purple','brown','lightgrey','magenta','darkgoldenrod','darkkhaki','darkorchid','sienna']
 color_list = color_list + color_list + color_list + color_list + color_list + color_list + color_list  # never run out of colors
 
 ribose = ["C2'","C3'","O3'","C4'","O4'","C5'"]  # for DNA
@@ -665,9 +758,9 @@ if color_scheme == 'diagnostic':
             parent_atom_to_color[parent]["N6"] = "cyan"
             parent_atom_to_color[parent]["N7"] = "deepskyblue"
             parent_atom_to_color[parent]["N9"] = "cornflowerblue"
-            parent_atom_to_color[parent]["C2"] = "yellowgreen"
+            parent_atom_to_color[parent]["C2"] = "mediumspringgreen"
             parent_atom_to_color[parent]["C4"] = "forestgreen"
-            parent_atom_to_color[parent]["C5"] = "palegreen"
+            parent_atom_to_color[parent]["C5"] = "lawngreen"
             parent_atom_to_color[parent]["C6"] = "olivedrab"
             parent_atom_to_color[parent]["C8"] = "lightgreen"
             parent_atom_to_color[parent]["O6"] = "red"
@@ -675,7 +768,7 @@ if color_scheme == 'diagnostic':
             parent_atom_to_color[parent]["N1"] = "cornflowerblue"
             parent_atom_to_color[parent]["N3"] = "royalblue"
             parent_atom_to_color[parent]["N4"] = "deepskyblue"
-            parent_atom_to_color[parent]["C2"] = "seagreen"
+            parent_atom_to_color[parent]["C2"] = "mediumspringgreen"
             parent_atom_to_color[parent]["C4"] = "forestgreen"
             parent_atom_to_color[parent]["C5"] = "palegreen"
             parent_atom_to_color[parent]["C6"] = "olivedrab"
@@ -698,6 +791,20 @@ elif color_scheme == 'CPK':
 else:
     print('Unknown color scheme %s' % color_scheme)
 
+# collect global plotting min and max values
+
+parent_to_min_max = {}
+for parent in NAbaseheavyatoms.keys():
+    parent_to_min_max[parent] = {}
+    parent_to_min_max[parent]['xmin'] = 100
+    parent_to_min_max[parent]['xmax'] = -100
+    parent_to_min_max[parent]['ymin'] = 100
+    parent_to_min_max[parent]['ymax'] = -100
+    parent_to_min_max[parent]['xmin2'] = 100
+    parent_to_min_max[parent]['xmax2'] = -100
+    parent_to_min_max[parent]['ymin2'] = 100
+    parent_to_min_max[parent]['ymin3'] = 100
+
 # load parent nucleotide cif data
 par_coordinates = {}
 par_connections = {}
@@ -708,7 +815,8 @@ par_atom_to_chirality = {}
 
 for parent in standard_nts:
     # read the .cif files to get the coordinates and the atom to atom connections
-    par_coord, par_conn, par_atom_to_elem, par_atom_to_chiral, par_comp_id, one_letter_code = get_cif_data(parent)
+    par_coord, par_conn, par_atom_to_elem, par_atom_to_chiral, par_comp_id, one_letter_code = get_cif_data_old(parent)
+    par_data, par_coord, par_conn, par_atom_to_elem, par_atom_to_chiral = get_cif_data(parent)
 
     par_coordinates[parent] = par_coord
     par_connections[parent] = par_conn
@@ -728,6 +836,13 @@ for parent in standard_nts:
         if "H1'" in par_base_coordinates[parent]:
             del par_base_coordinates[parent]["H1'"]
 
+    # make mappings of standard nucleotide atoms to standard, for making plots
+    modified_base_to_parent[parent] = parent
+    modified_to_parent_atom[parent] = {}
+    parent_to_modified_atom[parent] = {}
+    for atom in par_atom_to_elem.keys():
+        modified_to_parent_atom[parent][atom] = atom
+        parent_to_modified_atom[parent][atom] = atom
 
 # get standard coordinates of parent nucleotides
 par_coordinates_standard = {}
@@ -781,229 +896,200 @@ if False:
 modified_to_changes = {}
 modified_list = []
 
-# read the list of modified nucleotides and their counts
-with open('modified_nt_list.csv',read_mode) as f:
-    lines = f.readlines()
-    if "Rank" in lines[0]:
-        lines = lines[1:]
-    lines = ["0,A,0","0,C,0","0,G,0","0,U,0","0,DA,0","0,DC,0","0,DG,0","0,DT,0"] + lines
-
-
-# loop over modified nucleotides from most common to least
-for line in lines:
+# loop over modified nucleotides
+# include standard nucleotides to also make images for
+for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_parent.keys()):
 
     local_show_figure = show_figure
 
-    fields = line.replace('"','').rstrip("\n").split(",")
-    if len(fields) == 3:
-        modified = fields[1]
-        count = int(fields[2])
+    # when you want to redraw specific modified nucleotides, list them here
+    revised_set = set(["ORP","AAB","3DR","NRI","NR1","DV3","92F","48Z","61H","HOL","HOB","NSU","T0T","I","X4A","NSU","LHO","CFV","BMN","A1LXS","A1BBA","63T","RF5","PYY","NP3","MM7","FFD","DRP","DPY","DDX","D3","ASU","D33","6U0","61H","2DF","YRR","YA4","PYP","DXD","D3N","48Z","WC7","S8U","A2M","ATP","CPN","OWR","92F","SAY","K1F","DV3","G35","I","IMP","CPN","80S","TOQ","2MA"])
+    revised_set = []
+    if modified in revised_set:
+        redraw_figure = True
+    else:
+        redraw_figure = False
 
-        if len(focus_list) > 0 and not modified in focus_list:
-            continue
+    # another way to focus on specifid nucleotides, put them in focus_list
+    if len(focus_list) > 0 and not modified in focus_list:
+        continue
 
-        if count > max_count:
-            continue
+    modified_list.append(modified)
 
-        modified_list.append(modified)
+    # mod_coordinates, mod_connections, mod_atom_to_element, mod_atom_to_chirality, par_comp_id, one_letter_code = get_cif_data_old(modified)
+    mod_to_changes, mod_coordinates, mod_connections, mod_atom_to_element, mod_atom_to_chirality = get_cif_data(modified)
 
-        modified_to_changes[modified] = {}
-        modified_to_changes[modified]['standard_base'] = []  # empty list when no standard base
-        modified_to_changes[modified]['changes'] = []  # empty list when no atom changes
-        modified_to_changes[modified]['count'] = count
+    modified_to_changes[modified] = mod_to_changes
+    modified_to_changes[modified]['standard_base'] = []  # empty list when no standard base
+    modified_to_changes[modified]['changes'] = []  # empty list when no atom changes
+    modified_to_changes[modified]['count'] = mod_to_count.get(modified,0)
+    modified_to_changes[modified]['atom_count'] = len(mod_atom_to_element)
 
-        mod_coordinates, mod_connections, mod_atom_to_element, mod_atom_to_chirality, par_comp_id, one_letter_code = get_cif_data(modified)
+    if modified in not_mappable_manual:
+        print('Skipping modified nucleotide %5s because it is not mapped' % (modified))
+        not_mapped.append('%5s is not mapped' % (modified))
+        modified_to_changes[modified]['error'] = 'not mapped'
+        continue
 
-        modified_to_changes[modified]['atom_count'] = len(mod_atom_to_element)
+    print("")
+    print('Processing nucleotide %5s' % (modified))
 
-        if modified in not_mappable_manual:
-            print('Skipping modified nucleotide %5s with count %4d because it is not mappable' % (modified,count))
-            not_mapped.append('%5s with count %4d is not mappable' % (modified,count))
-            modified_to_changes[modified]['error'] = 'not mappable'
-            continue
+    if len(mod_coordinates) < 3:
+        print('Modified nucleotide %s has only %s atoms' % (modified,len(mod_coordinates)))
+        not_mapped.append('%5s has only %d atoms' % (modified,len(mod_coordinates)))
+        modified_to_changes[modified]['error'] = 'not enough matching atoms to map'
+        continue
 
-        print("")
-        print('Processing modified nucleotide %5s with count %4d' % (modified,count))
+    if modified_to_parent_atom_manual.get(modified,{}):
+        print('Manual mappings for %s' % modified)
+        print(modified_to_parent_atom_manual[modified])
 
-        if len(mod_coordinates) < 3:
-            print('Modified nucleotide %s has only %s atoms' % (modified,len(mod_coordinates)))
-            not_mapped.append('%5s with count %4d has only %d atoms' % (modified,count,len(mod_coordinates)))
-            modified_to_changes[modified]['error'] = 'not enough matching atoms to map'
-            continue
+    if modified in modified_base_to_parent:
+        par_atoms = []
+        mod_atoms = []
 
-        # print('Found %d connections for %s' % (len(mod_connections)/2.0,modified))
+        par_backbone_atoms = []
+        mod_backbone_atoms = []
+        mod_backbone_atoms_reflected = []
 
-        if modified_to_parent_atom_manual.get(modified,{}):
-            print('Manual mappings for %s' % modified)
-            print(modified_to_parent_atom_manual[modified])
+        parent = modified_base_to_parent[modified]
 
-        if modified in modified_base_to_parent:
-            par_atoms = []
-            mod_atoms = []
+        print('Parent nucleotide for %s is %s' % (modified,parent))
 
-            par_backbone_atoms = []
-            mod_backbone_atoms = []
-            mod_backbone_atoms_reflected = []
+        modified_to_changes[modified]['standard_base'] = [parent]
+        # modified_to_changes[modified]['par_comp_id'] = par_comp_id
+        # modified_to_changes[modified]['one_letter_code'] = one_letter_code
 
-            parent = modified_base_to_parent[modified]
+        for a,b in parent_to_modified_atom[modified].items():
+            # collect coordinates of mapped heavy base atoms
+            if a in NAbaseheavyatoms[parent]:
+                if a in par_base_coordinates[parent] and len(par_coordinates[parent][a]) == 3:
+                    if b in mod_coordinates and len(mod_coordinates[b]) == 3:
+                        par_atoms.append(par_base_coordinates[parent][a])
+                        mod_atoms.append(mod_coordinates[b])
+            # collect coordinates of certain backbone atoms
+            if a in ['P',"O5'","C5'","C2'","C3'","O3'","C4'","O4'"]:
+                if a in par_coordinates[parent] and len(par_coordinates[parent][a]) == 3:
+                    if b in mod_coordinates and len(mod_coordinates[b]) == 3:
+                        par_backbone_atoms.append(par_coordinates[parent][a])
+                        mod_backbone_atoms.append(mod_coordinates[b])
+                        x,y,z = mod_coordinates[b]
+                        mod_backbone_atoms_reflected.append([-x,y,z])
 
-            print('Parent nucleotide for %s is %s' % (modified,parent))
+    else:
+        not_mapped.append('%5s does not have an atom mapping' % (modified))
+        parent = 'Unknown'
+        modified_to_changes[modified]['error'] = 'no known parent'
+        continue
 
-            modified_to_changes[modified]['standard_base'] = [parent]
-            modified_to_changes[modified]['par_comp_id'] = par_comp_id
-            modified_to_changes[modified]['one_letter_code'] = one_letter_code
-
-            for a,b in parent_to_modified_atom[modified].items():
-                # collect coordinates of mapped heavy base atoms
-                if a in NAbaseheavyatoms[parent]:
-                    if a in par_base_coordinates[parent] and len(par_coordinates[parent][a]) == 3:
+    if len(par_atoms) >= 3:
+        enough_atoms_to_trust_rotation = True
+    else:
+        enough_atoms_to_trust_rotation = False
+        # add just enough atoms to get the rotation of the glycosidic bond correct
+        # like C2' and O4' if they are mapped
+        for a in ["C2'","O4'","C3'","C4'"]:
+            if len(par_atoms) < 3:
+                if a in par_coordinates_standard[parent] and len(par_coordinates_standard[parent][a]) == 3:
+                    if a in parent_to_modified_atom[modified]:
+                        b = parent_to_modified_atom[modified][a]
                         if b in mod_coordinates and len(mod_coordinates[b]) == 3:
-                            par_atoms.append(par_base_coordinates[parent][a])
+                            par_atoms.append(par_coordinates_standard[parent][a])
                             mod_atoms.append(mod_coordinates[b])
-                # collect coordinates of certain backbone atoms
-                if a in ['P',"O5'","C5'","C2'","C3'","O3'","C4'","O4'"]:
-                    if a in par_coordinates[parent] and len(par_coordinates[parent][a]) == 3:
-                        if b in mod_coordinates and len(mod_coordinates[b]) == 3:
-                            par_backbone_atoms.append(par_coordinates[parent][a])
-                            mod_backbone_atoms.append(mod_coordinates[b])
-                            x,y,z = mod_coordinates[b]
-                            mod_backbone_atoms_reflected.append([-x,y,z])
+                            print('Added %s from parent and %s from modified' % (a,b))
 
-            # if len(par_atoms) < 3:
-            #     not_mapped.append('%5s with count %4d does not have enough atom mappings to superimpose' % (modified,count))
-            #     modified_to_changes[modified]['error'] = 'not enough matching atoms to superimpose'
-            #     continue
 
-        else:
-            not_mapped.append('%5s with count %4d does not have an atom mapping' % (modified,count))
-            parent = 'Unknown'
-            modified_to_changes[modified]['error'] = 'no known parent'
-            continue
+    # map each atom in the modified nucleotide into standard position
+    mod_coordinates_standard = {}
+    if len(par_atoms) >= 3:
+        # superimpose parent and modified base atoms
+        U, new1, mean1, rmsd, sse, mean2 = besttransformation(par_atoms,mod_atoms)
+        print("Base RMSD is %8.4f with heavy atoms" % rmsd)
+        for atom in mod_coordinates.keys():
+            c = mean1 + np.dot(U,np.array(mod_coordinates[atom]) - mean2)
+            mod_coordinates_standard[atom] = [c[0,0],c[0,1],c[0,2]]
 
-        # if len(par_atoms) < 3:
-        #     # map modified base onto xy plane as well as possible, for plotting
-        #     par_atoms = [[0,0,0],[0,1,0],[1,0,0]]   # points in xy plane
-        #     mod_atoms = []
+    else:
+        # center the few modified atoms at the origin
+        total = np.zeros(3)
+        for mod_atom in mod_atoms:
+            total += np.array(mod_atom)
+        print('mean',total / len(mod_coordinates.keys()))
+        for atom in mod_coordinates.keys():
+            mod_coordinates_standard[atom] = mod_coordinates[atom] - total / len(mod_atoms)
+            print(atom,mod_coordinates_standard[atom])
+        # input("Press Enter to continue...  Those are the average coordinates of the modified atoms.")
 
-        #     for mod_atom in sorted(mod_coordinates.keys(), key = lambda x : len(x)):
-        #         mod_atoms.append(mod_coordinates[mod_atom])
-        #         if len(mod_atoms) == 3:
-        #             break
+    if enough_atoms_to_trust_rotation:
+        # check mappings, try to improve hydrogen mappings on bases, record mappings
+        for par_atom, par_coord in par_base_coordinates[parent].items():
+            if par_atom in NAbaseheavyatoms[parent] or par_atom in NAbasehydrogens[parent]:
+                min_dist = 1
+                for mod_atom, mod_coord_standard in mod_coordinates_standard.items():
+                    dist = my_norm(par_coord,mod_coord_standard)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_mod_atom = mod_atom
 
-        # map each atom in the modified nucleotide into standard position
-        mod_coordinates_standard = {}
-        if len(par_atoms) >= 3:
-            # superimpose parent and modified base atoms
-            U, new1, mean1, rmsd, sse, mean2 = besttransformation(par_atoms,mod_atoms)
-            print("Base RMSD is %8.4f with heavy atoms" % rmsd)
-            for atom in mod_coordinates.keys():
-                c = mean1 + np.dot(U,np.array(mod_coordinates[atom]) - mean2)
-                mod_coordinates_standard[atom] = [c[0,0],c[0,1],c[0,2]]
+                # print("%s atom %4s is the closest to standard %s %4s distance %6.3f" % (modified,nearest_mod_atom,parent,par_atom,min_dist))
 
-        else:
-            # create enough information to make a graph anyway
-            for atom in mod_coordinates.keys():
-                mod_coordinates_standard[atom] = mod_coordinates[atom]
-
-        if len(par_atoms) >= 3:
-            # check mappings, try to improve hydrogen mappings on bases, record mappings
-            for par_atom, par_coord in par_base_coordinates[parent].items():
-                if par_atom in NAbaseheavyatoms[parent] or par_atom in NAbasehydrogens[parent]:
-                    min_dist = 1
-                    for mod_atom, mod_coord_standard in mod_coordinates_standard.items():
-                        dist = my_norm(par_coord,mod_coord_standard)
-                        if dist < min_dist:
-                            min_dist = dist
-                            nearest_mod_atom = mod_atom
-
-                    # print("%s atom %4s is the closest to standard %s %4s distance %6.3f" % (modified,nearest_mod_atom,parent,par_atom,min_dist))
-
-                    # find additional mappings or fix mappings for hydrogen atoms
-                    if par_atom.startswith('H') and not nearest_mod_atom in modified_to_parent_atom[modified]:
-                        if modified in parent_to_modified_atom_manual:
-                            # this modified nucleotide has been mapped manually
-                            if not par_atom in parent_to_modified_atom_manual[modified]:
-                                # but this parent atom is not mapped manually
-                                if not par_atom in parent_to_modified_atom[modified]:
-                                    print("Mapping standard %-4s to modified %-4s distance is %8.2f" % (par_atom,nearest_mod_atom,min_dist))
-                                elif not parent_to_modified_atom[modified][par_atom] == nearest_mod_atom:
-                                    print("Re-mapping standard %-4s to modified %-4s distance is %8.2f" % (par_atom,nearest_mod_atom,min_dist))
-                                parent_to_modified_atom[modified][par_atom] = nearest_mod_atom
-                                modified_to_parent_atom[modified][nearest_mod_atom] = par_atom
-                        else:
+                # find additional mappings or fix mappings for hydrogen atoms
+                if par_atom.startswith('H') and not nearest_mod_atom in modified_to_parent_atom[modified]:
+                    if modified in parent_to_modified_atom_manual:
+                        # this modified nucleotide has been mapped manually
+                        if not par_atom in parent_to_modified_atom_manual[modified]:
+                            # but this parent atom is not mapped manually
                             if not par_atom in parent_to_modified_atom[modified]:
                                 print("Mapping standard %-4s to modified %-4s distance is %8.2f" % (par_atom,nearest_mod_atom,min_dist))
                             elif not parent_to_modified_atom[modified][par_atom] == nearest_mod_atom:
                                 print("Re-mapping standard %-4s to modified %-4s distance is %8.2f" % (par_atom,nearest_mod_atom,min_dist))
                             parent_to_modified_atom[modified][par_atom] = nearest_mod_atom
                             modified_to_parent_atom[modified][nearest_mod_atom] = par_atom
+                    else:
+                        if not par_atom in parent_to_modified_atom[modified]:
+                            print("Mapping standard %-4s to modified %-4s distance is %8.2f" % (par_atom,nearest_mod_atom,min_dist))
+                        elif not parent_to_modified_atom[modified][par_atom] == nearest_mod_atom:
+                            print("Re-mapping standard %-4s to modified %-4s distance is %8.2f" % (par_atom,nearest_mod_atom,min_dist))
+                        parent_to_modified_atom[modified][par_atom] = nearest_mod_atom
+                        modified_to_parent_atom[modified][nearest_mod_atom] = par_atom
 
-        # attempt to map some backbone hydrogens if not already done
-        hydrogen_to_heavy = {}
-        hydrogen_to_heavy["H5'"]  = ["C4'","C5'","O5'"]
-        hydrogen_to_heavy["H5''"] = ["O5'","C5'","C4'"]
-        hydrogen_to_heavy["H2'"]  = ["C1'","C2'","C3'"]
-        hydrogen_to_heavy["H2''"] = ["C3'","C2'","C1'"]
+    # attempt to map some backbone hydrogens if not already done
+    hydrogen_to_heavy = {}
+    hydrogen_to_heavy["H5'"]  = ["C4'","C5'","O5'"]
+    hydrogen_to_heavy["H5''"] = ["O5'","C5'","C4'"]
+    hydrogen_to_heavy["H2'"]  = ["C1'","C2'","C3'"]
+    hydrogen_to_heavy["H2''"] = ["C3'","C2'","C1'"]
 
-        for a, atom_list in hydrogen_to_heavy.items():
-            # avoid trying to map H2'' from RNA to an atom on the modified base
-            if not a in par_atom_to_element[parent]:
-                continue
-            if not a in parent_to_modified_atom[modified]:
-                b, d, p, q = get_mod_atom_closest_to(atom_list,parent_to_modified_atom[modified],mod_coordinates)
-                if b:
-                    parent_to_modified_atom[modified][a] = b
-                    modified_to_parent_atom[modified][b] = a
-                    print("Mapping standard %-4s to modified %-4s distance %8.2f" % (a,b,d))
+    for a, atom_list in hydrogen_to_heavy.items():
+        # avoid trying to map H2'' from RNA to an atom on the modified base
+        if not a in par_atom_to_element[parent]:
+            continue
+        if not a in parent_to_modified_atom[modified]:
+            b, d, p, q = get_mod_atom_closest_to(atom_list,parent_to_modified_atom[modified],mod_coordinates)
+            if b:
+                parent_to_modified_atom[modified][a] = b
+                modified_to_parent_atom[modified][b] = a
+                print("Mapping standard %-4s to modified %-4s distance %8.2f" % (a,b,d))
 
-        # note chirality changes
-        reversal = True
-        num_RS_changes = 0
-        for a, b in parent_to_modified_atom[modified].items():
-            parent_chirality = par_atom_to_chirality[parent].get(a,"")
-            modified_chirality = mod_atom_to_chirality.get(b,"")
-            if parent_chirality in ['R','S'] and modified_chirality in ['N',parent_chirality]:
-                reversal = False
-            if modified_chirality in ['R','S'] and parent_chirality in ['N',modified_chirality]:
-                reversal = False
-            if parent_chirality in ['R','S'] and modified_chirality in ['R','S'] and not parent_chirality == modified_chirality:
-                num_RS_changes += 1
-            if parent_chirality and modified_chirality and not parent_chirality == modified_chirality:
-                change_dict = {}
-                change_dict['parent_atom'] = a
-                change_dict['parent_chirality'] = parent_chirality
-                change_dict['modified_atom'] = b
-                change_dict['modified_chirality'] = modified_chirality
-                change_dict['change_type'] = 'chirality'
-                if a in phosphate_full:
-                    change_dict['change_location'] = 'phosphate'
-                elif a in ribose_full or a == "C1'":
-                    change_dict['change_location'] = 'ribose'
-                else:
-                    change_dict['change_location'] = 'base'
-                modified_to_changes[modified]['changes'].append(change_dict)
-                print('Chirality change for parent %-4s %s mapped to %-4s %s' % (a,parent_chirality,b,modified_chirality))
-
-        if num_RS_changes == 0:
+    # note chirality changes
+    reversal = True
+    num_RS_changes = 0
+    for a, b in parent_to_modified_atom[modified].items():
+        parent_chirality = par_atom_to_chirality[parent].get(a,"")
+        modified_chirality = mod_atom_to_chirality.get(b,"")
+        if parent_chirality in ['R','S'] and modified_chirality in ['N',parent_chirality]:
             reversal = False
-
-        if reversal:
-            print('All %d chiral centers are reversed' % num_RS_changes)
-            change_dict = {}
-            change_dict['change_type'] = 'chirality_reversal'
-            change_dict['change_location'] = 'ribose'
-            modified_to_changes[modified]['changes'].append(change_dict)
-
-        # find standard atoms not mapped
-        all_parent_atoms = set(par_atom_to_element[parent].keys())
-        mapped_parent_atoms = set(parent_to_modified_atom[modified].keys())
-        parent_atoms_not_mapped = all_parent_atoms - mapped_parent_atoms
-        print('Standard atoms not mapped: %s' % sorted(parent_atoms_not_mapped))
-        for a in sorted(parent_atoms_not_mapped):
+        if modified_chirality in ['R','S'] and parent_chirality in ['N',modified_chirality]:
+            reversal = False
+        if parent_chirality in ['R','S'] and modified_chirality in ['R','S'] and not parent_chirality == modified_chirality:
+            num_RS_changes += 1
+        if parent_chirality and modified_chirality and not parent_chirality == modified_chirality:
             change_dict = {}
             change_dict['parent_atom'] = a
-            change_dict['parent_element'] = par_atom_to_element[parent][a]
-            change_dict['change_type'] = 'removal'
+            change_dict['parent_chirality'] = parent_chirality
+            change_dict['modified_atom'] = b
+            change_dict['modified_chirality'] = modified_chirality
+            change_dict['change_type'] = 'chirality'
             if a in phosphate_full:
                 change_dict['change_location'] = 'phosphate'
             elif a in ribose_full or a == "C1'":
@@ -1011,350 +1097,398 @@ for line in lines:
             else:
                 change_dict['change_location'] = 'base'
             modified_to_changes[modified]['changes'].append(change_dict)
+            print('Chirality change for parent %-4s %s mapped to %-4s %s' % (a,parent_chirality,b,modified_chirality))
 
-        # find changes in covalent bonds between mapped atoms
-        par_connections_mapped_atoms = set()
-        for a1,a2 in par_connections[parent]:
-            if a1 in parent_to_modified_atom[modified] and a2 in parent_to_modified_atom[modified]:
-                par_connections_mapped_atoms.add((a1,a2))
-                par_connections_mapped_atoms.add((a2,a1))
+    if num_RS_changes == 0:
+        reversal = False
 
-        mod_connections_as_parent = set()
-        for (b1,b2) in mod_connections:
-            if b1 in modified_to_parent_atom[modified] and b2 in modified_to_parent_atom[modified]:
-                a1 = modified_to_parent_atom[modified][b1]
-                a2 = modified_to_parent_atom[modified][b2]
-                mod_connections_as_parent.add((a1,a2))
-                mod_connections_as_parent.add((a2,a1))
+    if reversal:
+        print('All %d chiral centers are reversed' % num_RS_changes)
+        change_dict = {}
+        change_dict['change_type'] = 'chirality_reversal'
+        change_dict['change_location'] = 'ribose'
+        modified_to_changes[modified]['changes'].append(change_dict)
 
-        connections_in_parent_not_in_modified = par_connections_mapped_atoms - mod_connections_as_parent
-        connections_in_modified_not_in_parent = mod_connections_as_parent - par_connections_mapped_atoms
+    # find standard atoms not mapped
+    all_parent_atoms = set(par_atom_to_element[parent].keys())
+    mapped_parent_atoms = set(parent_to_modified_atom[modified].keys())
+    parent_atoms_not_mapped = all_parent_atoms - mapped_parent_atoms
+    print('Standard atoms not mapped: %s' % sorted(parent_atoms_not_mapped))
+    for a in sorted(parent_atoms_not_mapped):
+        change_dict = {}
+        change_dict['parent_atom'] = a
+        change_dict['parent_element'] = par_atom_to_element[parent][a]
+        change_dict['change_type'] = 'removal'
+        if a in phosphate_full:
+            change_dict['change_location'] = 'phosphate'
+        elif a in ribose_full or a == "C1'":
+            change_dict['change_location'] = 'ribose'
+        else:
+            change_dict['change_location'] = 'base'
+        modified_to_changes[modified]['changes'].append(change_dict)
 
-        # print(connections_in_parent_not_in_modified)
-        # print(connections_in_modified_not_in_parent)
+    # find changes in covalent bonds between mapped atoms
+    par_connections_mapped_atoms = set()
+    for a1,a2 in par_connections[parent]:
+        if a1 in parent_to_modified_atom[modified] and a2 in parent_to_modified_atom[modified]:
+            par_connections_mapped_atoms.add((a1,a2))
+            par_connections_mapped_atoms.add((a2,a1))
 
-        for s, t in [(connections_in_parent_not_in_modified,'removed_bond'),(connections_in_modified_not_in_parent,'added_bond')]:
-            for a1,a2 in s:
-                if a1 < a2:   # only list in one direction
-                    change_dict = {}
-                    change_dict['change_type'] = t
-                    change_dict['parent_atom_1'] = a1
-                    change_dict['parent_atom_2'] = a2
-                    change_dict['modified_atom_1'] = parent_to_modified_atom[modified].get(a1,"")
-                    change_dict['modified_atom_2'] = parent_to_modified_atom[modified].get(a2,"")
-                    if a1 in phosphate_full:
-                        change_dict['change_location'] = 'phosphate'
-                    elif a1 in ribose_full or a1 == "C1'":
-                        change_dict['change_location'] = 'ribose'
-                    else:
-                        change_dict['change_location'] = 'base'
-                    if a2 in phosphate_full:
-                        change_dict['change_location_2'] = 'phosphate'
-                    elif a2 in ribose_full or a2 == "C1'":
-                        change_dict['change_location_2'] = 'ribose'
-                    else:
-                        change_dict['change_location_2'] = 'base'
-                    modified_to_changes[modified]['changes'].append(change_dict)
+    mod_connections_as_parent = set()
+    for (b1,b2) in mod_connections:
+        if b1 in modified_to_parent_atom[modified] and b2 in modified_to_parent_atom[modified]:
+            a1 = modified_to_parent_atom[modified][b1]
+            a2 = modified_to_parent_atom[modified][b2]
+            mod_connections_as_parent.add((a1,a2))
+            mod_connections_as_parent.add((a2,a1))
 
-                    # print(change_dict)
-                    # local_show_figure = True
+    connections_in_parent_not_in_modified = par_connections_mapped_atoms - mod_connections_as_parent
+    connections_in_modified_not_in_parent = mod_connections_as_parent - par_connections_mapped_atoms
 
-        # record what changed and get ready to plot
-        for backbone in [True, False]:
-            par_atoms = []
-            mod_atoms = []
-            par_atom_colors = {}  # tells the bond color, point color, how to display
-            mod_atom_colors = {}  # tells the bond color, point color, how to display
+    # print(connections_in_parent_not_in_modified)
+    # print(connections_in_modified_not_in_parent)
 
-            base_atoms = NAbaseheavyatoms[parent] + NAbasehydrogens[parent] + ["C1'"]
-
-            # give default colors to parent atoms
-            for a in parent_atom_to_color[parent].keys():
-                if backbone or a in base_atoms:
-                    par_atom_colors[a] = (parent_atom_to_color[parent][a],"black","full")
+    for s, t in [(connections_in_parent_not_in_modified,'removed_bond'),(connections_in_modified_not_in_parent,'added_bond')]:
+        for a1,a2 in s:
+            if a1 < a2:   # only list in one direction
+                change_dict = {}
+                change_dict['change_type'] = t
+                change_dict['parent_atom_1'] = a1
+                change_dict['parent_atom_2'] = a2
+                change_dict['modified_atom_1'] = parent_to_modified_atom[modified].get(a1,"")
+                change_dict['modified_atom_2'] = parent_to_modified_atom[modified].get(a2,"")
+                if a1 in phosphate_full:
+                    change_dict['change_location'] = 'phosphate'
+                elif a1 in ribose_full or a1 == "C1'":
+                    change_dict['change_location'] = 'ribose'
                 else:
-                    par_atom_colors[a] = (parent_atom_to_color[parent][a],"black","not")
+                    change_dict['change_location'] = 'base'
+                if a2 in phosphate_full:
+                    change_dict['change_location_2'] = 'phosphate'
+                elif a2 in ribose_full or a2 == "C1'":
+                    change_dict['change_location_2'] = 'ribose'
+                else:
+                    change_dict['change_location_2'] = 'base'
+                modified_to_changes[modified]['changes'].append(change_dict)
 
-            # color mapped atoms of the parent and the modified nucleotide
-            for a,b in sorted(parent_to_modified_atom[modified].items()):
-                display = "full"
-                if not backbone and a in ribose_full + phosphate_full:
-                    # set display to "not" for mapped atoms that are not part of the base
-                    mod_atom_colors[b] = ("","black","not")
-                    continue
+                # print(change_dict)
+                # local_show_figure = True
 
-                if b in mod_coordinates and len(mod_coordinates[b]) == 3:
-                    if color_scheme == 'CPK':
-                        element = mod_atom_to_element[b]        # look up the element
-                        color = element_to_cpk_color(element)   # look up the color for modified atom
-                        par_color = element_to_cpk_color(par_atom_to_element[parent][a])  # look up the color for parent atom
-                    elif a in parent_atom_to_color[parent]:
-                        color = parent_atom_to_color[parent][a]
-                        par_color = parent_atom_to_color[parent][a]
-                    else:
-                        print('Do not know how to color %s with parent atom %s' % (b,a))
-                        color = "black"
-                        par_color = "black"
+    # record what changed and get ready to plot
+    for backbone in [True, False]:
+        par_atoms = []
+        mod_atoms = []
+        par_atom_colors = {}  # tells the bond color, point color, how to display
+        mod_atom_colors = {}  # tells the bond color, point color, how to display
 
-                    # check if atom on modified residue is the same element as standard
-                    if par_atom_to_element[parent][a] == mod_atom_to_element[b]:
-                        point_color = "black"
-                    else:
-                        point_color = "white"
+        base_atoms = NAbaseheavyatoms[parent] + NAbasehydrogens[parent] + ["C1'"]
 
-                        # parent atom gets the correct dot color
-                        c,d,e = par_atom_colors[a]
-                        par_atom_colors[a] = (c,point_color,e)
+        # give default colors to parent atoms
+        for a in parent_atom_to_color[parent].keys():
+            if backbone or a in base_atoms:
+                par_atom_colors[a] = (parent_atom_to_color[parent][a],"black","full")
+            else:
+                par_atom_colors[a] = (parent_atom_to_color[parent][a],"black","not")
 
-                        if backbone:
-                            # record that the element changes, but only to that once
-                            change_dict = {}
-                            change_dict['parent_atom'] = a
-                            change_dict['parent_element'] = par_atom_to_element[parent][a]
-                            change_dict['modified_atom'] = b
-                            change_dict['modified_element'] = mod_atom_to_element[b]
-                            change_dict['change_type'] = 'replacement'
-                            if a in phosphate_full:
-                                change_dict['change_location'] = 'phosphate'
-                            elif a in ribose_full or a == "C1'":
-                                change_dict['change_location'] = 'ribose'
-                            else:
-                                change_dict['change_location'] = 'base'
-                            modified_to_changes[modified]['changes'].append(change_dict)
+        # color mapped atoms of the parent and the modified nucleotide
+        for a,b in sorted(parent_to_modified_atom[modified].items()):
+            display = "full"
+            if not backbone and a in ribose_full + phosphate_full:
+                # set display to "not" for mapped atoms that are not part of the base
+                mod_atom_colors[b] = ("","black","not")
+                continue
 
-                    if backbone or a in base_atoms:
-                        mod_atom_colors[b] = (color,point_color,"full")
+            if b in mod_coordinates and len(mod_coordinates[b]) == 3:
+                if color_scheme == 'CPK':
+                    element = mod_atom_to_element[b]        # look up the element
+                    color = element_to_cpk_color(element)   # look up the color for modified atom
+                    par_color = element_to_cpk_color(par_atom_to_element[parent][a])  # look up the color for parent atom
+                elif a in parent_atom_to_color[parent]:
+                    color = parent_atom_to_color[parent][a]
+                    par_color = parent_atom_to_color[parent][a]
+                else:
+                    print('Do not know how to color %s with parent atom %s' % (b,a))
+                    color = "black"
+                    par_color = "black"
 
-                    if a in base_atoms:
-                        # collect atoms for superposition of bases
-                        par_atoms.append(par_base_coordinates[parent][a])
-                        mod_atoms.append(mod_coordinates[b])
+                # check if atom on modified residue is the same element as standard
+                if par_atom_to_element[parent][a] == mod_atom_to_element[b]:
+                    point_color = "black"
+                else:
+                    point_color = "white"
 
-            if not backbone:
-                # compute base RMSD if possible
-                if modified in parent_to_modified_atom and len(par_atoms) >= 3:
-                    if len(par_atoms) >= 3:
-                        U, new1, mean1, rmsd, sse, mean2 = besttransformation(par_atoms,mod_atoms)
-                        #print(U,new1,mean1,rmsd,sse,mean2)
+                    # parent atom gets the correct dot color
+                    c,d,e = par_atom_colors[a]
+                    par_atom_colors[a] = (c,point_color,e)
 
-                        print("RMSD is %8.4f with hydrogens" % rmsd)
-                        modified_to_changes[modified]['base_rmsd'] = rmsd
-
-            # identify atoms connected to the modified residue that are not mapped and so are added
-            for atom1,atom2 in mod_connections:
-                if atom1 in mod_atom_colors and mod_atom_colors[atom1][2] == 'full' and not atom2 in mod_atom_colors:
-                    if atom2 in mod_coordinates and len(mod_coordinates[atom2]) == 3:
-
-                        if color_scheme == 'CPK':
-                            element = mod_atom_to_element[atom2]
-                            bond_color = element_to_cpk_color(element)
-                        else:
-                            bond_color = "black"
-
-                        if not backbone and modified_to_parent_atom[modified].get(atom1,"") == "C1'":
-                            mod_atom_colors[atom2] = (bond_color,new_atom_point_color,"not")
-                        else:
-                            mod_atom_colors[atom2] = (bond_color,new_atom_point_color,"thin")
-
-                        # print atom2 is new, note changes
+                    if backbone:
+                        # record that the element changes, but only to that once
                         change_dict = {}
-                        change_dict['modified_atom'] = atom1
-                        change_dict['modified_element'] = mod_atom_to_element[atom1]
-                        change_dict['new_modified_atom'] = atom2
-                        change_dict['new_modified_element'] = mod_atom_to_element[atom2]
-                        change_dict['change_type'] = 'addition'
-
-                        parent_atom = modified_to_parent_atom[modified].get(atom1,"")
-
-                        if parent_atom in phosphate_full:
+                        change_dict['parent_atom'] = a
+                        change_dict['parent_element'] = par_atom_to_element[parent][a]
+                        change_dict['modified_atom'] = b
+                        change_dict['modified_element'] = mod_atom_to_element[b]
+                        change_dict['change_type'] = 'replacement'
+                        if a in phosphate_full:
                             change_dict['change_location'] = 'phosphate'
-                        elif parent_atom in ribose_full or parent_atom == "C1'":
+                        elif a in ribose_full or a == "C1'":
                             change_dict['change_location'] = 'ribose'
                         else:
                             change_dict['change_location'] = 'base'
                         modified_to_changes[modified]['changes'].append(change_dict)
 
-            # avoid duplicate changes
-            modified_to_changes[modified] = keep_unique_changes(modified_to_changes[modified])
+                if backbone or a in base_atoms:
+                    mod_atom_colors[b] = (color,point_color,"full")
 
-            if backbone:
-                figure_save_file = os.path.join(output_directory,"backbone_plots",'backbone_%s_%s.png' % (parent,modified))
+                if a in base_atoms:
+                    # collect atoms for superposition of bases
+                    par_atoms.append(par_base_coordinates[parent][a])
+                    mod_atoms.append(mod_coordinates[b])
+
+        if not backbone:
+            # compute base RMSD if possible
+            if modified in parent_to_modified_atom and len(par_atoms) >= 3:
+                if len(par_atoms) >= 3:
+                    U, new1, mean1, rmsd, sse, mean2 = besttransformation(par_atoms,mod_atoms)
+                    #print(U,new1,mean1,rmsd,sse,mean2)
+
+                    print("RMSD is %8.4f with hydrogens" % rmsd)
+                    modified_to_changes[modified]['base_rmsd'] = rmsd
+
+        # identify atoms connected to the modified residue that are not mapped and so are added
+        for atom1,atom2 in mod_connections:
+            if atom1 in mod_atom_colors and mod_atom_colors[atom1][2] == 'full' and not atom2 in mod_atom_colors:
+                if atom2 in mod_coordinates and len(mod_coordinates[atom2]) == 3:
+
+                    if color_scheme == 'CPK':
+                        element = mod_atom_to_element[atom2]
+                        bond_color = element_to_cpk_color(element)
+                    else:
+                        bond_color = "black"
+
+                    if not backbone and modified_to_parent_atom[modified].get(atom1,"") == "C1'":
+                        mod_atom_colors[atom2] = (bond_color,new_atom_point_color,"not")
+                    else:
+                        mod_atom_colors[atom2] = (bond_color,new_atom_point_color,"thin")
+
+                    # print atom2 is new, note changes
+                    change_dict = {}
+                    change_dict['modified_atom'] = atom1
+                    change_dict['modified_element'] = mod_atom_to_element[atom1]
+                    change_dict['new_modified_atom'] = atom2
+                    change_dict['new_modified_element'] = mod_atom_to_element[atom2]
+                    change_dict['change_type'] = 'addition'
+
+                    parent_atom = modified_to_parent_atom[modified].get(atom1,"")
+
+                    if parent_atom in phosphate_full:
+                        change_dict['change_location'] = 'phosphate'
+                    elif parent_atom in ribose_full or parent_atom == "C1'":
+                        change_dict['change_location'] = 'ribose'
+                    else:
+                        change_dict['change_location'] = 'base'
+                    modified_to_changes[modified]['changes'].append(change_dict)
+
+        # avoid duplicate changes
+        modified_to_changes[modified] = keep_unique_changes(modified_to_changes[modified])
+
+        if backbone:
+            figure_save_file = os.path.join(output_directory,"backbone_plots",'backbone_%s_%s.png' % (parent,modified))
+        else:
+            figure_save_file = os.path.join(output_directory,"base_plots",'base_%s_%s.png' % (parent,modified))
+
+        figure_save_file_gif = figure_save_file.replace(".png",".gif")
+
+        if (draw_figures or local_show_figure) and (overwrite_figures or redraw_figure \
+            or (not save_as_gif and not os.path.exists(figure_save_file    )) \
+            or (    save_as_gif and not os.path.exists(figure_save_file_gif))):
+
+            shift = 0.3
+            (xmin, xmax, ymin, ymax) = (0, 1, 0, 1)
+            ymin3 = 0
+
+            if plot_standard:
+                # (width,height)
+                # fig = plt.figure(figsize=(15.0, 9.0))
+                fig = plt.figure(figsize=(12.0, 8.0))
+                ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+                # plot parent base atoms
+                # ax = fig.add_subplot(2, 2, 1, projection='3d')
+
+                # plt.subplots_adjust(wspace=-0.20,hspace=-0.20)
+                if parent in ['A','G','DA','DG']:
+                    if backbone:
+                        parent_shift = (-12,0,0)
+                    else:
+                        parent_shift = (-10,0,0)
+                else:
+                    if backbone:
+                        parent_shift = (-10,0,0)
+                    else:
+                        parent_shift = (-8,0,0)
+                xmin, xmax, ymin, ymax = draw_base_coordinates(parent,par_coordinates_standard[parent],par_connections[parent],par_atom_colors,ax,shift=parent_shift)
+
+                # expand a bit to include full atom dots, which are cropped when outside of the axis limits
+                # ax.set_xlim(xmin-shift,xmax+shift)
+                # ax.set_ylim(ymin-shift,ymax+shift)
+
+                # ax = fig.add_subplot(2, 2, 3, projection='3d')
+
+                # print the changes
+                text_list = []
+
+                for change in modified_to_changes[modified]['changes']:
+                    if not backbone and not change['change_location'] == 'base':
+                        continue
+                    if change['change_type'] == 'replacement':
+                        text_list.append('%s replaced with %s on %s' % (change['parent_atom'],change['modified_atom'],change['change_location']))
+                    if change['change_type'] == 'addition':
+                        text_list.append('%s added to %s' % (change['new_modified_atom'],change['change_location']))
+                    if change['change_type'] == 'removal':
+                        text_list.append('%s removed from %s' % (change['parent_atom'],change['change_location']))
+                    if change['change_type'] == 'chirality':
+                        text_list.append('%s chirality %s changed to %s on %s' % (change['parent_atom'],change['parent_chirality'],change['modified_chirality'],change['change_location']))
+                    if change['change_type'] == 'chirality_reversal':
+                        text_list.append('All chiral centers reversed')
+                    if change['change_type'] == 'added_bond':
+                        text_list.append('Added bond between %s and %s,' % (change['modified_atom_1'],change['modified_atom_2']))
+                        text_list.append('locations %s and %s' % (change['change_location'],change['change_location_2']))
+                    if change['change_type'] == 'removed_bond':
+                        text_list.append('Removed bond between %s and %s,' % (change['modified_atom_1'],change['modified_atom_2']))
+                        text_list.append('locations %s and %s' % (change['change_location'],change['change_location_2']))
+
+                if parent in ['A','G','DA','DG']:
+                    x = 1.0 + parent_shift[0] / 2.0
+                else:
+                    x = 0.5 + parent_shift[0] / 2.0
+
+                if backbone:
+                    y = -8
+                else:
+                    y = -4
+                if len(text_list) > 15:
+                    if backbone:
+                        delta_y = 0.4
+                        tfs = 8
+                    else:
+                        delta_y = 0.3
+                        tfs = 8
+                else:
+                    if backbone:
+                        delta_y = 0.6
+                        tfs = 12
+                    else:
+                        delta_y = 0.5
+                        tfs = 12
+                for t in text_list:
+                    ax.text(x,y,0,str(t),fontsize=tfs)
+                    y -= delta_y
+
+                ymin3 = y
+
             else:
-                figure_save_file = os.path.join(output_directory,"base_plots",'base_%s_%s.png' % (parent,modified))
+                fig = plt.figure(figsize=(5.0, 6.0))
+                ax = fig.add_subplot(1, 1, 1, projection='3d')
 
-            figure_save_file_gif = figure_save_file.replace(".png",".gif")
+            # plot modified nucleotide atoms
 
-            if (draw_figures or local_show_figure) and (overwrite_figures \
-                or (not save_as_gif and not os.path.exists(figure_save_file    )) \
-                or (    save_as_gif and not os.path.exists(figure_save_file_gif))):
+            xmin2, xmax2, ymin2, ymax2 = draw_base_coordinates(modified,mod_coordinates_standard,mod_connections,mod_atom_colors,ax)
 
-                shift = 0.3
-                (xmin, xmax, ymin, ymax) = (0, 1, 0, 1)
+            parent_to_min_max[parent]['xmin']  = min(xmin,parent_to_min_max[parent].get('xmin',xmin))
+            parent_to_min_max[parent]['xmax']  = max(xmax,parent_to_min_max[parent].get('xmax',xmax))
+            parent_to_min_max[parent]['xmin2'] = min(xmin2,parent_to_min_max[parent].get('xmin2',xmin2))
+            parent_to_min_max[parent]['ymin']  = min(xmin,parent_to_min_max[parent].get('ymin',ymin))
+            parent_to_min_max[parent]['ymin2'] = min(ymin2,parent_to_min_max[parent].get('ymin2',ymin2))
+            parent_to_min_max[parent]['ymax']  = max(ymax,parent_to_min_max[parent].get('ymax',ymax))
+            parent_to_min_max[parent]['xmax2'] = max(xmax2,parent_to_min_max[parent].get('xmax2',xmax2))
+            parent_to_min_max[parent]['ymin3'] = min(ymin3,parent_to_min_max[parent].get('ymin3',ymin3))
 
-                if plot_standard:
-                    # fig = plt.figure(figsize=(15.0, 9.0))
-                    fig = plt.figure(figsize=(10.0, 10.0))
-                    # plot parent base atoms
-                    ax = fig.add_subplot(2, 2, 1, projection='3d')
+            # print('x min max',min(xmin,xmin2)-shift,max(3,xmax,xmax2)+shift)
+            # print('y min max',min(ymin,ymin2,ymin3)-shift,max(ymax,ymax2)+shift)
+            # input("Press Enter to continue...")
 
-                    plt.subplots_adjust(wspace=-0.20,hspace=-0.20)
-
-                    xmin, xmax, ymin, ymax = draw_base_coordinates(parent,par_coordinates_standard[parent],par_connections[parent],par_atom_colors,ax)
-                    # print('parent limits   ',xmin,xmax,ymin,ymax)
-
-                    ax.set_aspect('equal')
-
-                    if local_show_figure:
-                        ax.view_init(elev=90, azim=-90, roll=45)
+            if plot_standard:
+                # use standard limits to keep the bases in the same position
+                if parent in ['A','G','DA','DG']:
+                    if backbone:
+                        ax.set_xlim(-19.5,6.0)
+                        ax.set_ylim(-15,2.5)
                     else:
-                        ax.view_init(elev=90, azim=-90)
-                    ax.axis("off")
-
-                    # expand a bit to include full atom dots, which are cropped when outside of the axis limits
-                    # ax.set_xlim(xmin-shift,xmax+shift)
-                    # ax.set_ylim(ymin-shift,ymax+shift)
-
-                    ax = fig.add_subplot(2, 2, 3, projection='3d')
-
-                    # print the changes
-                    text_list = []
-
-                    for change in modified_to_changes[modified]['changes']:
-                        if not backbone and not change['change_location'] == 'base':
-                            continue
-                        if change['change_type'] == 'replacement':
-                            text_list.append('%s replaced with %s on %s' % (change['parent_atom'],change['modified_atom'],change['change_location']))
-                        if change['change_type'] == 'addition':
-                            text_list.append('%s added to %s' % (change['new_modified_atom'],change['change_location']))
-                        if change['change_type'] == 'removal':
-                            text_list.append('%s removed from %s' % (change['parent_atom'],change['change_location']))
-                        if change['change_type'] == 'chirality':
-                            text_list.append('%s chirality %s changed to %s on %s' % (change['parent_atom'],change['parent_chirality'],change['modified_chirality'],change['change_location']))
-                        if change['change_type'] == 'chirality_reversal':
-                            text_list.append('All chiral centers reversed')
-                        if change['change_type'] == 'added_bond':
-                            text_list.append('Added bond between %s and %s, locations %s and %s' % (change['modified_atom_1'],change['modified_atom_2'],change['change_location'],change['change_location_2']))
-                        if change['change_type'] == 'removed_bond':
-                            text_list.append('Removed bond between %s and %s, locations %s and %s' % (change['modified_atom_1'],change['modified_atom_2'],change['change_location'],change['change_location_2']))
-                    y = 0.9
-                    delta_y = 0.1
-                    tfs = 8
-                    for t in text_list:
-                        ax.text(0,y,0,str(t),fontsize=tfs)
-                        y -= delta_y
-                    # if backbone and "chirality" in modified_to_changes[modified]:
-                    #     ax.text(0,y,0,"Chirality change",fontsize=tfs)
-                    #     y -= delta_y
-                    # if backbone and "chirality_reversal" in modified_to_changes[modified]:
-                    #     ax.text(0,y,0,"Chirality reversal",fontsize=tfs)
-                    #     y -= delta_y
-                    # for a in ["H5'","H5''","H2'","H2''"]:
-                    #     if a in parent_to_modified_atom[modified]:
-                    #         b = parent_to_modified_atom[modified][a]
-                    #         if not a == b:
-                    #             ax.text(0,y,0,"Backbone %s mapped to %s" % (a,parent_to_modified_atom[modified][a]),fontsize=tfs)
-                    #             y -= delta_y
-
-                    ax.set_aspect('equal')
-                    ax.axis("off")
-                    ax.view_init(elev=90, azim=-90)
-
-                    ax = fig.add_subplot(2, 2, 2, projection='3d')
-
+                        ax.set_xlim(-14,4.5)
+                        ax.set_ylim(-9,2.5)
                 else:
-                    fig = plt.figure(figsize=(5.0, 6.0))
-                    ax = fig.add_subplot(1, 1, 1, projection='3d')
-
-                # plot modified nucleotide atoms
-                #ax.set_title("%s count: %d" % (modified,count))
-
-                xmin2, xmax2, ymin2, ymax2 = draw_base_coordinates(modified,mod_coordinates_standard,mod_connections,mod_atom_colors,ax)
-
-                ax.set_aspect('equal')
-                ax.axis("off")
-
-
-                plt.tight_layout()
-                # print('modified limits ',xmin2,xmax2,ymin2,ymax2)
-
-                # use the axis limits from the parent, or wider if necessary
-                # ax.set_xlim(min(xmin,xmin2)-shift,max(xmax,xmax2)+shift)
-                # ax.set_ylim(min(ymin,ymin2)-shift,max(ymax,ymax2)+shift)
-
-                if local_show_figure:
-                    ax.view_init(elev=90, azim=-90, roll=45)
-                else:
-                    ax.view_init(elev=90, azim=-90)
-
-                # plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01, hspace=-0.20)
-                plt.subplots_adjust(wspace=-0.20,hspace=-0.20)
-
-                if local_show_figure:
-                    plt.show()
-                else:
-                    plt.savefig(figure_save_file)
-                    plt.close()
-
-                if (save_as_gif or crop_out_white_space) and not local_show_figure:
-                    image = imageio.imread(figure_save_file)
-
-                    # Convert to PIL image
-                    pil_image = Image.fromarray(image)
-
-                    # Crop the image to remove white space
-                    bbox = pil_image.getbbox()
-                    bbox = my_bbox(pil_image)
-                    # print("==============================================================")
-                    # print(bbox)
-                    cropped_image = pil_image.crop(bbox)
-
-                    # Convert back to numpy array
-                    cropped_array = np.array(cropped_image)
-
-                    if save_as_gif:
-                        # Save the cropped image as GIF
-                        imageio.imwrite(figure_save_file.replace(".png",".gif"), cropped_array)
+                    if backbone:
+                        ax.set_xlim(-14,5)
+                        ax.set_ylim(-15,3.5)
                     else:
-                        # Save the cropped image as PNG
-                        imageio.imwrite(figure_save_file, cropped_array)
+                        ax.set_xlim(-11,5)
+                        ax.set_ylim(-9,3.5)
+
+            ax.axis("off")
+
+            ax.set_aspect('equal')
+
+            plt.tight_layout()
+            # plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01, hspace=-0.20)
+            # plt.subplots_adjust(wspace=-0.20,hspace=-0.20)
+
+            if local_show_figure:
+                ax.view_init(elev=90, azim=-90, roll=45)
+                plt.show()
+
+            ax.view_init(elev=90, azim=-90)
+            plt.savefig(figure_save_file, bbox_inches='tight', pad_inches=0, dpi=150)
+            plt.close()
+
+            if save_as_gif or crop_out_white_space:
+                image = imageio.imread(figure_save_file)
+
+                # Convert to PIL image
+                pil_image = Image.fromarray(image)
+
+                # Crop the image to remove white space
+                bbox = pil_image.getbbox()
+                bbox = my_bbox(pil_image)
+                # print("==============================================================")
+                # print(bbox)
+                cropped_image = pil_image.crop(bbox)
+
+                # Convert back to numpy array
+                cropped_array = np.array(cropped_image)
+
+                if save_as_gif:
+                    # Save the cropped image as GIF
+                    imageio.imwrite(figure_save_file.replace(".png",".gif"), cropped_array)
+                else:
+                    # Save the cropped image as PNG
+                    imageio.imwrite(figure_save_file, cropped_array)
 
 if len(focus_list) == 0:
     # write out the mappings again, from most common modified nucleotide to least
     modified_written = set()
     with open('atom_mappings.txt',write_mode) as f:
-        for line in lines:
-            fields = line.replace('"','').rstrip("\n").split(",")
-            if len(fields) == 3:
-                count = int(fields[2])
-                if count > 0:
-                    modified = fields[1]
+        for modified in modified_base_to_parent.keys():
+            if not modified in modified_written and modified in modified_base_to_parent:
+                parent = modified_base_to_parent[modified]
+                for par_atom, mod_atom in parent_to_modified_atom[modified].items():
+                    f.write('%s\t%s\t%s\t%s\n' % (parent,par_atom,modified,mod_atom))
 
-                    if not modified in modified_written and modified in modified_base_to_parent:
-                        parent = modified_base_to_parent[modified]
-                        for par_atom, mod_atom in parent_to_modified_atom[modified].items():
-                            f.write('%s\t%s\t%s\t%s\n' % (parent,par_atom,modified,mod_atom))
+                if "chirality" in modified_to_changes[modified]:
+                    print('Standard %-4s modified %-4s chirality reversed' % (parent,modified))
 
-                        if "chirality" in modified_to_changes[modified]:
-                            print('Standard %-4s modified %-4s chirality reversed' % (parent,modified))
-
-                    modified_written.add(modified)
-
-
+            modified_written.add(modified)
 
     print('')
     print('%d messages about the mappings:' % len(not_mapped))
     print("\n".join(not_mapped))
-
-    # list the modified nucleotides that are not mappable
-    # print('%d modified nucleotides are not mappable:' % len(not_mappable))
-    # print(",".join(not_mappable))
 
     # remove standard nucleotides from the list of changes
     for parent in standard_nts:
         if parent in modified_to_changes:
             del modified_to_changes[parent]
 
-    changes_file = 'modified_to_changes.json'
+    changes_file = 'modified_to_change_data.json'
     with open(changes_file, write_mode) as f:
         # write modified_to_changes to a file in json format
         f.write(json.dumps(modified_to_changes))
@@ -1373,3 +1507,20 @@ if draw_figures and save_as_gif:
     png_files = glob.glob(file_pattern)
     for file in png_files:
         os.remove(file)
+
+# for parent in parent_to_min_max.keys():
+#     print('Parent %s has min max %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f' % (parent,\
+#         parent_to_min_max[parent]['xmin'],\
+#         parent_to_min_max[parent]['xmax2'],\
+#         parent_to_min_max[parent]['ymin'],\
+#         parent_to_min_max[parent]['ymin2'],\
+#         parent_to_min_max[parent]['ymin3'],\
+#         parent_to_min_max[parent]['ymax']))
+
+year_to_mods = defaultdict(list)
+for mod, changes in modified_to_changes.items():
+    year = changes['pdb']['pdbx_initial_date'].split('-')[0]
+    year_to_mods[year].append(mod+"_"+str(changes['count']))
+
+for year, mods in sorted(year_to_mods.items()):
+    print("%s\t%s\t%s" % (year, len(mods), ",".join(mods)))
