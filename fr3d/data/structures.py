@@ -105,8 +105,10 @@ class Structure(object):
 
                 return [r for r in residues if not r.index == None]
 
-        if 'polymeric' not in kwargs:
-            kwargs['polymeric'] = True
+        # only return polymeric units, which skips ions, ligands, water
+        # if 'polymeric' not in kwargs:
+        #     kwargs['polymeric'] = True
+
         if kwargs.get('polymeric', False) is None:
             kwargs.pop('polymeric')
 
