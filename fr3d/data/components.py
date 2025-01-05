@@ -178,6 +178,7 @@ class Component(EntitySelector):
             self.centers.define('nt_phosphate', atoms)
 
         # attempt to add sugar and phosphate centers for all modified nucleotides
+        # better would be to map the standard atoms to their modified atoms
         if self.sequence in modified_base_to_parent:
             atoms = defs.nt_sugar['A']
             self.centers.define('nt_sugar', atoms)
@@ -191,6 +192,11 @@ class Component(EntitySelector):
         if self.sequence in defs.aa_backbone:
             atoms = defs.aa_backbone[self.sequence]
             self.centers.define('aa_backbone', atoms)
+
+        # if no center has been defined yet, use all atoms to define a center
+        # this should work well for ions, waters, and ligands
+        if len(self.centers.definitions()) == 0:
+            self.centers.define('geometric', [atom.name for atom in self._atoms])
 
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
