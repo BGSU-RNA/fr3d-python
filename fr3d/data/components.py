@@ -316,14 +316,15 @@ class Component(EntitySelector):
             rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
                 besttransformation(R, S)
         except:
-            if len(R) != len(S):
-                print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
-            elif len(R) < 3:
-                print("%s Rotation matrix calculation failed, %d base atoms" % (self.unit_id(),len(R)))
-            elif len(S) < 3:
-                print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
-            else:
-                print("%s Rotation matrix calculation failed, not sure why" % self.unit_id())
+            pass
+            # if len(R) != len(S):
+            #     print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
+            # elif len(R) < 3:
+            #     print("%s Rotation matrix calculation failed, %d base atoms" % (self.unit_id(),len(R)))
+            # elif len(S) < 3:
+            #     print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
+            # else:
+            #     print("%s Rotation matrix calculation failed, not sure why" % self.unit_id())
 
             return None
 
@@ -516,7 +517,8 @@ class Component(EntitySelector):
                                                 z=newcoordinates[0, 2]))
 
         except:
-            print("%s Adding hydrogens failed" % self.unit_id())
+            pass
+            # print("%s Adding hydrogens failed" % self.unit_id())
 
 
     def infer_amino_acid_hydrogens(self):
@@ -894,7 +896,8 @@ class Component(EntitySelector):
                 self._atoms.append(Atom(name="HG22",x=A2[0],y=A2[1],z=A2[2]))
 
         except:
-                print("%s Adding hydrogens failed" % self.unit_id())
+            pass
+            # print("%s Adding hydrogens failed" % self.unit_id())
 
 
     def transform(self, transform_matrix):
