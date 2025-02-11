@@ -57,6 +57,9 @@ from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modifie
 from fr3d.ordering.orderBySimilarity import treePenalizedPathLength
 from fr3d.ordering.orderBySimilarity import standardOrder
 
+from fr3d.classifiers.NA_pairwise_interactions import get_parent
+from fr3d.classifiers.NA_pairwise_interactions import get_parent_as_RNA
+
 JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
 JS2 = '  <script src="./js/jquery.jmolTools.bp.js"></script>'               # special version, superimpose first base
 JS3 = '  <script src="./js/imagehandlinglocal.js"></script>'
@@ -571,7 +574,14 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     if height < 300:
         template = template.replace("height:300px","height:%dpx" % (height))
 
-    if 'FR3D' in option_set:
+    if VERSION == 'v9':
+        prefix = ""
+        if Q['DNA']:
+            prefix += "DNA_"
+        if Q['only_modified']:
+            prefix += "modified_"
+        table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix=prefix,resolutions=Q['link_blocks'])
+    elif 'FR3D' in option_set:
         prefix = ""
         if Q['DNA']:
             prefix += "DNA_"
@@ -1010,7 +1020,7 @@ def plot_basepair_cutoffs(base_combination,interaction_list,ax,variables,angle_o
                             cc += 1
 
 
-def generate_LW_family_table(LW,prefix=''):
+def generate_LW_family_table(LW,prefix='',resolutions=['1.5A','2.0A','2.5A','3.0A'],DNA=False):
     """
     Make an HTML table of links to pages about all base combinations in a family.
     Also return a dictionary mapping family and base combination to a Boolean telling if that
@@ -1031,11 +1041,9 @@ def generate_LW_family_table(LW,prefix=''):
 
     if DNA:
         bases = ['DA','DC','DG','DT']
-        resolutions = ['2.0A']           # number of structures for now, part of the hyperlinks!
         output += "<tr><td>2.0A</td><td></td><td></td><td></td><td></td></tr>\n"
     else:
         bases = ['A','C','G','U']
-        resolutions = ['1.5A','2.0A','2.5A','3.0A']
         output += "<tr><td>1.5A</td><td></td><td></td><td></td><td></td><td>2.0A</td><td></td><td></td><td></td><td></td><td>2.5A</td><td></td><td></td><td></td><td></td><td>3.0A</td><td></td><td></td><td></td></tr>\n"
 
     for b1 in bases:
@@ -1230,7 +1238,7 @@ def load_contacts_basepairs(contacts_filename):
     return pair_to_interaction
 
 
-def load_datmos_basepairs(datmos_filename):
+def load_datmos_basepairs_old(datmos_filename):
 
     # print('Reading %s' % datmos_filename)
 
@@ -1270,6 +1278,48 @@ def load_datmos_basepairs(datmos_filename):
 
     return pair_to_interaction, skip_pair_set
 
+
+def load_datmos_basepairs():
+
+    # read chains from datmos / nabir
+    pair_to_interaction = {}
+    for mt in ['RNA','DNA']:
+        filename = '%s_2.5A_reference_pairs.csv' % mt
+        path_filename = os.path.join('C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos',filename)
+        # pdbid,model,family,class,chain1,nr1,res1,alt1,ins1,symmetry_operation1,chain2,nr2,res2,alt2,ins2,symmetry_operation2,coplanarity_angle,coplanarity_shift1,coplanarity_shift2,coplanarity_edge_angle1,coplanarity_edge_angle2,C1_C1_yaw1,C1_C1_pitch1,C1_C1_roll1,C1_C1_yaw2,C1_C1_pitch2,C1_C1_roll2,hb_0_length,hb_0_donor_angle,hb_0_acceptor_angle,hb_0_OOPA1,hb_0_OOPA2,hb_1_length,hb_1_donor_angle,hb_1_acceptor_angle,hb_1_OOPA1,hb_1_OOPA2,hb_2_length,hb_2_donor_angle,hb_2_acceptor_angle,hb_2_OOPA1,hb_2_OOPA2,hb_3_length,hb_3_donor_angle,hb_3_acceptor_angle,hb_3_OOPA1,hb_3_OOPA2
+        #   0     1     2      3     4     5    6    7    8     9                  10    11  12   13    14     15
+        with open(path_filename,'rt') as f:
+            lines = f.readlines()
+        for line in lines:
+            fields = line.split(",")
+            pdb = fields[0].upper()
+            model = fields[1]
+            interaction = fields[2]
+
+            alt1 = fields[7].replace('"','')
+            ins1 = fields[8].replace(' ','')
+            sym1 = fields[9]
+            unit1 = make_unit_id(pdb,model,fields[4],fields[6],fields[5],"",alt1,ins1,sym1)
+
+            alt2 = fields[13].replace('"','')
+            ins2 = fields[14].replace(' ','')
+            sym2 = fields[15]
+            unit2 = make_unit_id(pdb,model,fields[10],fields[12],fields[11],"",alt2,ins2,sym2)
+
+            # print(unit1,interaction,unit2)
+
+            pair_to_interaction[(unit1,unit2)] = interaction
+            pair_to_interaction[(unit2,unit1)] = reverse_edges(interaction)
+
+    return pair_to_interaction
+
+def make_unit_id(pdb,model,chain,unit,number,atom,alt,ins,sym):
+
+    unit_id = pdb + "|" + model + "|" + chain + "|" + unit + "|" + number + "|" + atom + "|" + alt + "|" + ins + "|" + sym
+    while unit_id[-1] == "|":
+        unit_id = unit_id[:-1]
+
+    return unit_id
 
 def add_pairs_in_order(pair_to_priority,pair_to_data,priority):
     """
@@ -1533,6 +1583,7 @@ if __name__=="__main__":
 
     base_combination_list = ['G,C','A,A','A,C','A,G','A,U','C,C','C,U','G,G','G,U','U,U']
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
+    base_combination_list = ['A,U','A,A','A,C','A,G','C,C','G,C','C,U','G,G','G,U','U,U']
 
     base_combination_to_interaction = {}
     base_combination_to_interaction['A,A'] = ['cWw','tWW','cWH','tWH','cWS','tWS','cHh','tHH','cHS','tHS','cSs','tSs','cWB']
@@ -1610,8 +1661,13 @@ if __name__=="__main__":
     resolution_list = ['2.0A']
     resolution_list = ['2.5A']
 
+    if VERSION == 'v9':
+        resolution_list = ['2.5A']
+
     if compare_annotators:
         make_plots = False
+
+    PDB_skip_set = set()
 
     for resolution in resolution_list:
 
@@ -1626,6 +1682,26 @@ if __name__=="__main__":
 
             base_combination_list = ['DA,DA','DA,DC','DA,DG','DA,DT','DC,DC','DG,DC','DC,DT','DG,DG','DG,DT','DT,DT']
             data_file = []
+
+        elif VERSION in ['v9']:
+            # get the list of PDB files and chains from datmos
+            PDB_set = set()
+            PDB_chain_set = set()
+            for mt in ['RNA','DNA']:
+                filename = '%s_reference_chains.csv' % mt
+                path_filename = os.path.join('C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos',filename)
+                with open(path_filename,'rt') as f:
+                    lines = f.readlines()
+                for line in lines:
+                    pdb,chain,desc,count = line.split(",")
+                    PDB_set.add(pdb.upper())
+                    PDB_chain_set.add(pdb.upper()+"|1|"+chain)
+
+            data_file = []
+
+            PDB_list = sorted(PDB_set)
+            all_PDB_ids = sorted(PDB_set)
+            representative_chains = PDB_chain_set
 
         elif VERSION in []:
             # read all structures from C:\Users\zirbel\Documents\FR3D\Python FR3D\data\pairs_datmos
@@ -1663,35 +1739,32 @@ if __name__=="__main__":
             Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
             data_file = Q["PDB_data_file"]
 
-        PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
+            PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
-        # load all datapoints on pairs of bases, whether annotated as paired or not
-        all_PDB_ids = sorted(PDB_IFE_Dict.keys())
+            # load all datapoints on pairs of bases, whether annotated as paired or not
+            all_PDB_ids = sorted(PDB_IFE_Dict.keys())
 
-        print(".")
+            representative_chains = set(['8GLP|1|L5','8GLP|1|L8','8GLP|1|S2','8B0X|1|a','8B0X|1|A'])
+            for PDB, chains in PDB_IFE_Dict.items():
+                for chain in chains.split("+"):
+                    representative_chains.add(chain)
+
+            PDB_skip_set = set(['1R9F','5NXT','4KTG','7JIL'])
+
+            if '8B0X' in PDB_list:
+                PDB_skip_set.add('5J7L')
+                PDB_skip_set.add('7K00')
+                PDB_skip_set.add('4YBB')
+
         print("Resolution %s, working on %d PDB files" % (resolution,len(all_PDB_ids)))
 
-        representative_chains = set(['8GLP|1|L5','8GLP|1|L8','8GLP|1|S2','8B0X|1|a','8B0X|1|A'])
-        for PDB, chains in PDB_IFE_Dict.items():
-            for chain in chains.split("+"):
-                representative_chains.add(chain)
-
-        PDB_skip_set = set(['1R9F','5NXT','4KTG','7JIL'])
-
-        if '8B0X' in PDB_list:
-            PDB_skip_set.add('5J7L')
-            PDB_skip_set.add('7K00')
-            PDB_skip_set.add('4YBB')
-
-        # load annotations of these PDB files from the BGSU RNA server
         pair_to_interaction_matlab   = defaultdict(str)
         pair_to_interaction_dssr     = defaultdict(str)
         pair_to_interaction_rnaview  = defaultdict(str)
         pair_to_interaction_pdb      = defaultdict(str)
-        # pair_to_interaction_contacts = defaultdict(str)
         pair_to_interaction_datmos   = defaultdict(str)
 
-        pdb_id_to_annotators = defaultdict(set)   # which programs annotate pairs in each structure?
+        pdb_id_to_annotators = defaultdict(set)   # which programs annotate pairs in each structure
 
         print('Loading glycosidic bond conformations')
         unit_id_to_glycosidic = defaultdict(str)
@@ -1727,6 +1800,15 @@ if __name__=="__main__":
             #print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
             #print("Found Matlab annotations in %s files" % (len(all_PDB_ids)-len(PDB_skip_set))
         """
+
+        skip_pair_set = set()
+
+        print('Loading datmos   annotations from %s' % datmos_basepair_path)
+        new_pairs = load_datmos_basepairs()
+        pair_to_interaction_datmos.update(new_pairs)
+
+        for pdb_id in all_PDB_ids:
+            pdb_id_to_annotators[pdb_id].add('datmos')
 
         print('Loading RNAview  annotations from %s' % rnaview_basepair_path)
         for PDB_id in all_PDB_ids:
@@ -1771,18 +1853,6 @@ if __name__=="__main__":
         #     fields = u1.split("|")
         #     pdb_id = fields[0].upper()
         #     pdb_id_to_annotators[pdb_id].add('contacts')
-
-        print('Loading datmos   annotations from %s' % datmos_basepair_path)
-        skip_pair_set = set()
-        for PDB_id in all_PDB_ids:
-            datmos_filename = os.path.join(datmos_basepair_path,PDB_id.lower() + "_basepair_detailed.txt")
-            if os.path.exists(datmos_filename):
-                new_pairs, new_skip_pair_set = load_datmos_basepairs(datmos_filename)
-                pair_to_interaction_datmos.update(new_pairs)
-                if compare_annotators:
-                    skip_pair_set.update(new_skip_pair_set)
-                if len(new_pairs) > 0:
-                    pdb_id_to_annotators[PDB_id].add('datmos')
 
         # h-bond data takes up so much space, sometimes it's necessary to work one base combination at a time
         # loop over specified base combinations
@@ -1835,18 +1905,25 @@ if __name__=="__main__":
                                     # only keep pairs from representative chains
                                     fields1 = u1.split("|")
                                     chain1 = "|".join(fields1[0:3])
-                                    if not chain1 in representative_chains and not DNA and not VERSION in ['v9']:
+                                    if not chain1 in representative_chains and not DNA:
                                         continue
 
                                     fields2 = u2.split("|")
                                     chain2 = "|".join(fields2[0:3])
-                                    if not chain2 in representative_chains and not DNA and not VERSION in ['v9']:
+                                    if not chain2 in representative_chains and not DNA:
                                         continue
 
                                     # for some resolutions, focus on one base combination at a time
                                     if not DNA and resolution in resolution_memory_challenge_list:
                                         b1 = fields1[3]
                                         b2 = fields2[3]
+
+                                        if VERSION in ['v9']:
+                                            b1 = get_parent_as_RNA(b1)
+                                            b2 = get_parent_as_RNA(b2)
+                                        else:
+                                            b1 = get_parent(b1)
+                                            b2 = get_parent(b2)
 
                                         if not base_combination == b1+","+b2 and not base_combination == b2+","+b1:
                                             continue
@@ -1972,12 +2049,14 @@ if __name__=="__main__":
             bc_to_pairs_in_order = {}
             for pair in pairs_in_order:
                 b1 = pair[0].split("|")[3]
-                if b1 in modified_base_to_parent and not compare_annotators and not b1 in ['DA','DC','DG','DT']:
-                    b1 = modified_base_to_parent[b1]
-
                 b2 = pair[1].split("|")[3]
-                if b2 in modified_base_to_parent and not compare_annotators and not b2 in ['DA','DC','DG','DT']:
-                    b2 = modified_base_to_parent[b2]
+
+                if VERSION in ['v9']:
+                    b1 = get_parent_as_RNA(b1)
+                    b2 = get_parent_as_RNA(b2)
+                else:
+                    b1 = get_parent(b1)
+                    b2 = get_parent(b2)
 
                 if not b1 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
                     print('Unknown nucleotide %s' % pair[0])
@@ -2584,6 +2663,12 @@ if __name__=="__main__":
                 Q['DNA'] = DNA
                 Q['only_modified'] = only_modified
                 Q["PDB_data_file"] = data_file
+
+                # for links across the top of the page, tell something about filenames
+                if VERSION == 'v9':
+                    Q['link_blocks'] = [str(len(all_PDB_ids))]
+                else:
+                    Q['link_blocks'] = resolution_list
 
                 # identify the interaction so a table of HTML links can be made
                 if interaction_upper in Leontis_Westhof_basepairs:
