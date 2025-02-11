@@ -1174,6 +1174,41 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     return interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data
 
 
+def get_alt_id(unit_id):
+    fields = unit_id.split("|")
+    if len(fields) >= 7:
+        alt_id = fields[6]
+    else:
+        alt_id = ""
+    return alt_id
+
+
+def select_partner(unitids,already_used):
+    """
+    If unitids has more than one member, avoid the ones in already_used
+    and select the one with blank alt id, then alt id A, then alt id B, etc.
+    """
+
+    if len(unitids) == 1:
+        return list(unitids)[0]
+    elif len(unitids) == 0:
+        return None
+
+    remaining = unitids - already_used
+
+    if len(remaining) == 0:
+        return None
+
+    unit_id_with_alt_id = []
+    for unit_id in remaining:
+        alt_id = get_alt_id(unit_id)
+        unit_id_with_alt_id.append((unit_id,alt_id))
+
+    unit_id_with_alt_id.sort(key=lambda x: x[1])
+
+    return unit_id_with_alt_id[0][0]
+
+
 def crossing_bss_loops(bases,interaction_to_pair_list,categories):
     """
     Identify which cWW pairs are nested.
@@ -1407,7 +1442,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
         # make it easy to jump to the cww partner
         # set this up here to add the special ncww pairs identified in this section
-        unitid_to_cww_partner = {}
+        # use a list because sometimes there is more than one pairing partner, with ||A and ||B alternate ids
+        unitid_to_cww_partner = defaultdict(set)
 
         # add nested AU, GC, GU ncWW pairs adjacent to canonical cWW pairs so we do not
         # extend a loop past a nested canonical ncWW pair.
@@ -1445,8 +1481,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                                             bss_endpoints.add((MCS1,index1,MCS2,index2))
 
-                                            unitid_to_cww_partner[u1] = u2
-                                            unitid_to_cww_partner[u2] = u1
+                                            unitid_to_cww_partner[u1].add(u2)
+                                            unitid_to_cww_partner[u2].add(u1)
 
                                             pair_added = True
 
@@ -1460,8 +1496,12 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         # that do not have xyz coordinates.  We still allow u1 and u2 to have the bSS relation,
         # because there is no intervening cWW basepair (but with full xyz coordinates there could be).
         unit_id_pair_to_interaction = {}
-        unitid_to_bss_partner = {}
+
+        # use a list because sometimes there is more than one pairing partner, with ||A and ||B alternate ids
+        unitid_to_bss_partner = defaultdict(set)
+
         bSS_list = []
+        bSS_list_ordered = []
         for MCS, endpoints in MCS_to_endpoints.items():
             if verbose >= 3:
                 print("  Getting bSS for %s %s %s" % MCS)
@@ -1506,7 +1546,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     # c and e are in one chain, but pc and pe are in different chains
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
-                    unitid_to_bss_partner[u1] = u2
+                    bSS_list_ordered.append((u1,u2))
+                    unitid_to_bss_partner[u1].add(u2)
 
                     if verbose >= 3:
                         if c == MCS_to_min_index[MCS]:
@@ -1522,14 +1563,16 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         print(c,pc,e,pe,MCS,MCS2,MCS3)
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
-                    unitid_to_bss_partner[u1] = u2
+                    bSS_list_ordered.append((u1,u2))
+                    unitid_to_bss_partner[u1].add(u2)
                 elif e == MCS_to_max_index[MCS] and pe == e and not MCS3:
                     # e is at end of chain but does not make a cWW pair
                     if verbose >= 3:
                         print("  %-20s bSS %-20s at end of chain *" % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
-                    unitid_to_bss_partner[u1] = u2
+                    bSS_list_ordered.append((u1,u2))
+                    unitid_to_bss_partner[u1].add(u2)
                 elif e - c > 1:
                     # space between cWW basepairs
                     if pc-pe == e-c and ((not pc == e and not MCS2) or (MCS2)):
@@ -1604,14 +1647,16 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         if not complementary:
                             bSS_list.append((u1,u2,0))
                             bSS_list.append((u2,u1,0))
-                            unitid_to_bss_partner[u1] = u2
+                            bSS_list_ordered.append((u1,u2))
+                            unitid_to_bss_partner[u1].add(u2)
                             if verbose >= 3:
                                 print('  %-20s bSS %-20s from symmetric IL' % (u1,u2))
 
                     else:
                         bSS_list.append((u1,u2,0))
                         bSS_list.append((u2,u1,0))
-                        unitid_to_bss_partner[u1] = u2
+                        bSS_list_ordered.append((u1,u2))
+                        unitid_to_bss_partner[u1].add(u2)
                         if verbose >= 3:
                             print("  %-20s bSS %-20s gap between cWW's" % (u1,u2))
                 elif abs(pc-pe) > 1:
@@ -1622,7 +1667,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             print('  %-20s bSS %-20s distance 1 apart' % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
-                    unitid_to_bss_partner[u1] = u2
+                    bSS_list_ordered.append((u1,u2))
+                    unitid_to_bss_partner[u1].add(u2)
 
                 # move up the "lower" index
                 c = e
@@ -1643,14 +1689,34 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             if interaction.lower() in ['cww','cwwa']:
                 for unitid1, unitid2, crossing in interaction_to_list_of_tuples[interaction]:
                     if crossing == 0:
-                        unitid_to_cww_partner[unitid1] = unitid2
-                        unitid_to_cww_partner[unitid2] = unitid1
+                        unitid_to_cww_partner[unitid1].add(unitid2)
+                        unitid_to_cww_partner[unitid2].add(unitid1)
 
         # identify the flanking unit ids of hairpin, internal, junction loops
         all_loops = []
         bss_done = set()
         loop_counter = defaultdict(lambda: 0)
-        for unitid1, unitid2, crossing in interaction_to_list_of_tuples['bSS']:
+
+        # should sort interaction_to_list_of_tuples['bSS'] by alt id of the first nucleotide
+        # also exclude any bSS pairs from alt id A to alt id B
+        bSS_tuples = []
+        c = 1
+        for unitid1, unitid2 in bSS_list_ordered:
+            alt_id1 = get_alt_id(unitid1)
+            alt_id2 = get_alt_id(unitid2)
+            # use a counter to keep the list in the original order as much as possible
+            # that way, we get bSS nucleotides in index order on each chain
+            bSS_tuples.append((alt_id1,alt_id2,c,unitid1,unitid2))
+            c += 1
+
+        bSS_tuples = sorted(bSS_tuples)
+
+        # for alt_id1, alt_id2, c, unitid1, unitid2 in bSS_tuples:
+        #     print('bSS tuple',alt_id1,alt_id2,c,unitid1,unitid2)
+        # for u,p in unitid_to_bss_partner.items():
+        #     print('bss partner',u,p)
+
+        for alt_id1, alt_id2, c, unitid1, unitid2 in bSS_tuples:
             if not unitid1 in unitid_to_cww_partner:
                 continue
 
@@ -1663,7 +1729,10 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             if (unitid2,unitid1) in bss_done:
                 continue
 
+            # print('Starting with bSS pair',unitid1,unitid2)
+
             bss_done.add((unitid1,unitid2))
+            already_used = set()
 
             # store unit ids in a list of length L called loop
             # L is even, equal to 2 or 4 or 6 or more, with this structure:
@@ -1671,7 +1740,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             # positions 1 and 2 are cWW partners
             # positions 2 and 3 are bSS partners, and so on
             # positions L-1 and 0 are cWW partners
-            if unitid1 == unitid_to_cww_partner[unitid2]:
+            if unitid1 in unitid_to_cww_partner[unitid2]:
                 # hairpin loop
                 loop = [unitid1,unitid2]
             else:
@@ -1679,28 +1748,40 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 loop = [unitid1,unitid2]
                 start = unitid1
                 unitid1 = ''
+                # follow cWW partner and get its bSS partner, until you get back to the start
                 while start != unitid1:
-                    if unitid2 in unitid_to_cww_partner:
-                        unitid1 = unitid_to_cww_partner[unitid2]
-                        if unitid1 in unitid_to_bss_partner:
-                            unitid2 = unitid_to_bss_partner[unitid1]
+                    # print('  building on ',loop)
+                    unitid1 = select_partner(unitid_to_cww_partner[unitid2],already_used)
+                    # print('  unitid1',unitid1)
+                    if unitid1:
+                        unitid2 = select_partner(unitid_to_bss_partner[unitid1],already_used)
+                        # print('  unitid2',unitid2)
+                        if unitid2:
                             if unitid1 in loop or unitid2 in loop:
-                                # bad situation, need to avoid infinite while loop
+                                # bad situation, returned to the loop but not the start
+                                # need to avoid infinite while loop
                                 print("  Anomalous loop %s" % ",".join(loop))
                                 loop = []
                                 break
                             loop.append(unitid1)
                             loop.append(unitid2)
+                            # print('  Next unitid1 bSS unitid2 are %s and %s' % (unitid1,unitid2))
                             bss_done.add((unitid1,unitid2))
-                            if unitid2 in unitid_to_cww_partner:
-                                unitid1 = unitid_to_cww_partner[unitid2]
-
+                            unitid1 = select_partner(unitid_to_cww_partner[unitid2],already_used)
+                            if unitid1:
+                                # print('  Next unitid1 will be %s' % (unitid1))
+                                pass
+                            else:
+                                loop = []
+                                break
                         else:
                             loop = []
                             break
                     else:
                         loop = []
                         break
+
+            # print('Final loop:',loop)
 
             if loop:
                 full_loop, loop_counter = fill_in_strands_of_loop(loop,unit_id_to_fields,MCS_index_to_unit_id,loop_counter)
@@ -2021,6 +2102,7 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
     if not ideal_hydrogen_bonds:
         ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
+    # structures.py controls what residues are returned, that sometimes needs to be expanded
     if chains:
         # bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
         bases = structure.residues(chain = chains, type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides from desired chains
@@ -2028,17 +2110,8 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
         # bases = structure.residues(type = ["RNA linking","DNA linking"])  # load nice RNA/DNA nucleotides
         bases = structure.residues(type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides
 
-    # protein_chains = set()
     # for base in bases:
-    #     if base.unit_id().split("|")[3] in ["SER","GLN","PRO","GLY","ALA","VAL","LEU","ILE","MET","PHE","TYR","TRP","HIS","LYS","ARG","ASP","GLU","ASN","CYS","THR"]:
-    #         protein_chains.add(base.unit_id().split("|")[2])
-
-    # print('protein_chains',sorted(protein_chains))
-
-    # for base in bases:
-    #     if base.unit_id().split("|")[2] in protein_chains:
-    #         if not base.unit_id().split("|")[3] in ["SER","GLN","PRO","GLY","ALA","VAL","LEU","ILE","MET","PHE","TYR","TRP","HIS","LYS","ARG","ASP","GLU","ASN","CYS","THR"]:
-    #             print('Not an amino acid',base.unit_id())
+    #     print(base.unit_id())
 
     if not timerData:
         timerData = myTimer("start")
