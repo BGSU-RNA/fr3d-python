@@ -153,6 +153,7 @@ nt_nt_cutoffs["A,U"]["cWW"][0]["zmin"] = -3.00
 nt_nt_cutoffs["A,U"]["cWW"][0]["zmax"] = 3.00
 nt_nt_cutoffs["A,U"]["cWW"][0]["normalmin"] = -1.10
 nt_nt_cutoffs["A,U"]["cWW"][0]["normalmax"] = -0.80
+nt_nt_cutoffs["A,U"]["cWW"][0]["normalmax"] = -0.70       # expand 2025-01-12
 nt_nt_cutoffs["A,U"]["cWW"][0]["anglemin"] = 45.00
 nt_nt_cutoffs["A,U"]["cWW"][0]["anglemax"] = 90.00
 nt_nt_cutoffs["A,U"]["cWW"][0]["anglemax"] = 85.00        # tighten 2023-02-04 CLZ
