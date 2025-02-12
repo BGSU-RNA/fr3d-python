@@ -504,17 +504,19 @@ def reverse_edges(inter):
 
     return rev
 
-def makeListOfNtIndices(baseCubeList, baseCubeNeighbors):
-    """This function returns a sorted list of all the nts indices in ascending order.
-    It was added as a method to be able to extract information about the O3' atom of the previous nucleotide"""
-    lastNT = {}
-    for nt1key in baseCubeList:                         # key to first cube
-        for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
-            if nt2key in baseCubeList:                  # if this cube was actually made
-                for nt1 in baseCubeList[nt1key]:
-                    if nt1.index not in lastNT:
-                        lastNT[nt1.index] = nt1
-    return(lastNT)
+# def makeListOfNtIndices(baseCubeList, baseCubeNeighbors):
+#     """
+#     This function returns a sorted list of all the nts indices in ascending order.
+#     It was added as a method to be able to extract information about the O3' atom of the previous nucleotide
+#     """
+#     lastNT = {}
+#     for nt1key in baseCubeList:                         # key to first cube
+#         for nt2key in baseCubeNeighbors[nt1key]:        # key to each potential neighboring cube, including the first
+#             if nt2key in baseCubeList:                  # if this cube was actually made
+#                 for nt1 in baseCubeList[nt1key]:
+#                     if nt1.index not in lastNT:
+#                         lastNT[nt1.index] = nt1
+#     return lastNT
 
 
 def map_unit_id_to_previous_O3(bases):
@@ -750,7 +752,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if nt1key == nt2key:
                             if nt1.chain > nt2.chain:
                                 continue
-                            elif nt1.chain == nt2.chain and nt1.index > nt2.index:
+                            elif nt1.chain == nt2.chain and nt1.index and nt2.index and nt1.index > nt2.index:
+                                continue
+                            elif nt1.chain == nt2.chain and nt1.unit_id() > nt2.unit_id():
                                 continue
 
                         if len(nt2.centers["base"]) < 3:
@@ -934,14 +938,6 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         # annotate base phosphate and base ribose interactions
                         if 'backbone' in categories.keys():
                             timerData = myTimer("Check backbone interactions", timerData)
-
-                            # # you need the O3' atom of the last nucleotide and this dict will help you get that component.
-                            # lastNT = None
-                            # lastNT2 = None
-                            # if nt1.index - 1 > 0 and (nt1.index-1) in ntDict:
-                            #     lastNT = ntDict[nt1.index-1]
-                            # if nt2.index - 1 > 0 and (nt2.index-1) in ntDict:
-                            #     lastNT2 = ntDict[nt2.index-1]
 
                             # get coordinates of O3' of the nucleotide before nt2, part of the phosphate of nt2
                             previousO3 = unit_id_to_previous_O3.get(nt2.unit_id(),np.empty([1,3]))
@@ -1233,7 +1229,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         unit_id = nt.unit_id()
         fields = unit_id.split("|")
 
-        file_id = fields[0]
+        # file_id = fields[0]
         model = fields[1]
         chain = fields[2]
         base  = fields[3]
@@ -1245,14 +1241,16 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         unit_id_to_fields[unit_id] = (model,chain,nt.index,base,symmetry)
 
         MCS = (model,chain,symmetry)
-        MCS_to_min_index[MCS] = min(MCS_to_min_index[MCS],nt.index)
-        MCS_to_max_index[MCS] = max(MCS_to_max_index[MCS],nt.index)
 
-        if not MCS in MCS_index_to_unit_id:
-            MCS_index_to_unit_id[MCS] = {}
+        if nt.index:
+            MCS_to_min_index[MCS] = min(MCS_to_min_index[MCS],nt.index)
+            MCS_to_max_index[MCS] = max(MCS_to_max_index[MCS],nt.index)
+
+            if not MCS in MCS_index_to_unit_id:
+                MCS_index_to_unit_id[MCS] = {}
 
         # in case of alternate ids (like A, B), do not overwrite the first one
-        if not nt.index in MCS_index_to_unit_id[MCS]:
+        if nt.index and not nt.index in MCS_index_to_unit_id[MCS]:
             MCS_index_to_unit_id[MCS][nt.index] = unit_id
 
     # make variables to store the chain indices where nested cWW's occur
@@ -1354,68 +1352,74 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 model1,chain1,index1,base1,symmetry1 = unit_id_to_fields[u1]
                 model2,chain2,index2,base2,symmetry2 = unit_id_to_fields[u2]
 
-                MCS1 = (model1,chain1,symmetry1)
-                MCS2 = (model2,chain2,symmetry2)
-
-                if not model1 == model2:
-                    # should never happen, but check for good form
-                    continue
-
-                crossing = 0
-
-                # interactions within the same chain can have non-zero crossing number
-                # some chains may not have any cWW pairs, then all interactions are nested
-                if chain1 == chain2 and symmetry1 == symmetry2:
-                    if MCS1 in MCS_to_nested_cWW_endpoints:
-                        # put indices of the current interaction in increasing order
-                        index1,index2 = sorted([index1,index2])
-
-                        # count nested cWW that reach outside of [index1,index2]
-                        for i in range(index1+1,index2):
-                            j = MCS_to_nested_cWW_endpoints[MCS1][i]
-
-                            if not isinstance(j,tuple) and (j < index1 or j > index2):
-                                crossing += 1
-
-                        if verbose >= 3 and crossing > 0:
-                            print("%-20s and %-20s make %5s and have crossing number %3d" % (u1,u2,interaction,crossing))
+                if not index1 or not index2:
+                    # at least one of these nucleotides is not in a chain, so the
+                    # crossing number is 0
+                    crossing = 0
                 else:
-                    # different chains or different symmetries
-                    # we know model1 == model2 already
-                    # count nested pairs in chain1 that cross index1, in chain2 that cross index2
-                    # Note: an interaction between chains could cross WC pairs between those
-                    # chains, but we are not counting the crossing number for that
-                    # In the same way, it would be hard to calculate a crossing number for
-                    # crossing WC pairs that go between two chains.
-                    for MCS, index in [(MCS1,index1),(MCS2,index2)]:
-                        if MCS in MCS_to_nested_cWW_endpoints:
-                            m = MCS_to_max_index[MCS]
-                            if index < m / 2:
-                                # closer to the beginning of the chain
-                                for i in range(0,index):
-                                    j = MCS_to_nested_cWW_endpoints[MCS][i]
-                                    if not isinstance(j,tuple) and j > index:
-                                        crossing += 1
-                            else:
-                                # closer to the end of the chain
-                                for i in range(index+1,m+1):
-                                    j = MCS_to_nested_cWW_endpoints[MCS][i]
-                                    if not isinstance(j,tuple) and j < index:
-                                        crossing += 1
 
-                    # note inter-chain nested cWW basepairs for later bSS calculation
-                    if crossing == 0 and interaction.lower() in ['cww','cwwa'] and 'bss' in categories:
-                        # record canonical cWW pairs and their endpoints by chain
-                        parent1 = get_parent_as_RNA(base1,'')
-                        parent2 = get_parent_as_RNA(base2,'')
+                    MCS1 = (model1,chain1,symmetry1)
+                    MCS2 = (model2,chain2,symmetry2)
 
-                        if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
-                            # here we map MCS and index to a tuple, to indicate it crosses chains
-                            # that might be faster, but it does add a layer of complexity
-                            MCS_to_nested_cWW_endpoints[MCS1][index1] = (MCS2,index2)
-                            MCS_to_nested_cWW_endpoints[MCS2][index2] = (MCS1,index1)
+                    if not model1 == model2:
+                        # should never happen, but check for good form
+                        continue
 
-                            bss_endpoints.add((MCS1,index1,MCS2,index2))
+                    crossing = 0
+
+                    # interactions within the same chain can have non-zero crossing number
+                    # some chains may not have any cWW pairs, then all interactions are nested
+                    if chain1 == chain2 and symmetry1 == symmetry2:
+                        if MCS1 in MCS_to_nested_cWW_endpoints:
+                            # put indices of the current interaction in increasing order
+                            index1,index2 = sorted([index1,index2])
+
+                            # count nested cWW that reach outside of [index1,index2]
+                            for i in range(index1+1,index2):
+                                j = MCS_to_nested_cWW_endpoints[MCS1][i]
+
+                                if not isinstance(j,tuple) and (j < index1 or j > index2):
+                                    crossing += 1
+
+                            if verbose >= 3 and crossing > 0:
+                                print("%-20s and %-20s make %5s and have crossing number %3d" % (u1,u2,interaction,crossing))
+                    else:
+                        # different chains or different symmetries
+                        # we know model1 == model2 already
+                        # count nested pairs in chain1 that cross index1, in chain2 that cross index2
+                        # Note: an interaction between chains could cross WC pairs between those
+                        # chains, but we are not counting the crossing number for that
+                        # In the same way, it would be hard to calculate a crossing number for
+                        # crossing WC pairs that go between two chains.
+                        for MCS, index in [(MCS1,index1),(MCS2,index2)]:
+                            if MCS in MCS_to_nested_cWW_endpoints:
+                                m = MCS_to_max_index[MCS]
+                                if index < m / 2:
+                                    # closer to the beginning of the chain
+                                    for i in range(0,index):
+                                        j = MCS_to_nested_cWW_endpoints[MCS][i]
+                                        if not isinstance(j,tuple) and j > index:
+                                            crossing += 1
+                                else:
+                                    # closer to the end of the chain
+                                    for i in range(index+1,m+1):
+                                        j = MCS_to_nested_cWW_endpoints[MCS][i]
+                                        if not isinstance(j,tuple) and j < index:
+                                            crossing += 1
+
+                        # note inter-chain nested cWW basepairs for later bSS calculation
+                        if crossing == 0 and interaction.lower() in ['cww','cwwa'] and 'bss' in categories:
+                            # record canonical cWW pairs and their endpoints by chain
+                            parent1 = get_parent_as_RNA(base1,'')
+                            parent2 = get_parent_as_RNA(base2,'')
+
+                            if parent1+parent2 in ['AU','UA','CG','GC','GU','UG']:
+                                # here we map MCS and index to a tuple, to indicate it crosses chains
+                                # that might be faster, but it does add a layer of complexity
+                                MCS_to_nested_cWW_endpoints[MCS1][index1] = (MCS2,index2)
+                                MCS_to_nested_cWW_endpoints[MCS2][index2] = (MCS1,index1)
+
+                                bss_endpoints.add((MCS1,index1,MCS2,index2))
 
                 pairs_to_crossing[(u1,u2)] = crossing
 
@@ -1448,6 +1452,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         # add nested AU, GC, GU ncWW pairs adjacent to canonical cWW pairs so we do not
         # extend a loop past a nested canonical ncWW pair.
         # There may be two in a row, so check until no more additions
+        # Unfortunately this adds 4V9F|1|0|C|1558 ncWW 4V9F|1|0|G|1563 and shortens the hairpin
         pair_added = True
         while pair_added:
             pair_added = False
@@ -1486,8 +1491,8 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                                             pair_added = True
 
-                                            if index1 <= index2:
-                                                print("Adding %s %s %s to the bSS endpoints" % (u1,interaction,u2))
+                                            # if index1 <= index2:
+                                            #     print("Adding %s %s %s to the bSS endpoints" % (u1,interaction,u2))
 
         # identify nucleotides that border a single-stranded region (bSS relation)
         # this includes strands between nested cWW pairs on one chain
@@ -2068,9 +2073,10 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
 
     nts_to_sort = defaultdict(list)
 
-    # list the nucleotides by model, symmetry, chain, index
+    # list the nucleotides from chains by model, symmetry, chain, index
     for nt in nucleotides:
-        nts_to_sort[(nt.model+" "+nt.symmetry+" "+nt.chain,nt.index)].append(nt.unit_id())
+        if nt.index:
+            nts_to_sort[(nt.model+" "+nt.symmetry+" "+nt.chain,nt.index)].append(nt.unit_id())
 
     sorted_keys = sorted(nts_to_sort.keys())
 
@@ -2103,12 +2109,13 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
         ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     # structures.py controls what residues are returned, that sometimes needs to be expanded
+    # SOLITARY means to check non-NA chains for nucleotides like ATP.  That adds time.
     if chains:
         # bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-        bases = structure.residues(chain = chains, type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides from desired chains
+        bases = structure.residues(chain = chains, type = ["RNA","DNA","PNA","SOLITARY"])  # load all RNA/DNA nucleotides from desired chains
     else:
         # bases = structure.residues(type = ["RNA linking","DNA linking"])  # load nice RNA/DNA nucleotides
-        bases = structure.residues(type = ["RNA","DNA","PNA","NON-POLYMER"])  # load all RNA/DNA nucleotides
+        bases = structure.residues(type = ["RNA","DNA","PNA","SOLITARY"])  # load all RNA/DNA nucleotides
 
     # for base in bases:
     #     print(base.unit_id())
@@ -3950,11 +3957,14 @@ def write_unit_data_file(PDB,unit_data_path,structure):
     primarily for use by the FR3D motif search tool.
     If unit_data_path is empty, no files are written.
     One file for each chain.
+
+    This function may not write out all modified nucleotides
+    It will probably miss solitary nucleotides like ATP.
     """
 
     if len(unit_data_path) > 0:
 
-        nucleotides = structure.residues(type = ["RNA linking","DNA linking"])
+        nucleotides = structure.residues(type = ["RNA","DNA","PNA"])
         all_nts = {}
 
         # get the nucleotides in each model and chain, able to sort by symmetry and index
@@ -3970,8 +3980,10 @@ def write_unit_data_file(PDB,unit_data_path,structure):
             if not id in all_nts:
                 all_nts[id] = []
 
-            #all_nts[id].append((nt.index,nt.unit_id(),nt.centers["glycosidic"],nt.rotation_matrix))
-            all_nts[id].append((symmetry,nt.index,nt))
+            if nt.index:
+                all_nts[id].append((symmetry,nt.index,nt))
+            else:
+                all_nts[id].append((symmetry,0,nt))
 
         # loop over models and chains
         for id in all_nts.keys():
