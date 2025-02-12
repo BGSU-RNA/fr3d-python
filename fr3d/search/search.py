@@ -11,6 +11,7 @@ import sys
 from time import time
 
 from fr3d.geometry.discrepancy import matrix_discrepancy_cutoff
+from fr3d.geometry.discrepancy import matrix_discrepancy_cutoff_flip
 from fr3d.search.myTimer import myTimer
 from fr3d.search.query_processing import synonym
 from fr3d.search.pair_processing import get_pairlist
@@ -1133,8 +1134,14 @@ def FR3D_search(Q, ifedata, ifename, timerData):
             for i in range(0, numPositions):
                 possibilityrotations.append(units[possibility[i]]["rotations"])
 
-            d = matrix_discrepancy_cutoff(querycenters, queryrotations, possibilitycenters,
-                possibilityrotations, Q["discrepancy"])
+            if Q.get("flip",False):
+                # reduce orientation error when one base is rotated 180 degrees around glycosidic
+                d = matrix_discrepancy_cutoff_flip(querycenters, queryrotations, possibilitycenters,
+                    possibilityrotations, Q["discrepancy"])
+            else:
+                # original discrepancy calculation
+                d = matrix_discrepancy_cutoff(querycenters, queryrotations, possibilitycenters,
+                    possibilityrotations, Q["discrepancy"])
 
             if d is not None and d < Q["discrepancy"]:
                 possibility_to_discrepancy[possibility] = d
