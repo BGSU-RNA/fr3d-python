@@ -269,13 +269,6 @@ def load_structure(filename,file_id="",preferred_id=None):
                 from fr3d.cif.reader import Cif
                 cif_access = Cif(raw,preferred_id=preferred_id)
                 structure = cif_access.structure()
-
-                # here is an example of how to load the assemblies
-                # they simply tell you which chains are to get which symmetry operators
-                # they do not tell you which chains / symmetries form a biological unit
-                # assemblies = cif_access.__load_assemblies__()
-                # for key,value in assemblies.items():
-                #     print(key, value)
         elif filename.lower().endswith('.cif'):
             with open(filename, rm) as raw:
                 from fr3d.cif.reader import Cif
@@ -4052,7 +4045,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                     quads_to_write.append((a,inter,b,c))
 
         # sort quads by model, first chain, first number, first unit id (for alt id, insertion code, symmetry), interaction
-        ordered = sorted(quads_to_write, key=lambda x: (x[0].split("|")[1],x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1],x[2]))
+        ordered = sorted(quads_to_write, key=lambda x: (int(x[0].split("|")[1]) or 0,x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1],x[2]))
         with open(filename,'w') as f:
             for a,b,c,d in ordered:
                 f.write("%s\t%s\t%s\t%s\n" % (a,b,c,d))
