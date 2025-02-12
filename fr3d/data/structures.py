@@ -52,8 +52,9 @@ class Structure(object):
         :returns: The requested residues.
         """
 
+
         if 'type' in kwargs:
-            # the following need to match how the residues are listed in like 1R3O.cif,
+            # the following need to match how the residues are listed in files like 1R3O.cif,
             # including uppercase and lowercase versions
             desired_types = []
             if 'RNA' in kwargs['type']:
@@ -63,6 +64,13 @@ class Structure(object):
             if 'PNA' in kwargs['type']:
                 # for PNA like CPN
                 desired_types.extend(['peptide-like'])
+            if 'SOLITARY' in kwargs['type'] or "NON-POLYMER" in kwargs['type']:
+                # for ligands like ATP, GTP, etc.,
+                # also for structures like 2N4J that have chains like 8XA, 8XC that are "NON-POLYMER"
+                add_solitary = True
+            else:
+                add_solitary = False
+
             # if 'NON-POLYMER' in kwargs['type']:
             #     # for chains like 2N4J made all of 8XA, 8XC, that are "NON-POLYMER"
             #     # but NON-POLYMER also picks up lots of protein chains, so that is too broad
@@ -71,26 +79,37 @@ class Structure(object):
             if len(desired_types) > 0:
                 # special treatment to get full RNA and/or DNA chains
                 # including modified residues with whatever chem_comp.type
-                # As long as a chain has one of the desired_types, it should be included
+                # As long as a chain has one of the desired_types, the whole chain should be included
                 residues = EntitySelector(self._residues, type = desired_types)
                 chains = set([r.chain for r in residues])
+
+                # print('chains',chains)
 
                 # print('RNA, DNA, PNA chains: %s' % chains)
 
                 # identify non-polymer chains that are not protein chains
                 # upper/lower case matters, which is so fragile!
-                amino_acids = EntitySelector(self._residues, type = ['L-peptide linking','L-PEPTIDE LINKING', 'PEPTIDE LINKING', 'L-PEPTIDE OH 3 prime terminus', 'PEPTIDE OH 3 prime terminus'])
-                protein_chains = set([r.chain for r in amino_acids])
-                non_polymer = EntitySelector(self._residues, type = ['non-polymer','NON-POLYMER'])
-                non_polymer_chains = set([r.chain for r in non_polymer])
-                non_polymer_non_protein_chains = non_polymer_chains - protein_chains
+                # amino_acids = EntitySelector(self._residues, type = ['L-peptide linking','L-PEPTIDE LINKING', 'PEPTIDE LINKING', 'L-PEPTIDE OH 3 prime terminus', 'PEPTIDE OH 3 prime terminus'])
+                # protein_chains = set([r.chain for r in amino_acids])
+                # non_polymer = EntitySelector(self._residues, type = ['non-polymer','NON-POLYMER'])
+                # non_polymer_chains = set([r.chain for r in non_polymer])
+
+                # print('non_polymer_chains',non_polymer_chains)
+
+                # non_polymer_non_protein_chains = non_polymer_chains - protein_chains
+
+                # print('non_polymer_non_protein_chains',non_polymer_non_protein_chains)
+
+                # Note: individual nucleotide ligands like GTP are listed as being part of a nearby chain,
+                # potentially a protein chain, but they have no index although they will have a residue number.
+                # If we want them, they should be returned
 
                 # print('protein chains: %s' % sorted(protein_chains))
                 # print('non-polymer_non_protein chains: %s' % sorted(non_polymer_non_protein_chains))
 
                 if 'chain' in kwargs:
                     # restrict to desired chains
-                    chains = set(kwargs['chain']) & (chains | non_polymer_non_protein_chains)
+                    chains = set(kwargs['chain']) & chains
                     # remove chain from kwargs so we use the new list of chains
                     kwargs.pop('chain')
 
@@ -101,9 +120,28 @@ class Structure(object):
 
                 # print('structures.py is using kwargs %s' % kwargs)
 
-                residues = EntitySelector(self._residues, chain=list(chains | non_polymer_non_protein_chains), **kwargs)
+                # get structures in specified and desired chains
+                # residues = EntitySelector(self._residues, chain=list(chains), **kwargs)
+                # for r in residues:
+                #     print(r.chain, r.type, r.index)
+                # return [r for r in residues if not r.index == None]
 
-                return [r for r in residues if not r.index == None]
+                if add_solitary:
+                    # load modified nucleotide mappings
+                    from fr3d.modified.mapping import modified_base_to_parent
+
+                    # loop over all residues in the structure again, subject to kwargs
+                    all_residues = EntitySelector(self._residues, **kwargs)
+                    all_res = []
+                    for r in all_residues:
+                        if (r.chain in chains and not r.index == None) or r.sequence in modified_base_to_parent:
+                            all_res.append(r)
+                else:
+                    # loop over all residues in the structure again, subject to kwargs
+                    all_res = EntitySelector(self._residues, chain=list(chains), **kwargs)
+
+                return all_res
+
 
         # only return polymeric units, which skips ions, ligands, water
         # if 'polymeric' not in kwargs:
