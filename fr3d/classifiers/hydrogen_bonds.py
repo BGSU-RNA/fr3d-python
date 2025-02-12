@@ -1,6 +1,6 @@
 """
 This file has methods for checking hydrogen bonds.
-The default hydrogen bond lengths are set in the functin load_ideal_basepair_hydrogen_bonds.
+The default hydrogen bond lengths are set in the function load_ideal_basepair_hydrogen_bonds.
 A longer distance cutoff is used for C-H contacts.
 There are no angle cutoffs for now.
 """
