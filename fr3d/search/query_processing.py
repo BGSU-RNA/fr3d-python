@@ -1193,9 +1193,9 @@ def calculateQueryConstraints(Q):
         Q["activeInteractions"].remove("and")
 
     if not "requiredMoleculeType" in Q or not Q["requiredMoleculeType"]:
-        if "DNA" in Q["repSetType"] and "RNA" in Q["repSetType"]:
+        if "repSetType" in Q and "DNA" in Q["repSetType"] and "RNA" in Q["repSetType"]:
             Q["requiredMoleculeType"] = [["DNA","RNA"]] * Q["numPositions"]
-        elif "DNA" in Q["repSetType"]:
+        elif "repSetType" in Q and "DNA" in Q["repSetType"]:
             Q["requiredMoleculeType"] = [["DNA"]] * Q["numPositions"]
         else:
             Q["requiredMoleculeType"] = [["RNA"]] * Q["numPositions"]
