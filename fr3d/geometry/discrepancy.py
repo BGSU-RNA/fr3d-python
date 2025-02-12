@@ -143,7 +143,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
                     else:
                         raise MissingPhosphateException(centers)
 
-        rotation_matrix, new1, mean1, RMSD, sse = besttransformation_weighted(R, S, W)
+        rotation_matrix, new1, mean1, new2, mean2, sse = besttransformation_weighted(R, S, W)
         rotation_matrix = np.transpose(rotation_matrix)
         #The rotation_matrix that is outputted from besttransformation is the
         #transpose of the one you want.
@@ -191,7 +191,7 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
         center_weight = [1.0] * n
 
     if n > 2:
-        rotation_matrix, new1, mean1, RMSD, sse = \
+        rotation_matrix, new1, mean1, new2, mean2, sse = \
             besttransformation_weighted(centers1, centers2, center_weight)
 
         orientation_error = 0
@@ -235,7 +235,8 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
 
 def matrix_discrepancy_cutoff(centers1, rotations1, centers2, rotations2, cutoff,
                        angle_weight=None, center_weight=None):
-    """Compute discrepancies given matrices, not components.
+    """
+    Compute discrepancies given matrices, not components.
 
     :param list centers1: A list (or list numpy.array) of all centers.
     :param list rotations1: A list of all rotation matrices.
@@ -266,7 +267,7 @@ def matrix_discrepancy_cutoff(centers1, rotations1, centers2, rotations2, cutoff
         # solve np.sqrt(sse + orientation_error) / n > cutoff to give sse + orientation_error > (n*cutoff)**2
         temp_cutoff = (n * cutoff)**2
 
-        rotation_matrix, new1, mean1, RMSD, sse = \
+        rotation_matrix, new1, mean1, new2, mean2, sse = \
             besttransformation_weighted(centers1, centers2, center_weight)
 
         total_error = sse
@@ -283,6 +284,122 @@ def matrix_discrepancy_cutoff(centers1, rotations1, centers2, rotations2, cutoff
                     return None
 
         discrepancy = np.sqrt(total_error) / n
+
+    else:
+
+        R1 = np.dot(np.transpose(rotations1[1]),rotations1[0])  # rotation from nt 0 to nt1 of 1st motif
+        R2 = np.dot(np.transpose(rotations2[0]),rotations2[1])  # rotation from nt 0 to nt1 of 2nd motif
+
+        rot1 = np.dot(R1,R2)                                    #
+        ang1 = angle_of_rotation(rot1)
+
+        rot2 = np.dot(np.transpose(R1),np.transpose(R2))
+        ang2 = angle_of_rotation(rot2)
+
+        T1 = np.dot(centers1[1] - centers1[0],rotations1[0])
+        T2 = np.dot(centers1[0] - centers1[1],rotations1[1])
+
+        S1 = np.dot(centers2[1] - centers2[0],rotations2[0])
+        S2 = np.dot(centers2[0] - centers2[1],rotations2[1])
+
+        D1 = T1-S1
+        D2 = T2-S2
+
+        discrepancy  = np.sqrt(D1[0]**2 + D1[1]**2 + D1[2]**2 + (angle_weight[0]*ang1)**2)
+        discrepancy += np.sqrt(D2[0]**2 + D2[1]**2 + D2[2]**2 + (angle_weight[0]*ang2)**2)
+
+#        factor = 1/(4*np.sqrt(2))    # factor to multiply by discrepancy; faster to precompute?
+
+        discrepancy  = discrepancy * 0.17677669529663687
+
+    return discrepancy
+
+def matrix_discrepancy_cutoff_flip(centers1, rotations1, centers2, rotations2, cutoff,
+                       angle_weight=None, center_weight=None):
+    """
+    Compute discrepancies given matrices, not components.
+
+    Try a 180 degree flip around the glycosidic bond and keep the angle that is lower
+
+    :param list centers1: A list (or list np.array) of all centers.
+    :param list rotations1: A list of all rotation matrices.
+    :param list centers2: A list (or list np.array) of all centers.
+    :param list rotations2: A list of all rotation matrices.
+    :param float cutoff: If discrepancy > cutoff, return none
+    :param float angle_weight: The weight to give to the angle component of
+    discrepancy.
+    :param float center_weight: The weight to give to the center component of
+    discrepancy.
+    :returns: A float, the discprenacy.
+    """
+
+    n = len(centers1)
+
+    assert len(centers2) == n
+    assert len(rotations1) == n
+    assert len(rotations2) == n
+    assert n >= 2
+
+    if not angle_weight:
+        angle_weight = [1] * n
+
+    if not center_weight:
+        center_weight = [1] * n
+
+    if n > 2:
+        # solve np.sqrt(sse + orientation_error) / n > cutoff to give sse + orientation_error > (n*cutoff)**2
+        temp_cutoff = (n * cutoff)**2
+
+        rotation_matrix, new1, mean1, new2, mean2, sse = \
+            besttransformation_weighted(centers1, centers2, center_weight)
+
+        total_error = sse
+        if total_error > temp_cutoff:
+            return None
+
+        around_y = np.diag([-1, 1, -1])    # rotation matrix around y axis
+        # flip_text = ""
+
+        # loop over aligned nucleotides
+        for i in range(len(rotations1)):
+
+            r1 = rotations1[i]
+            r2 = rotations2[i]
+            if not r1 is None and not r2 is None and r1.shape[0] > 0 and r2.shape[0] > 0:
+                rotate = np.dot(np.dot(rotation_matrix, r2), np.transpose(r1))
+
+                # compute the angle of rotation needed to align the two nucleotides
+                angle = angle_of_rotation(rotate)
+
+                if angle > 2.5:
+                    # that's a high angle of rotation, close to pi = 3.14 = 180 degrees
+                    # check to see if this base is flipped 180 degrees (pi radians) around the glycosidic bond
+
+                    # flip the standard base around the y axis first, then find the rotation angle
+                    # could have used r2, it gives the same numbers
+                    r1_flip = np.dot(r1,around_y)
+                    angle_flip = angle_of_rotation(np.dot(np.dot(rotation_matrix, r2), np.transpose(r1_flip)))
+
+                    if angle - angle_flip > 2:   # large enough reduction in angle to be considered
+
+                        distance = np.sqrt(np.sum(np.power(new1[i]-new2[i], 2))) # center-center distance between bases
+
+                        # note: bases are not in the original order because of permuting to speed up FR3D searches
+
+                        if distance < 2:  # small distance to avoid flagging bases bulged in different directions as flipped
+                            #print("Found a flipped base, angles %8.4f %8.4f, distance %8.4f, center %7.3f %7.3f %8.3f" % (angle,angle_flip,distance,centers1[i][0],centers1[i][1],centers1[i][2]))
+                            #flip_text = "Found a flipped base, angles %8.4f %8.4f, distance %8.4f, center %7.3f %7.3f %8.3f" % (angle,angle_flip,distance,centers1[i][0],centers1[i][1],centers1[i][2])
+                            angle = angle_flip
+
+                total_error += np.square(angle)
+                if total_error > temp_cutoff:
+                    return None
+
+        discrepancy = np.sqrt(total_error) / n
+
+        # if flip_text:
+        #     flip_text += ", discrepancy %8.4f" % discrepancy
+        #     print(flip_text)
 
     else:
 
