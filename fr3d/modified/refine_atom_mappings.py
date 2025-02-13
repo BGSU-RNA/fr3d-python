@@ -105,7 +105,7 @@ def element_to_cpk_color(element):
         rgb = [0.9,0.9,0.9] # light gray because we have a white background
         rgb = [0.8,0.8,0.8] # light gray because we have a white background
     elif el == "B":
-        rgb = "FFB5B5"
+        rgb = "#FFB5B5"
     elif el == "C":
         rgb = '#909090' # gray
         rgb = '#808080' # darker gray
@@ -128,7 +128,7 @@ def element_to_cpk_color(element):
     elif el == "CA":
         rgb = '#3DFF00'
     elif el == "V":
-        rgb = 'A6A6AB'
+        rgb = '#A6A6AB'
     elif el == "MN":
         rgb = '#9C7AC7'
     elif el == "FE":
@@ -140,18 +140,18 @@ def element_to_cpk_color(element):
     elif el == "K":
         rgb = '#8F40D4'
     elif el == "SE":
-        rgb = "FFA100"
+        rgb = "#FFA100"
     elif el == "BR":
         rgb = '#A62929'
     elif el == "TE":
-        rgb = "D47A00"
+        rgb = "#D47A00"
     elif el == "I":
         rgb = '#940094'
     elif el == "PT":
-        rgb = "D0D0E0"
+        rgb = "#D0D0E0"
 
     if not rgb:
-        print("Unknown element %s" % el)
+        print("Unknown element %s, need to know how to color it" % el)
         print(crashnow)
 
     return rgb
@@ -237,6 +237,7 @@ def get_cif_data(base):
     data['pdb']['par_comp_id'] = cif_data['chem_comp'][0].get('mon_nstd_parent_comp_id','No mon_nstd_parent_comp_id line')
     data['pdb']['one_letter_code'] = cif_data['chem_comp'][0].get('one_letter_code','No one_letter_code line')
     data['pdb']['pdbx_initial_date'] = cif_data['chem_comp'][0].get('pdbx_initial_date','1900-01-01')
+    data['pdb']['formula'] = cif_data['chem_comp'][0].get('formula','No formula line')
 
     for descriptor in cif_data['pdbx_chem_comp_descriptor']:
         t = descriptor['type']
@@ -304,6 +305,46 @@ def get_cif_data(base):
 def my_norm(x,y):
 
     return math.sqrt((x[0]-y[0])**2+(x[1]-y[1])**2+(x[2]-y[2])**2)
+
+
+def get_pdb_to_modomics_mapping():
+    """
+    Read pdb_to_modomics.txt and modomics_id_to_png.txt
+    pdb_to_modomics.txt has lines like:
+    PSU	1.0000	185	pY	confirmed
+
+    modomics_id_to_png.txt has lines like:
+    2	2_dijNdIi
+    https://genesilico.pl/modomics/media/mod_images/2_dijNdIi.png
+
+    Return a dictionary mapping PDB identifier to modomics information
+    """
+
+    modomics_id_to_png = {}
+    with open("modomics_id_to_png.txt",read_mode) as f:
+        lines = f.readlines()
+        for line in lines:
+            fields = line.rstrip("\n").split("\t")
+            modomics_id = fields[0]
+            filename = fields[1]
+            modomics_id_to_png[modomics_id] = 'https://genesilico.pl/modomics/media/mod_images/%s.png' % filename
+
+    pdb_to_modomics_data = {}
+    with open("pdb_to_modomics.txt",read_mode) as f:
+        lines = f.readlines()
+        for line in lines:
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) >= 5 and fields[4] == 'confirmed':
+                modified = fields[0]
+                modomics_id = fields[2]
+                modomics_short_name = fields[3]
+                d = {}
+                d['id'] = modomics_id
+                d['short_name'] = modomics_short_name
+                d['png'] = modomics_id_to_png.get(modomics_id,'')
+                pdb_to_modomics_data[modified] = d
+
+    return pdb_to_modomics_data
 
 
 def read_atom_mappings(filename):
@@ -704,6 +745,9 @@ parent_to_modified_atom_manual, modified_to_parent_atom_manual, modified_base_to
 # download modified nucleotide counts
 mod_to_count = download_modified_nt_list()
 
+# get confirmed mappings from PDB identifiers to Modomics
+pdb_to_modomics_data = get_pdb_to_modomics_mapping()
+
 # these colors are used when color_scheme = diagnostic
 # colors for corresponding atoms and half of their bonds
 color_list = ['red','cyan','orange','blue','pink','wheat','gold','green','brown','purple','lightgrey','lime','lightblue','magenta','teal']
@@ -924,6 +968,9 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
     modified_to_changes[modified]['changes'] = []  # empty list when no atom changes
     modified_to_changes[modified]['count'] = mod_to_count.get(modified,0)
     modified_to_changes[modified]['atom_count'] = len(mod_atom_to_element)
+
+    if modified in pdb_to_modomics_data:
+        modified_to_changes[modified]['modomics'] = pdb_to_modomics_data[modified]
 
     if modified in not_mappable_manual:
         print('Skipping modified nucleotide %5s because it is not mapped' % (modified))
