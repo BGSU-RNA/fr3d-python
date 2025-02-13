@@ -41,7 +41,7 @@ If the C1' atom has a new name, make sure to map the C1' atom to the correspondi
 Don't be fooled by a phosphate group attached to C3' or O3'; that does not correspond to the
 phosphate group on a standard nucleotide.
 
-After you add mappings, delete the newest image file(s) in base_plots so they
+After you add or fix mappings, delete the newest image file(s) in base_plots so they
 get made again, then run:
     python311 make_atom_mappings.py
     python311 refine_atom_mappings.py
@@ -51,4 +51,10 @@ and run the programs again.
 It can be hard to see all the atoms in the backbone mappings; you might need to use the ligand explorer and
 inspect the file atom_mappings.txt to see what mappings are actually made.
 
-
+To map modified RNA nucleotides to Modomics, run map_pdb_to_modomics.py, then open pdb_to_modomics.html
+to view and open pdb_to_modomics.txt to edit, perhaps with Excel since it needs to be tab delimited.
+Look for rows of the table with TODO in them.
+Carefully compare the 3D coordinates from PDB and from Modomics to see if there is an exact match.
+Pay close attention to chirality.
+Mark exact matches in pdb_to_modomics.txt as "confirmed" and incorrect matches as "no".  Save.
+Run map_pdb_to_modomics.py again to update the .txt and .html files.
