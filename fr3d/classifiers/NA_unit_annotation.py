@@ -72,7 +72,7 @@ def annotate_bond_orientation(structure,pipeline=False):
     bond_annotations = []
     error_message = []
 
-    nts = structure.residues(type = ["RNA","DNA"])  # load all RNA/DNA nucleotides
+    nts = structure.residues(type = ["RNA","DNA","PNA","SOLITARY"])  # load all RNA/DNA nucleotides
 
     announced_parents = set(['MG','NA'])  # don't mention that no parent was found
 
@@ -202,7 +202,7 @@ def annotate_self_base_backbone(structure,pipeline=False,get_datapoint=False):
     annotations = []
     error_message = []
 
-    nts = structure.residues(type = ["RNA","DNA"])  # load all RNA/DNA nucleotides
+    nts = structure.residues(type = ["RNA","DNA","PNA","SOLITARY"])  # load all RNA/DNA nucleotides
 
     unit_id_to_previous_O3 = map_unit_id_to_previous_O3(nts)
 
