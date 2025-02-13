@@ -523,7 +523,7 @@ def map_unit_id_to_previous_O3(bases):
     for base in bases:
         coordinates = get_one_atom_coordinates(base,"O3'")
         P = get_one_atom_coordinates(base,"P")
-        t = (base.model,base.symmetry,base.chain,base.index,base.unit_id(),coordinates,P)
+        t = (base.model,base.symmetry,base.chain,base.index or -99,base.unit_id(),coordinates,P)
         list_of_nucleotides.append(t)
 
     list_of_nucleotides.sort()
@@ -536,6 +536,9 @@ def map_unit_id_to_previous_O3(bases):
     unit_id_to_previous_O3 = {}
 
     for model,symmetry,chain,index,unit_id,O3_coordinates,P in list_of_nucleotides:
+
+        if not index:
+            continue
 
         if model == previous_model and symmetry == previous_symmetry and chain == previous_chain and index == previous_index + 1:
             unit_id_to_previous_O3[unit_id] = previous_O3_coordinates
