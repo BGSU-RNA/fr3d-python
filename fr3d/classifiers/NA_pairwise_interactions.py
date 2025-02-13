@@ -1279,6 +1279,12 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 # should never happen, but check, for good form
                 continue
 
+            # solitary nucleotides do not have an index, do not need this treatment
+            if not index1:
+                continue
+            if not index2:
+                continue
+
             # bases could be PSU or other modified base making WC pair
             parent1 = get_parent_as_RNA(base1,'')
             parent2 = get_parent_as_RNA(base2,'')
@@ -1458,6 +1464,11 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         if crossing == 0:
                             model1,chain1,index1,base1,symmetry1 = unit_id_to_fields[u1]
                             model2,chain2,index2,base2,symmetry2 = unit_id_to_fields[u2]
+
+                            if not index1:
+                                continue
+                            if not index2:
+                                continue
 
                             parent1 = get_parent_as_RNA(base1,'')
                             parent2 = get_parent_as_RNA(base2,'')
@@ -4125,7 +4136,7 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
 def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, output_format):
 
     if isinstance(entry_id,str):
-        entry_id = [entry_id]
+        entry_id = entry_id.split(",")
 
     # dictionary to control what specific annotations are output, in a file named for the key
     # empty list means to output all interactions in that category
@@ -4326,7 +4337,7 @@ if __name__=="__main__":
     if args.verbose:
         verbose = int(args.verbose)
 
-    entry_id = args.PDBfiles
+    entry_id = args.PDBfiles[0].split(",")
 
     generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
 
