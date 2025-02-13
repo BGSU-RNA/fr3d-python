@@ -748,10 +748,12 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                         if nt1key == nt2key:
                             if nt1.chain > nt2.chain:
                                 continue
-                            elif nt1.chain == nt2.chain and nt1.index and nt2.index and nt1.index > nt2.index:
-                                continue
-                            elif nt1.chain == nt2.chain and nt1.unit_id() > nt2.unit_id():
-                                continue
+                            elif nt1.chain == nt2.chain:
+                                if nt1.index and nt2.index:
+                                    if nt1.index > nt2.index:
+                                        continue
+                                elif nt1.unit_id() > nt2.unit_id():
+                                    continue
 
                         if len(nt2.centers["base"]) < 3:
                             if verbose >= 2:
@@ -1086,7 +1088,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                             # remove n and a from interaction, if present
                             interaction_clean = interaction.replace("n","").replace("a","")
-                            interaction_clean_reversed = reverse_edges(interaction_clean)
+                            # interaction_clean_reversed = reverse_edges(interaction_clean)
 
                             if not u1 in unit_id_to_basepairs:
                                 unit_id_to_basepairs[u1] = []
