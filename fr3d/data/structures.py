@@ -52,7 +52,6 @@ class Structure(object):
         :returns: The requested residues.
         """
 
-
         if 'type' in kwargs:
             # the following need to match how the residues are listed in files like 1R3O.cif,
             # including uppercase and lowercase versions
