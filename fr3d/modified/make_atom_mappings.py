@@ -497,7 +497,7 @@ def map_all_modified_nucleotides():
 
     nakb_mod_to_count = download_modified_nt_list()
 
-    # use nakb numbers to override local numbers
+    # use nakb numbers to override local numbers and add any new nucleotides
     for mod_nt,mod_nt_count in nakb_mod_to_count.items():
         mod_to_count[mod_nt] = mod_nt_count
 
@@ -518,29 +518,38 @@ def map_all_modified_nucleotides():
     unmapped_mod_nt = []
     c = 1
     for mod_nt, mod_nt_count in sorted(mod_to_count.items(), key=lambda x: x[1], reverse=True):
-            mod_nt_url = "https://www.rcsb.org/ligand/" + mod_nt  # for viewing
-            print("")
-            print("Processing number %3d %4s which has count %4d and url %s" % (c,mod_nt,mod_nt_count,mod_nt_url))
+        mod_nt_url = "https://www.rcsb.org/ligand/" + mod_nt  # for viewing
+        print("")
+        print("Processing number %3d %4s which has count %4d and url %s" % (c,mod_nt,mod_nt_count,mod_nt_url))
 
-            new_output = ""
-            if mod_nt in modified_to_mappings:
-                manual_mappings = modified_to_mappings[mod_nt]
-            else:
-                manual_mappings = []
-            new_output = process_one_modified_nt(mod_nt,manual_mappings)
-            if new_output:
-                output += new_output
+        new_output = ""
+        if mod_nt in modified_to_mappings:
+            manual_mappings = modified_to_mappings[mod_nt]
+        else:
+            manual_mappings = []
+        new_output = process_one_modified_nt(mod_nt,manual_mappings)
+        if new_output:
+            output += new_output
 
-            if not new_output:
-                unmapped_mod_nt.append(mod_nt)
+        if not new_output:
+            unmapped_mod_nt.append(mod_nt)
+
+        c += 1
 
 
     with open("atom_mappings_provisional.txt","w") as f:
         f.write(output)
 
-    print("Did not map the following %d nonstandard residues:" % len(unmapped_mod_nt))
-    print(sorted(unmapped_mod_nt))
-    print("You can view them in unmapped.html")
+    date_mod_nt = []
+    for mod_nt in unmapped_mod_nt:
+        cif_data = read_monomer_cif(mod_nt)
+        date_mod_nt.append((cif_data['chem_comp'][0]['pdbx_initial_date'],mod_nt))
+
+    for i, x in enumerate(sorted(date_mod_nt)):
+        date,mod_nt = x
+        print("%3d %s %s" % (i+1,date,mod_nt))
+
+    print("Did not map the %d nonstandard residues above.  Release dates are shown so you can see recent ones that may need work.  You can view them in unmapped.html" % len(unmapped_mod_nt))
 
     with open("unmapped.html","w") as f:
         f.write("<html>\n")
@@ -549,9 +558,9 @@ def map_all_modified_nucleotides():
         f.write("</head>\n")
         f.write("<body>\n")
         c = 0
-        for mod_nt in sorted(unmapped_mod_nt):
+        for date,mod_nt in sorted(date_mod_nt):
             c += 1
-            f.write("<h2>%s number %d of %d</h2>\n" % (mod_nt,c,len(unmapped_mod_nt)))
+            f.write("<h2>%s number %d of %d released %s</h2>\n" % (mod_nt,c,len(unmapped_mod_nt),date))
             f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank">%s in ligand explorer</a><br>\n' % (mod_nt,mod_nt))
             f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank"><img src="https://cdn.rcsb.org/images/ccd/unlabeled/%s/%s.svg" height="300"></a>\n' % (mod_nt,mod_nt[0],mod_nt))
         f.write("</body>\n")
