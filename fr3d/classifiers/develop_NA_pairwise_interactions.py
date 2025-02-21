@@ -41,6 +41,21 @@ from fr3d.localpath import fr3d_pickle_path
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 
 
+
+if True:
+    # Find all files in directory, read them, concatenate the lines, and write out to oo_distance_all.txt
+    directory = outputNAPairwiseInteractions
+    files = os.listdir(directory)
+    for filename in files:
+        if 'oo_distance' in filename:
+            with open(os.path.join(directory,filename),'rt') as f:
+                lines = f.readlines()
+            with open(os.path.join(directory,'oo_distance_all.txt'),'at') as f:
+                f.write(''.join(lines))
+    print(crashnow)
+
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('worker', type=str, nargs='+', help='0 for all, 1 to process evens, 2 to process odds, 3 to start at end')
 parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
@@ -85,7 +100,7 @@ if True:
     PDB_chain_set = set()
     for mt in ['RNA','DNA']:
         filename = '%s_reference_chains.csv' % mt
-        path_filename = os.path.join('C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos',filename)
+        path_filename = os.path.join('C:/Users/zirbel/Documents/PythonFR3D/data/pairs_datmos',filename)
         with open(path_filename,'rt') as f:
             lines = f.readlines()
         for line in lines:
@@ -93,6 +108,16 @@ if True:
             PDB_set.add(pdb.upper())
             PDB_chain_set.add(pdb.upper()+"|1|"+chain)
     PDB_list = list(PDB_set)
+
+# save .pickle file for plot_basepair_interactions?
+get_datapoint = True
+
+# temp for oo_distance
+if True:
+    categories = {}
+    categories['oo_distance'] = []
+    from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+    get_datapoint = False
 
 # zzz
 
@@ -217,7 +242,7 @@ for i in range(a,b,c):
         pair_file = "%s_datapoint.pickle" % (PDB)
         pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
 
-        if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles:
+        if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles or not get_datapoint:
 
             print("Reading file %s, which is number %d out of %d" % (PDB,i+1,len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
@@ -259,7 +284,7 @@ for i in range(a,b,c):
             # write_unit_data_file(PDB,fr3d_pickle_path,structure)
 
             # annotate interactions and return pair_to_data
-            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,[],timerData,True)
+            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,[],timerData,get_datapoint)
 
             # for pair,data in pair_to_data.items():
             #     print(pair,data)
@@ -270,13 +295,13 @@ for i in range(a,b,c):
                 pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
                 print('  Wrote FR3D pair file %s' % outputDataFilePickle)
 
+            if get_datapoint:
+                timerData = myTimer("Recording interactions",timerData)
+                pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),5)
+                print('  Wrote classification data file %s' % pair_to_data_output_file)
 
-            timerData = myTimer("Recording interactions",timerData)
-            pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),5)
-            print('  Wrote classification data file %s' % pair_to_data_output_file)
-
-            # write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
-            # print('  Wrote CSV file(s) to %s' % outputNAPairwiseInteractions)
+            if len(interaction_to_list_of_tuples['oo_distance']) > 0:
+                write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
 
             if len(PDBs) > 10:
                 myTimer("summary",timerData)
@@ -378,6 +403,19 @@ for i in range(a,b,c):
         if len(PDBs) > 10:
             myTimer("summary",timerData)
         myTimer("summary",timerData)
+
+# collect together all oo_distance files
+if True:
+    # Find all files in directory, read them, concatenate the lines, and write out to oo_distance_all.txt
+    directory = outputNAPairwiseInteractions
+    files = os.listdir(directory)
+    for filename in files:
+        if 'oo_distance' in filename:
+            with open(os.path.join(directory,filename),'rt') as f:
+                lines = f.readlines()
+            with open(os.path.join(directory,'oo_distance_all.txt'),'at') as f:
+                f.write(''.join(lines))
+
 
 # when appropriate, write out HTML files
 """
