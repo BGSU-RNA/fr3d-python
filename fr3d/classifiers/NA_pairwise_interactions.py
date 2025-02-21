@@ -390,7 +390,10 @@ def get_one_atom_coordinates(nt,atom_name):
     seq = nt.sequence
 
     # check if there is a mapping
-    if seq in parent_atom_to_modified:
+    if seq in ['A','C','G','U','DA','DC','DG','DT']:
+        # standard, fast
+        coordinates = nt.centers[atom_name]
+    elif seq in parent_atom_to_modified:
         # map the atom name
         if atom_name in parent_atom_to_modified[seq]:
             coordinates = nt.centers[parent_atom_to_modified[seq][atom_name]]
@@ -885,7 +888,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             datapoint21 = None
 
                         # check base to oxygen stack; always base first, oxygen second
-                        if 'so' in categories.keys():
+                        if 'so' in categories:
                             timerData = myTimer("Check base oxygen stack",timerData)
                             interaction, datapoint12, interaction_reversed = check_base_oxygen_stack_rings(nt1,nt2,parent1,datapoint12)
 
@@ -907,7 +910,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['so'].add(interaction)
                                 category_to_interactions['so'].add(interaction_reversed)
 
-                        if 'stacking' in categories.keys():
+                        if 'stacking' in categories:
                             timerData = myTimer("Check base base stack", timerData)
                             interaction, datapoint12, interaction_reversed = check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint12)
                             if len(interaction) > 0:
@@ -918,7 +921,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
                         # annotate sugar ribose interactions;
-                        if 'sugar_ribose' in categories.keys():
+                        if 'sugar_ribose' in categories:
                             timerData = myTimer("Check sugar ribose", timerData)
                             if not parent1 in ['DA','DC','DG','DT'] and not parent2 in ['DA','DC','DG','DT']:
                                 interaction, datapoint12 = check_sugar_ribose(nt1, nt2, parent1, datapoint12)
@@ -934,7 +937,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     category_to_interactions['sugar_ribose'].add(interaction)
 
                         # annotate base phosphate and base ribose interactions
-                        if 'backbone' in categories.keys():
+                        if 'backbone' in categories:
                             timerData = myTimer("Check backbone interactions", timerData)
 
                             # get coordinates of O3' of the nucleotide before nt2, part of the phosphate of nt2
@@ -950,159 +953,168 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 interaction_to_pair_list[interactionbR].append(unit_id_pair)
                                 category_to_interactions['backbone'].add(interactionbR)
 
+                        # annotate backbone oxygen-oxygen distances
+                        if 'oo_distance' in categories:
+                            pair_list = check_oo_distance(nt1,nt2,parent1,parent2)
+                            if pair_list:
+                                count_pair += 1
+                                interaction_to_pair_list['oo_distance'] += pair_list
+                                category_to_interactions['oo_distance'].add('oo_distance')
 
-                        gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
-                        if len(gly2) < 3:
-                            if verbose >= 2:
-                                print("  Missing glycosidic atom for %s" % nt2.unit_id())
-                            continue
-
-                        # always annotate cWW basepairs to be able to calculate crossing numbers
-                        # check coplanar and basepairing for bases in specific orders
-                        # AA, CC, GG, UU will be checked in both nucleotide orders, that's important
-                        if parent_pair in basepair_parent_base_combination_set:
-
-                            pair_data = {}
-                            pair_data["glycosidic_displacement"] = np.subtract(gly2,gly1)
-                            # vector from origin to nt2 when standardized
-                            pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt1.rotation_matrix)
-                            pair_data["parent1"] = parent1
-                            pair_data["parent2"] = parent2
-
-                            if 'coplanar' in categories:
-                                timerData = myTimer("Check coplanar",timerData)
-                                pair_data, datapoint12 = check_coplanar(nt1,nt2,pair_data,datapoint12)
-
-                                # annotate coplanar relationship when present
-                                if pair_data['coplanar']:
-                                    count_pair += 1
-                                    interaction_to_pair_list['cp'].append(unit_id_pair)
-                                    category_to_interactions['coplanar'].add('cp')
-                                    marked_coplanar = True
-
-                            timerData = myTimer("Check basepairing",timerData)
-
-                            cutoffs = focused_basepair_cutoffs[parent1+","+parent2]
-                            hydrogen_bonds = ideal_hydrogen_bonds[parent1+","+parent2]
-                            interaction12, subcategory12, quality12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint12)
-
-                            interaction12_reversed = reverse_edges(interaction12)
-
-                        else:
-                            interaction12 = ""
-                            interaction12_reversed = ""
-
-                        # check pair in the other order
-                        if parent_pair_reversed in basepair_parent_base_combination_set:
-
-                            pair_data = {}
-                            pair_data["glycosidic_displacement"] = np.subtract(gly1,gly2)
-                            # vector from origin to nt2 when standardized
-                            pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt2.rotation_matrix)
-                            pair_data["parent1"] = parent2
-                            pair_data["parent2"] = parent1
-
-                            if 'coplanar' in categories:
-                                timerData = myTimer("Check coplanar",timerData)
-                                pair_data, datapoint21 = check_coplanar(nt2,nt1,pair_data,datapoint21)
-
-                                # annotate coplanar relationship
-                                if pair_data['coplanar'] and not marked_coplanar:
-                                    count_pair += 1
-                                    interaction_to_pair_list['cp'].append(unit_id_pair)
-                                    category_to_interactions['coplanar'].add('cp')
-
-                            timerData = myTimer("Check basepairing",timerData)
-                            cutoffs = focused_basepair_cutoffs[parent2+","+parent1]
-                            hydrogen_bonds = ideal_hydrogen_bonds[parent2+","+parent1]
-                            interaction21, subcategory21, quality21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,hydrogen_bonds,datapoint21)
-
-                            interaction21_reversed = reverse_edges(interaction21)
-
-                        else:
-                            interaction21 = ""
-                            interaction21_reversed = ""
-
-                        # if annotated interaction in both pair orders, choose the better one
-                        if len(interaction12) > 0 and len(interaction21) > 0:
-                            conflict_message = "%5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  duplicate interaction %-5s in second direction" % (interaction21,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),interaction12_reversed)
-
-                            if interaction12_reversed.lower() == interaction21.lower():
-                                # same annotation, just different in order of edges
-                                interaction21 = ""      # ignore this one
-                                conflict_message = ""
-                            elif "n" in interaction12 and "n" in interaction21:
-                                if quality12['cutoff_distance'] < quality21['cutoff_distance']:
-                                    interaction21 = ""      # knock this one out
-                                else:
-                                    interaction12 = ""      # knock this one out
-                            elif "n" in interaction21:
-                                interaction21 = ""          # use true instead of near
-                                conflict_message = ""
-                            elif "n" in interaction12:
-                                interaction12 = ""          # use true instead of near
-                                conflict_message = ""
-                            else:
-                                # both true, but different
-                                conflict_message += "No clear way to decide between them"
-                                interaction21 = ""      # break the tie
-
-                            if len(conflict_message) > 0:
-                                if len(interaction21) > 0:
-                                    conflict_message += "  Using %s" % interaction21
-                                else:
-                                    conflict_message += "  Using %s" % interaction12_reversed
-
+                        # annotate basepairs
+                        if 'basepair' in categories:
+                            gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
+                            if len(gly2) < 3:
                                 if verbose >= 2:
-                                    print(conflict_message)
+                                    print("  Missing glycosidic atom for %s" % nt2.unit_id())
+                                continue
 
-                                # record conflicting interactions if desired
-                                if False and get_datapoint:
-                                    with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
-                                        conf.write(conflict_message+"\n")
+                            # always annotate cWW basepairs to be able to calculate crossing numbers
+                            # check coplanar and basepairing for bases in specific orders
+                            # AA, CC, GG, UU will be checked in both nucleotide orders, that's important
+                            if parent_pair in basepair_parent_base_combination_set:
 
-                        if len(interaction12) > 0:
-                            new_interaction = [interaction12,interaction12_reversed,subcategory12,quality12,nt1.unit_id(),nt2.unit_id()]
+                                pair_data = {}
+                                pair_data["glycosidic_displacement"] = np.subtract(gly2,gly1)
+                                # vector from origin to nt2 when standardized
+                                pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt1.rotation_matrix)
+                                pair_data["parent1"] = parent1
+                                pair_data["parent2"] = parent2
 
-                            if datapoint12 and datapoint21:
-                                datapoint21['basepair'] = interaction12_reversed
-                                datapoint21['basepair_subcategory'] = datapoint12['basepair_subcategory']
+                                if 'coplanar' in categories:
+                                    timerData = myTimer("Check coplanar",timerData)
+                                    pair_data, datapoint12 = check_coplanar(nt1,nt2,pair_data,datapoint12)
 
-                        elif len(interaction21) > 0:
-                            interaction21_reversed = reverse_edges(interaction21)
-                            new_interaction = [interaction21,interaction21_reversed,subcategory21,quality21,nt2.unit_id(),nt1.unit_id()]
+                                    # annotate coplanar relationship when present
+                                    if pair_data['coplanar']:
+                                        count_pair += 1
+                                        interaction_to_pair_list['cp'].append(unit_id_pair)
+                                        category_to_interactions['coplanar'].add('cp')
+                                        marked_coplanar = True
 
-                            if datapoint12 and datapoint21:
-                                datapoint12['basepair'] = interaction21_reversed
-                                datapoint12['basepair_subcategory'] = datapoint21['basepair_subcategory']
+                                timerData = myTimer("Check basepairing",timerData)
 
-                        else:
-                            new_interaction = []
+                                cutoffs = focused_basepair_cutoffs[parent1+","+parent2]
+                                hydrogen_bonds = ideal_hydrogen_bonds[parent1+","+parent2]
+                                interaction12, subcategory12, quality12, datapoint12 = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint12)
 
-                        if len(new_interaction) > 0:
-                            count_pair += 1
-                            max_center_center_distance = max(max_center_center_distance,center_center_distance)
+                                interaction12_reversed = reverse_edges(interaction12)
 
-                            # record the basepair interaction in both directions, according to edge
-                            interaction, interaction_reversed, subcategory, quality, u1, u2 = new_interaction
+                            else:
+                                interaction12 = ""
+                                interaction12_reversed = ""
 
-                            # remove n and a from interaction, if present
-                            interaction_clean = interaction.replace("n","").replace("a","")
-                            # interaction_clean_reversed = reverse_edges(interaction_clean)
+                            # check pair in the other order
+                            if parent_pair_reversed in basepair_parent_base_combination_set:
 
-                            if not u1 in unit_id_to_basepairs:
-                                unit_id_to_basepairs[u1] = []
-                            unit_id_to_basepairs[u1].append([interaction,quality,u2])
+                                pair_data = {}
+                                pair_data["glycosidic_displacement"] = np.subtract(gly1,gly2)
+                                # vector from origin to nt2 when standardized
+                                pair_data["displ12"] = np.dot(pair_data["glycosidic_displacement"],nt2.rotation_matrix)
+                                pair_data["parent1"] = parent2
+                                pair_data["parent2"] = parent1
 
-                            if not u2 in unit_id_to_basepairs:
-                                unit_id_to_basepairs[u2] = []
+                                if 'coplanar' in categories:
+                                    timerData = myTimer("Check coplanar",timerData)
+                                    pair_data, datapoint21 = check_coplanar(nt2,nt1,pair_data,datapoint21)
 
-                            quality_reversed = {}
-                            quality_reversed['cutoff_distance'] = quality['cutoff_distance']
-                            quality_reversed['max_gap'] = quality['max_gap']
-                            quality_reversed['atoms1'] = quality['atoms2']
-                            quality_reversed['atoms2'] = quality['atoms1']
-                            unit_id_to_basepairs[u2].append([interaction_reversed,quality_reversed,u1])
+                                    # annotate coplanar relationship
+                                    if pair_data['coplanar'] and not marked_coplanar:
+                                        count_pair += 1
+                                        interaction_to_pair_list['cp'].append(unit_id_pair)
+                                        category_to_interactions['coplanar'].add('cp')
+
+                                timerData = myTimer("Check basepairing",timerData)
+                                cutoffs = focused_basepair_cutoffs[parent2+","+parent1]
+                                hydrogen_bonds = ideal_hydrogen_bonds[parent2+","+parent1]
+                                interaction21, subcategory21, quality21, datapoint21 = check_basepair_cutoffs(nt2,nt1,pair_data,cutoffs,hydrogen_bonds,datapoint21)
+
+                                interaction21_reversed = reverse_edges(interaction21)
+
+                            else:
+                                interaction21 = ""
+                                interaction21_reversed = ""
+
+                            # if annotated interaction in both pair orders, choose the better one
+                            if len(interaction12) > 0 and len(interaction21) > 0:
+                                conflict_message = "%5s %-22s %-22s  https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s  duplicate interaction %-5s in second direction" % (interaction21,nt1.unit_id(),nt2.unit_id(),nt1.unit_id(),nt2.unit_id(),interaction12_reversed)
+
+                                if interaction12_reversed.lower() == interaction21.lower():
+                                    # same annotation, just different in order of edges
+                                    interaction21 = ""      # ignore this one
+                                    conflict_message = ""
+                                elif "n" in interaction12 and "n" in interaction21:
+                                    if quality12['cutoff_distance'] < quality21['cutoff_distance']:
+                                        interaction21 = ""      # knock this one out
+                                    else:
+                                        interaction12 = ""      # knock this one out
+                                elif "n" in interaction21:
+                                    interaction21 = ""          # use true instead of near
+                                    conflict_message = ""
+                                elif "n" in interaction12:
+                                    interaction12 = ""          # use true instead of near
+                                    conflict_message = ""
+                                else:
+                                    # both true, but different
+                                    conflict_message += "No clear way to decide between them"
+                                    interaction21 = ""      # break the tie
+
+                                if len(conflict_message) > 0:
+                                    if len(interaction21) > 0:
+                                        conflict_message += "  Using %s" % interaction21
+                                    else:
+                                        conflict_message += "  Using %s" % interaction12_reversed
+
+                                    if verbose >= 2:
+                                        print(conflict_message)
+
+                                    # record conflicting interactions if desired
+                                    if False and get_datapoint:
+                                        with open(os.path.join(outputNAPairwiseInteractions,'conflicting.txt'),'a') as conf:
+                                            conf.write(conflict_message+"\n")
+
+                            if len(interaction12) > 0:
+                                new_interaction = [interaction12,interaction12_reversed,subcategory12,quality12,nt1.unit_id(),nt2.unit_id()]
+
+                                if datapoint12 and datapoint21:
+                                    datapoint21['basepair'] = interaction12_reversed
+                                    datapoint21['basepair_subcategory'] = datapoint12['basepair_subcategory']
+
+                            elif len(interaction21) > 0:
+                                interaction21_reversed = reverse_edges(interaction21)
+                                new_interaction = [interaction21,interaction21_reversed,subcategory21,quality21,nt2.unit_id(),nt1.unit_id()]
+
+                                if datapoint12 and datapoint21:
+                                    datapoint12['basepair'] = interaction21_reversed
+                                    datapoint12['basepair_subcategory'] = datapoint21['basepair_subcategory']
+
+                            else:
+                                new_interaction = []
+
+                            if len(new_interaction) > 0:
+                                count_pair += 1
+                                max_center_center_distance = max(max_center_center_distance,center_center_distance)
+
+                                # record the basepair interaction in both directions, according to edge
+                                interaction, interaction_reversed, subcategory, quality, u1, u2 = new_interaction
+
+                                # remove n and a from interaction, if present
+                                interaction_clean = interaction.replace("n","").replace("a","")
+                                # interaction_clean_reversed = reverse_edges(interaction_clean)
+
+                                if not u1 in unit_id_to_basepairs:
+                                    unit_id_to_basepairs[u1] = []
+                                unit_id_to_basepairs[u1].append([interaction,quality,u2])
+
+                                if not u2 in unit_id_to_basepairs:
+                                    unit_id_to_basepairs[u2] = []
+
+                                quality_reversed = {}
+                                quality_reversed['cutoff_distance'] = quality['cutoff_distance']
+                                quality_reversed['max_gap'] = quality['max_gap']
+                                quality_reversed['atoms1'] = quality['atoms2']
+                                quality_reversed['atoms2'] = quality['atoms1']
+                                unit_id_to_basepairs[u2].append([interaction_reversed,quality_reversed,u1])
 
                         # store data for diagnostics, if requested
                         if datapoint12:
@@ -1150,20 +1162,23 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     if verbose >= 3:
         print("  Maximum screen distance for actual contacts is %8.4f" % max_center_center_distance)
 
-    # calculate and save crossing numbers for each annoated interaction
-    timerData = myTimer("Calculate crossing",timerData)
-    if len(overlapping_chains) == 0:
-        interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,categories)
+    if 'basepair' in categories:
+        # calculate and save crossing numbers for each annoated interaction
+        timerData = myTimer("Calculate crossing",timerData)
+        if len(overlapping_chains) == 0:
+            interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,categories)
+        else:
+            interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,{})
+
+            with open('pdb_with_overlapping_chains','a') as f:
+                for s1,c1,s2,c2 in overlapping_chains:
+                    f.write("%s\t%s\t%s\t%s\t%s\n" % (file_id,s1,c1,s2,c2))
+
+        if 'bSS' in interaction_to_list_of_tuples:
+            category_to_interactions['bss'] = set(['bSS'])
     else:
-        interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,{})
-
-        with open('pdb_with_overlapping_chains','a') as f:
-            for s1,c1,s2,c2 in overlapping_chains:
-                f.write("%s\t%s\t%s\t%s\t%s\n" % (file_id,s1,c1,s2,c2))
-
-
-    if 'bSS' in interaction_to_list_of_tuples:
-        category_to_interactions['bss'] = set(['bSS'])
+        # this is probably not going to end well
+        interaction_to_list_of_tuples = interaction_to_pair_list
 
     return interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data
 
@@ -1348,7 +1363,9 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         if interaction == "":
             continue
 
-        for u1,u2 in interaction_to_pair_list[interaction]:
+        for itpl in interaction_to_pair_list[interaction]:
+            u1 = itpl[0]
+            u2 = itpl[1]
             if (u1,u2) in pairs_to_crossing:
                 # no need to re-compute
                 crossing = pairs_to_crossing[(u1,u2)]
@@ -1427,7 +1444,14 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
 
                 pairs_to_crossing[(u1,u2)] = crossing
 
-            interaction_to_list_of_tuples[interaction].append((u1,u2,crossing))
+            if len(itpl) > 2:
+                # change to list to be able to change or add the crossing number
+                itpl_list = list(itpl)
+                itpl_list[2] = crossing
+                new_tuple = tuple(itpl_list)
+            else:
+                new_tuple = (u1,u2,crossing)
+            interaction_to_list_of_tuples[interaction].append(new_tuple)
 
             # duplicate certain pairs in reversed order; saves time this way
             if interaction in ["s33","s35","s53","s55","ns33","ns35","ns53","ns55"]:
@@ -2111,10 +2135,10 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
     structure is an output from
     """
 
-    if not focused_basepair_cutoffs:
+    if not focused_basepair_cutoffs and 'basepair' in categories:
         focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
 
-    if not ideal_hydrogen_bonds:
+    if not ideal_hydrogen_bonds and 'basepair' in categories:
         ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
 
     # structures.py controls what residues are returned, that sometimes needs to be expanded
@@ -2788,7 +2812,8 @@ def look_up_atom_coordinates(nt, firstAtoms = [], secondAtoms = []):
     return firstAtomCoordinates, secondAtomCoordinates
 
 def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrogens,nt1, parent1):
-    """Method used to add modified nucleotides to a dictionary that is used for processing in function check_base_backbone_interactions.
+    """
+    Method used to add modified nucleotides to a dictionary that is used for processing in function check_base_backbone_interactions.
     This method finds atoms in a modified nucleotide that correspond with the atoms in that modified nucleotides parent.
     Checks to see if atom of modified base has the same name as its parents, if it does the parents relevent information is added to the dictionary
     for the key of the modified bases name.
@@ -2805,6 +2830,7 @@ def base_backbone_modified_nucleotide_dictionary_processing(baseMassiveAndHydrog
                 if atoms.name in atom[1]:
                     baseMassiveAndHydrogens[nt1.sequence].append(atom)
     return baseMassiveAndHydrogens
+
 
 def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoint):
     """
@@ -2983,6 +3009,50 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
                 #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),ribose,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
 
     return phosphate, ribose, datapoint
+
+
+def add_atom_to_unit_id(unit_id, atom_name):
+    """
+    Add an atom name to a unit id.
+    """
+
+    fields = unit_id.split('|')
+    if len(fields) == 5:
+        u = unit_id + '|' + atom_name
+    else:
+        fields[5] = atom_name
+        u = '|'.join(fields)
+
+    return u
+
+
+def check_oo_distance(nt1,nt2,parent1,parent2):
+    """
+    Find pairs of OP1 and OP2 atoms in different nucleotides that are
+    close enough to accommodate ion binding
+    """
+
+    pair_list = []
+    oxygens = ["OP1","OP2"]
+    for oxygen1 in oxygens:
+        oxygen1_coords = get_one_atom_coordinates(nt1, oxygen1)
+        if oxygen1_coords.any():
+            for oxygen2 in oxygens:
+                oxygen2_coords = get_one_atom_coordinates(nt2, oxygen2)
+                if oxygen2_coords.any():
+                    distance = distance_between_vectors(oxygen1_coords, oxygen2_coords)
+                    if distance < 3.5:
+                        u1 = nt1.unit_id()
+                        u2 = nt2.unit_id()
+                        a1 = add_atom_to_unit_id(u1, oxygen1)
+                        a2 = add_atom_to_unit_id(u2, oxygen2)
+
+                        # unlike other interactions, store distance and new atom ids
+                        pair_list.append((u1, u2, None, a1, a2, distance))
+                        print('OO distance %20s %20s %10.4f' % (a1, a2, distance))
+
+    return pair_list
+
 
 def check_coplanar(nt1,nt2,pair_data,datapoint):
     """
@@ -4057,14 +4127,25 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
 
             # if this category has a restricted list of interactions to output
             if len(categories[category]) == 0 or inter in categories[category]:
-                for a,b,c in interaction_to_list_of_tuples[interaction]:
-                    quads_to_write.append((a,inter,b,c))
+                for itpl in interaction_to_list_of_tuples[interaction]:
+                    if len(itpl) == 3:
+                        a,b,c = itpl
+                        quads_to_write.append((a,inter,b,c))
+                    else:
+                        if interaction == 'oo_distance':
+                            print(itpl)
+                            u1, u2, crossing, a1, a2, distance = itpl
+                            url = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
+                            quads_to_write.append((a1,inter,a2,crossing,"%0.4f" % distance,url))
 
         # sort quads by model, first chain, first number, first unit id (for alt id, insertion code, symmetry), interaction
         ordered = sorted(quads_to_write, key=lambda x: (int(x[0].split("|")[1]) or 0,x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1],x[2]))
         with open(filename,'w') as f:
-            for a,b,c,d in ordered:
-                f.write("%s\t%s\t%s\t%s\n" % (a,b,c,d))
+            for o in ordered:
+                if len(o) == 4:
+                    f.write("%s\t%s\t%s\t%s\n" % (o))
+                elif len(o) == 6:
+                    f.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (o))
 
     if 'loops' in interaction_to_list_of_tuples:
         # follow format used by https://rna.bgsu.edu/rna3dhub/loops/download_with_breaks/8GLP
@@ -4146,9 +4227,13 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
     categories = {}
 
     if category:
-        for category in category.split(","):
-            categories[category.lower()] = []
-            categories['basepair'] = []         # always basepairs, to get crossing numbers
+        category_list = category.split(",")
+        if len(category_list) == 1 and category_list[0] == "oo_distance":
+            categories['oo_distance'] = []
+        else:
+            for category in category_list:
+                categories[category.lower()] = []
+                categories['basepair'] = []         # always basepairs, to get crossing numbers
     else:
         # default is to annotate and write just "true" basepairs
         categories['basepair'] = Leontis_Westhof_basepairs
@@ -4217,8 +4302,12 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
         chains = []
 
     # restrict dictionary of cutoffs to just the basepairs needed here
-    focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
-    ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
+    if 'basepair' in categories:
+        focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,categories['basepair'])
+        ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
+    else:
+        focused_basepair_cutoffs = {}
+        ideal_hydrogen_bonds = {}
 
     """
     for combination in ideal_hydrogen_bonds:
@@ -4300,7 +4389,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,loops)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,loops,oo_distance)')
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2,3)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
