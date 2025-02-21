@@ -2,7 +2,7 @@
 "unitID": ["4V9F|1|0|G|2692", "4V9F|1|0|U|2693", "4V9F|1|0|A|2694", "4V9F|1|0|G|2701", "4V9F|1|0|A|2702"],
 "numpositions": 5,
 "discrepancy": 0.3,
-"searchFiles": ["4V9F"],
+"searchFiles": ["4V9F","7K00"],
 "printInputQuery": 1,
 "printProcessedQuery": 0,
 "printSearchFiles": 10,
