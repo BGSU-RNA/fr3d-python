@@ -825,14 +825,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
 
                         # avoid comparing alternate coordinates of the same nucleotide
                         # check in the order most likely to terminate the fastest
+                        # do not check sequence, because sometimes ||A and ||B forms have different sequence
                         if number1 == nt2.number:
-                            if nt1.sequence == nt2.sequence:
-                                if nt1.chain == nt2.chain:
-                                    if nt1.symmetry == nt2.symmetry:
-                                        if nt1.insertion_code == nt2.insertion_code:
-                                            if nt1.alt_id != nt2.alt_id:
-                                                #print("Skipping pair of alternate coordinates", (nt1.unit_id(),nt2.unit_id()))
-                                                continue
+                            if nt1.chain == nt2.chain:
+                                if nt1.symmetry == nt2.symmetry:
+                                    if nt1.insertion_code == nt2.insertion_code:
+                                        if nt1.alt_id != nt2.alt_id:
+                                            #print("Skipping pair of alternate coordinates", (nt1.unit_id(),nt2.unit_id()))
+                                            continue
 
                         # calculate actual center-center distance, screen
                         center_center_distance = np.linalg.norm(displacement)
@@ -3033,6 +3033,15 @@ def check_oo_distance(nt1,nt2,parent1,parent2):
     """
 
     pair_list = []
+
+    # identify some cases where nucleotides overlap, exclude those
+    p1 = get_one_atom_coordinates(nt1, "P")
+    p2 = get_one_atom_coordinates(nt2, "P")
+    if p1.any() and p2.any():
+        distance = distance_between_vectors(p1, p2)
+        if distance < 3.0:
+            return pair_list
+
     oxygens = ["OP1","OP2"]
     for oxygen1 in oxygens:
         oxygen1_coords = get_one_atom_coordinates(nt1, oxygen1)
