@@ -158,7 +158,7 @@ def get_CIFPATH(Q):
             print("Error: Could not find CIFPATH in query or in fr3d_configuration.py")
             Q["errorMessage"].append("Error: Could not find CIFPATH in query or in fr3d_configuration.py")
             Q["errorStatus"] = "write and exit"
-            return Q
+            return Q, None
 
     directory = CIFPATH
     try:
@@ -171,7 +171,7 @@ def get_CIFPATH(Q):
             print("Error: Could not make " + directory + " directory")
             Q["errorMessage"].append("Error: Could not make " + directory + " directory")
             Q["errorStatus"] = "write and exit"
-            return Q
+            return Q, None
 
     return Q, CIFPATH
 
@@ -396,6 +396,9 @@ def processPDBFile(Q,structure_filename,file_id=None,pairs_only=False):
         cifPathAndFileName = structure_filename
     else:
         Q, CIFPATH = get_CIFPATH(Q)
+
+        if CIFPATH is None:
+            return [], file_id, messages
 
         if '|' in structure_filename:
             # chain identifier given, extract file_id and look in CIFPATH
