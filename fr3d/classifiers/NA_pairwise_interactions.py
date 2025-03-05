@@ -1152,6 +1152,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                     category_to_interactions['basepair_detail'].add(interaction)
                     category_to_interactions['basepair_detail'].add(interaction_reversed)
 
+    file_id = ""
     for nt in bases:
         file_id = nt.pdb
         break
