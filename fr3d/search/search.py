@@ -732,6 +732,15 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                         indices = [a for (a, b) in interactionToPairs[interaction][0]]
                         universe[i] = universe[i] - set(indices)
 
+    if "solitary" in Q:
+        for i in range(0, numPositions):
+            if len(Q["solitary"][i]) > 0:
+                temp_universe = set([])
+                for index in universe[i]:
+                    if (units[index]["chainindex"] is None) == Q["solitary"][i][0]:
+                        temp_universe.add(index)
+                universe[i] = universe[i] & temp_universe
+
     if "glycosidicBondOrientation" in Q:
         for i in range(0, numPositions):
             if len(Q["glycosidicBondOrientation"][i]) > 0:
@@ -843,21 +852,27 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                             for m in range(0, len(universe[i])):
                                 a = sorted_universe[i][m]
                                 p = units[a]["chainindex"]  # sequence position
+
+                                if p is None:
+                                    # solitary nucleotide, cannot meet a between constraint
+                                    continue
+
                                 n = 0
                                 b = sorted_universe[j][n]
                                 q = units[b]["chainindex"]  # sequence position
 
                                 # probe for the first match
-                                while n < len(universe[j]) - 1 and q - p <= constraint[1]:
+                                while n < len(universe[j]) - 1 and (q is None or q - p <= constraint[1]):
                                     n += 1
                                     b = sorted_universe[j][n]
                                     q = units[b]["chainindex"]  # sequence position
 
                                 # accumulate matches
                                 while n < len(universe[j]):
-                                    if q - p > constraint[1] and q - p < constraint[2]:
-                                        if a != b and modelChainSymmetry[a] == modelChainSymmetry[b]:
-                                            newList.append((a, b))
+                                    if q is not None:
+                                        if q - p > constraint[1] and q - p < constraint[2]:
+                                            if a != b and modelChainSymmetry[a] == modelChainSymmetry[b]:
+                                                newList.append((a, b))
                                     n += 1
                                     if n < len(universe[j]):
                                         b = sorted_universe[j][n]
@@ -867,9 +882,16 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                 p = units[a]["chainindex"]  # sequence position
                                 q = units[b]["chainindex"]  # sequence position
 
-                                if modelChainSymmetry[a] == modelChainSymmetry[b] and (
-                                q - p > constraint[1]) and q - p < constraint[2]:
-                                    newList.append((a, b))
+                                # print(a,b,p,q,modelChainSymmetry[a],modelChainSymmetry[b])
+
+                                # make sure p and q are not None, but could be 0
+                                if p is not None and q is not None:
+                                    if modelChainSymmetry[a] == modelChainSymmetry[b]:
+                                        if q - p > constraint[1] and q - p < constraint[2]:
+
+                                            # print(a,b,p,q,'added')
+
+                                            newList.append((a, b))
                         listOfPairs[i][j] = newList
                         positions_and_counts.append((i,j,len(listOfPairs[i][j])))
 
@@ -886,14 +908,14 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                 q = units[b]["chainindex"]  # sequence position
                                 # probe for the first match
                                 while n < len(universe[j]) - 1 and (
-                                modelChainSymmetry[a] != modelChainSymmetry[b] or q - p <= constraint[1]):
+                                modelChainSymmetry[a] != modelChainSymmetry[b] or q is None or q - p <= constraint[1]):
                                     n += 1
                                     b = sorted_universe[j][n]
                                     q = units[b]["chainindex"]  # sequence position
                                 # accumulate matches
-                                while n < len(universe[j]) and (
-                                modelChainSymmetry[a] == modelChainSymmetry[b] and q - p < constraint[2]):
-                                    if a != b and q-p in constraint[3]:
+                                while n < len(universe[j]) and\
+                                modelChainSymmetry[a] == modelChainSymmetry[b] and (q is None or q - p < constraint[2]):
+                                    if a != b and q is not None and q-p in constraint[3]:
                                         newList.append((a, b))
                                     if not foundOne:
                                         starting_n = n
@@ -906,9 +928,9 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                             for (a, b) in listOfPairs[i][j]:
                                 p = units[a]["chainindex"]  # sequence position
                                 q = units[b]["chainindex"]  # sequence position
-
-                                if modelChainSymmetry[a] == modelChainSymmetry[b] and q - p in constraint[3]:
-                                    newList.append((a, b))
+                                if p is not None and q is not None:
+                                    if modelChainSymmetry[a] == modelChainSymmetry[b] and q - p in constraint[3]:
+                                        newList.append((a, b))
                         listOfPairs[i][j] = newList
                         positions_and_counts.append((i,j,len(listOfPairs[i][j])))
 
@@ -920,6 +942,10 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                 foundOne = False
                                 a = sorted_universe[i][m]
                                 p = units[a]["chainindex"]  # sequence position
+
+                                if p is None:
+                                    continue
+
                                 n = starting_n
                                 b = sorted_universe[j][n]
                                 q = units[b]["chainindex"]  # sequence position
@@ -930,7 +956,7 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                     q = units[b]["chainindex"]  # sequence position
                                 # accumulate matches
                                 while n < len(universe[j]) and modelChainSymmetry[a] == modelChainSymmetry[b]:
-                                    if a != b and (q-p < constraint[1] or q-p > constraint[2]):
+                                    if a != b and q is not None and (q-p < constraint[1] or q-p > constraint[2]):
                                         newList.append((a,b))
                                     if not foundOne:
                                         starting_n = n
@@ -944,14 +970,18 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                 p = units[a]["chainindex"]  # sequence position
                                 q = units[b]["chainindex"]  # sequence position
 
-                                if modelChainSymmetry[a] == modelChainSymmetry[b] and (
-                                q-p < constraint[1] or q-p > constraint[2]):
-                                    newList.append((a,b))
+                                if p is not None and q is not None:
+                                    if modelChainSymmetry[a] == modelChainSymmetry[b]:
+                                        if q-p < constraint[1] or q-p > constraint[2]:
+                                            newList.append((a,b))
                         listOfPairs[i][j] = newList
                         positions_and_counts.append((i,j,len(listOfPairs[i][j])))
 
         # propagate each shortened list of pairs to the affected universes, very quick
         timerData = myTimer("Reduce universes after cont'y")
+
+        # print(listOfPairs)
+
         universe, emptyUniverse = pruneUniversesWithPairs(universe, listOfPairs, positions_and_counts)
         if Q.get('printListLengths', False):
             printListLengths(Q, numPositions, universe, listOfPairs, "After continuity constraints and reducing their universes.")

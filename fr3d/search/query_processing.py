@@ -939,8 +939,10 @@ def calculateQueryConstraints(Q):
         foundGlycosidicBondOrientation = False
         Q["chiAngle"] = [None] * Q["numPositions"]
         Q["chainLength"] = [None] * Q["numPositions"]
+        Q["solitary"] = [None] * Q["numPositions"]
         foundChiAngle = False
         foundChainLength = False
+        foundSolitaryConstraint = False
 
         # process unary constraints
         for i in range(Q["numPositions"]):
@@ -952,6 +954,8 @@ def calculateQueryConstraints(Q):
                 Q["requiredMoleculeType"][i] = set(Q["requiredMoleculeType"][i])
             Q["chiAngle"][i] = []
             Q["chainLength"][i] = []
+
+            Q["solitary"][i] = []
 
             if Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0:
                 # if "repSetType" in Q and "DNA" in Q["repSetType"]:
@@ -1102,6 +1106,14 @@ def calculateQueryConstraints(Q):
                         Q["glycosidicBondOrientation"][i].append("syn")
                         foundGlycosidicBondOrientation = True
 
+                    elif iMlower == "~solitary" or iMlower == "~sol":
+                        Q["solitary"][i].append(False)
+                        foundSolitaryConstraint = True
+
+                    elif iMlower == "solitary" or iMlower == "sol":
+                        Q["solitary"][i].append(True)
+                        foundSolitaryConstraint = True
+
                     elif iMlower == "glyco" or iMlower == "glycosidic":
                         Q["showGlycosidicBondOrientation"] = True
                         foundGlycosidicBondOrientation = True
@@ -1165,6 +1177,8 @@ def calculateQueryConstraints(Q):
             del Q["chiAngle"]
         if not foundChainLength:
             del Q["chainLength"]
+        if not foundSolitaryConstraint:
+            del Q["solitary"]
 
         # for unary constraints, we need to consider the possibility of things separated by spaces or commas
         # could be "AG" for RNA A or G
