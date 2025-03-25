@@ -59,7 +59,7 @@ from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
 from fr3d.geometry.superpositions import besttransformation
 from fr3d.modified.make_atom_mappings import read_monomer_cif
-from fr3d.modified.make_atom_mappings import download_modified_nt_list
+from fr3d.modified.make_atom_mappings import download_nakb_modified_nt_list
 
 from collections import defaultdict
 import imageio
@@ -429,7 +429,6 @@ def pyramidal_hydrogens(P1,C,P2,bondLength=1.1):
 
 def get_mod_atom_closest_to(atom_list, parent_to_modified_atom, mod_coordinates, bond_length=1.1):
     # use tetrahedral geometry to infer the location of the hydrogen atoms
-    # zzz
 
     c = []
     for a in atom_list:
@@ -437,29 +436,49 @@ def get_mod_atom_closest_to(atom_list, parent_to_modified_atom, mod_coordinates,
             b = parent_to_modified_atom[a]
             c.append(np.array(mod_coordinates[b]))
         else:
-            return None, None, None, None
+            return None, None, None, None, None, None
 
     # compute location of H5' from C4', C5', O5', for example
     p, q = pyramidal_hydrogens(c[0],c[1],c[2],bond_length)
 
-    mapped_to = set(parent_to_modified_atom.values())
-
-    min_dist = 1
-    min_atom = None
-    # min_d = None
+    left_min_dist = 1
+    left_min_atom = ""
+    right_min_dist = 1
+    right_min_atom = ""
     for b in mod_coordinates.keys():
-        if not b in mapped_to:
-            d = np.array(mod_coordinates[b])
-            dist = np.linalg.norm(p-d)
-            if dist < min_dist:
-                min_dist = dist
-                min_atom = b
-                # min_d = d
+        d = np.array(mod_coordinates[b])
+        right_dist = np.linalg.norm(p-d)
+        if right_dist < right_min_dist:
+            right_min_dist = right_dist
+            right_min_atom = b
+        left_dist = np.linalg.norm(q-d)
+        if left_dist < left_min_dist:
+            left_min_dist = left_dist
+            left_min_atom = b
 
     # if min_atom:
     #     print('Hydrogen bond length is %8.4f' % np.linalg.norm(c[1]-min_d))
 
-    return min_atom, min_dist, p, q
+    return left_min_atom, left_min_dist, p, right_min_atom, right_min_dist, q
+
+    # mapped_to = set(parent_to_modified_atom.values())
+
+    # min_dist = 1
+    # min_atom = None
+    # # min_d = None
+    # for b in mod_coordinates.keys():
+    #     if not b in mapped_to:
+    #         d = np.array(mod_coordinates[b])
+    #         dist = np.linalg.norm(p-d)
+    #         if dist < min_dist:
+    #             min_dist = dist
+    #             min_atom = b
+    #             # min_d = d
+
+    # # if min_atom:
+    # #     print('Hydrogen bond length is %8.4f' % np.linalg.norm(c[1]-min_d))
+
+    # return min_atom, min_dist, p, q
 
 
 def draw_base_coordinates(base_seq,coordinates,connections,atom_to_display,ax,limits=None,shift=(0,0,0)):
@@ -635,6 +654,8 @@ def keep_unique_changes(modified_changes):
     view_order['chirality_reversal'] = 4
     view_order['added_bond'] = 5
     view_order['removed_bond'] = 6
+    view_order['over_under'] = 7
+    view_order['over_under_reversal'] = 8
 
 
     modified_changes['changes'] = sorted(modified_changes['changes'], key = lambda x : (x['change_location'],view_order[x['change_type']],x.get('parent_atom',""),x.get('modified_atom',''),x.get('new_modified_atom','')))
@@ -743,7 +764,7 @@ parent_to_modified_atom, modified_to_parent_atom, modified_base_to_parent, not_m
 parent_to_modified_atom_manual, modified_to_parent_atom_manual, modified_base_to_parent_manual, not_mappable_manual = read_atom_mappings("atom_mappings_manual.txt")
 
 # download modified nucleotide counts
-mod_to_count = download_modified_nt_list()
+mod_to_count = download_nakb_modified_nt_list()
 
 # get confirmed mappings from PDB identifiers to Modomics
 pdb_to_modomics_data = get_pdb_to_modomics_mapping()
@@ -939,6 +960,10 @@ if False:
 # keep track of changes
 modified_to_changes = {}
 modified_list = []
+modified_to_atoms = {}
+
+# DNA that have O2'
+DNA_with_O2_prime_counter = 0
 
 # loop over modified nucleotides
 # include standard nucleotides to also make images for
@@ -968,6 +993,7 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
     modified_to_changes[modified]['changes'] = []  # empty list when no atom changes
     modified_to_changes[modified]['count'] = mod_to_count.get(modified,0)
     modified_to_changes[modified]['atom_count'] = len(mod_atom_to_element)
+    modified_to_atoms[modified] = set(mod_atom_to_element.keys())
 
     if modified in pdb_to_modomics_data:
         modified_to_changes[modified]['modomics'] = pdb_to_modomics_data[modified]
@@ -1100,6 +1126,68 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
                         parent_to_modified_atom[modified][par_atom] = nearest_mod_atom
                         modified_to_parent_atom[modified][nearest_mod_atom] = par_atom
 
+    # determine whether bonds on certain ribose atoms are "over" or "under" the ring
+    over_under_change_count = 0
+
+    target_list = []
+    target_list.append((["C2'","C3'","C4'"],"O3'","O","H3'","H"))
+    target_list.append((["O4'","C4'","C3'"],"C5'","C","H4'","H"))
+    if parent in ['A','G','DA','DG']:
+        target_list.append((["C2'","C1'","O4'"],"N9","N","H1'","H"))
+    else:
+        target_list.append((["C2'","C1'","O4'"],"N1","N","H1'","H"))
+    if parent in ['A','C','G','U'] or "O2'" in mod_atom_to_element.keys():
+        target_list.append((["C1'","C2'","C3'"],"O2'","O","H2'","H"))
+
+    # if "O2'" in mod_atom_to_element.keys() and not parent in ['A','C','G','U']:
+    #     print("Parent %s modified %s has O2'" % (parent,modified))
+    #     input("Press Enter to continue")
+
+    for parent_atom_list,left_target,left_a,right_target,right_a in target_list:
+        left_atom, left_distance, left_coordinate, right_atom, right_distance, right_coordinate \
+        = get_mod_atom_closest_to(parent_atom_list,parent_to_modified_atom[modified],mod_coordinates,1.25)
+        if left_atom:
+            print("Modified atom closest to normal %s location is %-4s distance %8.2f" % (left_target,left_atom,left_distance))
+        if right_atom:
+            print("Modified atom closest to normal %s location is %-4s distance %8.2f" % (right_target,right_atom,right_distance))
+        # if the left atom is no longer the original element, but the right one is, an over/under change happened
+        if not mod_atom_to_element.get(left_atom,"") == left_a and mod_atom_to_element.get(right_atom,"") == left_a:
+            # local_show_backbone_figure = True
+
+            target_maps_to = parent_to_modified_atom[modified].get(left_target,"")
+
+            print("Over/under change for parent %-4s mapped to modified %-4s" % (left_target,target_maps_to))
+
+            over_under_change_count += 1
+            change_dict = {}
+            change_dict['change_type'] = 'over_under'
+            change_dict['change_location'] = 'ribose'
+            change_dict['parent_atom'] = left_target
+            change_dict['modified_atom'] = target_maps_to
+            modified_to_changes[modified]['changes'].append(change_dict)
+
+        if left_target == "O2'" and not parent in ['A','C','G','U']:
+            # DNA parent but modified has O2'
+            DNA_with_O2_prime_counter += 1
+            t = "Number %s\n" % DNA_with_O2_prime_counter
+            t += "%s has parent %s but has O2'\n" % (modified,parent)
+            t += "chem_comp.type is %s\n" % modified_to_changes[modified]['pdb']['chem_comp_type']
+            t += "mon_nstd_parent_comp_id is %s\n" % modified_to_changes[modified]['pdb']['par_comp_id']
+            t += "one_letter_code is %s\n" % modified_to_changes[modified]['pdb']['one_letter_code']
+            if not mod_atom_to_element.get(left_atom,"") == left_a and mod_atom_to_element.get(right_atom,"") == left_a:
+                t += "Over/under change for parent %-4s mapped to modified %-4s\n" % (left_target,target_maps_to)
+            t += "\n"
+            with open("DNA_with_O2_prime.txt","a") as f:
+                f.write(t)
+
+    if over_under_change_count == len(target_list):
+
+        print('All %d target ribose atoms are over/under changes' % over_under_change_count)
+        change_dict = {}
+        change_dict['change_type'] = 'over_under_reversal'
+        change_dict['change_location'] = 'ribose'
+        modified_to_changes[modified]['changes'].append(change_dict)
+
     # attempt to map some backbone hydrogens if not already done
     hydrogen_to_heavy = {}
     hydrogen_to_heavy["H5'"]  = ["C4'","C5'","O5'"]
@@ -1112,13 +1200,14 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
         if not a in par_atom_to_element[parent]:
             continue
         if not a in parent_to_modified_atom[modified]:
-            b, d, p, q = get_mod_atom_closest_to(atom_list,parent_to_modified_atom[modified],mod_coordinates)
-            if b:
-                parent_to_modified_atom[modified][a] = b
-                modified_to_parent_atom[modified][b] = a
-                print("Mapping standard %-4s to modified %-4s distance %8.2f" % (a,b,d))
+                left_atom, left_distance, left_coordinate, right_atom, right_distance, right_coordinate \
+                = get_mod_atom_closest_to(atom_list,parent_to_modified_atom[modified],mod_coordinates)
+                if left_atom and not left_atom in parent_to_modified_atom[modified].values():
+                    parent_to_modified_atom[modified][a] = left_atom
+                    modified_to_parent_atom[modified][left_atom] = a
+                    print("Mapping standard %-4s to modified %-4s distance %8.2f" % (a,left_atom,left_distance))
 
-    # note chirality changes
+    # note chirality changes from .cif file using IUPAC definition
     reversal = True
     num_RS_changes = 0
     for a, b in parent_to_modified_atom[modified].items():
@@ -1341,8 +1430,10 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
 
         if backbone:
             figure_save_file = os.path.join(output_directory,"backbone_plots",'backbone_%s_%s.png' % (parent,modified))
+            figure_save_file = os.path.join(output_directory,"img",'backbone_%s_%s.png' % (parent,modified))
         else:
             figure_save_file = os.path.join(output_directory,"base_plots",'base_%s_%s.png' % (parent,modified))
+            figure_save_file = os.path.join(output_directory,"img",'base_%s_%s.png' % (parent,modified))
 
         figure_save_file_gif = figure_save_file.replace(".png",".gif")
 
@@ -1404,6 +1495,10 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
                     if change['change_type'] == 'removed_bond':
                         text_list.append('Removed bond between %s and %s,' % (change['modified_atom_1'],change['modified_atom_2']))
                         text_list.append('locations %s and %s' % (change['change_location'],change['change_location_2']))
+                    if change['change_type'] == 'over_under':
+                        text_list.append('Over/under change for %s mapped to %s' % (change['parent_atom'],change['modified_atom']))
+                    if change['change_type'] == 'over_under_reversal':
+                        text_list.append('All over/under situations reversed')
 
                 if parent in ['A','G','DA','DG']:
                     x = 1.0 + parent_shift[0] / 2.0
@@ -1518,7 +1613,19 @@ if len(focus_list) == 0:
         for modified in modified_base_to_parent.keys():
             if not modified in modified_written and modified in modified_base_to_parent:
                 parent = modified_base_to_parent[modified]
-                for par_atom, mod_atom in parent_to_modified_atom[modified].items():
+                modified_atoms_written = set()
+                # write out all parent atoms whether or not they are mapped
+                for par_atom in par_atom_to_element[parent].keys():
+                    if par_atom in parent_to_modified_atom[modified]:
+                        mod_atom = parent_to_modified_atom[modified][par_atom]
+                        modified_atoms_written.add(mod_atom)
+                    else:
+                        mod_atom = ""
+                    f.write('%s\t%s\t%s\t%s\n' % (parent,par_atom,modified,mod_atom))
+
+                # write out any remaining modified atoms that are not mapped
+                par_atom = ""
+                for mod_atom in sorted(modified_to_atoms[modified] - modified_atoms_written):
                     f.write('%s\t%s\t%s\t%s\n' % (parent,par_atom,modified,mod_atom))
 
                 if "chirality" in modified_to_changes[modified]:
@@ -1535,6 +1642,13 @@ if len(focus_list) == 0:
         if parent in modified_to_changes:
             del modified_to_changes[parent]
 
+    # keep only modified nucleotides identified by NAKB non-standard residue list
+    # because the .json file is for the NAKB modified nucleotide site
+    # for modified in list(modified_to_changes.keys()):
+    #     if not modified in mod_to_count:
+    #         del modified_to_changes[modified]
+    #         print('Deleted %s from modified_to_changes' % modified)
+
     changes_file = 'modified_to_change_data.json'
     with open(changes_file, write_mode) as f:
         # write modified_to_changes to a file in json format
@@ -1546,14 +1660,16 @@ if draw_figures and save_as_gif:
     import glob
 
     file_pattern = os.path.join(output_directory,'base_plots', '*.png')
+    file_pattern = os.path.join(output_directory,'img', '*.png')
     png_files = glob.glob(file_pattern)
     for file in png_files:
         os.remove(file)
 
-    file_pattern = os.path.join(output_directory,'backbone_plots', '*.png')
-    png_files = glob.glob(file_pattern)
-    for file in png_files:
-        os.remove(file)
+    # file_pattern = os.path.join(output_directory,'backbone_plots', '*.png')
+    # file_pattern = os.path.join(output_directory,'img', '*.png')
+    # png_files = glob.glob(file_pattern)
+    # for file in png_files:
+    #     os.remove(file)
 
 # for parent in parent_to_min_max.keys():
 #     print('Parent %s has min max %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f' % (parent,\
