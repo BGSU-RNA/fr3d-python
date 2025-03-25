@@ -39,9 +39,11 @@ def create_modified_nucleotide_to_parent_mappings():
     for line in lines:
         fields = line.split()
         if len(fields) == 4:
-            if not fields[2] in modified_atom_map:
-                modified_atom_map[fields[2]] = []
-            modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
+            if len(fields[1]) > 0 and len(fields[3]) > 0:
+                # only process lines that list a parent atom and a modified atom
+                if not fields[2] in modified_atom_map:
+                    modified_atom_map[fields[2]] = []
+                modified_atom_map[fields[2]].append((fields[0], fields[1], fields[3]))
 
     modified_base_to_parent = {}
     modified_atom_to_parent = {}
