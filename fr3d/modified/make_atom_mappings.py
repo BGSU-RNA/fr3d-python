@@ -131,6 +131,10 @@ def process_one_modified_nt(mod_nt,mappings=[]):
 
     standard_nt = None
 
+    # show details for modified nucleotides in this list
+    verbose_list = ['A1ELZ']
+    verbose_list = []
+
     # check if the manual mappings say that no mapping is possible
     if len(mappings) > 0:
         standard_nt = mappings[0][0]
@@ -265,6 +269,8 @@ def process_one_modified_nt(mod_nt,mappings=[]):
 
     for mapping in mappings:
         if mapping[1] and mapping[3]:
+            if mod_nt in verbose_list:
+                print("Mapping %s to %s" % (mapping[1],mapping[3]))
             standard_to_mod[mapping[1]] = mapping[3]
             mod_to_par[mapping[3]] = mapping[1]
 
@@ -315,6 +321,8 @@ def process_one_modified_nt(mod_nt,mappings=[]):
                         # DNA has H2' and H2''
                         pass
                     else:
+                        if mod_nt in verbose_list:
+                            print("Mapping %s to %s" % (new_atom,new_atom))
                         standard_to_mod[new_atom] = new_atom
                         mod_to_par[new_atom] = new_atom
                         new_par_atoms.append(new_atom)
@@ -410,10 +418,14 @@ def process_one_modified_nt(mod_nt,mappings=[]):
         print("Not sure what atom to start at with %s" % mod_nt)
         output = "Not sure what atom to start at with %s \n" % mod_nt
 
+    if mod_nt in verbose_list:
+        # stop execution here so we can review
+        input("Press Enter to continue ...")
+
     return output
 
 
-def download_modified_nt_list():
+def download_nakb_modified_nt_list():
     # download the current list of modified nucleotides from NAKB
     # parse JSON object into a dictionary
     url = "https://www.nakb.org/node/solr/nakb/select?q=status:REL&facet=true&facet.field=nonstandard&facet.limit=100000&rows=0"
@@ -495,7 +507,7 @@ def map_all_modified_nucleotides():
 
     print('Found %4d modified nucleotides in modified_nt_list.csv' % len(mod_to_count.keys()))
 
-    nakb_mod_to_count = download_modified_nt_list()
+    nakb_mod_to_count = download_nakb_modified_nt_list()
 
     # use nakb numbers to override local numbers and add any new nucleotides
     for mod_nt,mod_nt_count in nakb_mod_to_count.items():
@@ -549,7 +561,9 @@ def map_all_modified_nucleotides():
         date,mod_nt = x
         print("%3d %s %s" % (i+1,date,mod_nt))
 
-    print("Did not map the %d nonstandard residues above.  Release dates are shown so you can see recent ones that may need work.  You can view them in unmapped.html" % len(unmapped_mod_nt))
+    print("Did not map the %d nonstandard residues above." % len(unmapped_mod_nt))
+    print("Release dates are shown so you can see recent ones that may need attention.")
+    print("You can view them in unmapped.html")
 
     with open("unmapped.html","w") as f:
         f.write("<html>\n")
