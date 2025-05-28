@@ -19,7 +19,7 @@ Ideas for the next version:
 
 # user settings below
 
-color_scheme = 'diagnostic'  # use many colors, to show the atom mappings
+color_scheme = 'diagnostic'  # use many colors, to check the atom mappings
 color_scheme = 'CPK'         # use CPK coloring
 
 if color_scheme == 'diagnostic':
@@ -961,13 +961,16 @@ if False:
 modified_to_changes = {}
 modified_list = []
 modified_to_atoms = {}
+all_mod_atom_to_element = {}
 
 # DNA that have O2'
 DNA_with_O2_prime_counter = 0
 
 # loop over modified nucleotides
 # include standard nucleotides to also make images for
-for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_parent.keys()):
+# include nucleotides that are not mappable, and nucleotides that are not from NAKB list
+full_list = ["A","C","G","U","DA","DC","DG","DT"] + sorted(set(modified_base_to_parent.keys()) | mod_to_count.keys())
+for modified in full_list:
 
     local_show_figure = show_figure
 
@@ -995,13 +998,16 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
     modified_to_changes[modified]['atom_count'] = len(mod_atom_to_element)
     modified_to_atoms[modified] = set(mod_atom_to_element.keys())
 
+    all_mod_atom_to_element[modified] = mod_atom_to_element
+
     if modified in pdb_to_modomics_data:
         modified_to_changes[modified]['modomics'] = pdb_to_modomics_data[modified]
 
     if modified in not_mappable_manual:
         print('Skipping modified nucleotide %5s because it is not mapped' % (modified))
         not_mapped.append('%5s is not mapped' % (modified))
-        modified_to_changes[modified]['error'] = 'not mapped'
+        modified_to_changes[modified]['error'] = 'not mappable'
+        # input("Press Enter to continue")
         continue
 
     print("")
@@ -1010,7 +1016,7 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
     if len(mod_coordinates) < 3:
         print('Modified nucleotide %s has only %s atoms' % (modified,len(mod_coordinates)))
         not_mapped.append('%5s has only %d atoms' % (modified,len(mod_coordinates)))
-        modified_to_changes[modified]['error'] = 'not enough matching atoms to map'
+        modified_to_changes[modified]['error'] = 'not mappable'
         continue
 
     if modified_to_parent_atom_manual.get(modified,{}):
@@ -1052,7 +1058,7 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
     else:
         not_mapped.append('%5s does not have an atom mapping' % (modified))
         parent = 'Unknown'
-        modified_to_changes[modified]['error'] = 'no known parent'
+        modified_to_changes[modified]['error'] = 'not mappable'
         continue
 
     if len(par_atoms) >= 3:
@@ -1607,6 +1613,9 @@ for modified in ["A","C","G","U","DA","DC","DG","DT"] + list(modified_base_to_pa
                     imageio.imwrite(figure_save_file, cropped_array)
 
 if len(focus_list) == 0:
+    count_NAKB_C1p_name_changed = 0
+    count_NAKB_same_element_name_changed = 0
+    count_NAKB_atom_mappings = 0
     # write out the mappings again, from most common modified nucleotide to least
     modified_written = set()
     with open('atom_mappings.txt',write_mode) as f:
@@ -1619,6 +1628,12 @@ if len(focus_list) == 0:
                     if par_atom in parent_to_modified_atom[modified]:
                         mod_atom = parent_to_modified_atom[modified][par_atom]
                         modified_atoms_written.add(mod_atom)
+                        if modified in mod_to_count:
+                            count_NAKB_atom_mappings += 1
+                            if par_atom == "C1'" and not mod_atom == "C1'":
+                                count_NAKB_C1p_name_changed += 1
+                            if not par_atom_to_element[parent][par_atom] == all_mod_atom_to_element[modified][mod_atom]:
+                                count_NAKB_same_element_name_changed += 1
                     else:
                         mod_atom = ""
                     f.write('%s\t%s\t%s\t%s\n' % (parent,par_atom,modified,mod_atom))
@@ -1637,6 +1652,8 @@ if len(focus_list) == 0:
     print('%d messages about the mappings:' % len(not_mapped))
     print("\n".join(not_mapped))
 
+    print(sorted(modified_to_changes.keys()))
+
     # remove standard nucleotides from the list of changes
     for parent in standard_nts:
         if parent in modified_to_changes:
@@ -1644,10 +1661,11 @@ if len(focus_list) == 0:
 
     # keep only modified nucleotides identified by NAKB non-standard residue list
     # because the .json file is for the NAKB modified nucleotide site
-    # for modified in list(modified_to_changes.keys()):
-    #     if not modified in mod_to_count:
-    #         del modified_to_changes[modified]
-    #         print('Deleted %s from modified_to_changes' % modified)
+    for modified in list(modified_to_changes.keys()):
+        if not modified in mod_to_count:
+            del modified_to_changes[modified]
+            print('Deleted %s from modified_to_changes' % modified)
+    print('Now there are %d modified residues in the dataset' % len(modified_to_changes.keys()))
 
     changes_file = 'modified_to_change_data.json'
     with open(changes_file, write_mode) as f:
