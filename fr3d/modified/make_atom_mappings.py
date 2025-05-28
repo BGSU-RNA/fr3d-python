@@ -429,6 +429,7 @@ def download_nakb_modified_nt_list():
     # download the current list of modified nucleotides from NAKB
     # parse JSON object into a dictionary
     url = "https://www.nakb.org/node/solr/nakb/select?q=status:REL&facet=true&facet.field=nonstandard&facet.limit=100000&rows=0"
+    nakb_list = []
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -464,10 +465,34 @@ def map_all_modified_nucleotides():
 
     """
 
+    mod_to_count = {}
+
+    # read the list of modified nucleotides from NAKB if it exists
+    if os.path.exists('modified_nt_list.csv'):
+        with open('modified_nt_list.csv','r') as f:
+            lines = f.read()                # read the entire file
+            lines = lines.replace("\r","")  # remove \r return characters
+            lines = lines.replace('"','')   # remove double quotes
+            lines = lines.split("\n")       # split on newline character, return a list
+
+            for line in lines:
+                if 'Rank' in line:
+                    continue            # skip the header line
+                fields = line.split(",")
+                mod_nt = fields[1]
+                mod_nt_count = int(fields[2])
+                mod_to_count[mod_nt] = mod_nt_count
+
+    print('Found %4d modified nucleotides in modified_nt_list.csv' % len(mod_to_count.keys()))
+
     # read manual mappings
     modified_to_mappings = {}
     with open("atom_mappings_manual.txt","r") as f:
         lines = f.readlines()
+
+    count_lines_from_NAKB = 0
+    count_nts_from_NAKB = set()
+    count_unmappable = 0
     for line in lines:
         # make it easy to comment out lines with #
         if line.startswith("#"):
@@ -485,27 +510,17 @@ def map_all_modified_nucleotides():
                 modified_to_mappings[modified] = []
             modified_to_mappings[modified].append((parent,par_atom,modified,mod_atom))
 
+            if modified in mod_to_count:
+                count_nts_from_NAKB.add(modified)
+                count_lines_from_NAKB += 1
+                if parent == "":
+                    count_unmappable += 1
+
     print("Found %4d modified nucleotides in atom_mappings_manual.txt" % len(modified_to_mappings.keys()))
-
-    mod_to_count = {}
-
-    # read the list of modified nucleotides if it exists
-    if os.path.exists('modified_nt_list.csv'):
-        with open('modified_nt_list.csv','r') as f:
-            lines = f.read()                # read the entire file
-            lines = lines.replace("\r","")  # remove \r return characters
-            lines = lines.replace('"','')   # remove double quotes
-            lines = lines.split("\n")       # split on newline character, return a list
-
-            for line in lines:
-                if 'Rank' in line:
-                    continue            # skip the header line
-                fields = line.split(",")
-                mod_nt = fields[1]
-                mod_nt_count = int(fields[2])
-                mod_to_count[mod_nt] = mod_nt_count
-
-    print('Found %4d modified nucleotides in modified_nt_list.csv' % len(mod_to_count.keys()))
+    print("Found %4d modified residues in atom_mappings_manual that are also on the NAKB list" % len(count_nts_from_NAKB))
+    print("Found %4d lines in atom_mappings_manual.txt that pertain to residues from NAKB" % count_lines_from_NAKB)
+    print("Found %4d modified residues with no parent indicated" % count_unmappable)
+    # input("Press Enter to continue")
 
     nakb_mod_to_count = download_nakb_modified_nt_list()
 
@@ -552,14 +567,25 @@ def map_all_modified_nucleotides():
     with open("atom_mappings_provisional.txt","w") as f:
         f.write(output)
 
+    # notify about unmapped nucleotides
+    # accumulate release dates
     date_mod_nt = []
     for mod_nt in unmapped_mod_nt:
         cif_data = read_monomer_cif(mod_nt)
         date_mod_nt.append((cif_data['chem_comp'][0]['pdbx_initial_date'],mod_nt))
 
+    # read .json file to see which nucleotides were noted before
+    # a nucleotide with an old release date might have only recently appeared in a polymer
+    with open("modified_to_change_data.json",'rt') as f:
+        modified_to_change_data = json.load(f)
+    previously_processed_mod_nt = set(modified_to_change_data.keys())
+
     for i, x in enumerate(sorted(date_mod_nt)):
         date,mod_nt = x
-        print("%3d %s %s" % (i+1,date,mod_nt))
+        if mod_nt in previously_processed_mod_nt:
+            print("%3d %s %s" % (i+1,date,mod_nt))
+        else:
+            print("%3d %s %s (not in modified_to_change_data.json)" % (i+1,date,mod_nt))
 
     print("Did not map the %d nonstandard residues above." % len(unmapped_mod_nt))
     print("Release dates are shown so you can see recent ones that may need attention.")
