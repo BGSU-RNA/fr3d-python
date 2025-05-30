@@ -131,6 +131,10 @@ def process_one_modified_nt(mod_nt,mappings=[]):
 
     standard_nt = None
 
+    # show details for modified nucleotides in this list
+    verbose_list = ['A1ELZ']
+    verbose_list = []
+
     # check if the manual mappings say that no mapping is possible
     if len(mappings) > 0:
         standard_nt = mappings[0][0]
@@ -265,6 +269,8 @@ def process_one_modified_nt(mod_nt,mappings=[]):
 
     for mapping in mappings:
         if mapping[1] and mapping[3]:
+            if mod_nt in verbose_list:
+                print("Mapping %s to %s" % (mapping[1],mapping[3]))
             standard_to_mod[mapping[1]] = mapping[3]
             mod_to_par[mapping[3]] = mapping[1]
 
@@ -315,6 +321,8 @@ def process_one_modified_nt(mod_nt,mappings=[]):
                         # DNA has H2' and H2''
                         pass
                     else:
+                        if mod_nt in verbose_list:
+                            print("Mapping %s to %s" % (new_atom,new_atom))
                         standard_to_mod[new_atom] = new_atom
                         mod_to_par[new_atom] = new_atom
                         new_par_atoms.append(new_atom)
@@ -410,13 +418,18 @@ def process_one_modified_nt(mod_nt,mappings=[]):
         print("Not sure what atom to start at with %s" % mod_nt)
         output = "Not sure what atom to start at with %s \n" % mod_nt
 
+    if mod_nt in verbose_list:
+        # stop execution here so we can review
+        input("Press Enter to continue ...")
+
     return output
 
 
-def download_modified_nt_list():
+def download_nakb_modified_nt_list():
     # download the current list of modified nucleotides from NAKB
     # parse JSON object into a dictionary
     url = "https://www.nakb.org/node/solr/nakb/select?q=status:REL&facet=true&facet.field=nonstandard&facet.limit=100000&rows=0"
+    nakb_list = []
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -452,32 +465,9 @@ def map_all_modified_nucleotides():
 
     """
 
-    # read manual mappings
-    modified_to_mappings = {}
-    with open("atom_mappings_manual.txt","r") as f:
-        lines = f.readlines()
-    for line in lines:
-        # make it easy to comment out lines with #
-        if line.startswith("#"):
-            continue
-        fields = line.replace("\n","").split("\t")
-
-        if len(fields) >= 3:
-            # OK to have more than 4 fields, but only the first 4 are used
-            if len(fields) == 4:
-                parent,par_atom,modified,mod_atom = fields[0:4]
-            else:
-                parent,par_atom,modified = fields[0:3]
-                mod_atom = ""
-            if not modified in modified_to_mappings:
-                modified_to_mappings[modified] = []
-            modified_to_mappings[modified].append((parent,par_atom,modified,mod_atom))
-
-    print("Found %4d modified nucleotides in atom_mappings_manual.txt" % len(modified_to_mappings.keys()))
-
     mod_to_count = {}
 
-    # read the list of modified nucleotides if it exists
+    # read the list of modified nucleotides from NAKB if it exists
     if os.path.exists('modified_nt_list.csv'):
         with open('modified_nt_list.csv','r') as f:
             lines = f.read()                # read the entire file
@@ -495,7 +485,44 @@ def map_all_modified_nucleotides():
 
     print('Found %4d modified nucleotides in modified_nt_list.csv' % len(mod_to_count.keys()))
 
-    nakb_mod_to_count = download_modified_nt_list()
+    # read manual mappings
+    modified_to_mappings = {}
+    with open("atom_mappings_manual.txt","r") as f:
+        lines = f.readlines()
+
+    count_lines_from_NAKB = 0
+    count_nts_from_NAKB = set()
+    count_unmappable = 0
+    for line in lines:
+        # make it easy to comment out lines with #
+        if line.startswith("#"):
+            continue
+        fields = line.replace("\n","").split("\t")
+
+        if len(fields) >= 3:
+            # OK to have more than 4 fields, but only the first 4 are used
+            if len(fields) == 4:
+                parent,par_atom,modified,mod_atom = fields[0:4]
+            else:
+                parent,par_atom,modified = fields[0:3]
+                mod_atom = ""
+            if not modified in modified_to_mappings:
+                modified_to_mappings[modified] = []
+            modified_to_mappings[modified].append((parent,par_atom,modified,mod_atom))
+
+            if modified in mod_to_count:
+                count_nts_from_NAKB.add(modified)
+                count_lines_from_NAKB += 1
+                if parent == "":
+                    count_unmappable += 1
+
+    print("Found %4d modified nucleotides in atom_mappings_manual.txt" % len(modified_to_mappings.keys()))
+    print("Found %4d modified residues in atom_mappings_manual that are also on the NAKB list" % len(count_nts_from_NAKB))
+    print("Found %4d lines in atom_mappings_manual.txt that pertain to residues from NAKB" % count_lines_from_NAKB)
+    print("Found %4d modified residues with no parent indicated" % count_unmappable)
+    # input("Press Enter to continue")
+
+    nakb_mod_to_count = download_nakb_modified_nt_list()
 
     # use nakb numbers to override local numbers and add any new nucleotides
     for mod_nt,mod_nt_count in nakb_mod_to_count.items():
@@ -540,16 +567,29 @@ def map_all_modified_nucleotides():
     with open("atom_mappings_provisional.txt","w") as f:
         f.write(output)
 
+    # notify about unmapped nucleotides
+    # accumulate release dates
     date_mod_nt = []
     for mod_nt in unmapped_mod_nt:
         cif_data = read_monomer_cif(mod_nt)
         date_mod_nt.append((cif_data['chem_comp'][0]['pdbx_initial_date'],mod_nt))
 
+    # read .json file to see which nucleotides were noted before
+    # a nucleotide with an old release date might have only recently appeared in a polymer
+    with open("modified_to_change_data.json",'rt') as f:
+        modified_to_change_data = json.load(f)
+    previously_processed_mod_nt = set(modified_to_change_data.keys())
+
     for i, x in enumerate(sorted(date_mod_nt)):
         date,mod_nt = x
-        print("%3d %s %s" % (i+1,date,mod_nt))
+        if mod_nt in previously_processed_mod_nt:
+            print("%3d %s %s" % (i+1,date,mod_nt))
+        else:
+            print("%3d %s %s (not in modified_to_change_data.json)" % (i+1,date,mod_nt))
 
-    print("Did not map the %d nonstandard residues above.  Release dates are shown so you can see recent ones that may need work.  You can view them in unmapped.html" % len(unmapped_mod_nt))
+    print("Did not map the %d nonstandard residues above." % len(unmapped_mod_nt))
+    print("Release dates are shown so you can see recent ones that may need attention.")
+    print("You can view them in unmapped.html")
 
     with open("unmapped.html","w") as f:
         f.write("<html>\n")

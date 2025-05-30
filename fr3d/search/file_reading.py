@@ -809,8 +809,10 @@ def readNAPairsFile(Q, file_id, id_to_index, alternate = ""):
 
     # interactionToTriples has this structure:
     # interactionToTriples['cWW'] is a list of triples, each triple being (unit_id_1,unit_id_2,range)
-    # However, what is passed back is interactionToIndexPairs, which has a different structure
-    # interactionToIndexPairs['cWW'][0] is the list of pairs
+    # However, what is passed back from this function is interactionToIndexPairs
+    # unit ids are mapped to the internal index for each unit by id_to_index
+    # internal index is not the same as chain index
+    # interactionToIndexPairs['cWW'][0] is the list of index pairs
     # interactionToIndexPairs['cWW'][1] is the list of crossing numbers
 
     # convert pairs of unit ids to pairs of indices for use in FR3D.py

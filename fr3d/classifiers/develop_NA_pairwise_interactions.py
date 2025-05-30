@@ -39,21 +39,145 @@ from fr3d.localpath import inputPath
 from fr3d.localpath import fr3d_pickle_path
 
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
+from fr3d.modified.mapping import modified_base_to_parent
 
+def process_oo_distance_files():
 
+    # read file C:/Users/zirbel/Documents/PythonFR3D/data/units/NA_datafile.pickle
+    filename = 'C:/Users/zirbel/Documents/PythonFR3D/data/units/NA_datafile.pickle'
+    with open(filename,'rb') as f:
+        pdb_id_to_data = pickle.load(f)
 
-if True:
     # Find all files in directory, read them, concatenate the lines, and write out to oo_distance_all.txt
     directory = outputNAPairwiseInteractions
     files = os.listdir(directory)
+    dna_dna = []
+    dna_rna = []
+    rna_rna = []
     for filename in files:
         if 'oo_distance' in filename:
+            pdb_id = filename.split("_")[0]
+            data = pdb_id_to_data.get(pdb_id,{})
+            # print(data)
+
+            # skip NMR models for now
+            if "NMR" in data.get('method',''):
+                continue
+
+            # resolution cutoff
+            resolution = data.get('resolution',999)
+            # check if resolution is a number
+            if not resolution:
+                continue
+
+            try:
+                if float(resolution) > 2.5:
+                    continue
+            except:
+                continue
+
+            pdbdatafile = os.path.join(directory,pdb_id+"_pdb_data.txt")
+            if not os.path.exists(pdbdatafile):
+                url = 'https://rna.bgsu.edu/rna3dhub/rest/getPdbInfo?pdb=%s' % pdb_id
+                # download and save data from that site
+                print('Downloading %s' % url)
+                with urllib.request.urlopen(url) as response:
+                    dataf = response.read().decode('utf-8')
+                # print('dataf',dataf)
+                with open(pdbdatafile,'wt') as f:
+                    f.write(dataf)
+
+            title = ''
+            if os.path.exists(pdbdatafile):
+                with open(pdbdatafile,'rt') as f:
+                    lines = f.readlines()
+                title = lines[0].split("<br")[0].replace("<u>Title</u>: ","")
+                # print(title)
+
+            pdb_url = 'https://www.rcsb.org/structure/%s' % pdb_id
+
+            extra_data = '\t%s\t%s\t%s\t%s' % (pdb_url,data['resolution'],data['method'],title)
+
+            # read oo_distance annotations
             with open(os.path.join(directory,filename),'rt') as f:
                 lines = f.readlines()
-            with open(os.path.join(directory,'oo_distance_all.txt'),'at') as f:
-                f.write(''.join(lines))
-    print(crashnow)
 
+            for line in lines:
+                # 1A8W|2|A|DT|7|OP1	oo_distance	1A8W|2|A|DG|10|OP1	None	3.4950	https://rna.bgsu.edu/rna3dhub/display3D/unitid/1A8W|2|A|DT|7,1A8W|2|A|DG|10
+                u1, t, u2, crossing, distance, url = line.split("\t")
+
+                f1 = u1.split("|")
+                f2 = u2.split("|")
+
+                # only keep model 1
+                if not f1[1] == "1":
+                    continue
+                if not f2[1] == "1":
+                    continue
+
+                # if float(distance) < 2.0:
+                #     continue
+
+                # skip when both have a symmetry
+                if len(f1) == 9 and len(f2) == 9:
+                    print('Skipping %20s %20s' % (u1,u2))
+                    continue
+
+                # figure out what type of chains we have
+                c1 = f1[2]
+                c2 = f2[2]
+
+                if c1 in data['chains'].get('DNA',[]):
+                    type1 = 'DNA'
+                elif c1 in data['chains'].get('RNA',[]):
+                    type1 = 'RNA'
+                elif c1 in data['chains'].get('hybrid',[]):
+                    type1 = 'hybrid'
+                else:
+                    type1 = 'Unknown'
+
+                if c2 in data['chains'].get('DNA',[]):
+                    type2 = 'DNA'
+                elif c2 in data['chains'].get('RNA',[]):
+                    type2 = 'RNA'
+                elif c2 in data['chains'].get('hybrid',[]):
+                    type2 = 'hybrid'
+                else:
+                    type2 = 'Unknown'
+
+                chain_data = ('\t%s\t%s' % (type1,type2))
+
+                # print(chain_data+extra_data)
+
+                s1 = f1[3]
+                s2 = f2[3]
+                p1 = modified_base_to_parent.get(s1,"DA")
+                p2 = modified_base_to_parent.get(s2,"DA")
+                line_stripped = line.strip()
+                if p1 in ['DA','DT','DC','DG'] and p2 in ['DA','DT','DC','DG']:
+                    dna_dna.append(line_stripped+chain_data+extra_data)
+                elif p1 in ['DA','DT','DC','DG'] or p2 in ['DA','DT','DC','DG']:
+                    dna_rna.append(line_stripped+chain_data+extra_data)
+                else:
+                    rna_rna.append(line_stripped+chain_data+extra_data)
+
+    header = 'unit1\tinteraction\tunit2\tcrossing\tdistance\turl\ttype1\ttype2\tPDB url\tresolution\tmethod\ttitle\n'
+    with open(os.path.join(directory,'oo_distance_dna_dna.txt'),'wt') as f:
+        f.write(header)
+        f.write('\n'.join(sorted(dna_dna,key=lambda x: float(x.split("\t")[4]))))
+    with open(os.path.join(directory,'oo_distance_dna_rna.txt'),'wt') as f:
+        f.write(header)
+        f.write('\n'.join(sorted(dna_rna,key=lambda x: float(x.split("\t")[4]))))
+    with open(os.path.join(directory,'oo_distance_rna_rna.txt'),'wt') as f:
+        f.write(header)
+        f.write('\n'.join(sorted(rna_rna,key=lambda x: float(x.split("\t")[4]))))
+
+
+# when the files are already created ...
+if True:
+    print('Processing oo_distance files')
+    process_oo_distance_files()
+    print(crash_now)
 
 
 parser = argparse.ArgumentParser()
@@ -112,11 +236,34 @@ if True:
 # save .pickle file for plot_basepair_interactions?
 get_datapoint = True
 
-# temp for oo_distance
+# temporary for oo_distance
 if True:
     categories = {}
     categories['oo_distance'] = []
-    from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+
+    filename = 'C:/Users/zirbel/Documents/PythonFR3D/data/units/NA_datafile_2025-02-20.pickle'
+    with open(filename,'rb') as f:
+        pdb_id_to_data = pickle.load(f)
+    previous_pdb_ids = set(pdb_id_to_data.keys())
+
+    filename = 'C:/Users/zirbel/Documents/PythonFR3D/data/units/NA_datafile.pickle'
+    with open(filename,'rb') as f:
+        pdb_id_to_data = pickle.load(f)
+
+    print(pdb_id_to_data['8T8T'])
+    print(pdb_id_to_data['8T7E'])
+    print(pdb_id_to_data['8YDC'])
+    print(pdb_id_to_data['4TNA'])
+    print(pdb_id_to_data['9MU9'])
+
+    PDB_list = []
+    for pdb_id in pdb_id_to_data.keys():
+        if 'DNA' in pdb_id_to_data[pdb_id]['chains']:
+            if not pdb_id in previous_pdb_ids:
+                PDB_list.append(pdb_id)
+
+    print(PDB_list)
+    print('Found %d structures that contain at least one DNA chain' % len(PDB_list))
     get_datapoint = False
 
 # zzz
@@ -239,10 +386,9 @@ for i in range(a,b,c):
 
     if annotate_entire_PDB_files:
         # name for file with pairs and datapoint variable about annotations
-        pair_file = "%s_datapoint.pickle" % (PDB)
-        pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
+        pair_to_datapoint_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % PDB)
 
-        if not os.path.exists(pair_to_data_output_file) or len(PDBs) <= 10 or OverwriteDataFiles or not get_datapoint:
+        if not os.path.exists(pair_to_datapoint_file) or len(PDBs) <= 10 or OverwriteDataFiles or not get_datapoint:
 
             print("Reading file %s, which is number %d out of %d" % (PDB,i+1,len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
@@ -297,8 +443,8 @@ for i in range(a,b,c):
 
             if get_datapoint:
                 timerData = myTimer("Recording interactions",timerData)
-                pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),5)
-                print('  Wrote classification data file %s' % pair_to_data_output_file)
+                pickle.dump(pair_to_data,open(pair_to_datapoint_file,"wb"),5)
+                print('  Wrote classification data file %s' % pair_to_datapoint_file)
 
             if len(interaction_to_list_of_tuples['oo_distance']) > 0:
                 write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
@@ -386,7 +532,7 @@ for i in range(a,b,c):
         #         allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
             # turn this off during development and testing
         pair_file = "%s_pairs.pickle" % (PDB)
-        pair_to_data_output_file = outputNAPairwiseInteractions + pair_file
+        pair_file = outputNAPairwiseInteractions + pair_file
 
         if False:
             print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
@@ -394,8 +540,8 @@ for i in range(a,b,c):
             print('  Wrote FR3D pair file %s' % outputDataFilePickle)
 
         timerData = myTimer("Recording interactions",timerData)
-        pickle.dump(pair_to_data,open(pair_to_data_output_file,"wb"),5)
-        print('  Wrote classification data file %s' % pair_to_data_output_file)
+        pickle.dump(pair_to_data,open(pair_file,"wb"),5)
+        print('  Wrote classification data file %s' % pair_file)
 
         # write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
         # print('  Wrote CSV file(s) to %s' % outputNAPairwiseInteractions)
@@ -404,17 +550,11 @@ for i in range(a,b,c):
             myTimer("summary",timerData)
         myTimer("summary",timerData)
 
-# collect together all oo_distance files
-if True:
-    # Find all files in directory, read them, concatenate the lines, and write out to oo_distance_all.txt
-    directory = outputNAPairwiseInteractions
-    files = os.listdir(directory)
-    for filename in files:
-        if 'oo_distance' in filename:
-            with open(os.path.join(directory,filename),'rt') as f:
-                lines = f.readlines()
-            with open(os.path.join(directory,'oo_distance_all.txt'),'at') as f:
-                f.write(''.join(lines))
+
+
+# when you had to run the code first
+process_oo_distance_files()
+
 
 
 # when appropriate, write out HTML files

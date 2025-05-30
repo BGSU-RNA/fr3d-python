@@ -19,7 +19,8 @@ def combine_dicts(x,y):
 
 def readPositionsAndInteractions(Q, ifename, alternate=""):
     """
-
+    FR3D calls this function to read the units, map their unit ids to internal index,
+    and also read the pairwise interactions they make.
     """
 
     fields =  ifename.split('|')
@@ -39,8 +40,8 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
 
     # accumulate the set of all requiredMoleculeType lists
     requiredMoleculeTypes = []
-    for index in range(len(Q["requiredMoleculeType"])):
-        requiredMoleculeTypes += Q["requiredMoleculeType"][index]
+    for p in range(len(Q["requiredMoleculeType"])):
+        requiredMoleculeTypes += Q["requiredMoleculeType"][p]
     requiredMoleculeTypes = list(set(requiredMoleculeTypes))
 
     # check to see if RNA or DNA is a required unit type, and if so, read NA data
