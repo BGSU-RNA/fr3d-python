@@ -864,12 +864,14 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                                         q = units[b]["chainindex"]  # sequence position
                         else:
                             for (a, b) in listOfPairs[i][j]:
-                                p = units[a]["chainindex"]  # sequence position
-                                q = units[b]["chainindex"]  # sequence position
+                                if modelChainSymmetry[a] == modelChainSymmetry[b]:
+                                    p = units[a]["chainindex"]  # sequence position
+                                    if p is not None:
+                                        q = units[b]["chainindex"]  # sequence position
+                                        if q is not None:
+                                            if q - p > constraint[1] and q - p < constraint[2]:
+                                                newList.append((a, b))
 
-                                if modelChainSymmetry[a] == modelChainSymmetry[b] and (
-                                q - p > constraint[1]) and q - p < constraint[2]:
-                                    newList.append((a, b))
                         listOfPairs[i][j] = newList
                         positions_and_counts.append((i,j,len(listOfPairs[i][j])))
 
