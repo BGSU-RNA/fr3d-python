@@ -1648,6 +1648,12 @@ if len(focus_list) == 0:
 
             modified_written.add(modified)
 
+    # write a small file of modified to parent mappings
+    modified_to_parent = sorted(modified_base_to_parent.items(), key=lambda x : (x[1],x[0]))
+    with open('nt_mappings.txt',write_mode) as f:
+        for modified, parent in modified_to_parent:
+            f.write("%s\t%s\n" % (modified,parent))
+
     print('')
     print('%d messages about the mappings:' % len(not_mapped))
     print("\n".join(not_mapped))
