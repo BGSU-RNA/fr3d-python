@@ -12,6 +12,7 @@ dependencies = [
 	"numpy",
 	"scipy",
 	"mmcif-pdbx; python_version>='3.0'"
+    "biopython"
 ]
 
 [tools.setuptools]
