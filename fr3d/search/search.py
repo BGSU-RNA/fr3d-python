@@ -850,33 +850,44 @@ def FR3D_search(Q, ifedata, ifename, timerData):
                         newList = []
                         if listOfPairs[i][j] == "full":
                             for m in range(0, len(universe[i])):
+                                # fix the i nucleotide, chain index p
                                 a = sorted_universe[i][m]
                                 p = units[a]["chainindex"]  # sequence position
 
                                 if p is None:
                                     # solitary nucleotide, cannot meet a between constraint
+                                    print("skipping ",m,a,p,units[a])
                                     continue
 
+                                # start with lowest chain index possible for j nucleotide
                                 n = 0
                                 b = sorted_universe[j][n]
                                 q = units[b]["chainindex"]  # sequence position
 
-                                # probe for the first match
-                                while n < len(universe[j]) - 1 and (q is None or q - p <= constraint[1]):
-                                    n += 1
-                                    b = sorted_universe[j][n]
-                                    q = units[b]["chainindex"]  # sequence position
+                                # print("1 i, j, n, a, b, p, q, mcsa, mcsb", (i, j, n, a, b, p, q, modelChainSymmetry[a], modelChainSymmetry[b]))
 
-                                # accumulate matches
+                                # skip over j nucleotides that are before the match range
+                                # while n < len(universe[j]) - 1 and (q is None or q <= p + constraint[1]):
+                                #     n += 1
+                                #     b = sorted_universe[j][n]
+                                #     q = units[b]["chainindex"]  # sequence position
+
+                                #     print("2 i, j, n, a, b, p, q", (i, j, n, a, b, p, q))
+
+                                # accumulate matches until end of universe
+                                # matches may not occur adjacent to one another
                                 while n < len(universe[j]):
+                                    # print("3 i, j, n, a, b, p, q, mcsa, mcsb", (i, j, n, a, b, p, q, modelChainSymmetry[a], modelChainSymmetry[b]))
                                     if q is not None:
-                                        if q - p > constraint[1] and q - p < constraint[2]:
+                                        if q > p + constraint[1] and q < p + constraint[2]:
                                             if a != b and modelChainSymmetry[a] == modelChainSymmetry[b]:
+                                                # print("3 i, j, n, a, b, p, q, mcsa, mcsb added", (i, j, n, a, b, p, q, modelChainSymmetry[a], modelChainSymmetry[b]))
                                                 newList.append((a, b))
                                     n += 1
                                     if n < len(universe[j]):
                                         b = sorted_universe[j][n]
                                         q = units[b]["chainindex"]  # sequence position
+                                    # print("3 i, j, n, a, b, p, q, mcsa, mcsb", (i, j, n, a, b, p, q, modelChainSymmetry[a], modelChainSymmetry[b]))
                         else:
                             for (a, b) in listOfPairs[i][j]:
                                 if modelChainSymmetry[a] == modelChainSymmetry[b]:
