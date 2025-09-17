@@ -4143,6 +4143,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                         quads_to_write.append((a,inter,b,c))
                     else:
                         if interaction == 'oo_distance':
+                            # also write a distance and a url to view the interaction
                             print(itpl)
                             u1, u2, crossing, a1, a2, distance = itpl
                             url = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
