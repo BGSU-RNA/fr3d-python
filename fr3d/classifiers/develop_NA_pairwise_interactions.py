@@ -555,16 +555,5 @@ for i in range(a,b,c):
 # when you had to run the code first
 process_oo_distance_files()
 
-
-
-# when appropriate, write out HTML files
-"""
-if len(PDB_IFE_Dict) > 100:
-    print("Writing " + outputDataFile)
-    timerData = myTimer("Writing HTML files",timerData)
-    pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_list),open(outputDataFile,"wb"))
-    writeInteractionsHTML(allInteractionDictionary,outputHTML,version)
-"""
-
 myTimer("summary",timerData)
 
