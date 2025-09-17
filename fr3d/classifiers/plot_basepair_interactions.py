@@ -35,6 +35,7 @@ else:
 from class_limits_2024 import nt_nt_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from NA_pairwise_interactions import reverse_edges
+from NA_protein_annotation import make_discrepancy_text
 from draw_residues import draw_base
 
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -519,38 +520,9 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += '</tr>\n'
     candidatelist += '</table>\n'
 
-    discrepancydata = ''
-
-    if np.size(allvsallmatrix) > 0:
-        # write discrepancy data in new 2022 list format
-        # first element is a reference to the div in which the heatmap should appear
-        discrepancydata = '["#heatmap",['              # start a list, start a matrix
-
-        # second element is a matrix with the numerical values of the discrepancy
-        # writing both upper and lower triangles of the matrix
-        s = allvsallmatrix.shape[0]
-        for c in range(0,s):
-            discrepancydata += '['     # start a row of the discrepancy matrix
-            #ife1 = candidates[c]['unit_id_1']
-            for d in range(0,s):
-                #ife2 = candidates[d]['unit_id_2']
-                discrepancydata += "%.4f" % allvsallmatrix[c][d]  # one entry
-                if d < s-1:
-                    discrepancydata += ','  # commas between entries in a row
-                else:
-                    discrepancydata += '],\n'  # end a row, newline
-
-        discrepancydata += '],\n'           # end the matrix, continue the list
-
-        # third element is a list of labels of instances
-        discrepancydata += '['              # start list of instances
-        for c in range(0,s):
-            ife1 = candidates[c][id_1]
-            discrepancydata += '"' + ife1 + '"'    # write one instance name in quotes
-            if c < s-1:
-                discrepancydata += ","  # commas between instances
-            else:
-                discrepancydata += "]]" # end list of instances, end list of data
+    # new structure, may not have gotten done quite right!
+    labels = [c[id_1] for c in candidates]
+    discrepancy_text = make_discrepancy_text(allvsallmatrix,labels)
 
     # read template.html into one string
     with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
@@ -629,12 +601,10 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
     if np.size(allvsallmatrix) > 0:
         template = template.replace("###JS5###",JS5)    # include heatmap.js code
-        discrepancydata = "var data =  " + discrepancydata
-        discrepancydata = '<script type="text/javascript">\n' + discrepancydata + '\n</script>'
-        template = template.replace("###DISCREPANCYDATA###",discrepancydata)
+        template = template.replace("###DISCREPANCYDATA###",discrepancy_text)
     else:
-        #template = template.replace("###DISCREPANCYDATA###","")
         template = template.replace("###JS5###","")    # do not display a heat map
+        template = template.replace("###DISCREPANCYDATA###","")
 
     outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
 
