@@ -323,7 +323,7 @@ if __name__=="__main__":
 
     print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
 
-    # Load FR3D Python Annotations##
+    # Load FR3D Python Annotations
     # load output files from NA_pairwise_interactions
     all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
     print("Loading Python annotations from %d PDB files" % len(all_PDB_ids))
