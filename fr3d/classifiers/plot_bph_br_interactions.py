@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    plot-phosphate-interactions.py reads a data file and plots points to represent
-    base-base phosphate interactions.
+plot-phosphate-interactions.py reads a data file and plots points to represent
+base-base phosphate interactions.
 """
 
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,9 +14,7 @@ import os
 from collections import defaultdict
 import urllib
 
-from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
@@ -49,6 +47,70 @@ def load_basepair_annotations(filename,all_pair_types):
 
 #=======================================================================
 def load_Matlab_FR3D_pairs(PDBID):
+    """
+    download matlab-annotated BPh and BR pairs from sites like
+    https://rna.bgsu.edu/rna3dhub/pdb/4V9F/interactions/matlab/basephosphate/tsv
+    """
+
+    interactionToTriples = defaultdict(list)
+
+    pairsFileName = PDBID + '_NA_backbone_matlab' + '.pickle'
+    pathAndFileName = os.path.join(storeMatlabFR3DPairs,pairsFileName)
+
+    if not os.path.exists(pathAndFileName):
+        url = "https://rna.bgsu.edu/rna3dhub/pdb/%s/interactions/matlab/basephosphate/tsv" % PDBID
+        print("Downloading from %s, saving in %s" % (url,pathAndFileName))
+
+        try:
+            response = urlopen(url)
+            lines = response.read().decode('utf-8').splitlines()
+        except:
+            pass
+
+        url = "https://rna.bgsu.edu/rna3dhub/pdb/%s/interactions/matlab/baseribose/tsv" % PDBID
+        print("Downloading from %s, saving in %s" % (url,pathAndFileName))
+
+        try:
+            response = urlopen(url)
+            lines += response.read().decode('utf-8').splitlines()
+        except:
+            pass
+
+        for line in lines:
+            fields = line.split("\t")
+            if len(fields) >= 3:
+                unit1 = fields[0].strip()
+                unit2 = fields[2].strip()
+                interaction = fields[1].strip()
+                interactionToTriples[interaction].append((unit1,unit2,'0'))
+
+        # for interaction in interactionToTriples:
+        #     print(interactionToTriples[interaction])
+
+        with open(pathAndFileName,'wb') as f:
+            pickle.dump(interactionToTriples, f)
+
+    if os.path.exists(pathAndFileName):
+        print("Loading %s" % (pathAndFileName))
+        try:
+            interactionToTriples = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
+        except:
+            print("Could not read "+pairsFileName+", it may not be available")
+            try:
+                os.remove(pathAndFileName)
+                print("Removed unsuccessful file %s" % pathAndFileName)
+            except:
+                print("Could not remove file %" % pathAndFileName)
+
+    interactionToPairs = {}
+    print("Interaction keys %s" % sorted(interactionToTriples.keys()))
+    for interaction in interactionToTriples.keys():
+        interactionToPairs[interaction] = [(a,b) for a,b,c in interactionToTriples[interaction]]
+
+    return interactionToPairs
+
+
+def load_Matlab_FR3D_pairs_old(PDBID):
     """
     download annotations of RNA basepairs from https://rna.bgsu.edu/pairs/
     Those are triples of (unit_id1,unit_id2,crossingnumber)
@@ -102,6 +164,7 @@ def load_Matlab_FR3D_pairs(PDBID):
         interactionToPairs[interaction] = [(a,b) for a,b,c in interactionToTriples[interaction]]
 
     return interactionToPairs
+
 #=======================================================================
 def reverse(pair):
     return (pair[1],pair[0])
@@ -199,7 +262,7 @@ def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
     print("\n\nAnnotations that were found by %s and not by %s" % (ordering, other))
 
     # print_function = getattr(__builtin__, 'print')
-    # border = ['----','----','----','----','----','----','----','----', '----','----','----']
+    border = ['----','----','----','----','----','----','----','----', '----','----','----']
     # print_function(*interaction_list, sep='\t')
     # print_function(*border, sep = "\t")
     # for category in interaction_list:
@@ -216,16 +279,16 @@ def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
 if __name__=="__main__":
 
     DNA = False
-    make_plots = False
     make_plots = True
+    make_plots = False
 
     verbose = 0
 
     PDB_list = ['7K00']
     PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
     PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv']
-    PDB_list = ['4V9F']
     PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/3.350/2.0A/csv']
+    PDB_list = ['4V9F']
 
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
 

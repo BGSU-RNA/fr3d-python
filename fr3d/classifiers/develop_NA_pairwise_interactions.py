@@ -173,11 +173,9 @@ def process_oo_distance_files():
         f.write('\n'.join(sorted(rna_rna,key=lambda x: float(x.split("\t")[4]))))
 
 
-# when the files are already created ...
-if True:
+if False:
     print('Processing oo_distance files')
     process_oo_distance_files()
-    print(crash_now)
 
 
 parser = argparse.ArgumentParser()
@@ -200,7 +198,7 @@ else:
     categories['basepair'] = []
     categories['basepair_detail'] = []
     # categories['stacking'] = []
-    # categories['backbone'] = []
+    categories['backbone'] = []
     # categories['sO'] = []        # annotate all sO interactions
     # categories['sugar_ribose']   = []
 
@@ -209,7 +207,6 @@ if args.worker:
 else:
     worker = 0
 
-PDB_list = ['4V9F']
 
 from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 
@@ -217,8 +214,9 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.308/3.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 PDB_list = ['4V9F','6AZ3','6GYV','7O7Y','7OYC','7QI4','7QIW','7V9E','8A98','8AZW','8GLP','5J7L','7RQB']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8B0X','8GLP','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
+PDB_list = ['4V9F']
 
-if True:
+if False:
     # read chains from datmos / nabir
     PDB_set = set()
     PDB_chain_set = set()
@@ -237,7 +235,7 @@ if True:
 get_datapoint = True
 
 # temporary for oo_distance
-if True:
+if False:
     categories = {}
     categories['oo_distance'] = []
 
@@ -268,8 +266,8 @@ if True:
 
 # zzz
 
-OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
+OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
