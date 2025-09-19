@@ -70,7 +70,11 @@ except:
     inputPath = ""
     outputNAPairwiseInteractions = ""
 
-nt_nt_screen_distance = 12  # maximum center-center distance to check
+oo_distance_center_center_distance_cutoff = 20
+base_backbone_center_center_distance_cutoff = 17
+standard_center_center_distance_cutoff = 12
+
+all_categories = "basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,loops,oo_distance"
 
 near_discrepancy_cutoff = 1.0     # maximum discrepancy to report as a near pair
 near_discrepancy_cutoff = 2.0     # maximum discrepancy to report as a near pair
@@ -704,6 +708,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     unit_id_to_basepairs = defaultdict(list) # map unit_id and edge to list of basepairs with their quality
 
     max_center_center_distance = 0     # record the largest screening distance for which an interaction is found
+    bph_center_center_distance = 0     # record the largest screening distance for which an interaction is found
+    oo_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
     basepair_parent_base_combination_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
 
@@ -887,6 +893,70 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             datapoint12 = None
                             datapoint21 = None
 
+                        # annotate backbone oxygen-oxygen distances
+                        if 'oo_distance' in categories:
+                            pair_list = check_oo_distance(nt1,nt2,parent1,parent2)
+                            if pair_list:
+                                count_pair += 1
+                                interaction_to_pair_list['oo_distance'] += pair_list
+                                category_to_interactions['oo_distance'].add('oo_distance')
+                                oo_center_center_distance = max(oo_center_center_distance,center_center_distance)  # for setting optimally
+
+                        # base centers are too far apart for the remaining interactions
+                        if center_center_distance > base_backbone_center_center_distance_cutoff:
+                            # store data for diagnostics, if requested
+                            if datapoint12:
+                                pair_to_data[unit_id_pair] = datapoint12
+
+                            if datapoint21:
+                                pair_to_data[reversed_pair] = datapoint21
+                            continue
+
+                        # annotate base phosphate and base ribose interactions
+                        if 'backbone' in categories:
+                            timerData = myTimer("Check backbone interactions", timerData)
+
+                            # get coordinates of O3' of the nucleotide before nt2, part of the phosphate of nt2
+                            previousO3 = unit_id_to_previous_O3.get(nt2.unit_id(),np.empty([1,3]))
+                            interactionbPh, interactionbR, datapoint12 = check_base_backbone_interactions(nt1, nt2, previousO3, parent1, parent2, datapoint12)
+
+                            if interactionbPh and len(interactionbPh) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interactionbPh].append(unit_id_pair)
+                                category_to_interactions['backbone'].add(interactionbPh)
+                                bph_center_center_distance = max(bph_center_center_distance,center_center_distance)  # for setting optimally
+
+                            if interactionbR and len(interactionbR) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interactionbR].append(unit_id_pair)
+                                category_to_interactions['backbone'].add(interactionbR)
+                                bph_center_center_distance = max(bph_center_center_distance,center_center_distance)  # for setting optimally
+
+                            # get coordinates of O3' of the nucleotide before nt1, part of the phosphate of nt1
+                            previousO3 = unit_id_to_previous_O3.get(nt1.unit_id(),np.empty([1,3]))
+                            interactionbPh, interactionbR, datapoint21 = check_base_backbone_interactions(nt2, nt1, previousO3, parent2, parent1, datapoint21)
+
+                            if interactionbPh and len(interactionbPh) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interactionbPh].append(reversed_pair)
+                                category_to_interactions['backbone'].add(interactionbPh)
+                                bph_center_center_distance = max(bph_center_center_distance,center_center_distance)  # for setting optimally
+                            if interactionbR and len(interactionbR) > 0:
+                                count_pair += 1
+                                interaction_to_pair_list[interactionbR].append(reversed_pair)
+                                category_to_interactions['backbone'].add(interactionbR)
+                                bph_center_center_distance = max(bph_center_center_distance,center_center_distance)  # for setting optimally
+
+                        # base centers are too far apart for the remaining interactions
+                        if center_center_distance > standard_center_center_distance_cutoff:
+                            # store data for diagnostics, if requested
+                            if datapoint12:
+                                pair_to_data[unit_id_pair] = datapoint12
+
+                            if datapoint21:
+                                pair_to_data[reversed_pair] = datapoint21
+                            continue
+
                         # check base to oxygen stack; always base first, oxygen second
                         if 'so' in categories:
                             timerData = myTimer("Check base oxygen stack",timerData)
@@ -929,37 +999,14 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     count_pair += 1
                                     interaction_to_pair_list[interaction].append(unit_id_pair)
                                     category_to_interactions['sugar_ribose'].add(interaction)
+                                    max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
                                 interaction, datapoint21 = check_sugar_ribose(nt2, nt1, parent2, datapoint21)
                                 if len(interaction) > 0:
                                     count_pair += 1
                                     interaction_to_pair_list[interaction].append(reversed_pair)
                                     category_to_interactions['sugar_ribose'].add(interaction)
-
-                        # annotate base phosphate and base ribose interactions
-                        if 'backbone' in categories:
-                            timerData = myTimer("Check backbone interactions", timerData)
-
-                            # get coordinates of O3' of the nucleotide before nt2, part of the phosphate of nt2
-                            previousO3 = unit_id_to_previous_O3.get(nt2.unit_id(),np.empty([1,3]))
-                            interactionbPh, interactionbR, datapoint12 = check_base_backbone_interactions(nt1, nt2, previousO3, parent1, parent2, datapoint12)
-
-                            if interactionbPh and len(interactionbPh) > 0:
-                                count_pair += 1
-                                interaction_to_pair_list[interactionbPh].append(unit_id_pair)
-                                category_to_interactions['backbone'].add(interactionbPh)
-                            if interactionbR and len(interactionbR) > 0:
-                                count_pair += 1
-                                interaction_to_pair_list[interactionbR].append(unit_id_pair)
-                                category_to_interactions['backbone'].add(interactionbR)
-
-                        # annotate backbone oxygen-oxygen distances
-                        if 'oo_distance' in categories:
-                            pair_list = check_oo_distance(nt1,nt2,parent1,parent2)
-                            if pair_list:
-                                count_pair += 1
-                                interaction_to_pair_list['oo_distance'] += pair_list
-                                category_to_interactions['oo_distance'].add('oo_distance')
+                                    max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
                         # annotate basepairs
                         if 'basepair' in categories:
@@ -1161,7 +1208,9 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         print("  Found %d nucleotide-nucleotide interactions in %s" % (count_pair,file_id))
 
     if verbose >= 3:
-        print("  Maximum screen distance for actual contacts is %8.4f" % max_center_center_distance)
+        print("  Maximum screen distance for standard contacts is %8.4f" % max_center_center_distance)
+        print("  Maximum screen distance for bph      contacts is %8.4f" % bph_center_center_distance)
+        print("  Maximum screen distance for oo       contacts is %8.4f" % oo_center_center_distance)
 
     if 'basepair' in categories:
         # calculate and save crossing numbers for each annoated interaction
@@ -2157,6 +2206,13 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
     if not timerData:
         timerData = myTimer("start")
 
+    # maximum center-center distance to check for interactions
+    nt_nt_screen_distance = standard_center_center_distance_cutoff
+    if 'backbone' in categories:
+        nt_nt_screen_distance = base_backbone_center_center_distance_cutoff
+    if 'oo_distance' in categories:
+        nt_nt_screen_distance = oo_distance_center_center_distance_cutoff
+
     timerData = myTimer("Build cubes for neighbors",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
     # annotate nt-nt interactions
@@ -2842,172 +2898,168 @@ def check_base_backbone_interactions(nt1,nt2,previousO3,parent1,parent2,datapoin
     phosphate = ""
     ribose = ""
 
-    # if the bases are far away from one another, don't check for base backbone interactions
-    dis = distance_between_vectors(nt1.centers["base"], nt2.centers["base"])
-    if dis and abs(dis) < 16:   # Initial cutoff
+    # places to store interactions meeting the requirements
+    site_to_phosphate_oxygens = {}
+    true_phosphate = []
+    near_phosphate = []
 
-        # places to store interactions meeting the requirements
-        site_to_phosphate_oxygens = {}
-        true_phosphate = []
-        near_phosphate = []
+    true_ribose = []
+    near_ribose = []
 
-        true_ribose = []
-        near_ribose = []
+    # specify cutoffs for interactions ##########################
+    carbonCutoff = 4.0          # maximum massive - oxygen distance
+    nCarbonCutoff = 4.5         # near
 
-        # specify cutoffs for interactions ##########################
-        carbonCutoff = 4.0          # maximum massive - oxygen distance
-        nCarbonCutoff = 4.5         # near
+    nitrogenCutoff = 3.5        # maximum massive - oxygen distance
+    nNitrogenCutoff = 4.0       # near
 
-        nitrogenCutoff = 3.5        # maximum massive - oxygen distance
-        nNitrogenCutoff = 4.0       # near
+    angleLimit = 130            # angle limit for BPh, BR
+    nAngleLimit = 110           # angle limit for near BPh, BR
 
-        angleLimit = 130            # angle limit for BPh, BR
-        nAngleLimit = 110           # angle limit for near BPh, BR
+    #sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of prev']
+    # phosphate oxygens on nt2
+    phosphateOxygenNames = [ "O5'", 'OP1', 'OP2']
 
-        #sugarAtoms = ["C1'","C2'","O2'","C3'","O3'","C4'","O4'","C5'","O5'",'P','OP1','OP2','O3 of prev']
-        # phosphate oxygens on nt2
-        phosphateOxygenNames = [ "O5'", 'OP1', 'OP2']
+    # 04-27-2023 For BR, O3' shouldn't be checked, it's considered phosphate, see JAR3D paper for this
+    riboseOxygenNames = ["O2'","O4'"]
 
-        # 04-27-2023 For BR, O3' shouldn't be checked, it's considered phosphate, see JAR3D paper for this
-        riboseOxygenNames = ["O2'","O4'"]
+    # retrieve atom records, mapping to parent atoms if necessary
+    phosphateOxygens = get_atom_coordinates(nt2, phosphateOxygenNames)
+    riboseOxygens    = get_atom_coordinates(nt2, riboseOxygenNames)
 
-        # retrieve atom records, mapping to parent atoms if necessary
-        phosphateOxygens = get_atom_coordinates(nt2, phosphateOxygenNames)
-        riboseOxygens    = get_atom_coordinates(nt2, riboseOxygenNames)
+    # use O3' coordinates of nucleotide before nt2 if available
+    if previousO3.any():
+        phosphateOxygens.append(previousO3)
 
-        # use O3' coordinates of nucleotide before nt2 if available
-        if previousO3.any():
-            phosphateOxygens.append(previousO3)
+    # if nt2 has a P atom and it is far from the plane of base 1, don't look for BPh interactions
+    Pcoord = get_one_atom_coordinates(nt2, "P")
+    if Pcoord.any():
+        try:
+            p_standard = translate_rotate_point(nt1, Pcoord)
+            if not p_standard:
+                phosphateOxygens = []
+            elif abs(p_standard[2]) > 4.5: # phosphorus far from plane
+                phosphateOxygens = []
+        except:
+            if verbose >= 2:
+                print("  Phosphorus calculation failed for %s,%s" % (nt1.unit_id(),nt2.unit_id()))
 
-        # if nt2 has a P atom and it is far from the plane of base 1, don't look for BPh interactions
-        Pcoord = get_one_atom_coordinates(nt2, "P")
-        if Pcoord.any():
-            try:
-                p_standard = translate_rotate_point(nt1, Pcoord)
-                if not p_standard:
-                    phosphateOxygens = []
-                elif abs(p_standard[2]) > 4.5: # phosphorus far from plane
-                    phosphateOxygens = []
-            except:
-                if verbose >= 2:
-                    print("  Phosphorus calculation failed for %s,%s" % (nt1.unit_id(),nt2.unit_id()))
+    # Loop through each donor-hydrogen site on base 1
+    for sites in NAbaseMassiveAndHydrogens[parent1]:
+        baseHydrogens, baseMassive = get_atom_coordinates(nt1, sites[0:2])
 
-        # Loop through each donor-hydrogen site on base 1
-        for sites in NAbaseMassiveAndHydrogens[parent1]:
-            baseHydrogens, baseMassive = get_atom_coordinates(nt1, sites[0:2])
+        # Set the cutoff distance depending on which atom is the donor
+        if "C" in sites[1]: #atoms[1] is the name of the base massive atom being checked.
+            cutoff = carbonCutoff
+            nCutoff = nCarbonCutoff
+        elif "N" in sites[1]:
+            cutoff = nitrogenCutoff
+            nCutoff = nNitrogenCutoff
 
-            # Set the cutoff distance depending on which atom is the donor
-            if "C" in sites[1]: #atoms[1] is the name of the base massive atom being checked.
-                cutoff = carbonCutoff
-                nCutoff = nCarbonCutoff
-            elif "N" in sites[1]:
-                cutoff = nitrogenCutoff
-                nCutoff = nNitrogenCutoff
+        # Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
+        for i, oxygen_coordinates in enumerate(phosphateOxygens):
+            if oxygen_coordinates.any():
+                phosphateAngle = calculate_hb_angle(baseMassive,baseHydrogens,oxygen_coordinates) # angle between base massive, its corresponding hydrogen, and oxygen
+                if phosphateAngle:
+                    phosphateDistance = distance_between_vectors(baseMassive,oxygen_coordinates) #distance from the oxygen to the base atom
+                    if phosphateDistance:
+                        if phosphateAngle > angleLimit and phosphateDistance < cutoff:
+                            # a rough measure of quality of the bond
+                            quality = (cutoff-phosphateDistance) + (phosphateAngle-angleLimit)/20.0
+                            true_phosphate.append((-quality,sites[2],oxygen_coordinates,i))
+                            if not sites[2] in site_to_phosphate_oxygens:
+                                site_to_phosphate_oxygens[sites[2]] = set([i])
+                            else:
+                                site_to_phosphate_oxygens[sites[2]].add(i)
+                        elif phosphateAngle > nAngleLimit and phosphateDistance < nCutoff:
+                            # a rough measure of quality of the bond
+                            quality = (nCutoff-phosphateDistance) + (phosphateAngle-nAngleLimit)/20.0
+                            near_phosphate.append((-quality,"n"+sites[2],oxygen_coordinates))
 
-            #Loop through the oxygens in the phosphate backbone to extract info for base phosphate interactions
-            for i, oxygen_coordinates in enumerate(phosphateOxygens):
-                if oxygen_coordinates.any():
-                    phosphateAngle = calculate_hb_angle(baseMassive,baseHydrogens,oxygen_coordinates) # angle between base massive, its corresponding hydrogen, and oxygen
-                    if phosphateAngle:
-                        phosphateDistance = distance_between_vectors(baseMassive,oxygen_coordinates) #distance from the oxygen to the base atom
-                        if phosphateDistance:
-                            if phosphateAngle > angleLimit and phosphateDistance < cutoff:
-                                # a rough measure of quality of the bond
-                                quality = (cutoff-phosphateDistance) + (phosphateAngle-angleLimit)/20.0
-                                true_phosphate.append((-quality,sites[2],oxygen_coordinates,i))
-                                if not sites[2] in site_to_phosphate_oxygens:
-                                    site_to_phosphate_oxygens[sites[2]] = set([i])
-                                else:
-                                    site_to_phosphate_oxygens[sites[2]].add(i)
-                            elif phosphateAngle > nAngleLimit and phosphateDistance < nCutoff:
-                                # a rough measure of quality of the bond
-                                quality = (nCutoff-phosphateDistance) + (phosphateAngle-nAngleLimit)/20.0
-                                near_phosphate.append((-quality,"n"+sites[2],oxygen_coordinates))
+        # Loop through oxygens in ribose to extract info about angle and distance
+        for oxygen_coordinates in riboseOxygens:
+            if oxygen_coordinates.any():
+                riboseAngle = calculate_hb_angle(baseMassive,baseHydrogens,oxygen_coordinates)
+                if riboseAngle:
+                    riboseDistance = distance_between_vectors(baseMassive, oxygen_coordinates)
+                    if riboseDistance:
+                        if riboseAngle > angleLimit and riboseDistance < cutoff:
+                            # a rough measure of quality of the bond
+                            quality = (cutoff-riboseDistance) + (riboseAngle-angleLimit)/20.0
+                            true_ribose.append((-quality,sites[3],oxygen_coordinates))
+                        elif riboseAngle > nAngleLimit and riboseDistance < nCutoff:
+                            # a rough measure of quality of the bond
+                            quality = (nCutoff-riboseDistance) + (riboseAngle-nAngleLimit)/20.0
+                            near_ribose.append((-quality,"n"+sites[3],oxygen_coordinates))
 
-            #Loop through oxygens in ribose to extract info about angle and distance
-            for oxygen_coordinates in riboseOxygens:
-                if oxygen_coordinates.any():
-                    riboseAngle = calculate_hb_angle(baseMassive,baseHydrogens,oxygen_coordinates)
-                    if riboseAngle:
-                        riboseDistance = distance_between_vectors(baseMassive, oxygen_coordinates)
-                        if riboseDistance:
-                            if riboseAngle > angleLimit and riboseDistance < cutoff:
-                                # a rough measure of quality of the bond
-                                quality = (cutoff-riboseDistance) + (riboseAngle-angleLimit)/20.0
-                                true_ribose.append((-quality,sites[3],oxygen_coordinates))
-                            elif riboseAngle > nAngleLimit and riboseDistance < nCutoff:
-                                # a rough measure of quality of the bond
-                                quality = (nCutoff-riboseDistance) + (riboseAngle-nAngleLimit)/20.0
-                                near_ribose.append((-quality,"n"+sites[3],oxygen_coordinates))
-
-            # record the best phosphate interaction
-            if len(true_phosphate) == 1:
-                phosphate = true_phosphate[0][1]
-                phosphate_oxygen = true_phosphate[0][2]
-            elif len(site_to_phosphate_oxygens.keys()) > 1:
-                # Check for multiple BPh with more than one oxygen
-                if '7BPh' in site_to_phosphate_oxygens and '9BPh' in site_to_phosphate_oxygens:
-                    # make sure there are two different oxygen atoms; union tells if there are distinct ones
-                    distinct_oxygens = site_to_phosphate_oxygens['7BPh'] | site_to_phosphate_oxygens['9BPh']
-                    if len(distinct_oxygens) > 1:
-                        phosphate = "8BPh" # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
-                elif '3BPh' in site_to_phosphate_oxygens and '5BPh' in site_to_phosphate_oxygens:
-                    # make sure there are two different oxygen atoms; union tells if there are distinct ones
-                    distinct_oxygens = site_to_phosphate_oxygens['3BPh'] | site_to_phosphate_oxygens['5BPh']
-                    if len(distinct_oxygens) > 1:
-                        phosphate = "4BPh" # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
-                if not phosphate:
-                    best = sorted(true_phosphate)[0]
-                    phosphate = best[1]
-                    phosphate_oxygen = best[2]
-            elif len(true_phosphate) > 1:
+        # record the best phosphate interaction
+        if len(true_phosphate) == 1:
+            phosphate = true_phosphate[0][1]
+            phosphate_oxygen = true_phosphate[0][2]
+        elif len(site_to_phosphate_oxygens.keys()) > 1:
+            # Check for multiple BPh with more than one oxygen
+            if '7BPh' in site_to_phosphate_oxygens and '9BPh' in site_to_phosphate_oxygens:
+                # make sure there are two different oxygen atoms; union tells if there are distinct ones
+                distinct_oxygens = site_to_phosphate_oxygens['7BPh'] | site_to_phosphate_oxygens['9BPh']
+                if len(distinct_oxygens) > 1:
+                    phosphate = "8BPh" # C N4-1H4 and C5-H5 interact with 2 oxygens of phosphate, called 8BPh
+            elif '3BPh' in site_to_phosphate_oxygens and '5BPh' in site_to_phosphate_oxygens:
+                # make sure there are two different oxygen atoms; union tells if there are distinct ones
+                distinct_oxygens = site_to_phosphate_oxygens['3BPh'] | site_to_phosphate_oxygens['5BPh']
+                if len(distinct_oxygens) > 1:
+                    phosphate = "4BPh" # G N2-2H2 and N1-H1 interacts with 2 oxygens of phosphate, called 4BPh
+            if not phosphate:
                 best = sorted(true_phosphate)[0]
                 phosphate = best[1]
                 phosphate_oxygen = best[2]
-            elif len(near_phosphate) == 1:
-                phosphate = near_phosphate[0][1]
-                phosphate_oxygen = near_phosphate[0][2]
-            elif len(near_phosphate) > 1:
-                best = sorted(near_phosphate)[0]
-                phosphate = best[1]
-                phosphate_oxygen = best[2]
+        elif len(true_phosphate) > 1:
+            best = sorted(true_phosphate)[0]
+            phosphate = best[1]
+            phosphate_oxygen = best[2]
+        elif len(near_phosphate) == 1:
+            phosphate = near_phosphate[0][1]
+            phosphate_oxygen = near_phosphate[0][2]
+        elif len(near_phosphate) > 1:
+            best = sorted(near_phosphate)[0]
+            phosphate = best[1]
+            phosphate_oxygen = best[2]
 
-            # record the best ribose interaction
-            if len(true_ribose) == 1:
-                ribose = true_ribose[0][1]
-                ribose_oxygen = true_ribose[0][2]
-            elif len(true_ribose) > 1:
-                best = sorted(true_ribose)[0]
-                ribose = best[1]
-                ribose_oxygen = best[2]
-            elif len(near_ribose) == 1:
-                ribose = near_ribose[0][1]
-                ribose_oxygen = near_ribose[0][2]
-            elif len(near_ribose) > 1:
-                best = sorted(near_ribose)[0]
-                ribose = best[1]
-                ribose_oxygen = best[2]
+        # record the best ribose interaction
+        if len(true_ribose) == 1:
+            ribose = true_ribose[0][1]
+            ribose_oxygen = true_ribose[0][2]
+        elif len(true_ribose) > 1:
+            best = sorted(true_ribose)[0]
+            ribose = best[1]
+            ribose_oxygen = best[2]
+        elif len(near_ribose) == 1:
+            ribose = near_ribose[0][1]
+            ribose_oxygen = near_ribose[0][2]
+        elif len(near_ribose) > 1:
+            best = sorted(near_ribose)[0]
+            ribose = best[1]
+            ribose_oxygen = best[2]
 
-        if datapoint:
-            if phosphate:
-                datapoint['BPh'] = phosphate
-                if phosphate in ['4BPh','8BPh']:
-                    datapoint['BPh_oxygen'] = []
-                    for quality,site,oxygen_coordinates,i in true_phosphate:
-                        if i in distinct_oxygens:
-                            a = translate_rotate_point(nt1, oxygen_coordinates)
-                            datapoint['BPh_oxygen'].append(a)
-                            #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
-                else:
-                    a = translate_rotate_point(nt1, phosphate_oxygen)
-                    datapoint['BPh_oxygen'] = [a]
-                    #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
+    if datapoint:
+        if phosphate:
+            datapoint['BPh'] = phosphate
+            if phosphate in ['4BPh','8BPh']:
+                datapoint['BPh_oxygen'] = []
+                for quality,site,oxygen_coordinates,i in true_phosphate:
+                    if i in distinct_oxygens:
+                        a = translate_rotate_point(nt1, oxygen_coordinates)
+                        datapoint['BPh_oxygen'].append(a)
+                        #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
+            else:
+                a = translate_rotate_point(nt1, phosphate_oxygen)
+                datapoint['BPh_oxygen'] = [a]
+                #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),phosphate,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
 
-            if ribose:
-                datapoint['BR'] = ribose
-                a = translate_rotate_point(nt1, ribose_oxygen)
-                datapoint['BR_oxygen'] = [a]
-                #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),ribose,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
+        if ribose:
+            datapoint['BR'] = ribose
+            a = translate_rotate_point(nt1, ribose_oxygen)
+            datapoint['BR_oxygen'] = [a]
+            #print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\thttps://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (nt1.unit_id(),nt2.unit_id(),ribose,a[0],a[1],a[2],nt1.unit_id(),nt2.unit_id()))
 
     return phosphate, ribose, datapoint
 
@@ -3059,7 +3111,7 @@ def check_oo_distance(nt1,nt2,parent1,parent2):
 
                         # unlike other interactions, store distance and new atom ids
                         pair_list.append((u1, u2, None, a1, a2, distance))
-                        print('OO distance %20s %20s %10.4f' % (a1, a2, distance))
+                        # print('OO distance %20s %20s %10.4f' % (a1, a2, distance))
 
     return pair_list
 
@@ -4144,7 +4196,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                     else:
                         if interaction == 'oo_distance':
                             # also write a distance and a url to view the interaction
-                            print(itpl)
+                            # print(itpl)
                             u1, u2, crossing, a1, a2, distance = itpl
                             url = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
                             quads_to_write.append((a1,inter,a2,crossing,"%0.4f" % distance,url))
@@ -4243,7 +4295,11 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
             categories['oo_distance'] = []
         else:
             for category in category_list:
-                categories[category.lower()] = []
+                c = category.lower()
+                if c in all_categories.split(","):
+                    categories[category.lower()] = []
+                else:
+                    print('Category %s is not recognized' % c)
                 categories['basepair'] = []         # always basepairs, to get crossing numbers
     else:
         # default is to annotate and write just "true" basepairs
@@ -4400,7 +4456,7 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,loops,oo_distance)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (%s)' % all_categories)
     parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
     parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2,3)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
@@ -4435,6 +4491,9 @@ if __name__=="__main__":
         category = args.category.replace("-","_")
     else:
         category = 'basepair'
+
+    if "all" in category:
+        category = all_categories
 
     if args.verbose:
         verbose = int(args.verbose)
