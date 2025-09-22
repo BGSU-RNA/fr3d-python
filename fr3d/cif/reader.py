@@ -279,15 +279,18 @@ class Cif(object):
             # look for other components like modified nucleotides
             chain_to_chem = {}  # track known chain types
             comp_id_to_chain = {}  # track unknown chem types
-            for line in self.atom_site:
-                chain_id = line['label_asym_id']  # current chain
-                comp_id = line['label_comp_id']   # current component
-                if comp_id in chem and not chain_id in chain_to_chem:
-                    chain_to_chem[chain_id] = chem[comp_id] # this chain is this type
 
-                # record the chain that an unknown component resides in, resolve it later
-                if not comp_id in chem:
-                    comp_id_to_chain[comp_id] = chain_id
+            # some integrative structures have no atom_site block, so no units fr3d can process
+            if hasattr(self, 'atom_site'):
+                for line in self.atom_site:
+                    chain_id = line['label_asym_id']  # current chain
+                    comp_id = line['label_comp_id']   # current component
+                    if comp_id in chem and not chain_id in chain_to_chem:
+                        chain_to_chem[chain_id] = chem[comp_id] # this chain is this type
+
+                    # record the chain that an unknown component resides in, resolve it later
+                    if not comp_id in chem:
+                        comp_id_to_chain[comp_id] = chain_id
 
             # inherit the type from other components in the same chain
             for comp_id, chain in comp_id_to_chain.items():
@@ -531,6 +534,11 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
+
+        # some integrative structures have no atom_site block, so no units fr3d can process
+        if not hasattr(self, 'atom_site'):
+            return []
+
         # Some old structures need special processing for the sake of the BGSU RNA server and
         # naming conventions. Default to this for these structures.
         if self.pdb in oldStructures:
