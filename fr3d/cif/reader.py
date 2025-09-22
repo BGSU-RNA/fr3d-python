@@ -642,37 +642,27 @@ class Cif(object):
         model = atom['pdbx_PDB_model_num'] if 'pdbx_PDB_model_num' in atom else 1
         component_id = atom['label_comp_id'] if 'label_comp_id' in atom else atom['auth_comp_id']
         atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
-        try:
-            return Atom(pdb=pdb,
-                        model=model,
-                        chain=atom['auth_asym_id'],
-                        component_id=component_id,
-                        component_number = int(atom['auth_seq_id']),
-                        component_index=index,
-                        insertion_code=ins_code,
-                        alt_id=alt_id,
-                        x=x, y=y, z=z,
-                        group=atom['group_PDB'],
-                        type=atom['type_symbol'],
-                        name=atom_id,
-                        symmetry=symmetry_name,
-                        polymeric=self.is_polymeric_atom(atom))
-        except:
-            comp_num = re.sub('\D', '',atom['auth_seq_id'])
-            return Atom(pdb=pdb,
-                        model=model,
-                        chain=atom['auth_asym_id'],
-                        component_id=component_id,
-                        component_number = int(comp_num),
-                        component_index=index,
-                        insertion_code=ins_code,
-                        alt_id=alt_id,
-                        x=x, y=y, z=z,
-                        group=atom['group_PDB'],
-                        type=atom['type_symbol'],
-                        name=atom_id,
-                        symmetry=symmetry_name,
-                        polymeric=self.is_polymeric_atom(atom))
+
+        if 'auth_seq_id' in atom:
+            component_number = int(atom['auth_seq_id'].replace("\D",""))
+        elif 'label_seq_id' in atom:
+            component_number = int(atom['label_seq_id'])
+
+        return Atom(pdb=pdb,
+                    model=model,
+                    chain=atom['auth_asym_id'],
+                    component_id=component_id,
+                    component_number = component_number,
+                    component_index=index,
+                    insertion_code=ins_code,
+                    alt_id=alt_id,
+                    x=x, y=y, z=z,
+                    group=atom['group_PDB'],
+                    type=atom['type_symbol'],
+                    name=atom_id,
+                    symmetry=symmetry_name,
+                    polymeric=self.is_polymeric_atom(atom))
+
     def __apply_symmetry__(self, atom, symmetry):
         coords = [float(atom['Cartn_x']),
                   float(atom['Cartn_y']),
