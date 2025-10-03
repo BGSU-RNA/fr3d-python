@@ -786,6 +786,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                             ok_chains = ['DE','ED','CF','FC']
                             if not nt1.chain+nt2.chain in ok_chains:
                                 continue
+                        elif nt1.pdb == '3CZ3':
+                            # altid B for chain E can be on top of altid A for chain F
+                            if not nt1.alt_id == nt2.alt_id:
+                                continue
                         elif nt1.pdb == '4BUL' and nt1.chain != nt2.chain:
                             ok_chains = ['EF','FE','GH','HG']
                             if not nt1.chain+nt2.chain in ok_chains:
