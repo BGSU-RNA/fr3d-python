@@ -521,7 +521,7 @@ def readPDBDatafile(Q):
 def readNAPositionsFile(Q, chainString, starting_index):
     """
     Read .pickle file of RNA/DNA base center and rotation matrix;
-    download from BGSU RNA site if necessary; create from .cif or .pdb if necessary.
+    download from RNA 3D Hub if necessary; create from .cif or .pdb if necessary.
     chainString is like '4V9F|1|0'
     """
 
@@ -545,10 +545,10 @@ def readNAPositionsFile(Q, chainString, starting_index):
         # try to download .pickle file of RNA/DNA base center and rotation matrix
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
             try:
-                print("Downloading "+filename+" from BGSU RNA site")
+                print("Downloading "+filename+" from RNA 3D Hub")
                 urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
             except:
-                print("Could not download %s from BGSU RNA site" % filename)
+                print("Could not download %s from RNA 3D Hub" % filename)
                 pass
 
     if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
@@ -750,7 +750,7 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
             if Q.get("printFileOperations",False):
                 print("  file_reading: Could not find "+pairsFileName+" in "+Q["DATAPATHPAIRS"]+alternate)
             if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
-                # try to download annotations of this structure from BGSU RNA site
+                # try to download annotations of this structure from RNA 3D Hub
                 url = "https://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
                 try:
                     urlretrieve(url, pathAndFileName) # testing
@@ -760,7 +760,7 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
                     justDownloaded = True
                 except:
                     if Q.get("printFileOperations",False):
-                        print("  file_reading: Could not download "+pairsFileName+" from BGSU RNA site")
+                        print("  file_reading: Could not download "+pairsFileName+" from RNA 3D Hub")
                     Q["userMessage"].append("Could not download RNA pairs file "+pairsFileName)
             else:
                 # compute pairwise interactions locally and store locally
