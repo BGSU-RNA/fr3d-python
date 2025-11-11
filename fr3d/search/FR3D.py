@@ -430,6 +430,9 @@ def fr3d_search_from_query_names(queryNames):
             fields = queryName.split("=")
             queryName = fields[-1]
 
+        if queryName.endswith(".html"):
+            queryName = queryName.replace(".html","")
+
         if not queryName.lower().endswith(".json"):
             queryName += ".json"
 
