@@ -1667,8 +1667,9 @@ if len(focus_list) == 0:
 
     # keep only modified nucleotides identified by NAKB non-standard residue list
     # because the .json file is for the NAKB modified nucleotide site
+    # add DI and DU because they are being added to the NAKB site soon
     for modified in list(modified_to_changes.keys()):
-        if not modified in mod_to_count:
+        if not modified in mod_to_count and not modified in ['DI','DU']:
             del modified_to_changes[modified]
             print('Deleted %s from modified_to_changes' % modified)
     print('Now there are %d modified residues in the dataset' % len(modified_to_changes.keys()))
