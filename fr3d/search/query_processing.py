@@ -752,12 +752,6 @@ def calculateQueryConstraints(Q):
 
         RNACombinationConstraints = ['AA','AC','AG','AU','CA','CC','CG','CU','GA','GC','GG','GU','UA','UC','UG','UU']
 
-        # for bc in RNACombinationConstraints:
-        #     if bc in modified_base_to_parent:
-        #         print(bc,' is a modified base, rats!')
-        #     else:
-        #         print(bc,' is ok!')
-
         Q["requiredInteractions"] = emptyInteractionList(Q["numPositions"])
         Q["prohibitedInteractions"] = emptyInteractionList(Q["numPositions"])
         Q["crossingNumber"] = emptyInteractionList(Q["numPositions"])
@@ -1545,13 +1539,11 @@ def calculateQueryConstraints(Q):
                             IFE = fields[1].replace('"','')
                             if NMRonly:
                                 file_id = IFE.split("|")[0]
-                                if len(file_id) == 4:
-                                    file_id = IFE[0:4]
-                                    if file_id in list(Q["PDB_data_file"]):
-                                        if 'method' in list(Q["PDB_data_file"][file_id]):
-                                            if 'NMR' in Q["PDB_data_file"][file_id]['method']:
-                                                newList.append(IFE.decode("ascii"))
-                                                # newList.append(IFE)
+                                if file_id in list(Q["PDB_data_file"]):
+                                    if 'method' in list(Q["PDB_data_file"][file_id]):
+                                        if 'NMR' in Q["PDB_data_file"][file_id]['method']:
+                                            newList.append(IFE.decode("ascii"))
+                                            # newList.append(IFE)
                             elif len(IFE) > 1:
                                 newList.append(IFE)
 
@@ -1566,28 +1558,39 @@ def calculateQueryConstraints(Q):
                     representativeSets[repSetKey] = sorted(set(newList))
                     pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
 
-        if len(newList) > 0:
-            if len(IFEList) > 0:
-                full_search_file_ifes = "  ".join(IFEList)
-                for IFE in newList:
-                    for chain in IFE.split("+"):
-                        if not chain in full_search_file_ifes:
-                            # avoid adding 4V9F|1|0 when the full 4V9F is already specified
-                            # this way, a user can specify a representative set and some
-                            # specific full 3D structure files and not get duplicates
-                            # There are still special cases where this will not work
-                            # and the user will get duplicates, like if they specify 8GLP|1|L5
-                            # in searchFiles, then this code will hit 8GLP|1|L5+8GLP|1|L8 and add
-                            # 8GLP|1|L5+8GLP|1|L8 to IFEList
-                            IFEList.append(IFE)
-                            break
-            else:
-                IFEList = newList
+        IFEList += newList
 
-    # finalize the list of IFEs to search
-    Q["searchFiles"] = [x for x in IFEList if len(x) > 0]
+    # combine IFEs from the same 3D structure into one list of chains to search
+    # also use just the PDB id if there is a PDB plus ife chains
+    pdb_to_chains = {}
+    for ife in IFEList:
+        if len(ife) == 0:
+            continue
+        fields = ife.split("|")
+        pdb = fields[0]
+        if len(fields) == 1:
+            # only a pdb id, use all chains
+            pdb_to_chains[pdb] = set()
+        elif pdb in pdb_to_chains:
+            if len(pdb_to_chains[pdb]) > 0:
+                # already has chains, just add more chains, and do not duplicate chains
+                pdb_to_chains[pdb] = pdb_to_chains[pdb] | set(ife.split("+"))
+        else:
+            # record the chains
+            pdb_to_chains[pdb] = set(ife.split("+"))
 
-    #set cutoffs for geometric or mixed searches
+    searchFiles = []
+    for pdb, chains in pdb_to_chains.items():
+        if len(pdb_to_chains[pdb]) > 0:
+            # chains from IFEs
+            searchFiles.append("+".join(pdb_to_chains[pdb]))
+        else:
+            # whole PDB file
+            searchFiles.append(pdb)
+
+    Q["searchFiles"] = searchFiles
+
+    # set cutoffs for geometric or mixed searches
     if Q["type"] == "geometric" or Q["type"] == "mixed":
         cutoff = Q['SSCutoff'] #rename sscutoffs
         for i in range(len(cutoff)):
