@@ -825,6 +825,10 @@ def calculateQueryConstraints(Q):
                                 elif constraintType in allInteractionConstraints:
                                     prohibitedInteractions.append(constraint)
                                     foundProhibitedInteraction = True
+                            elif constraint in ["and","&","&&"]:
+                                # apply the next group of constraints using logical and with previous ones
+                                if len(requiredInteractions) > 0 and not requiredInteractions[-1] == "and":
+                                    requiredInteractions.append("and")
                             else:
                                 # required interaction
                                 if constraint in synonym:
