@@ -813,6 +813,13 @@ def readNAPairsFile(Q, file_id, id_to_index, alternate = ""):
 
     Q, interactionToTriples = readNAPairsFileRaw(Q, file_id, alternate)
 
+    # the RNA3DHub database stores cSR and tSR as of 12/12/2025, but not cRS and tRS
+    # fill those in if missing
+    for sr in ['cSR','tSR']:
+        rsr = sr.replace("SR","RS")
+        if sr in interactionToTriples and not rsr in interactionToTriples:
+            interactionToTriples[rsr] = [(u2,u1,c) for (u1,u2,c) in interactionToTriples[sr]]
+
     # interactionToTriples has this structure:
     # interactionToTriples['cWW'] is a list of triples, each triple being (unit_id_1,unit_id_2,range)
     # However, what is passed back from this function is interactionToIndexPairs
