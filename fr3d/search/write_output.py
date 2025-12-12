@@ -4,6 +4,8 @@ import numpy as np
 import os
 from collections import defaultdict
 
+pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','sR','coplanar','BPh','BR','sO','crossingNumber']
+
 def format_resolution(data):
 
     r = data['resolution']
@@ -25,7 +27,6 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     the coordinate window and a heat map of all-against-all distances.
     """
 
-    pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','coplanar','BPh','BR','sO','crossingNumber']
     pairsToPrint = defaultdict(list)
 
     # record which of the many possible pairwise interaction columns contain data
@@ -335,7 +336,6 @@ def writeCSVOutput(Q,candidates):
     Write the list of candidates in comma separated value format
     """
 
-    pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','BPh','BR','sO','crossingNumber']
     pairsToPrint = defaultdict(list)
 
     # record which of the many possible columns contain data

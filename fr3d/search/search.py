@@ -49,6 +49,8 @@ def getPairTypes(interactions):
             pairTypes.append('sO')
         elif interactionType in synonym['nsO3'] or interactionType in synonym['nsO5']:
             pairTypes.append('sO')
+        elif interactionType in synonym['sugar_ribose']:
+            pairTypes.append('sR')
         else:
             pairTypes.append('misc')
 
