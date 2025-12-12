@@ -226,20 +226,25 @@ def writeNAUnitData(structure,DATAPATHUNITS,messages=[]):
 
 def writeNAPairwiseInteractions(structure,DATAPATHPAIRS,messages=[]):
     """
-    Annotate pairwise interactions and write one file for the
-    structure.
+    Annotate pairwise interactions and write one file for the structure.
     """
 
     from fr3d.classifiers.NA_pairwise_interactions import annotate_nt_nt_in_structure
 
-    # tell which categories of interactions to annotate
+    # tell which categories of interactions to annotate; need all of them
+    all_categories = "basepair,basepair_detail,coplanar,stacking,backbone,so,covalent,sugar_ribose,near,bss,oo_distance"
     categories = {}
-    categories['basepair'] = []
-    categories['basepair_detail'] = []
-    categories['stacking'] = []
-    categories['sO'] = []
-    categories['sugar_ribose'] = []
-    categories['coplanar'] = []
+    for category in all_categories.split(","):
+        categories[category] = []
+
+    # categories['basepair'] = []
+    # categories['basepair_detail'] = []
+    # categories['stacking'] = []
+    # categories['sO'] = []
+    # categories['BPh'] = []
+    # categories['BR'] = []
+    # categories['sugar_ribose'] = []
+    # categories['coplanar'] = []
 
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories)
 
@@ -546,7 +551,8 @@ def readNAPositionsFile(Q, chainString, starting_index):
         if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
             try:
                 print("Downloading "+filename+" from RNA 3D Hub")
-                urlretrieve("https://rna.bgsu.edu/units/" + filename, pathAndFileName)
+                url = "https://rna.bgsu.edu/units/" + filename
+                urlretrieve(url, pathAndFileName)
             except:
                 print("Could not download %s from RNA 3D Hub" % filename)
                 pass
@@ -745,17 +751,17 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
     pathAndFileName = os.path.join(Q["DATAPATHPAIRS"]+alternate,pairsFileName)
 
     if not os.path.exists(pathAndFileName):
+        if Q.get("printFileOperations",False):
+            print("  file_reading: Could not find "+pairsFileName+" in "+Q["DATAPATHPAIRS"]+alternate)
         if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
             # try to download .pickle file of pairwise interactions
-            if Q.get("printFileOperations",False):
-                print("  file_reading: Could not find "+pairsFileName+" in "+Q["DATAPATHPAIRS"]+alternate)
             if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
                 # try to download annotations of this structure from RNA 3D Hub
                 url = "https://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
                 try:
                     urlretrieve(url, pathAndFileName) # testing
                     if Q.get("printFileOperations",False):
-                        print("  file_reading: downloaded "+pairsFileName)
+                        print("  file_reading: downloaded %s from RNA3DHub" % pairsFileName)
 
                     justDownloaded = True
                 except:
