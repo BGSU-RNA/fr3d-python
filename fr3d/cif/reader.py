@@ -652,7 +652,8 @@ class Cif(object):
         atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
 
         if 'auth_seq_id' in atom:
-            component_number = int(atom['auth_seq_id'].replace("\D",""))
+            digits = "".join(c for c in atom['auth_seq_id'] if c.isdigit())
+            component_number = int(digits) if digits else None
         elif 'label_seq_id' in atom:
             component_number = int(atom['label_seq_id'])
 
