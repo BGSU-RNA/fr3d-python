@@ -383,6 +383,30 @@ def get_header_information(params,pdb_id):
     return params, message
 
 
+def get_average_column_number(chain_id):
+    # retrieve alignment of this chain to the Rfam family and average the column numbers
+
+    url = "https://rna.bgsu.edu/correspondence/align_chains?chains=column,%s" % chain_id
+    response = requests.get(url)
+    if not response.status_code == 200:
+        print("align_chains request failed for chain %12s with status code: %s" % (chain_id,response.status_code))
+        return 0
+    else:
+        column_unit_id = response.text.strip().split("\n")
+        column_total = 0
+        column_count = 0
+        for line in column_unit_id:
+            fields = line.split()
+            try:
+                column = int(fields[0])
+                column_total += column
+                column_count += 1
+            except:
+                pass
+
+        return column_total / column_count
+
+
 def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, requested_model_chain, requested_chains, requested_symmetries, interaction_to_triple_list):
     """
     Download information about the chains in pdb_id
@@ -492,10 +516,20 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
         # do not miss any assemblies
         ok_assemblies = sorted(all_assemblies)
 
+    # special case, two ribosomes in one assembly
+    if pdb_id.upper() == '5J7L' and not requested_chains and not requested_model_chain:
+        requested_chains = 'DB,DA,AA,CB,CA,BA'.split(",")
+        requested_model_chain = [('1',x) for x in requested_chains]
+        requested_models = ['1']
+
     # accumulate data about each chunk to be shown around the circle:
     # model, assembly, rfam priority, chain name, symmetry operator priority,
     sortable_chain_data = []
     solitary_unit_ids = []
+    rfam_found = False
+    chain_symmetry_to_assembly = {}
+    same_chain_symmetry_different_assemblies = set()
+    rfam_max_length = 0
 
     # assemble a list of all model, assembly, chain, symmetries with nucleic acids
     for model in requested_models:
@@ -511,7 +545,19 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                         symmetry = assembly_line['symmetry']
                         symmetry_id = assembly_line['symmetry_id']
 
-                        # print("model::assembly::chain::symmetry",model,assembly,chain_name,symmetry_id,symmetry)
+                        chain_symmetry = (chain_name,symmetry,symmetry_id)
+                        if not chain_symmetry in chain_symmetry_to_assembly:
+                            chain_symmetry_to_assembly[chain_symmetry] = set(assembly)
+                        elif not assembly in chain_symmetry_to_assembly[chain_symmetry]:
+                            for already in chain_symmetry_to_assembly[chain_symmetry]:
+                                same_chain_symmetry_different_assemblies.add((assembly,already))
+                                same_chain_symmetry_different_assemblies.add((already,assembly))
+                            chain_symmetry_to_assembly[chain_symmetry].add(assembly)
+
+                        # print("model::assembly::chain::symmetry_id::symmetry",model,assembly,chain_name,symmetry_id,symmetry)
+                        # print(chain_symmetry)
+                        # print(chain_symmetry_to_assembly[chain_symmetry])
+                        # print(same_chain_symmetry_different_assemblies)
 
                         if requested_symmetries and not symmetry in requested_symmetries:
                             continue
@@ -529,7 +575,16 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                             else:
                                 display_name = "Not listed"
 
-                            rfam_family = chain_info.get("rfam_family", None)
+                            if "rfam_family" in chain_info:
+                                rfam_family = chain_info["rfam_family"]
+                                rfam_found = True
+                                try:
+                                    chain_length = int(chain_info["chain_length"])
+                                except:
+                                    chain_length = 0
+                                rfam_max_length = max(rfam_max_length,chain_length)
+                            else:
+                                rfam_family = None
 
                             new_data = {}
                             new_data['pdb_id'] = pdb_id
@@ -549,13 +604,9 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                             else:
                                 new_data['chain_priority'] = 1
                             new_data['display_name'] = display_name
+                            new_data['pdbx_description'] = chain_info.get("pdbx_description", "")
                             new_data['rfam_family'] = rfam_family
                             new_data['rfam_priority'] = rfam_order.get(rfam_family,7)
-                            if "2s ribosomal" in chain_info.get("pdbx_description", None).lower():
-                                # rare 2S ribosomal RNA goes between 5.8S and LSU
-                                new_data['rfam_priority'] = 2.5
-                            if "2s rrna" in chain_info.get("pdbx_description", None).lower():
-                                new_data['rfam_priority'] = 2.5
                             new_data['symmetry'] = symmetry
                             new_data['symmetry_id'] = symmetry_id
 
@@ -605,11 +656,24 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
         # focus on assemblies that are actually needed
         ok_assemblies = sorted(set([x['assembly'] for x in sortable_chain_data]))
 
+    # some chains are clearly labeled but do not map to Rfam families
+    # we can place some of them in the right order with ribosomal chains
+    text_to_rfam_priority = {}
+    text_to_rfam_priority['5s ribosomal'] = 1    # sometimes not caught by rfam mapping
+    text_to_rfam_priority['5s rrna'] = 1
+    text_to_rfam_priority['5s rna'] = 1
+    text_to_rfam_priority['3s ribosomal'] = 1.5
+    text_to_rfam_priority['3s rrna'] = 1.5
+    text_to_rfam_priority['3s rna'] = 1.5
+    text_to_rfam_priority['2s ribosomal'] = 2.5  # rare, goes at the end of 5.8S in drosophila
+    text_to_rfam_priority['2s rrna'] = 2.5
+    text_to_rfam_priority['2s rna'] = 2.5
+
     # try to identify ribosomes like 8APN, 6AZ3 where the LSU is broken into many chains
     # need more than two chains to match LSU or SSU families
     # if that doesn't work, will need to parse descriptions to figure it out
     # 5J7L has two ribosomes in one assembly
-    # 4V3P has 23 ribosomes in 23 symmetry operators
+    # 4V3P has 23 ribosomes in 23 symmetry operators, all in one assembly
     assembly_rfam_priority_to_count = {}
     assembly_to_count = {}
     rfam_priority_to_count = {}
@@ -618,6 +682,18 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
         if not assembly in assembly_to_count:
             assembly_to_count[assembly] = 0
         assembly_to_count[assembly] += 1
+
+        # print('Fixing %s' % data)
+
+        if rfam_found and not data.get('rfam_family',None):
+            # rfam chains present but this chain is not recognized
+            pdbx_description = data.get("pdbx_description","").lower()
+            # print(pdbx_description)
+            for text, priority in text_to_rfam_priority.items():
+                # print('  ',text)
+                if text in pdbx_description:
+                    data['rfam_priority'] = priority
+                    # print('Found %s in pdbx_description' % text)
 
         rfam_priority = data['rfam_priority']
         if not rfam_priority in rfam_priority_to_count:
@@ -631,23 +707,51 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                 assembly_rfam_priority_to_count[key] = 0
             assembly_rfam_priority_to_count[key] += 1
 
-    # sort the chains around the circle
+    verbose = 0
+    if False:
+        verbose = 1
+
+    # order the chains around the circle
     if rfam_priority_to_count.get(3,0) > 10 and rfam_priority_to_count.get(4,0) > 10:
-        # multiple LSU or SSU chains in one assembly and many chains in one assembly ...
-        # maybe only applies to 4V3P
+        # multiple Rfam-identified LSU or SSU chains in one assembly, like 4V3P
+        if verbose > 0:
+            print('More than 10 Rfam identified LSU or SSU chains, using Rfam order')
         sorted_chain_data = sorted(sortable_chain_data, key=lambda x: (x['assembly_priority'],x['model_chain_priority'],x['chain_priority'],x['symmetry_priority'],x['symmetry'],x['rfam_priority'],x['chain_name']))
     elif assembly_rfam_priority_to_count and max(assembly_rfam_priority_to_count.values()) > 1 and max(assembly_to_count.values()) > 7:
-        # change rfam_priority 4 (SSU), 5 (None), 7 (other Rfam) to 3 to try to get LSU, SSU in the right place,
+        # more than 7 chains in one assembly, and Rfam matches found, as in 9i05 Toxoplasma gondii mitochondrial ribosome
+        # change rfam_priority 4 (SSU), 5 (None), 7 (other Rfam) to 3 to try to get LSU, SSU in the right place by sorting alphabetically
         # but keep 5S and 5.8S at the beginning and tRNA at the end
         for x in sortable_chain_data:
             if x['rfam_priority'] in [4,5,7]:
                 x['rfam_priority'] = 3
         # sort first by assembly, then alphabetically by chain name, then by symmetry
         sorted_chain_data = sorted(sortable_chain_data, key=lambda x: (x['assembly_priority'],x['model_chain_priority'],x['chain_priority'],x['symmetry_priority'],x['symmetry'],x['rfam_priority'],x['chain_name']))
-    elif assembly_rfam_priority_to_count and max(assembly_rfam_priority_to_count.values()) >= 1:
-        # has an SSU or LSU
-        # sort first by assembly, then by rfam family priority order, then alphabetically by chain name, then by symmetry
+        if verbose > 0:
+            print('Many chains in one assembly, plus Rfam matches')
+    elif assembly_rfam_priority_to_count and not requested_chains and not requested_model_chain and max(assembly_rfam_priority_to_count.values()) > 1 and rfam_max_length > 200:
+        # get some tricky ribosomes in the right order
+        # more than one match to the same Rfam family in the same assembly, for example 9TVU chains 4 and 1,
+        # 4V8Y chains B5 and CN
+        # when more than one chain maps to the same Rfam family, tweak Rfam priority by column number in alignment
+        for assembly_rfam_priority, count in assembly_rfam_priority_to_count.items():
+            if count > 1:
+                rfam_priority = int(assembly_rfam_priority.split("_")[1])
+                for k, scd in enumerate(sortable_chain_data):
+                    if scd['rfam_priority'] == rfam_priority:
+                        chain_id = "%s|1|%s" % (scd['pdb_id'].upper(),scd['chain_name'])
+                        scd['rfam_priority'] += get_average_column_number(chain_id) / 1000000
+
         sorted_chain_data = sorted(sortable_chain_data, key=lambda x: (x['assembly_priority'],x['model_chain_priority'],x['chain_priority'],x['symmetry_priority'],x['symmetry'],x['rfam_priority'],x['chain_name']))
+        if verbose > 0:
+            print('Multiple Rfam matches to the same family, checking columns and then using Rfam priority over chain name')
+            print(assembly_rfam_priority_to_count)
+    elif assembly_rfam_priority_to_count and max(assembly_rfam_priority_to_count.values()) >= 1 and rfam_max_length > 200:
+        # has an SSU or LSU chain, where we have a system for ordering
+        # sort first by assembly, then by symmetry, then by rfam family priority order, then alphabetically by chain name
+        sorted_chain_data = sorted(sortable_chain_data, key=lambda x: (x['assembly_priority'],x['model_chain_priority'],x['chain_priority'],x['symmetry_priority'],x['symmetry'],x['rfam_priority'],x['chain_name']))
+        if verbose > 0:
+            print('Rfam matches, sorting by Rfam priority over chain name')
+            print(assembly_rfam_priority_to_count)
     elif numbered_symmetries:
         # sort by symmetry first, to keep chains together
         sorted_chain_data = sorted(sortable_chain_data, key=lambda x: (x['assembly_priority'],x['symmetry_priority'],x['symmetry'],x['model_chain_priority'],x['chain_priority'],x['chain_name']))
@@ -720,8 +824,11 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
             for i, chain_data in enumerate(sorted_chain_data):
                 if chain_data['assembly'] == assembly:
                     chain_symmetry = (chain_data['chain_name'],chain_data['symmetry'])
-                    # keep a little piece of the original cww group and its ordering
-                    chain_data['final_cww_group'] = chain_symmetry_to_group[chain_symmetry] # + i/1000
+                    if solitary_unit_ids:
+                        # split the chains in each group so solitary chains can go in between
+                        chain_data['final_cww_group'] = chain_symmetry_to_group[chain_symmetry] + i/1000
+                    else:
+                        chain_data['final_cww_group'] = chain_symmetry_to_group[chain_symmetry]
                     chain_symmetry_to_final_group[chain_symmetry] = chain_data['final_cww_group']
 
             # place chains with solitary nucleotides as well as possible within their cWW group
@@ -733,23 +840,22 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                             s = 0
                             c = 0
                             for other_chain, interactions in solitary_chain_interactions[chain_symmetry].items():
-                                if 'cww' in interactions:
-                                    c += 2
-                                    s += 2*chain_symmetry_to_final_group[other_chain]
-                                else:
-                                    c += 1
-                                    s += chain_symmetry_to_final_group[other_chain]
+                                if verbose > 0:
+                                    print('Where to put solitary chain',chain_symmetry, other_chain, interactions)
+                                if other_chain in chain_symmetry_to_final_group:
+                                    if 'cww' in interactions:
+                                        c += 2
+                                        s += 2*chain_symmetry_to_final_group[other_chain]
+                                    else:
+                                        c += 1
+                                        s += chain_symmetry_to_final_group[other_chain]
                             if c > 0:
                                 chain_data['final_cww_group'] = s/c  # weighted average, to place between chains
 
         # group chains having cWW pairs between them, so cWW groups don't cross each other
         # sort first by assembly, then by cWW group, then alphabetically by chain name, then by symmetry
         # within a cWW group, there may be crossing arcs, as with 5B2P
-        sorted_chain_data = sorted(sorted_chain_data, key=lambda x: (x['assembly_priority'],x['final_cww_group'],x['model_chain_priority'],x['chain_priority'],x['chain_name'],x['symmetry_priority'],x['symmetry']))
-
-        # print('sorted_chain_data::')
-        # for scd in sorted_chain_data:
-        #     print(scd['assembly_priority'],scd['final_cww_group'],scd['chain_name'],scd['symmetry_priority'],scd['symmetry'])
+        sorted_chain_data = sorted(sorted_chain_data, key=lambda x: (x['assembly_priority'],x['model_chain_priority'],x['chain_priority'],x['final_cww_group'],x['chain_name'],x['symmetry_priority'],x['symmetry']))
 
     assemblies = {}
     assemblies['ok_assemblies'] = ok_assemblies
@@ -761,7 +867,11 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
         assemblies['valid_assembly_pairs'] = [(a,a) for a in ok_assemblies]
     else:
         # assemblies may simply be different groupings of chains as in 4V9O
-        assemblies['valid_assembly_pairs'] = [(a,b) for a in ok_assemblies for b in ok_assemblies]
+        assemblies['valid_assembly_pairs'] = []
+        for a in ok_assemblies:
+            for b in ok_assemblies:
+                if not (a,b) in same_chain_symmetry_different_assemblies:
+                    assemblies['valid_assembly_pairs'].append((a,b))
 
     return sorted_chain_data, assemblies, message
 
@@ -2367,7 +2477,7 @@ def main(input_chains, params = {}):
         return "", "Problem setting parameters from input"
 
     # when generating examples, remove "description" from the filename
-    if True:
+    if True and "zirbel" in os.getcwd().lower():
         filename = filename.replace("_description","")
 
     # load a dictionary that maps interaction type to lists of nucleotide pairs
