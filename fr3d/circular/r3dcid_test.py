@@ -12,7 +12,7 @@ from r3dcid import arc_group_to_interactions
 
 chain_strings = set()
 
-if True:
+if False:
     chain_strings.add('4QQB|1|P')
     chain_strings.add('1S72|1|9+1S72|1|0')
     chain_strings.add('3GS5|1|C')
@@ -53,7 +53,7 @@ if True:
     chain_strings.add("1R3E")
     chain_strings.add("6YDP") # very long sequence, not so many resolved
 
-if False:
+if True:
     urls = ["https://rna.bgsu.edu/rna3dhub/nrlist/download/dna/0.5/all/csv", "https://rna.bgsu.edu/rna3dhub/nrlist/download/rna/3.392/all/csv"]
     for url in urls:
         response = requests.get(url)
@@ -66,8 +66,19 @@ if False:
 random.shuffle(sorted(chain_strings))
 print('Processing %d PDB files' % len(chain_strings))
 
+import os
+files = os.listdir("r3dcid_output")
+pdbs_done = set([x.split("_")[1].split(".")[0].upper() for x in files])
+
 # loop over examples
-for chain_string in chain_strings:
+for i, chain_string in enumerate(chain_strings):
+
+    pdb_id = chain_string.split("|")[0].upper()
+
+    if pdb_id in pdbs_done:
+        continue
+
+    print("Working on %d of %d" % (i+1,len(chain_strings)))
 
     params = {}
 
