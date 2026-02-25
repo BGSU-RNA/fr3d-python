@@ -72,8 +72,7 @@ Get started with FR3D using containers with [Docker](https://www.docker.com), [P
 
 ### Understanding the output
 
-Note that as of April 2022, NA_pairwise_interactions.py outputs annotations of RNA basepairs, including basepairs made by some modified nucleotides, but this is in a test phase, and not all basepairs are being annotated.
-Work to refine the basepair annotations will continue in Spring 2023; nearly done!
+Basepair classification limits have been revised and are available on the "latest" branch. Noted in February 2026.
 
 The program `NA_pairwise_interactions.py` generates tab-separated files called `<pdb_id>_basepairs.txt` that list basepair interactions between pairs of nucleotides (an RNA 3D structure can contain 0 or more basepairs). The files contain the following fields:
 
