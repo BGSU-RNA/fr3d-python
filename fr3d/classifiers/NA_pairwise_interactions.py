@@ -994,7 +994,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                 category_to_interactions['stacking'].add(interaction)
                                 category_to_interactions['stacking'].add(interaction_reversed)
 
-                        # annotate sugar ribose interactions;
+                        # annotate sugar ribose interactions
                         if 'sugar_ribose' in categories:
                             timerData = myTimer("Check sugar ribose", timerData)
                             if not parent1 in ['DA','DC','DG','DT'] and not parent2 in ['DA','DC','DG','DT']:
@@ -1003,6 +1003,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     count_pair += 1
                                     interaction_to_pair_list[interaction].append(unit_id_pair)
                                     category_to_interactions['sugar_ribose'].add(interaction)
+                                    interaction_reversed = reverse_edges(interaction)
+                                    category_to_interactions['sugar_ribose'].add(interaction_reversed)
                                     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
                                 interaction, datapoint21 = check_sugar_ribose(nt2, nt1, parent2, datapoint21)
@@ -1010,6 +1012,8 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     count_pair += 1
                                     interaction_to_pair_list[interaction].append(reversed_pair)
                                     category_to_interactions['sugar_ribose'].add(interaction)
+                                    interaction_reversed = reverse_edges(interaction)
+                                    category_to_interactions['sugar_ribose'].add(interaction_reversed)
                                     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
 
                         # annotate basepairs
@@ -1177,6 +1181,15 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     # check for two basepair interactions on the same edge
     if len(overlapping_chains) == 0:
         remove_pairs, make_near_pairs = check_for_two_interactions_on_same_edge(unit_id_to_basepairs,get_datapoint)
+        if get_datapoint:
+            # update annotation in datapoint
+            for (n1,n2) in remove_pairs:
+                pair_to_data[(n1,n2)]["basepair"] = ""
+                pair_to_data[(n2,n1)]["basepair"] = ""
+            for (n1,n2) in make_near_pairs:
+                pair_to_data[(n1,n2)]["basepair"] = "n" + pair_to_data[(n1,n2)]["basepair"]
+                pair_to_data[(n2,n1)]["basepair"] = "n" + pair_to_data[(n2,n1)]["basepair"]
+
     else:
         # when there are overlapping chains, some bases may make two cWW pairs, for example
         remove_pairs = []
@@ -2257,7 +2270,7 @@ def get_parent_as_RNA(sequence,if_none=None):
         return sequence
     elif sequence in ['DA','DC','DG']:
         return sequence[1]
-    elif sequence == 'DT':
+    elif sequence in ['T','DT']:
         return 'U'
     elif sequence in modified_base_to_parent:
         parent = modified_base_to_parent[sequence]
