@@ -19,7 +19,7 @@ arc_group_to_interactions["nested-wc"] = ['cWW']
 arc_group_to_interactions["lr-wc"] = ['cWW']
 arc_group_to_interactions["lr-non-wc"]     = ['cSS', 'cHH', 'cHS', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tWH', 'tWS', 'tWW', 'cWW']
 arc_group_to_interactions["nested-non-wc"] = ['cSS', 'cHH', 'cHS', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tWH', 'tWS', 'tWW', 'cWW']
-arc_group_to_interactions["bph"] = ['0BPh', '1BPh', '2BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
+arc_group_to_interactions["bph"] = ['0BPh', '1BPh', '2BPh', '3BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
 arc_group_to_interactions["br"] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
 arc_group_to_interactions["sr"] = ['cSR','tSR','cRS','tRS']
 arc_group_to_interactions["so"] = [a+b for a in ["s3","s5"] for b in ["O2'","O3'","O4'","O5'","OP1","OP2"]]
@@ -1847,6 +1847,13 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % table_font_size)
 
+    # count separately, because sometimes n1 BPh n2 and also n2 BPh n1, which is undercounted
+    for group_name in ["bph","br","sr","so"]:
+        total = 0
+        for interaction in arc_group_to_interactions[group_name]:
+            total += len(interaction_to_triple_list[interaction])
+        group_name_to_count[group_name] = max(total,group_name_to_count[group_name])
+
     for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","near"]:
         if not group_name in hide and not (group_name == "bonus" and "nested-non-wc" in hide):
             if not group_name == "bonus":
@@ -1968,6 +1975,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     for interaction in interactions_by_importance:
         for n1, n2, crossing_number in interaction_to_triple_list[interaction]:
+            # model is: n1 interaction n2
             # don't show self annotations, which omits many 0BPh interactions
             if n1 == n2:
                 continue
@@ -1998,7 +2006,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                     n2_chain = ''
 
                 if abs(angle1) < 90 or abs(angle1) > 270:
-                    # n1 on right side of the circle, append interaction
+                    # n1 on right side of the circle, append interaction like n1 BPh n2
                     t = interaction + " " + short_id(n2,n1_chain)
                     if an1 in text_interactions:
                         if not t in text_interactions[an1]:
@@ -2007,7 +2015,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                         text_interactions[an1] = [t]
 
                 if abs(angle2) >= 90 and abs(angle2) <= 270:
-                    # left side of the circle, prepend over here
+                    # n2 on left side of the circle, prepend over here
                     t = short_id(n1,n2_chain) + " " + interaction
                     if an2 in text_interactions:
                         if not t in text_interactions[an2]:
@@ -2017,7 +2025,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
                 # BPh, BR, sO, cSR, tSR are listed only once in the list of interactions
                 # recognize these, produce a "reversed" version, and list on both sides
-                if "B" in interaction or "s3O" in interaction or "s5O" in interaction or "cSR" in interaction or "tSR" in interaction:
+                if "BPh" in interaction or "BR" in interaction or "s3O" in interaction or "s5O" in interaction or "cSR" in interaction or "tSR" in interaction:
+
                     # things like 3BPh and 6BR should become 3PhB and 6RB (even though those are weird)
                     if interaction[0] == "n":
                         # for example n3BPh
@@ -2025,6 +2034,15 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                     else:
                         # for example tHS, 3BPh, sO4'3
                         rev_interaction = interaction[0]+interaction[2:]+interaction[1]
+
+                    if abs(angle1) >= 90 and abs(angle1) <= 270:
+                        # n1 on left side of the circle, prepend reversed interaction over here
+                        t = short_id(n2,n1_chain) + " " + rev_interaction
+                        if an1 in text_interactions:
+                            if not t in text_interactions[an1]:
+                                text_interactions[an1].insert(0,t)
+                        else:
+                            text_interactions[an1] = [t]
 
                     if abs(angle2) < 90 or abs(angle2) > 270:
                         # n2 on right side of the circle, append interaction
@@ -2034,15 +2052,6 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                                 text_interactions[an2].append(t)
                         else:
                             text_interactions[an2] = [t]
-
-                    if abs(angle1) >= 90 and abs(angle1) <= 270:
-                        # left side of the circle, prepend over here
-                        t = short_id(n2,n1_chain) + " " + rev_interaction
-                        if an1 in text_interactions:
-                            if not t in text_interactions[an1]:
-                                text_interactions[an1].insert(0,t)
-                        else:
-                            text_interactions[an1] = [t]
 
     # track text and lengths of individual nucleotide labels
     sequence_id_to_text = {}
