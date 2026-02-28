@@ -2,6 +2,8 @@
 
 [FR3D](https://www.bgsu.edu/research/rna/software/fr3d.html) stands for "Find RNA 3D" and is commonly pronounced "Fred". FR3D enables searching and annotating RNA 3D structures and supports the [mmCIF](https://mmcif.wwpdb.org) format.
 
+The most up to date version of the code is on the "latest" branch.
+
 Originally [written in Matlab](https://github.com/BGSU-RNA/FR3D), this repository is a re-implementation of FR3D in Python. FR3D and FR3D Python are developed by the [BGSU RNA Bioinformatics group](http://rna.bgsu.edu).
 
 ## Quick start using Docker
