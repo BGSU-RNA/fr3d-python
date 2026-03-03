@@ -21,7 +21,7 @@ arc_group_to_interactions["lr-non-wc"]     = ['cSS', 'cHH', 'cHS', 'cWH', 'cWS',
 arc_group_to_interactions["nested-non-wc"] = ['cSS', 'cHH', 'cHS', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tWH', 'tWS', 'tWW', 'cWW']
 arc_group_to_interactions["bph"] = ['0BPh', '1BPh', '2BPh', '3BPh', '4BPh', '5BPh', '6BPh', '7BPh', '8BPh', '9BPh']
 arc_group_to_interactions["br"] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6BR', '7BR', '8BR', '9BR']
-arc_group_to_interactions["sr"] = ['cSR','tSR','cRS','tRS']
+arc_group_to_interactions["sr"] = ['cSR','tSR']
 arc_group_to_interactions["so"] = [a+b for a in ["s3","s5"] for b in ["O2'","O3'","O4'","O5'","OP1","OP2"]]
 arc_group_to_interactions["stacking"] = ['s35','s33','s55','s53']
 arc_group_to_interactions["near"] = ['all']
@@ -1885,10 +1885,10 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     num_distinct_chains = len(set([x['chain_name'] for x in chain_info]))
     if num_distinct_chains > 11:
         # allow a longer line length because the text will be smaller
-        max_length = int(60 * num_distinct_chains / 11.0)
+        max_length = int(55 * num_distinct_chains / 11.0)
     else:
         # reasonable line length
-        max_length = 60
+        max_length = 55
     for chain_data in chain_info:
         chain_name = chain_data['chain_name']
         if not chain_name in chains_printed:
@@ -2675,7 +2675,9 @@ if __name__ == '__main__':
         if args.header:
             params['header'] = args.header.lower().replace("-","_")
 
-        filename = main(requested_structure, params)
+        # repeat the same parameters for semicolon-separated list of pdb ids
+        for pdbmodelchain in requested_structure.split(";"):
+            filename = main(pdbmodelchain, params)
 
         if len(filename) == 0:
             print('Empty filename returned')
