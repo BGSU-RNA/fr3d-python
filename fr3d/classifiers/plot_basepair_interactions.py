@@ -3,10 +3,10 @@ plot-basepair-interactions.py reads a data file and plots points to represent
 base pairing interactions.
 Points are colored according to python_fr3d and Matlab annotations.
 
-HTML output is in C:/Users/zirbel/Documents/FR3D/Python FR3D/output
-PNG output is in C:/Users/zirbel/Documents/FR3D/NAPairwiseInteractions
+HTML output is in C:/Users/zirbel/Documents/PythonFR3D/output
+PNG output is in C:/Users/zirbel/Documents/NAPairwiseInteractions
 
-cd "C:/Users/zirbel/Documents/FR3D/Python FR3D/output"
+cd "C:/Users/zirbel/Documents/PythonFR3D/output"
 python -m SimpleHTTPServer
 
 """
@@ -35,7 +35,7 @@ else:
 from class_limits_2024 import nt_nt_cutoffs
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from NA_pairwise_interactions import reverse_edges
-from NA_protein_annotation import make_discrepancy_text
+from NA_protein_annotation import make_heatmap_text
 from draw_residues import draw_base
 
 from fr3d.localpath import outputNAPairwiseInteractions
@@ -45,12 +45,13 @@ from fr3d.localpath import fr3d_pickle_path
 from fr3d.search.file_reading import readPDBDatafile
 
 # very specific directories, for data files in specific formats.  Hard for others to run!
-dssr_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_dssr'
-rnaview_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_rnaview'
-pdb_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_pdb'
-datmos_basepair_path = 'C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos'
+dssr_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_dssr'
+rnaview_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_rnaview'
+mcannotate_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_mcannotate'
+pdb_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_pdb'
+datmos_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_datmos_2025-09-19'
 
-OUTPUTPATH = "C:/Users/zirbel/Documents/FR3D/Python FR3D/output/"
+OUTPUTPATH = "C:/Users/zirbel/Documents/PythonFR3D/output/"
 
 #Updated modified nucleotide mappings from atom_mappings_refined.txt
 from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
@@ -73,6 +74,47 @@ TEMPLATEPATH = '../search/'
 
 near_discrepancy_cutoff = 2.0
 
+
+import sys
+import gc
+
+def find_variable_names(obj):
+    """
+    Find variable names in the global scope that reference the given object.
+    """
+    variable_names = []
+    for var_name, var_value in globals().items():
+        if var_value is obj:
+            variable_names.append(var_name)
+    return variable_names
+
+def show_memory_usage():
+    """
+    Display all variables in memory and their sizes.
+    """
+    # Get all objects currently in memory
+    all_objects = gc.get_objects()
+
+    print(f"{'Type':<20} {'Size (bytes)':<15} {'Variable':<30}")
+    print("-" * 65)
+
+    # Iterate through all objects
+    for obj in all_objects:
+        try:
+            # Get the variable name, type, and size
+            obj_type = type(obj).__name__
+            obj_size = sys.getsizeof(obj)
+
+            if obj_size > 100000:
+                # Print the details
+                var_names = find_variable_names(obj)
+
+                print("%12s %10d %s" % (obj_type,obj_size,var_names))
+        except Exception as e:
+            # Handle any errors (e.g., inaccessible objects)
+            print(f"Error processing object: {e}")
+
+
 def print_dictionary(datapoint):
     for key,value in sorted(datapoint.items()):
         if type(value) == dict:
@@ -82,6 +124,31 @@ def print_dictionary(datapoint):
         else:
             print(key,value)
 
+
+def get_parent_pair(pair):
+    """
+    Convert DNA and modified nucleotides to A, C, G, U
+    Return b1 and b2 as None if there is no match
+    """
+
+    if len(pair) < 2:
+        print("get_parent_pair not sure what to do with ",pair)
+        input("Press Enter")
+
+    if not pair[0] or not pair[1]:
+        print("get_parent_pair not sure what to do with ",pair)
+        input("Press Enter")
+
+    s1 = pair[0].split("|")[3]
+    s2 = pair[1].split("|")[3]
+
+    b1 = get_parent_as_RNA(s1)
+    b2 = get_parent_as_RNA(s2)
+
+    if b1 and b2:
+        return b1, b2, b1+","+b2
+    else:
+        return b1, b2, None
 
 def format_resolution(data):
 
@@ -261,22 +328,21 @@ def get_dist2_angle_penalty(interaction_to_atom_sets,candidate,target_distance=N
     return dist2_list, hDistAngle_list, extra_penalty, candidatelist, z_score, z_count, ok_hbonds
 
 
-def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_messages,allvsallmatrix=np.empty( shape=(0, 0) ),option_set=set()):
+def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_messages,allvsallmatrix=np.empty( shape=(0, 0) )):
     """
     Write the list of candidates in an HTML format that also shows
     the coordinate window and a heat map of all-against-all distances.
     Write the heatmap data in an efficient way.
     Do not show x,y,z parameters or scatterplots, but do show annotations from different programs.
-    option_set includes additional things to include for local FR3D diagnostics
     """
 
     pagetitle = "%s" % Q['name']
 
-    if 'FR3D' in option_set:
-        htmlfilename = Q['name'].replace(" ","_")
+    if show_fr3d_parameters:
+        htmlfilename = "fr3d_%s_%s" % (VERSION,Q['name'].replace(" ","_"))
     else:
         htmlfilename = "compare_%s_%s" % (VERSION,Q['name'].replace(" ","_"))
-        htmlfilename = htmlfilename.replace('compare_%s_DNA' % VERSION,'DNA_compare_%s' % VERSION)  # awkward, fragile, but works
+    htmlfilename = htmlfilename.replace('compare_%s_DNA' % VERSION,'DNA_compare_%s' % VERSION)  # awkward, fragile, but works
 
     # print('htmlfilename',htmlfilename)
     # print('Q name',Q['name'])
@@ -297,34 +363,35 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">Position %d</th>' % (j+3,j+1)
     candidatelist += '<th onclick="sortTable(5,\'instances\',\'alpha\')">FR3D</th>'
     candidatelist += '<th onclick="sortTable(6,\'instances\',\'alpha\')">RNAview</th>'
-    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">DSSR</th>'
-    candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">PDB</th>'
-    candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">datmos</th>'
-    candidatelist += '<th onclick="sortTable(10,\'instances\',\'numeric\')">#</th>'
-    candidatelist += '<th onclick="sortTable(11,\'instances\',\'alpha\')">Which</th>'
-    candidatelist += '<th onclick="sortTable(12,\'instances\',\'alpha\')">Glyco 1</th>'
-    candidatelist += '<th onclick="sortTable(13,\'instances\',\'alpha\')">Glyco 2</th>'
+    candidatelist += '<th onclick="sortTable(7,\'instances\',\'alpha\')">MCA</th>'
+    candidatelist += '<th onclick="sortTable(8,\'instances\',\'alpha\')">DSSR</th>'
+    candidatelist += '<th onclick="sortTable(9,\'instances\',\'alpha\')">PDB</th>'
+    candidatelist += '<th onclick="sortTable(10,\'instances\',\'alpha\')">NAPAIR</th>'
+    candidatelist += '<th onclick="sortTable(11,\'instances\',\'numeric\')">#</th>'
+    candidatelist += '<th onclick="sortTable(12,\'instances\',\'alpha\')">Which</th>'
+    candidatelist += '<th onclick="sortTable(13,\'instances\',\'alpha\')">Glyco 1</th>'
+    candidatelist += '<th onclick="sortTable(14,\'instances\',\'alpha\')">Glyco 2</th>'
 
-    if 'FR3D' in option_set:
-        candidatelist += '<th onclick="sortTable(14,\'instances\',\'alpha\')">Newest</th>'
-        candidatelist += '<th onclick="sortTable(15,\'instances\',\'alpha\')">FR3D detail</th>'
-        candidatelist += '<th onclick="sortTable(16,\'instances\',\'alpha\')">Subcat</th>'
-        candidatelist += '<th onclick="sortTable(17,\'instances\',\'numeric\')">cut dist</th>'
-        candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">x</th>'
-        candidatelist += '<th onclick="sortTable(19,\'instances\',\'numeric\')">y</th>'
-        candidatelist += '<th onclick="sortTable(20,\'instances\',\'numeric\')">z</th>'
-        candidatelist += '<th onclick="sortTable(21,\'instances\',\'numeric\')">r</th>'
-        candidatelist += '<th onclick="sortTable(22,\'instances\',\'numeric\')">maxgap</th>'
-        candidatelist += '<th onclick="sortTable(23,\'instances\',\'numeric\')">angle</th>'
-        candidatelist += '<th onclick="sortTable(24,\'instances\',\'numeric\')">normal_z</th>'
-        candidatelist += '<th onclick="sortTable(25,\'instances\',\'numeric\')">hmindist</th>'
-        current_column = 26   # next column after the one list above, keep track manually
+    if show_fr3d_parameters:
+        candidatelist += '<th onclick="sortTable(15,\'instances\',\'alpha\')">Newest</th>'
+        candidatelist += '<th onclick="sortTable(16,\'instances\',\'alpha\')">FR3D detail</th>'
+        candidatelist += '<th onclick="sortTable(17,\'instances\',\'alpha\')">Subcat</th>'
+        candidatelist += '<th onclick="sortTable(18,\'instances\',\'numeric\')">cut dist</th>'
+        candidatelist += '<th onclick="sortTable(19,\'instances\',\'numeric\')">x</th>'
+        candidatelist += '<th onclick="sortTable(20,\'instances\',\'numeric\')">y</th>'
+        candidatelist += '<th onclick="sortTable(21,\'instances\',\'numeric\')">z</th>'
+        candidatelist += '<th onclick="sortTable(22,\'instances\',\'numeric\')">r</th>'
+        candidatelist += '<th onclick="sortTable(23,\'instances\',\'numeric\')">maxgap</th>'
+        candidatelist += '<th onclick="sortTable(24,\'instances\',\'numeric\')">angle</th>'
+        candidatelist += '<th onclick="sortTable(25,\'instances\',\'numeric\')">normal_z</th>'
+        candidatelist += '<th onclick="sortTable(26,\'instances\',\'numeric\')">hmindist</th>'
+        current_column = 27   # next column after the one list above, keep track manually
         if 'css' in Q['name'].lower():
-            candidatelist += '<th onclick="sortTable(26,\'instances\',\'alpha\')">SR12</th>'
-            candidatelist += '<th onclick="sortTable(27,\'instances\',\'alpha\')">SR21</th>'
+            candidatelist += '<th onclick="sortTable(27,\'instances\',\'alpha\')">SR12</th>'
+            candidatelist += '<th onclick="sortTable(28,\'instances\',\'alpha\')">SR21</th>'
             current_column += 2
     else:
-        current_column = 14   # next column after the one list above, keep track manually
+        current_column = 15   # next column after the one list above, keep track manually
 
     # loop over true interaction(s) in this group, like cWW and cWWa
     if len(candidates) > 0:
@@ -351,7 +418,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     #candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">SBHBB</th>' % (current_column)  # second best hydrogen bond badness
     candidatelist += '<th onclick="sortTable(%d,\'instances\',\'numeric\')">Dist2</th>' % (current_column)  #
     current_column += 1
-    if 'FR3D' in option_set:
+    if show_fr3d_parameters:
         candidatelist += '<th onclick="sortTable(%d,\'instances\',\'alpha\')">h OK</th>' % (current_column)  #
         current_column += 1
 
@@ -381,7 +448,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         if first_listed_base in ['A','C','G','U','DA','DC','DG','DT']:
             break
 
-    if first_listed_base == base_combination.split(",")[0] or 'FR3D' in option_set:
+    if first_listed_base == base_combination.split(",")[0] or show_fr3d_parameters:
         id_1 = 'unit_id_1'
         id_2 = 'unit_id_2'
     else:
@@ -415,6 +482,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         if id_1 == 'unit_id_1':
             candidatelist += "<td>%s</td>" % candidate['python_annotation'].replace("a","")  # python FR3D, with w, h, s
             candidatelist += "<td>%s</td>" % candidate['rnaview_annotation']  # rnaview
+            candidatelist += "<td>%s</td>" % candidate['mcannotate_annotation']  # mcannotate
             candidatelist += "<td>%s</td>" % candidate['dssr_annotation']  # dssr
 
             # candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
@@ -423,9 +491,10 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
             # candidatelist += "<td>%s</td>" % candidate['contacts_annotation']  # contacts
             candidatelist += "<td>%s</td>" % candidate['datmos_annotation']  # datmos
         else:
-            # used to replace "a" with "" but that starts to be more confusing than it's worth
-            candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'].replace("a",""))  # python FR3D, with w, h, s
+            # candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'].replace("a",""))  # python FR3D, with w, h, s
+            candidatelist += "<td>%s</td>" % reverse_edges(candidate['python_annotation'])  # python FR3D, with w, h, s
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['rnaview_annotation'])  # rnaview
+            candidatelist += "<td>%s</td>" % reverse_edges(candidate['mcannotate_annotation'])  # mcannotate
             candidatelist += "<td>%s</td>" % reverse_edges(candidate['dssr_annotation'])  # dssr
 
             # candidatelist += "<td>%s</td>" % candidate['pdb_annotation']  # pdb
@@ -440,7 +509,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += "<td>%s</td>" % candidate['glycosidic1']  # unit 1 glycosidic bond
         candidatelist += "<td>%s</td>" % candidate['glycosidic2']  # unit 2 glycosidic bond
 
-        if 'FR3D' in option_set:
+        if show_fr3d_parameters:
             candidatelist += "<td>%s</td>" % candidate['new_python_annotation']  # python
             candidatelist += "<td>%s</td>" % candidate['new_fr3d_detail']  # after checks in this program
             candidatelist += "<td>%d</td>" % candidate['new_basepair_subcat']  # python subcategory
@@ -484,7 +553,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
             dist2 = 99.9
             candidatelist += "<td></td>"
 
-        if 'FR3D' in option_set:
+        if show_fr3d_parameters:
             if candidate['ok_hbonds']:
                 candidatelist += "<td>OK</td>"
             else:
@@ -513,16 +582,18 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         candidatelist += "<td>%0.2f</td>" % (z_score/z_count)  # total z score
 
         if not Q['DNA']:
-            candidatelist += '<td><a href="http://rna.bgsu.edu/correspondence/comparison?selection=%s,%s&exp_method=all&resolution=3.0" target="_blank" rel="noopener noreferrer">Compare 3D</a></td>' % (candidate[id_1],candidate[id_2])
-            candidatelist += '<td><a href="http://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique" target="_blank" rel="noopener noreferrer">Compare sequence</a></td>' % (candidate[id_1],candidate[id_2])
-            candidatelist += '<td><a href="http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" target="_blank" rel="noopener noreferrer">View</a></td>' % (candidate[id_1],candidate[id_2])
+            candidatelist += '<td><a href="https://rna.bgsu.edu/correspondence/comparison?selection=%s,%s&exp_method=all&resolution=3.0" target="_blank" rel="noopener noreferrer">Compare 3D</a></td>' % (candidate[id_1],candidate[id_2])
+            candidatelist += '<td><a href="https://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique" target="_blank" rel="noopener noreferrer">Compare sequence</a></td>' % (candidate[id_1],candidate[id_2])
+            candidatelist += '<td><a href="https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" target="_blank" rel="noopener noreferrer">View</a></td>' % (candidate[id_1],candidate[id_2])
 
         candidatelist += '</tr>\n'
     candidatelist += '</table>\n'
 
-    # new structure, may not have gotten done quite right!
+    # make labels for each candidate in the heatmap
     labels = [c[id_1] for c in candidates]
-    discrepancy_text = make_discrepancy_text(allvsallmatrix,labels)
+    s = len(allvsallmatrix)
+    labels = labels[0:s]
+    discrepancy_text = make_heatmap_text(allvsallmatrix,labels)
 
     # read template.html into one string
     with open(TEMPLATEPATH + 'template.html', 'r') as myfile:
@@ -546,15 +617,18 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     if height < 300:
         template = template.replace("height:300px","height:%dpx" % (height))
 
-    if VERSION == 'v9':
-        prefix = ""
+    if VERSION in ['v9']:
+        if show_fr3d_parameters:
+            prefix = "fr3d_%s_" % VERSION
+        else:
+            prefix = "compare_%s_" % VERSION
         if Q['DNA']:
             prefix += "DNA_"
         if Q['only_modified']:
             prefix += "modified_"
         table, combination_to_LSW_status = generate_LW_family_table(Q['LW'],prefix=prefix,resolutions=Q['link_blocks'])
-    elif 'FR3D' in option_set:
-        prefix = ""
+    elif show_fr3d_parameters:
+        prefix = "fr3d_%s_" % VERSION
         if Q['DNA']:
             prefix += "DNA_"
         if Q['only_modified']:
@@ -570,7 +644,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
     description = "<br>Columns of the table show candidate number in similarity order, checkbox to display coordinates or not, interacting nucleotides, annotations from different programs, number of programs which annotate, and a string that tells which programs annotate.  Click on column headings to sort.<br>"
 
-    if 'FR3D' in option_set:
+    if show_fr3d_parameters:
         # put in the scatterplot
         description += '\n<br><img src="%s"><br>\n' % Q['figure_img_src']
 
@@ -596,6 +670,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
     refresh = ""
     if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
+        REFRESHTIME = 2
         refresh = '<meta http-equiv="refresh" content="%d">' % REFRESHTIME
     template = template.replace("###REFRESH###",refresh)
 
@@ -627,7 +702,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
 def load_Matlab_FR3D_pairs(PDBID):
     """
-    download annotations of RNA basepairs from http://rna.bgsu.edu/pairs/
+    download annotations of RNA basepairs from https://rna.bgsu.edu/pairs/
     Those are triples of (unit_id1,unit_id2,crossingnumber)
     """
 
@@ -638,7 +713,7 @@ def load_Matlab_FR3D_pairs(PDBID):
 
     if not os.path.exists(pathAndFileName):
         print("Downloading %s to %s" % (pairsFileName,pathAndFileName))
-        urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+        urlretrieve("https://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
 
         # note:  if the file is not present on the server, a text file with a 404 error will be downloaded
         # so it will look like a file was downloaded, but it's not the file you need!
@@ -755,7 +830,7 @@ def compare_annotations(pairs_1,pairs_2,all_pair_types,filename):
             elif ann2.lower() in ann1.lower() and len(ann2) > 0:
                 count += 0.6
 
-            url= "http://rna.bgsu.edu/rna3dhub/display3D/unitid/" + key[0] + "," +  key[1]
+            url= "https://rna.bgsu.edu/rna3dhub/display3D/unitid/" + key[0] + "," +  key[1]
 
             if count < 1:
                 file.write(key[0]+"\t"+key[1]+"\t"+x[3]+y[3]+"\t"+ann1+"\t"+ann2+"\t"+str(count)+"\t"+url+"\n")
@@ -819,7 +894,7 @@ def print_datapoint(datapoint):
 #    if 'url' in datapoint:
 #        print("  %s" % datapoint['url'])
 
-    fields = ['x','y','z','gap12','angle_in_plane','normal_Z']
+    fields = ['x','y','z','r','gap12','angle_in_plane','normal_Z']
 
     for f in fields:
         if f in datapoint:
@@ -1014,7 +1089,8 @@ def generate_LW_family_table(LW,prefix='',resolutions=['1.5A','2.0A','2.5A','3.0
         output += "<tr><td>2.0A</td><td></td><td></td><td></td><td></td></tr>\n"
     else:
         bases = ['A','C','G','U']
-        output += "<tr><td>1.5A</td><td></td><td></td><td></td><td></td><td>2.0A</td><td></td><td></td><td></td><td></td><td>2.5A</td><td></td><td></td><td></td><td></td><td>3.0A</td><td></td><td></td><td></td></tr>\n"
+        if len(resolutions) == 4:
+            output += "<tr><td>1.5A</td><td></td><td></td><td></td><td></td><td>2.0A</td><td></td><td></td><td></td><td></td><td>2.5A</td><td></td><td></td><td></td><td></td><td>3.0A</td><td></td><td></td><td></td></tr>\n"
 
     for b1 in bases:
         output += "<tr>\n"
@@ -1167,6 +1243,25 @@ def load_rnaview_basepairs(pdb_id):
             interaction_to_pair = pickle.load(open(pickle_filename,"rb"))
         else:
             interaction_to_pair = pickle.load(open(pickle_filename,"rb"), encoding = 'latin1')
+    else:
+        print('Missing RNAview annotation of %s' % pdb_id)
+
+    return interaction_to_pair
+
+
+def load_mcannotate_basepairs(pdb_id):
+
+    pickle_filename = os.path.join(mcannotate_basepair_path,pdb_id+'_pairs.pickle')
+
+    interaction_to_pair = {}
+
+    if os.path.exists(pickle_filename):
+        if sys.version_info[0] < 3:
+            interaction_to_pair = pickle.load(open(pickle_filename,"rb"))
+        else:
+            interaction_to_pair = pickle.load(open(pickle_filename,"rb"), encoding = 'latin1')
+    else:
+        print('Missing MC-Annotate annotation of %s' % pdb_id)
 
     return interaction_to_pair
 
@@ -1208,82 +1303,131 @@ def load_contacts_basepairs(contacts_filename):
     return pair_to_interaction
 
 
-def load_datmos_basepairs_old(datmos_filename):
+def load_datmos_basepairs(all_PDB_ids = []):
+    # read chains from datmos / nabir files
+    #   0     1     2      3     4     5    6    7    8     9                  10    11  12   13    14     15                16    17      18
+    # pdbid,model,family,class,chain1,nr1,res1,alt1,ins1,symmetry_operation1,chain2,nr2,res2,alt2,ins2,symmetry_operation2,confit,rmsd,curated_file,knn_metric,coplanarity_angle,coplanarity_shift1,coplanarity_shift2,coplanarity_edge_angle1,coplanarity_edge_angle2,C1_C1_yaw1,C1_C1_pitch1,C1_C1_roll1,C1_C1_yaw2,C1_C1_pitch2,C1_C1_roll2,hb_0_length,hb_0_donor_angle,hb_0_acceptor_angle,hb_0_OOPA1,hb_0_OOPA2,hb_1_length,hb_1_donor_angle,hb_1_acceptor_angle,hb_1_OOPA1,hb_1_OOPA2,hb_2_length,hb_2_donor_angle,hb_2_acceptor_angle,hb_2_OOPA1,hb_2_OOPA2,hb_3_length,hb_3_donor_angle,hb_3_acceptor_angle,hb_3_OOPA1,hb_3_OOPA2
+    # 5mei,1,tHS,tHS-A-G,1,51,A,"", ,,1,33,G,"", ,,22.39,0.334,4v9f_0_A_242_1_555_0_G_269_1_555,0.91,168.13722,-0.06560619,0.090314955,11.521579,-2.7645056,71.45327,-7.8816338,173.42134,71.41116,8.739773,-174.6179,2.849097,115.3199,129.55544,1.7690958,-1.4663312,3.4791102,128.01237,122.4541,-5.416565,-11.232645,2.4233837,144.68347,112.19354,8.753773,18.519955,,,,,
+    # the one below has no percentile and should not be used
+    # 5tbw,1,cWS,cWS-U-U,1,2873,U,"", ,,1,2869,U,"", ,,,,,,129.75883,0.12163817,-0.10286882,41.566635,28.494764,30.859066,-31.592983,136.63326,5.0083995,42.776634,147.52533,3.538368,97.25362,137.8698,29.947083,27.315092,3.2720149,128.91217,137.53609,-1.853775,24.402248,,,,,,,,,,
 
-    # print('Reading %s' % datmos_filename)
+    import glob
+
+    PDB_set = set()
+    PDB_chain_set = set()
 
     pair_to_interaction = defaultdict(str)
-    skip_pair_set = set()
+    file_list = glob.glob(os.path.join(datmos_basepair_path,'*.csv'))
+    file_list = sorted(file_list)
 
-    if os.path.exists(datmos_filename):
-        with open(datmos_filename,'r') as f:
-            for line in f:
-                fields = line.split()
-                u1 = fields[0].replace('||||1_555','')
-                interaction = fields[1]
-                u2 = fields[2].replace('||||1_555','')
+    # print(",".join([x.replace(datmos_basepair_path,"").replace(".csv","").upper() for x in file_list]))
 
-                u1_fields = u1.split("|")
-                u2_fields = u2.split("|")
+    # zzz temporary so it runs fast
+    # file_list = file_list[0:1000]
 
-                u1_fields[0] = u1_fields[0].upper()
-                u2_fields[0] = u2_fields[0].upper()
+    # print('Working on these %d datmos files:' % len(file_list))
+    # print(file_list)
 
-                u1 = "|".join(u1_fields)
-                u2 = "|".join(u2_fields)
+    for filename in file_list:
+        # print('Reading datmos file %s' % filename)
 
-                # print('datmos',u1,u2,interaction)
+        p,fn = os.path.split(filename)
 
-                if (u1,u2) in pair_to_interaction:
-                    previous = pair_to_interaction[(u1,u2)]
-                    if not previous == interaction:
-                        if compare_annotators:
-                            view = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
-                            print('Conflicting annotations in datmos file %s %s interactions %s %s url %s' % (u1,u2,previous,interaction,view))
-                        skip_pair_set.add((u1,u2))
-                        skip_pair_set.add((u2,u1))
-                else:
-                    pair_to_interaction[(u1,u2)] = interaction
-                    pair_to_interaction[(u2,u1)] = reverse_edges(interaction)
+        pdb_id = fn.split(".")[0].upper()
 
-    return pair_to_interaction, skip_pair_set
+        # print('Reading datmos file for %s' % pdb_id)
 
+        if all_PDB_ids and not pdb_id in all_PDB_ids:
+            continue
 
-def load_datmos_basepairs():
-
-    # read chains from datmos / nabir
-    pair_to_interaction = {}
-    for mt in ['RNA','DNA']:
-        filename = '%s_2.5A_reference_pairs.csv' % mt
-        path_filename = os.path.join('C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos',filename)
-        # pdbid,model,family,class,chain1,nr1,res1,alt1,ins1,symmetry_operation1,chain2,nr2,res2,alt2,ins2,symmetry_operation2,coplanarity_angle,coplanarity_shift1,coplanarity_shift2,coplanarity_edge_angle1,coplanarity_edge_angle2,C1_C1_yaw1,C1_C1_pitch1,C1_C1_roll1,C1_C1_yaw2,C1_C1_pitch2,C1_C1_roll2,hb_0_length,hb_0_donor_angle,hb_0_acceptor_angle,hb_0_OOPA1,hb_0_OOPA2,hb_1_length,hb_1_donor_angle,hb_1_acceptor_angle,hb_1_OOPA1,hb_1_OOPA2,hb_2_length,hb_2_donor_angle,hb_2_acceptor_angle,hb_2_OOPA1,hb_2_OOPA2,hb_3_length,hb_3_donor_angle,hb_3_acceptor_angle,hb_3_OOPA1,hb_3_OOPA2
-        #   0     1     2      3     4     5    6    7    8     9                  10    11  12   13    14     15
-        with open(path_filename,'rt') as f:
+        with open(filename,'rt') as f:
             lines = f.readlines()
-        for line in lines:
+        for line in lines[1:]:
             fields = line.split(",")
-            pdb = fields[0].upper()
+
+            if len(fields[16]) == 0:
+                # pair was not compared to the curated set, skip
+                # print(fields[16],fields[17],fields[18])
+                # input("Press Enter")
+                continue
+
+            pdb_id = fields[0].upper()
             model = fields[1]
             interaction = fields[2]
 
+            chain1 = fields[4]
             alt1 = fields[7].replace('"','')
             ins1 = fields[8].replace(' ','')
             sym1 = fields[9]
-            unit1 = make_unit_id(pdb,model,fields[4],fields[6],fields[5],"",alt1,ins1,sym1)
+            unit1 = make_unit_id(pdb_id,model,chain1,fields[6],fields[5],"",alt1,ins1,sym1)
 
+            chain2 = fields[10]
             alt2 = fields[13].replace('"','')
             ins2 = fields[14].replace(' ','')
             sym2 = fields[15]
-            unit2 = make_unit_id(pdb,model,fields[10],fields[12],fields[11],"",alt2,ins2,sym2)
-
-            # print(unit1,interaction,unit2)
+            unit2 = make_unit_id(pdb_id,model,chain2,fields[12],fields[11],"",alt2,ins2,sym2)
 
             pair_to_interaction[(unit1,unit2)] = interaction
             pair_to_interaction[(unit2,unit1)] = reverse_edges(interaction)
 
-    return pair_to_interaction
+            PDB_set.add(pdb_id)
+            PDB_chain_set.add(pdb_id+"|1|"+chain1)
+            PDB_chain_set.add(pdb_id+"|1|"+chain2)
+
+    return pair_to_interaction, PDB_set, PDB_chain_set
+
+
+def load_curated_pairs():
+    # read a list of pairs that represent various clusters of true pairs
+    #           0    1 2 3    4 5   6 7 8    9 10
+    # cWW_A-U_1,1s72_0_A_1242_1_555_0_U_1122_1_555
+
+    curated_pairs_filename = 'curated_files_list.csv'
+    curated_pairs_filename = 'curated_list_2026-02-20.csv'
+
+    print("Reading %s" % curated_pairs_filename)
+
+    curated_pairs = set()
+    pair_to_interaction_curated = {}
+    interactions = set()
+
+    with open(curated_pairs_filename,'rt') as file:
+        lines = file.readlines()
+
+    for line in lines:
+        if len(line) < 30:
+            continue
+        f = line.rstrip("\n").split(",")
+        interaction = f[0].split("_")[0]
+        interactions.add(interaction)
+        fields = f[1].split("_")
+        pdb = fields[0].upper()
+        model = "1"
+        chain1 = fields[1]
+        base1  = fields[2]
+        num1   = fields[3]
+        chain2 = fields[6]
+        base2  = fields[7]
+        num2   = fields[8]
+        u1 = "%s|%s|%s|%s|%s" % (pdb,model,chain1,base1,num1)
+        u2 = "%s|%s|%s|%s|%s" % (pdb,model,chain2,base2,num2)
+        curated_pairs.add((u1,u2))
+        curated_pairs.add((u2,u1))
+
+        pair_to_interaction_curated[(u1,u2)] = interaction
+        pair_to_interaction_curated[(u2,u1)] = reverse_edges(interaction)
+
+    print("Found these interactions in NAPAIR curated pairs:")
+    print(sorted(interactions))
+    print(sorted([reverse_edges(x) for x in interactions]))
+
+    return curated_pairs, pair_to_interaction_curated
+
 
 def make_unit_id(pdb,model,chain,unit,number,atom,alt,ins,sym):
+
+    if unit == "T":
+        unit = "DT"
 
     unit_id = pdb + "|" + model + "|" + chain + "|" + unit + "|" + number + "|" + atom + "|" + alt + "|" + ins + "|" + sym
     while unit_id[-1] == "|":
@@ -1304,26 +1448,29 @@ def add_pairs_in_order(pair_to_priority,pair_to_data,priority):
             continue
 
         # delay pairs with bases in an unusual order
-        bc = pair[0].split("|")[3] + pair[1].split("|")[3]
-        if bc in ['CA','CG','GA','UA','UC','UG']:
-            bc_addition = 0.5
-        else:
-            bc_addition = 0.0
+        b1, b2, parent_bc = get_parent_pair(pair)
 
-        if priority == 1 and 'basepair' in datapoint:
-            interaction = datapoint['basepair'].replace("n","")
-            if interaction and interaction[1].islower():
-                # delay cwW until after cWw
-                pair_to_priority[pair] = 1.0 + bc_addition + 0.1
+        if b1 and b2:
+            bc = b1+b2
+            if bc in ['CA','CG','GA','UA','UC','UG']:
+                bc_addition = 0.5
             else:
-                pair_to_priority[pair] = 1.0 + bc_addition
+                bc_addition = 0.0
 
-        else:
-            pair_to_priority[pair] = priority + bc_addition
-            if bc in ['AA','CC','GG','UU']:
-                rev_pair = (pair[1],pair[0])
-                if not rev_pair in pair_to_priority:
-                    pair_to_priority[rev_pair] = priority
+            if priority == 1 and 'basepair' in datapoint:
+                interaction = datapoint['basepair'].replace("n","")
+                if interaction and interaction[1].islower():
+                    # delay cwW until after cWw
+                    pair_to_priority[pair] = 1.0 + bc_addition + 0.1
+                else:
+                    pair_to_priority[pair] = 1.0 + bc_addition
+
+            else:
+                pair_to_priority[pair] = priority + bc_addition
+                if bc in ['AA','CC','GG','UU']:
+                    rev_pair = (pair[1],pair[0])
+                    if not rev_pair in pair_to_priority:
+                        pair_to_priority[rev_pair] = priority
 
     return pair_to_priority
 
@@ -1552,8 +1699,10 @@ if __name__=="__main__":
         LW_to_number[LW] = i+1
 
     base_combination_list = ['G,C','A,A','A,C','A,G','A,U','C,C','C,U','G,G','G,U','U,U']
-    base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
     base_combination_list = ['A,U','A,A','A,C','A,G','C,C','G,C','C,U','G,G','G,U','U,U']
+    base_combination_list = ['C,C','G,C','C,U','G,G','G,U','U,U','A,A','A,C','A,G','A,U']
+    base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
+    base_combination_list = ['C,U','G,G','G,U','U,U','A,A','A,C','A,G','A,U','C,C','G,C']
 
     base_combination_to_interaction = {}
     base_combination_to_interaction['A,A'] = ['cWw','tWW','cWH','tWH','cWS','tWS','cHh','tHH','cHS','tHS','cSs','tSs','cWB']
@@ -1591,27 +1740,32 @@ if __name__=="__main__":
     write_html_pages = False
     write_html_pages = True
 
-    make_plots = False
-    make_plots = True
-
-    all_agree = '11111'            # indicates how many annotators are being compared
-    compare_annotators = True      # write HTML pages to compare FR3D, RNAview, DSSR, PDB, datmos for basepair group
-    compare_annotators = False     # write HTML pages for internal evaluation of FR3D annotations
-
     only_modified = True           # only show basepairs involving modified nucleotides
     only_modified = False
 
     write_hbond_tables = False     # does not work well
     write_hbond_tables = True      # write a table listing hbond atoms, distances, angles
 
+    show_datapoint_fields = 50           # show this number of datapoint dictionaries
+    datapoint_keys = set()
+
+    num_instances_target = 25000    # maximum target number of instances to load and consider
+
     DNA = True
     DNA = False
 
+    VERSION = ''      # not comparing annotators
     VERSION = 'v6'    # not sure exactly what that was
     VERSION = 'v7'    # only FR3D-annotated basepairs, show hDistAngle, omit C-H.. bonds
     VERSION = 'v8'    # show FR3D or datmos annotated basepairs or demoted, show hDist, hDistAngle, include C-H.. bonds
-    VERSION = ''      # not comparing annotators
     VERSION = 'v9'    # compare FR3D and datmos
+
+    all_agree = '111111'           # indicates how many annotators are being compared
+    compare_annotators = False     # write HTML pages for internal evaluation of FR3D annotations
+    compare_annotators = True      # write HTML pages to compare FR3D, RNAview, MC-Annotate, DSSR, PDB, datmos for basepair group
+
+    show_fr3d_parameters = True
+    show_fr3d_parameters = False   # only show 300 candidates, do not show all those details
 
     # temporary focus on this pair and interaction
     # base_combination_list = ['A,G']
@@ -1620,7 +1774,7 @@ if __name__=="__main__":
     # O2_bond_length = 'long'
     O2_bond_length = ''
 
-    # zzz
+    # zzz quick way to get to this location
 
     resolution_list = ['1.5A','2.0A','2.5A','3.0A']
     resolution_list = ['1.5A','3.0A']
@@ -1632,14 +1786,14 @@ if __name__=="__main__":
     resolution_list = ['2.5A']
 
     if VERSION == 'v9':
-        resolution_list = ['2.5A']
-
-    if compare_annotators:
-        make_plots = False
+        resolution_list = ['datmos']
+        datmos_list = []
 
     PDB_skip_set = set()
 
     for resolution in resolution_list:
+
+        pdb_id_to_annotators = defaultdict(set)   # which programs annotate pairs in each structure
 
         if write_hbond_tables:
             hbond_data_list = []
@@ -1654,60 +1808,81 @@ if __name__=="__main__":
             data_file = []
 
         elif VERSION in ['v9']:
-            # get the list of PDB files and chains from datmos
-            PDB_set = set()
-            PDB_chain_set = set()
-            for mt in ['RNA','DNA']:
-                filename = '%s_reference_chains.csv' % mt
-                path_filename = os.path.join('C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos',filename)
-                with open(path_filename,'rt') as f:
-                    lines = f.readlines()
-                for line in lines:
-                    pdb,chain,desc,count = line.split(",")
-                    PDB_set.add(pdb.upper())
-                    PDB_chain_set.add(pdb.upper()+"|1|"+chain)
+            print('Loading curated pairs')
+            curated_pairs, pair_to_interaction_curated = load_curated_pairs()
 
+            PDB_curated = set([x[0].split("|")[0] for x in curated_pairs])
+            # print("PDB_curated",PDB_curated)
+            curated_chains = set()
+            for x in curated_pairs:
+                for a in x:
+                    fields = a.split("|")
+                    curated_chains.add("%s|1|%s" % (fields[0],fields[2]))
+
+            # focus_pair = ("4V9F|1|0|A|2812","4V9F|1|0|A|2814")
+            # print(focus_pair,' makes ', pair_to_interaction_curated.get(focus_pair,"nothing"))
+
+            # get the list of PDB files and chains from datmos
             data_file = []
+
+            print('Loading datmos   annotations from %s' % datmos_basepair_path)
+
+            # use this list to focus on just a few files at a time for debugging
+            # pdb_restrict = ['1S72','1JJ2','4V9F','3BNR','4Y4O','4YBB','5T3K','5XTM','9MTP']
+            pdb_restrict = []
+
+            pair_to_interaction_datmos, PDB_set, representative_chains = load_datmos_basepairs(pdb_restrict)
+
+            print('found %5d datmos  basepairs' % len(pair_to_interaction_datmos.keys()))
+            print(sorted(pair_to_interaction_datmos.items())[0:20])
+
+            print('found %5d curated basepairs' % len(pair_to_interaction_curated.keys()))
+            print(sorted(pair_to_interaction_curated.items())[0:20])
+
+            pair_to_interaction_datmos.update(pair_to_interaction_curated)
+            PDB_set |= PDB_curated
+            representative_chains |= curated_chains
+
+            print('have  %5d datmos basepairs' % len(pair_to_interaction_datmos.keys()))
+            print(sorted(pair_to_interaction_datmos.items())[0:20])
+
+            input("Press Enter")
+
+            # focus_pair = ("4V9F|1|0|A|2812","4V9F|1|0|A|2814")
+            # print(focus_pair,' makes ', pair_to_interaction_datmos.get(focus_pair,"nothing"))
+
+            # print("Temporarily reducing number of structures for speed")
+            # print("1837",PDB_set)
+            # PDB_set = set(sorted(PDB_set)[0:100])
+            # print("1840",PDB_set)
+            # PDB_set.add('4V9F')
+            # print("1842",PDB_set)
+
+            # print(curated_pairs)
+            # input("Press Enter to continue")
+            # print(pair_to_interaction_datmos)
+            # input("Press Enter to continue")
+            # print(PDB_set)
+            # input("Press Enter to continue")
+            # print(representative_chains)
 
             PDB_list = sorted(PDB_set)
             all_PDB_ids = sorted(PDB_set)
-            representative_chains = PDB_chain_set
 
-        elif VERSION in []:
-            # read all structures from C:\Users\zirbel\Documents\FR3D\Python FR3D\data\pairs_datmos
-            import glob
-            datmos_list = glob.glob("C:/Users/zirbel/Documents/FR3D/Python FR3D/data/pairs_datmos/*.txt")
-            PDB_list = [os.path.basename(x).split('_')[0].upper() for x in datmos_list]
-            print('Starting with %d files from datmos' % len(PDB_list))
+            for pdb_id in all_PDB_ids:
+                pdb_id_to_annotators[pdb_id].add('datmos')
 
-            Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
-            data_file = Q["PDB_data_file"]
-
-            # PDB_list = [x for x in PDB_list if x in data_file and 'resolution' in data_file[x] and data_file[x]['resolution'] <= float(resolution.replace("A",""))]
-
-            new_list = []
-            for x in PDB_list:
-                # print(x)
-                # print(data_file[x])
-                if 'resolution' in data_file[x]:
-                    if data_file[x]['resolution']:
-                        if data_file[x]['resolution'] <= float(resolution.replace("A","")):
-                            new_list.append(x)
-
-            PDB_list = new_list
+            # show_memory_usage()
 
         else:
             if resolution == '1.5A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
+                PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
             elif resolution == '2.0A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.0A/csv']
+                PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.0A/csv']
             elif resolution == '2.5A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','8GLP','8B0X']
+                PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','8GLP','8B0X']
             elif resolution == '3.0A':
-                PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8GLP','8B0X']
-
-            Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
-            data_file = Q["PDB_data_file"]
+                PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8GLP','8B0X']
 
             PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
@@ -1726,15 +1901,27 @@ if __name__=="__main__":
                 PDB_skip_set.add('7K00')
                 PDB_skip_set.add('4YBB')
 
+            print('Loading datmos   annotations from %s' % datmos_basepair_path)
+            pair_to_interaction_datmos, PDB_set, representative_chains = load_datmos_basepairs(all_PDB_ids)
+
+        Q = readPDBDatafile({"DATAPATHUNITS": os.path.join(fr3d_pickle_path,'units')})  # available PDB structures, resolutions, chains
+        data_file = Q["PDB_data_file"]
+
         print("Resolution %s, working on %d PDB files" % (resolution,len(all_PDB_ids)))
 
-        pair_to_interaction_matlab   = defaultdict(str)
-        pair_to_interaction_dssr     = defaultdict(str)
-        pair_to_interaction_rnaview  = defaultdict(str)
-        pair_to_interaction_pdb      = defaultdict(str)
-        pair_to_interaction_datmos   = defaultdict(str)
+        print('Counting number of pairs of each category')
+        category_to_count = defaultdict(int)
+        for pair, interaction in pair_to_interaction_datmos.items():
+            b1, b2, parent_bc = get_parent_pair(pair)
+            category = b1 + "_" + b2 + "_" + interaction
+            category_to_count[category] += 1
 
-        pdb_id_to_annotators = defaultdict(set)   # which programs annotate pairs in each structure
+
+        pair_to_interaction_matlab     = defaultdict(str)
+        pair_to_interaction_dssr       = defaultdict(str)
+        pair_to_interaction_rnaview    = defaultdict(str)
+        pair_to_interaction_mcannotate = defaultdict(str)
+        pair_to_interaction_pdb        = defaultdict(str)
 
         print('Loading glycosidic bond conformations')
         unit_id_to_glycosidic = defaultdict(str)
@@ -1773,13 +1960,6 @@ if __name__=="__main__":
 
         skip_pair_set = set()
 
-        print('Loading datmos   annotations from %s' % datmos_basepair_path)
-        new_pairs = load_datmos_basepairs()
-        pair_to_interaction_datmos.update(new_pairs)
-
-        for pdb_id in all_PDB_ids:
-            pdb_id_to_annotators[pdb_id].add('datmos')
-
         print('Loading RNAview  annotations from %s' % rnaview_basepair_path)
         for PDB_id in all_PDB_ids:
             interaction_to_triples = load_rnaview_basepairs(PDB_id)
@@ -1790,6 +1970,17 @@ if __name__=="__main__":
                         pair_to_interaction_rnaview[(u1,u2)] = interaction
                     if len(interaction_to_triples[interaction]) > 0:
                         pdb_id_to_annotators[PDB_id].add('RNAview')
+
+        print('Loading MC-Annotate annotations from %s' % mcannotate_basepair_path)
+        for PDB_id in all_PDB_ids:
+            interaction_to_triples = load_mcannotate_basepairs(PDB_id)
+            for interaction in interaction_to_triples.keys():
+                # store all basepairs and only basepairs
+                if "c" in interaction or "t" in interaction:
+                    for u1,u2,crossing in interaction_to_triples[interaction]:
+                        pair_to_interaction_mcannotate[(u1,u2)] = interaction
+                    if len(interaction_to_triples[interaction]) > 0:
+                        pdb_id_to_annotators[PDB_id].add('MC-Annotate')
 
         print('Loading DSSR     annotations from %s' % dssr_basepair_path)
         for PDB_id in all_PDB_ids:
@@ -1813,6 +2004,9 @@ if __name__=="__main__":
                     if len(interaction_to_triples[interaction]) > 0:
                         pdb_id_to_annotators[PDB_id].add('PDB')
 
+        count_annotations = {}
+        count_annotations_by_group = {}
+
         # if DNA:
         #     contacts_filename = os.path.join('C:/Users/zirbel/Documents/RNA/contacts program','pairing_DNA.txt')
         # else:
@@ -1828,24 +2022,26 @@ if __name__=="__main__":
         # loop over specified base combinations
         for bc_num, base_combination in enumerate(base_combination_list):
 
+            show_memory_usage()
+
             # put '3.0A' or other resolution in the list to load one base combination at a time; memory
             if compare_annotators:
                 # will need to keep many additional pairs for comparison
-                resolution_memory_challenge_list = ['3.0A']
+                resolution_memory_challenge_list = ['3.0A','datmos']
             else:
                 resolution_memory_challenge_list = ['3.0A']
 
             if bc_num == 0 or resolution in resolution_memory_challenge_list:
 
-                # load output files with datapoint information from NA_pairwise_interactions
+                # load fr3d-python files with datapoint information from NA_pairwise_interactions
                 print("Loading FR3D     annotations for %s from %s" % (base_combination,outputNAPairwiseInteractions))
                 pair_to_datapoint = defaultdict(dict)
                 c = 0
                 st = time.time()
                 for PDB_id in all_PDB_ids:
                     c += 1
-                    if c % 1 == 0:
-                        print('Reading file %4s # %4d of %d for %s at %s, estimated total time %8.0f seconds, estimated remaining %8.0f seconds' % (PDB_id,c,len(all_PDB_ids),base_combination,resolution,(time.time()-st)*(len(all_PDB_ids)/c),(time.time()-st)*((len(all_PDB_ids)-c)/c)))
+                    if c % 50 == 0:
+                        print('Reading file %4s # %4d of %d for %s at %s, have %10d pairs, estimated total time %8.0f seconds, estimated remaining %8.0f seconds' % (PDB_id,c,len(all_PDB_ids),base_combination,resolution,len(pair_to_datapoint),(time.time()-st)*(len(all_PDB_ids)/c),(time.time()-st)*((len(all_PDB_ids)-c)/c)))
                     pair_to_datapoint_file = outputNAPairwiseInteractions + "%s_datapoint.pickle" % PDB_id
 
                     if os.path.exists(pair_to_datapoint_file):
@@ -1864,9 +2060,12 @@ if __name__=="__main__":
                                     break
 
                             if found_basepair:
-                                for pair in new_dict.keys():
+                                for pair, datapoint in new_dict.items():
                                     # reduce memory usage by only storing pairs we will process
                                     u1,u2 = pair
+
+                                    if not 'basepair' in datapoint:
+                                        continue
 
                                     # skip doubly-annotated datmos pairs
                                     if (u1,u2) in skip_pair_set:
@@ -1875,28 +2074,56 @@ if __name__=="__main__":
                                     # only keep pairs from representative chains
                                     fields1 = u1.split("|")
                                     chain1 = "|".join(fields1[0:3])
-                                    if not chain1 in representative_chains and not DNA:
+                                    if not chain1 in representative_chains and not DNA and not VERSION in ['v9']:
                                         continue
 
                                     fields2 = u2.split("|")
                                     chain2 = "|".join(fields2[0:3])
-                                    if not chain2 in representative_chains and not DNA:
+                                    if not chain2 in representative_chains and not DNA and not VERSION in ['v9']:
+                                        continue
+
+                                    # if both are from a symmetry operator, skip, because we probably already have it
+                                    if len(fields1) == 9 and len(fields2) == 9:
+                                        #print('Skipping %s - %s because both have a symmetry operator' % (u1,u2))
                                         continue
 
                                     # for some resolutions, focus on one base combination at a time
                                     if not DNA and resolution in resolution_memory_challenge_list:
-                                        b1 = fields1[3]
-                                        b2 = fields2[3]
+                                        b1, b2, parent_bc = get_parent_pair(pair)
 
-                                        if VERSION in ['v9']:
-                                            b1 = get_parent_as_RNA(b1)
-                                            b2 = get_parent_as_RNA(b2)
-                                        else:
-                                            b1 = get_parent(b1)
-                                            b2 = get_parent(b2)
-
-                                        if not base_combination == b1+","+b2 and not base_combination == b2+","+b1:
+                                        # if not base_combination == b1+","+b2 and not base_combination == b2+","+b1:
+                                        if not base_combination == b1+","+b2:
                                             continue
+
+                                        if 'basepair' in datapoint:
+                                            interaction = datapoint['basepair']
+                                            category = b1 + "_" + b2 + "_" + interaction
+                                            num_instances = category_to_count[category]
+                                            if num_instances > num_instances_target and random.random() > num_instances_target/num_instances:
+                                                # print('FR3D category %9s, %6d instances, omitting %s %s' % (category,num_instances,u1,u2))
+                                                skip_pair_set.add(pair)
+                                                skip_pair_set.add((u2,u1))
+                                                continue
+
+                                    # remove unnecessary fields
+                                    del new_dict[pair]["url"]
+                                    try:
+                                        del new_dict[pair]["center_center_distance"]
+                                    except:
+                                        pass
+
+                                    # if not compare_annotators:
+                                    #     try:
+                                    #         del new_dict[pair][""]
+                                    #     except:
+                                    #         pass
+
+                                    if show_datapoint_fields > 0:
+                                        datapoint_keys = datapoint_keys | set(new_dict[pair].keys())
+                                        show_datapoint_fields -= 1
+                                        # if show_datapoint_fields == 0:
+                                        #     print('datapoint keys seen so far:')
+                                        #     print(sorted(datapoint_keys))
 
                                     pair_to_datapoint[pair] = new_dict[pair]
                     else:
@@ -1914,16 +2141,22 @@ if __name__=="__main__":
 
             # keep track of pairs, prioritizing those with annotations like cWw over those like cWH/cHW
             pair_to_priority = add_pairs_in_order({},pair_to_datapoint,1)
+
             if compare_annotators:
                 # only consider additional pairs if we explicitly want to compare to other annotators
                 pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_rnaview,2)
-                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_dssr,3)
-                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,4)
-                # pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,5)
+                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_mcannotate,3)
+                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_dssr,4)
+                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_pdb,5)
+                pair_to_priority = add_pairs_in_order(pair_to_priority,pair_to_interaction_datmos,6)
+
+            focus_pair = ("4V9F|1|0|A|2812","4V9F|1|0|A|2814")
+            print(focus_pair,' 2143 priority ',pair_to_priority.get(focus_pair,'nothing'))
 
             # remove pairs with symmetry operators, alternate ids, insertion codes when comparing annotators
             complicated_unit_id = set()
             if compare_annotators:
+                model_notification_counter = 0
                 for u1,u2 in pair_to_priority.keys():
                     fields1 = u1.split("|")
                     fields2 = u2.split("|")
@@ -1948,13 +2181,20 @@ if __name__=="__main__":
                         complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist any model 1 version of the unit id
                         fields2[1] = '1'
                         complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist any model 1 version of the unit id
-                        print('Removing',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]),' because of model numbers')
+                        if model_notification_counter < 20:
+                            print('Removing',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]),' because of model numbers')
+                            model_notification_counter += 1
 
             print('Found %d pair_to_priority pairs to work with' % len(pair_to_priority))
 
             # cull out pairs that we don't want to consider
+            # some of these criteria should be used above to save memory
             pair_to_priority_final = {}
             for pair,priority in pair_to_priority.items():
+
+                if pair in skip_pair_set:
+                    continue
+
                 u1,u2 = pair
                 if u1 in complicated_unit_id:
                     continue
@@ -1993,7 +2233,7 @@ if __name__=="__main__":
                 pdb_id = fields1[0]
 
                 # only include pairs where all annotators are able to make annotations
-                if compare_annotators and not len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
+                if compare_annotators and not len(pdb_id_to_annotators[pdb_id]) == len(all_agree) and not VERSION in ['v9']:
                     continue
 
                 # exclude PDB ids where datmos does not annotate a single basepair
@@ -2006,44 +2246,38 @@ if __name__=="__main__":
 
                 pair_to_priority_final[(u1,u2)] = priority
 
+            # focus_pair = ("4V9F|1|0|A|2812","4V9F|1|0|A|2814")
+            # focus_pair_rev = ("4V9F|1|0|A|2814","4V9F|1|0|A|2812")
+            # print(focus_pair,' 2143 priority ',pair_to_priority.get(focus_pair,'nothing'))
+            # if not focus_pair in pair_to_priority_final and not focus_pair_rev in pair_to_priority_final:
+            #     input("Press Enter")
+
             # set the order in which to process pairs; doing FR3D first gets more consistent unit orders when symmetric
             pairs_in_order = sorted(pair_to_priority_final.keys(), key=lambda x:pair_to_priority_final[x])
 
             # try to reduce memory usage
+            pair_to_priority = {}
             pair_to_priority_final = {}
 
             print('Found %d pairs_in_order pairs to work with' % len(pairs_in_order))
 
             # store pairs by their base combination for faster retrieval
-            # store modified nucleotides according to their parent nucleotide
+            # store DNA and modified nucleotides according to their parent nucleotide
             bc_to_pairs_in_order = {}
             for pair in pairs_in_order:
-                b1 = pair[0].split("|")[3]
-                b2 = pair[1].split("|")[3]
+                b1, b2, parent_bc = get_parent_pair(pair)
 
-                if VERSION in ['v9']:
-                    b1 = get_parent_as_RNA(b1)
-                    b2 = get_parent_as_RNA(b2)
+                if b1 and b2:
+                    bc = b1+","+b2
+                    if not bc in bc_to_pairs_in_order:
+                        bc_to_pairs_in_order[bc] = []
+
+                    bc_to_pairs_in_order[bc].append(pair)
                 else:
-                    b1 = get_parent(b1)
-                    b2 = get_parent(b2)
-
-                if not b1 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
-                    print('Unknown nucleotide %s' % pair[0])
-                if not b2 in ['A','C','G','U','DA','DC','DG','DT'] and not compare_annotators:
-                    print('Unknown nucleotide %s' % pair[1])
-
-                bc = b1+","+b2
-
-                if not bc in bc_to_pairs_in_order:
-                    bc_to_pairs_in_order[bc] = []
-
-                bc_to_pairs_in_order[bc].append(pair)
+                    print('base %s became %s, %s became %s' % (pair[0].split("|")[3],b1,pair[1].split("|")[3],b2))
 
             # try to reduce memory usage
             pairs_in_order = {}
-            count_annotations = {}
-            count_annotations_by_group = {}
             big_min_distance_list = []
             interactions_processed = set([])
 
@@ -2113,17 +2347,28 @@ if __name__=="__main__":
                 interaction_to_atom_sets = {}
                 atom_set_to_d_atoms = {}
                 atom_set_to_a_atoms = {}
+                bundle_message_count = 0
 
                 # loop over pairs for which we have data, finding those with the interaction and base combination
                 for pair in bc_to_pairs_in_order.get(base_combination,[]):
 
+                    # if interaction_upper == "cHH" and base_combination == "A,A":
+                    #     focus_pair = ("4V9F|1|0|A|2812","4V9F|1|0|A|2814")
+                    #     if pair[0] in focus_pair and pair[1] in focus_pair:
+                    #         print('2346 focus_pair is here',pair,interaction_upper)
+                    #         input("Press Enter now")
+
                     if not pair in pair_to_datapoint:
-                        print('Pair %s-%s does not have datapoint information http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (pair[0],pair[1],pair[0],pair[1]))
-                        pair_to_datapoint[pair] = {}
-                        pair_to_datapoint[pair]['nt1_seq'] = pair[0].split("|")[3]
-                        pair_to_datapoint[pair]['nt2_seq'] = pair[1].split("|")[3]
-                        pair_to_datapoint[pair]['basepair'] = 'N/A'
-                        pair_to_datapoint[pair]['basepair_subcategory'] = 9
+                        if VERSION in ['v9'] and pair in pair_to_interaction_datmos:
+                            # print('Pair %s-%s does not have datapoint information https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s' % (pair[0],pair[1],pair[0],pair[1]))
+                            # usually this is RNAView making a unit id for DG with just G
+                            pair_to_datapoint[pair] = {}
+                            pair_to_datapoint[pair]['nt1_seq'] = pair[0].split("|")[3]
+                            pair_to_datapoint[pair]['nt2_seq'] = pair[1].split("|")[3]
+                            pair_to_datapoint[pair]['basepair'] = 'N/A'
+                            pair_to_datapoint[pair]['basepair_subcategory'] = 9
+                        else:
+                            continue
 
                     datapoint = pair_to_datapoint[pair]
 
@@ -2133,6 +2378,10 @@ if __name__=="__main__":
 
                     if not compare_annotators and pair in pair_shown:
                         continue
+
+                    # if "4V9F|1|0|A|2812" in pair:
+                    #     print('2375',interaction,pair,python_true,datmos)
+                    #     input("Press Enter")
 
                     fields1 = pair[0].split("|")
                     pdb_id = fields1[0]
@@ -2172,12 +2421,6 @@ if __name__=="__main__":
                     else:
                         dssr = False
 
-                    # contacts_annotation = pair_to_interaction_contacts[pair]
-                    # if len(contacts_annotation) > 0 and interaction_lower in contacts_annotation.lower():
-                    #     contacts = True
-                    # else:
-                    #     contacts = False
-
                     datmos_annotation = pair_to_interaction_datmos[pair]
                     # match datmos annotation exactly to keep cSs and csS distinct
                     if len(datmos_annotation) > 0 and interaction_lower in datmos_annotation.lower():
@@ -2185,7 +2428,24 @@ if __name__=="__main__":
                     else:
                         datmos = False
 
-                    rnaview_annotation = pair_to_interaction_rnaview[pair].replace("n","!")
+                    # if "4V9F|1|0|A|2812" in pair:
+                    #     print('2420',interaction,pair,python_true,datmos)
+                    #     input("Press Enter")
+
+                    if pair in pair_to_interaction_rnaview:
+                        rnaview_annotation = pair_to_interaction_rnaview[pair].replace("n","!")
+                    else:
+                        # try replacing DA with A, DC with C, DG with G
+                        fields = pair[0].split("|")
+                        fields[3] = fields[3].replace("DA","A").replace("DC","C").replace("DG","G")
+                        p0 = "|".join(fields)
+                        fields = pair[1].split("|")
+                        fields[3] = fields[3].replace("DA","A").replace("DC","C").replace("DG","G")
+                        p1 = "|".join(fields)
+                        # if (p0,p1) in pair_to_interaction_rnaview:
+                        #     print("Found RNAView annotation of %s,%s as %s,%s" % (pair[0],pair[1],p0,p1))
+                        rnaview_annotation = pair_to_interaction_rnaview[(p0,p1)].replace("n","!")
+
                     if len(rnaview_annotation) > 0 and interaction_lower in rnaview_annotation.lower():
                         rnaview = True
                         if "!" in rnaview_annotation:
@@ -2199,10 +2459,37 @@ if __name__=="__main__":
                         rnaview_near = False
                         rnaview_true = False
 
+                    if pair in pair_to_interaction_mcannotate:
+                        mcannotate_annotation = pair_to_interaction_mcannotate[pair]
+                    else:
+                        # try replacing DA with A, DC with C, DG with G, DT with T, see if it is annotated
+                        fields = pair[0].split("|")
+                        fields[3] = fields[3].replace("DA","A").replace("DC","C").replace("DG","G").replace("DT","T")
+                        p0 = "|".join(fields)
+                        fields = pair[1].split("|")
+                        fields[3] = fields[3].replace("DA","A").replace("DC","C").replace("DG","G").replace("DT","T")
+                        p1 = "|".join(fields)
+                        # if (p0,p1) in pair_to_interaction_mcannotate:
+                        #     print("Found mcannotate annotation of %s,%s as %s,%s" % (pair[0],pair[1],p0,p1))
+                        mcannotate_annotation = pair_to_interaction_mcannotate[(p0,p1)]
+
+                    if len(mcannotate_annotation) > 0 and interaction_lower in mcannotate_annotation.lower():
+                        mcannotate = True
+                    else:
+                        mcannotate = False
+
                     # skip cases where RNAview may need to annotate across chains in different bundles
-                    if compare_annotators and not rnaview and (python_true or python_near or dssr or datmos) and not chain1 == chain2 and not DNA:
-                        print('Skipping %s-%s %s because the chains may be from different bundles' % (pair[0],pair[1],interaction))
+                    chain1 = pair[0].split("|")[2]
+                    chain2 = pair[1].split("|")[2]
+                    if compare_annotators and not rnaview and (python_true or python_near or mcannotate or dssr or datmos) and not chain1 == chain2 and not DNA:
+                        if bundle_message_count < 20:
+                            print('Skipping %s-%s %s because the chains may be from different bundles' % (pair[0],pair[1],interaction))
+                            bundle_message_count += 1
                         continue
+
+                    # if "4V9F|1|0|A|2812" in pair:
+                    #     print('2475',interaction,pair,python_true,datmos)
+                    #     input("Press Enter")
 
                     # special versions for comparing annotators
                     if VERSION in ['v7']:
@@ -2247,13 +2534,12 @@ if __name__=="__main__":
                             # skip modified bases
                             continue
 
-
                     # since PDB annotations only tell the family and since we are only going to list
                     # each pair once, only record a PDB annotation when you can tell what edges are used
                     pdb_annotation = pair_to_interaction_pdb[pair]
                     pdb = False
                     if len(pdb_annotation) > 0 and interaction_lower in pdb_annotation.lower():
-                        if (rnaview or python_fr3d or dssr or datmos) or inter_filename in ['cWW','tWW','cHH','tHH']:
+                        if (rnaview or mcannotate or python_fr3d or dssr or datmos) or inter_filename in ['cWW','tWW','cHH','tHH']:
                             pdb = True
 
                     # correctly identify instances as cSs/csS or tSs/tsS; delay csS and tsS to get cSs and tSs
@@ -2263,11 +2549,14 @@ if __name__=="__main__":
                             if not interaction in datapoint['basepair']:
                                 # python_fr3d is csS or tsS, does not match cSs or tSs, so skip until later
                                 continue
-                        elif compare_annotators and (rnaview_true or dssr or datmos or pdb):
-                            print('Checking %s-%s for %s' % (pair[0],pair[1],interaction))
+                        elif compare_annotators and (rnaview_true or mcannotate or dssr or pdb or datmos):
+                            # print('Checking %s-%s for %s' % (pair[0],pair[1],interaction))
                             datapoint, pdata, angle_order = evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs[base_combination])
                             #print("evaluated datapoint:")
                             #print_dictionary(datapoint)
+                            if not 'new_python_interaction' in pdata:
+                                print('Missing new_python_interaction for %s-%s' % (pair[0],pair[1]))
+                                continue
                             if not interaction in pdata['new_python_interaction']:
                                 print('Delaying %s-%s with %s in category %s' % (pair[0],pair[1],pdata['new_python_interaction'],interaction))
                                 continue
@@ -2279,44 +2568,43 @@ if __name__=="__main__":
                                 print('Skipping %s %s with %s for %s' % (pair[0],pair[1],datapoint['basepair'],interaction))
                                 continue
 
-                    # # why are we missing some pairs that are delayed?
-                    # if interaction in ['csS','tsS'] and not nt1_seq == nt2_seq:
-                    #     if not python_fr3d and (rnaview_true or dssr or pdb):
-                    #         print('Found1 %s-%s on %s' % (pair[0],pair[1],interaction))
-
-
-                    # if all annotation systems have annotated at least one basepair in this PDB file,
-                    # tally how well they agree
+                    # tally how well the annotators agree on annotating this pair
                     annotator = ""
                     annotator_count = 0
-                    if len(pdb_id_to_annotators[pdb_id]) == len(all_agree):
-                        if python_true or rnaview_true or dssr or datmos or pdb:
-                            booleans = (python_true,rnaview_true,dssr,pdb,datmos)
-                            for i,truth in enumerate(booleans):
-                                if truth:
-                                    annotator += "1"
-                                    annotator_count += 1
-                                else:
-                                    annotator += "0"
 
-                            booleans = (python_true,python_near,rnaview_true,rnaview_near,dssr,pdb,datmos)
+                    if python_true or rnaview_true or mcannotate or dssr or pdb or datmos:
+                        # create a string like 101101 to indicate which of the six methods annotate
+                        # use x to indicate a method that did not annotate this PDB file
+                        booleans = (python_true,rnaview_true,mcannotate,dssr,pdb,datmos)
+                        methods = ['FR3D','RNAview','MC-Annotate','DSSR','PDB','datmos']
 
-                            if not inter_filename in count_annotations:
-                                count_annotations[inter_filename] = {}
-                                count_annotations_by_group[inter_filename] = {}
-                            if not bc_filename in count_annotations[inter_filename]:
-                                # one for each program, in order
-                                count_annotations[inter_filename][bc_filename] = [0,0,0,0,0,0,0]
-                                count_annotations_by_group[inter_filename][bc_filename] = defaultdict(int)
+                        for i,truth in enumerate(booleans):
+                            if truth:
+                                annotator += "1"
+                                annotator_count += 1
+                            elif not methods[i] in pdb_id_to_annotators[PDB_id]:
+                                annotator += 'x'
+                            else:
+                                annotator += "0"
 
-                            for i,truth in enumerate(booleans):
-                                if truth:
-                                    count_annotations[inter_filename][bc_filename][i] += 1
+                        booleans = (python_true,python_near,rnaview_true,rnaview_near,mcannotate,dssr,pdb,datmos)
 
-                            count_annotations_by_group[inter_filename][bc_filename][annotator] += 1
+                        if not inter_filename in count_annotations:
+                            count_annotations[inter_filename] = {}
+                            count_annotations_by_group[inter_filename] = {}
+                        if not bc_filename in count_annotations[inter_filename]:
+                            # one for each program, in order
+                            count_annotations[inter_filename][bc_filename] = [0,0,0,0,0,0,0,0]
+                            count_annotations_by_group[inter_filename][bc_filename] = defaultdict(int)
 
-                            pair_counted.add(pair)
-                            pair_counted.add(reverse(pair))
+                        for i,truth in enumerate(booleans):
+                            if truth:
+                                count_annotations[inter_filename][bc_filename][i] += 1
+
+                        count_annotations_by_group[inter_filename][bc_filename][annotator] += 1
+
+                        pair_counted.add(pair)
+                        pair_counted.add(reverse(pair))
 
                     if reverse(pair) in pair_to_datapoint:
                         r_datapoint = pair_to_datapoint[reverse(pair)]
@@ -2326,9 +2614,11 @@ if __name__=="__main__":
                     # do we have all of the parameters that are checked for cutoffs?
                     have_full_data = check_full_data(datapoint)
 
+                    # if interaction.lower() == 'chh':
+                    #     print("Testing 2560",interaction,pair)
+
                     if (python_true) or (annotator_count > 0 and compare_annotators) or \
-                        (compare_annotators and (Matlab or dssr or rnaview_true or pdb or datmos)) or \
-                        (not compare_annotators and python_near) or (VERSION == 'v9' and datmos):
+                        (not compare_annotators and python_near) or (compare_annotators and VERSION == 'v9' and datmos):
 
                         # evaluate the quality of the match to the current pair, for scatterplots and all
                         #print('Evaluating pair %s - %s for interaction %s' % (pair[0],pair[1],interaction))
@@ -2352,12 +2642,12 @@ if __name__=="__main__":
                                     pdata = r_pdata
                                     # pdata['python_annotation'] = reverse_edges(python_annotation)
 
-                            elif nt1_seq == 'G' and interaction == 'cWW' and rnaview_annotation == 'cHW':
-                                print("Using reversed pair for %s - %s with cWW and rnaview cHW but I don't remember why" % pair)
-                                pair = reverse(pair)
-                                datapoint = r_datapoint
-                                pdata = r_pdata
-                                # pdata['python_annotation'] = reverse_edges(python_annotation)
+                            # elif nt1_seq == 'G' and interaction == 'cWW' and rnaview_annotation == 'cHW':
+                            #     print("Using reversed pair for %s - %s with cWW and rnaview cHW but I don't remember why" % pair)
+                            #     pair = reverse(pair)
+                            #     datapoint = r_datapoint
+                            #     pdata = r_pdata
+                            #     # pdata['python_annotation'] = reverse_edges(python_annotation)
 
                         # new_cutoff_distance is calculated locally in this program
                         new_cutoff_distance = pdata['new_cutoff_distance']
@@ -2366,14 +2656,18 @@ if __name__=="__main__":
                         if not 'cut_dist' in datapoint:
                             datapoint['cut_dist'] = new_cutoff_distance
 
+                        # if interaction.lower() == 'chh':
+                        #     print("Testing 2600",interaction,pair)
+
                         # save the pair if it is good enough to list in the table
                         if python_true \
                             or (VERSION in ['v9'] and datmos) \
                             or (not VERSION in ['v9'] and python_near and not compare_annotators and datapoint['cut_dist'] < near_discrepancy_cutoff) \
                             or (not VERSION in ['v9'] and 'sugar_ribose' in datapoint and datapoint['sugar_ribose'] == 'cSR' and datapoint['cut_dist'] < near_discrepancy_cutoff) \
                             or compare_annotators \
-                            or (compare_annotators and not interaction in nt_nt_cutoffs[base_combination] and (rnaview or pdb or dssr or datmos)) \
+                            or (compare_annotators and not interaction in nt_nt_cutoffs[base_combination] and (rnaview or mcannotate or pdb or dssr or datmos)) \
                             or (compare_annotators and rnaview and datapoint['cut_dist'] < near_discrepancy_cutoff) \
+                            or (compare_annotators and mcannotate and datapoint['cut_dist'] < near_discrepancy_cutoff) \
                             or (compare_annotators and pdb and datapoint['cut_dist'] < near_discrepancy_cutoff) \
                             or (compare_annotators and dssr and datapoint['cut_dist'] < near_discrepancy_cutoff) \
                             or (compare_annotators and datmos and datapoint['cut_dist'] < near_discrepancy_cutoff) \
@@ -2395,9 +2689,15 @@ if __name__=="__main__":
                             pdata['matlab_annotation'] = matlab_annotation
                             pdata['dssr_annotation'] = dssr_annotation
                             pdata['rnaview_annotation'] = rnaview_annotation
+                            pdata['mcannotate_annotation'] = mcannotate_annotation
                             pdata['pdb_annotation'] = pdb_annotation
                             # pdata['contacts_annotation'] = contacts_annotation
-                            pdata['datmos_annotation'] = datmos_annotation
+
+                            if pair in curated_pairs:
+                                pdata['datmos_annotation'] = "cur " + datmos_annotation
+                            else:
+                                pdata['datmos_annotation'] = datmos_annotation
+
                             pdata['annotator_count'] = annotator_count  # how many annotate as such
                             pdata['annotator'] = annotator
 
@@ -2445,10 +2745,24 @@ if __name__=="__main__":
                                         if pdata["atom_set_to_results"][atom_set]["donor_acceptor_distance"] > 3.5 and O2_bond_length == 'short':
                                             continue
 
+                            # set priority for display; lowest is highest priority
+
+                            # old method based on how much agreement
                             if annotator_count == len(annotator):
-                                pdata['annotator_all'] = 1
+                                pdata['display_priority'] = 1
                             else:
-                                pdata['annotator_all'] = 0
+                                pdata['display_priority'] = 0
+
+                            if pdata['python_true'] == pdata['datmos_true']:
+                                pdata['display_priority'] = 2
+                            else:
+                                pdata['display_priority'] = 1
+
+                            # curated pairs from datmos are always shown
+                            u1 = pdata['unit_id_1']
+                            u2 = pdata['unit_id_2']
+                            if (u1,u2) in curated_pairs:
+                                pdata['display_priority'] = 0
 
                             # get second-best hydrogen bond distance and angle
                             # use default target distance and angle
@@ -2483,7 +2797,7 @@ if __name__=="__main__":
                                     big_min_distance_list.append((datapoint['min_distance'],bc_filename,inter_filename,pdata['python_annotation']))
 
                             # collect data for scatterplots
-                            if make_plots and 'angle_in_plane' in datapoint and abs(datapoint['angle_in_plane']) > 0.0001:
+                            if show_fr3d_parameters and 'angle_in_plane' in datapoint and abs(datapoint['angle_in_plane']) > 0.0001:
                                 xvalues.append(datapoint['x'])
                                 yvalues.append(datapoint['y'])
                                 rvalues.append(math.sqrt(datapoint['x']**2 + datapoint['y']**2))
@@ -2558,7 +2872,7 @@ if __name__=="__main__":
                     figure_img_src = figure_img_src.replace("basepairs_","modified_basepairs_")
 
                 # make scatterplots for pairwise combinations of data
-                if len(xvalues) > 0 and make_plots:
+                if len(xvalues) > 0 and show_fr3d_parameters:
 
                     fig = plt.figure(figsize=(11.0, 7.0))
 
@@ -2613,6 +2927,8 @@ if __name__=="__main__":
                     Q['name'] = "%s %s %s" % (inter_filename,bc_filename,"_".join(all_PDB_ids))
                 elif 'nrlist' in PDB_list[0]:
                     Q['name'] = "%s %s %s" % (inter_filename,bc_filename,resolution)
+                elif VERSION in ['v9']:
+                    Q['name'] = "%s %s %s" % (inter_filename,bc_filename,resolution)
                 elif DNA:
                     Q['name'] = "%s %s %s" % (inter_filename,bc_filename,resolution)
                 else:
@@ -2636,7 +2952,7 @@ if __name__=="__main__":
 
                 # for links across the top of the page, tell something about filenames
                 if VERSION == 'v9':
-                    Q['link_blocks'] = [str(len(all_PDB_ids))]
+                    Q['link_blocks'] = ['datmos']
                 else:
                     Q['link_blocks'] = resolution_list
 
@@ -2757,19 +3073,6 @@ if __name__=="__main__":
                                         if not math.isnan(a):
                                             bond_angles.append(a)
 
-                            # # h-bond atoms are listed as 12 or 21; base order may also change
-                            # if atom_set[3] == '21' and bc_filename == base_combination:
-                            #     # reverse d_atoms
-                            #     d_atoms = '-'.join(reversed(d_atoms.split('-')))
-                            #     # reverse a_atoms
-                            #     a_atoms = '-'.join(reversed(a_atoms.split('-')))
-                            # elif atom_set[3] == '12' and not bc_filename == base_combination:
-                            #     # reverse d_atoms
-                            #     d_atoms = '-'.join(reversed(d_atoms.split('-')))
-                            #     # reverse a_atoms
-                            #     a_atoms = '-'.join(reversed(a_atoms.split('-')))
-
-
                             # write one line for each atom set listing all the data
                             if len(bond_lengths) > 0:
                                 d_avg = np.mean(bond_lengths)
@@ -2806,7 +3109,7 @@ if __name__=="__main__":
                                 hbond_data['percent_under_80'] = 100.0*sum([1 for a in bond_angles if a < 80])/len(bond_angles)
                             else:
                                 hbond_data['percent_under_80'] = 0.0
-                            hbond_data['link'] = "http://rna.bgsu.edu/experiments/annotations/" + filename
+                            hbond_data['link'] = "https://rna.bgsu.edu/experiments/annotations/" + filename
                             hbond_data['image_link'] = 'https://www.nakb.org/ndbmodule/bp-catalog//static/img/%s/%s_%s%s_exemplar.png' % (inter_filename,inter_filename,b1,b2)
 
                             hbond_data_list.append(hbond_data)
@@ -2830,7 +3133,7 @@ if __name__=="__main__":
                         dist2_data['percent_over_3.6'] = 0.0
                         dist2_data['percent_over_3.5'] = 0.0
                         dist2_data['percent_over_3.4'] = 0.0
-                    dist2_data['link'] = "http://rna.bgsu.edu/experiments/annotations/" + filename
+                    dist2_data['link'] = "https://rna.bgsu.edu/experiments/annotations/" + filename
                     dist2_data['image_link'] = 'https://www.nakb.org/ndbmodule/bp-catalog//static/img/%s/%s_%s%s_exemplar.png' % (inter_filename,inter_filename,b1,b2)
 
                     dist2_data_list.append(dist2_data)
@@ -2839,17 +3142,11 @@ if __name__=="__main__":
                 if len(pair_data) >= 0 and write_html_pages:
 
                     # if too many pairs, show some good and also the worst ones
-                    # This ordering is not working!  It often keeps the true ones with bad h-bonds,
-                    # puts the true ones beyond 300, so the heat map shows all bad instances.
-                    if compare_annotators and len(pair_data) > 300:
+                    if len(pair_data) > 300 and compare_annotators and not show_fr3d_parameters:
                         # sort by full agreement or not, random within each category
-                        pair_data = sorted(pair_data, key=lambda p: p['annotator_all']+0.0001*random.uniform(0,1))
+                        pair_data = sorted(pair_data, key=lambda p: p['display_priority']+0.0001*random.uniform(0,1))
 
-                        # print('Sorted instances from less to full agreement')
-                        # for pd in pair_data:
-                        #     print(pd['annotator_all'],pd['annotator_count'])
-
-                        # keep up to 250 that lack total agreement and up to 50 that agree fully
+                        # keep 250 with highest priority and 50 of whatever is lest
                         order_pair_data = pair_data[0:250] + pair_data[-50:]
 
                         # discard all the rest
@@ -2907,7 +3204,16 @@ if __name__=="__main__":
                     order = treePenalizedPathLength(dista,min(n,100))
                     order = standardOrder(dista,order)
 
-                    if not compare_annotators:
+                    if compare_annotators:
+                        for i in range(0,n):
+                            if VERSION in ['v9']:
+                                # indicate curated pairs on the diagonal
+                                u1 = order_pair_data[i]['unit_id_1']
+                                u2 = order_pair_data[i]['unit_id_2']
+                                # print('Checking for %s,%s in curated_pairs' % (u1,u2))
+                                if (u1,u2) in curated_pairs:
+                                    dista[i][i] = -9
+                    else:
                         # color entries on diagonal according to matching annotations
                         for i in range(0,n):
                             if VERSION in ['v8','v9']:
@@ -2951,19 +3257,18 @@ if __name__=="__main__":
                     Write the list of candidates in an HTML format that also shows
                     the coordinate window and a heat map of all-against-all distances.
                     """
-                    if compare_annotators:
-                        writeHTMLOutput(Q,reorder_pairs,interaction_to_atom_sets,distance_angle_messages,reorder_dista)
-                    else:
-                        option_set = set()
-                        option_set.add('FR3D')
-                        writeHTMLOutput(Q,reorder_pairs,interaction_to_atom_sets,distance_angle_messages,reorder_dista,option_set)
 
-                # input("Press Enter to continue...")
+                    writeHTMLOutput(Q,reorder_pairs,interaction_to_atom_sets,distance_angle_messages,reorder_dista)
+
+                    show_fr3d_parameters = not show_fr3d_parameters
+                    writeHTMLOutput(Q,reorder_pairs,interaction_to_atom_sets,distance_angle_messages,reorder_dista)
+                    show_fr3d_parameters = not show_fr3d_parameters
+
 
             # print large minimum distances
             big_min_distance_list = sorted(big_min_distance_list)
-            for b in big_min_distance_list:
-                print("big_min_distance %8.2f %s %5s %5s" % b)
+            # for b in big_min_distance_list:
+            #     print("big_min_distance %8.2f %s %5s %5s" % b)
 
             # remove this base combination from pair_to_datapoint to save memory
             # does not seem to reduce overall RAM usage, and garbage collection takes time
@@ -2984,14 +3289,14 @@ if __name__=="__main__":
         if compare_annotators:
             output_text = ""
 
-            print("All four methods annotate at least one basepair in each of these %d structures:" % len(pdb_id_to_annotators.keys()))
+            print("All methods annotate at least one basepair in each of these %d structures:" % len(pdb_id_to_annotators.keys()))
             print(",".join(sorted(pdb_id_to_annotators.keys())))
 
             # show FR3D near
-            header = "Family\tLW\tBase 1\tBase 2\tFR3D\tFR3D near\tRNAview\tRNAview near\tDSSR\tPDB\tdatmos\tMax / (1+Min)\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tFR3D RNAview\tFR3D DSSR\tFR3D PDB\tRNAview DSSR\tRNAview PDB\tDSSR PDB\tFR3D only\tRNAview only\tDSSR only\tPDB only"
+            header = "Family\tLW\tBase 1\tBase 2\tFR3D\tFR3D near\tRNAview\tRNAview near\tMC-Annotate\tDSSR\tPDB\tdatmos\tMax / (1+Min)\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tFR3D RNAview\tFR3D DSSR\tFR3D PDB\tRNAview DSSR\tRNAview PDB\tDSSR PDB\tFR3D only\tRNAview only\tDSSR only\tPDB only"
 
             # leave out FR3D near, add FR3D-All, etc.
-            header = "Fam\tLW\tBase 1\tBase 2\tStatus\tFR3D\tRNAview\tRNAview near\tDSSR\tPDB\tdatmos\tMax / (1+Min)\tFR3D-All\tRNAview-All\tDSSR-All\tPDB-All\tdatmos-All\tAll\tAll but FR3D\tAll but RNAview\tAll but DSSR\tAll but PDB\tAll but datmos\t3 agree\t2 agree\tFR3D only\tRNAview only\tDSSR only\tPDB only\tdatmos only\tImage\tInstances\n"
+            header = "Fam\tLW\tBase 1\tBase 2\tStatus\tFR3D\tRNAview\tRNAview near\tMCA\tDSSR\tPDB\tdatmos\tMax / (1+Min)\tIntersection\tFR3D-Int\tRNAview-Int\tMCA-Int\tDSSR-Int\tPDB-Int\tdatmos-Int\tAll but FR3D\tAll but RNAview\tAll but MCA\tAll but DSSR\tAll but PDB\tAll but datmos\t4 agree\t3 agree\t2 agree\tFR3D only\tRNAview only\tMCA only\tDSSR only\tPDB only\tdatmos only\tInstances\n"
 
             all_output_list = [header]
             print(header)
@@ -3019,41 +3324,46 @@ if __name__=="__main__":
                         max_count = 0.0
                         min_count = float('inf')
                         for i,b in enumerate(count_annotations[interaction][base_combination]):
-                            if i in [0,2,3,4,5,6]: # skip FR3D near
+                            if i in [0,2,3,4,5,6,7]: # skip FR3D near
                                 output.append(str(b))
-                            if i in [0,2,4,5,6]:  # skip FR3D near, RNAview near
+                            if i in [0,2,4,5,6,7]:  # skip FR3D near, RNAview near
                                 max_count = max(max_count,b)
                                 min_count = min(min_count,b)
 
                         if max_count > 0:
                             output.append("%0.2f" % (float(max_count)/(1.0+min_count)))
-                            all_count = count_annotations_by_group[interaction][base_combination]["11111"]
+                            all_count = count_annotations_by_group[interaction][base_combination]["111111"]
+
+                            output.append(str(all_count)) # All, the number in the intersection
 
                             for i,b in enumerate(count_annotations[interaction][base_combination]):
-                                if i in [0,2,4,5,6]:  # skip FR3D near, RNAview near
+                                if i in [0,2,4,5,6,7]:  # skip FR3D near, RNAview near
+                                    # FR3D-All, etc.; how much each annotates outside the intersection
                                     output.append(str(b-all_count))
 
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["11111"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["01111"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["10111"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["11011"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["11101"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["11110"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["011111"])) # FR3D-All
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["101111"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["110111"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["111011"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["111101"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["111110"]))
 
                             num_agree = defaultdict(int)
                             for mask in count_annotations_by_group[interaction][base_combination].keys():
                                 num = mask.count('1')
                                 num_agree[num] += 1
 
+                            output.append(str(num_agree[4]))
                             output.append(str(num_agree[3]))
                             output.append(str(num_agree[2]))
 
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["10000"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["01000"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["00100"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["00010"]))
-                            output.append(str(count_annotations_by_group[interaction][base_combination]["00001"]))
-                            output.append("http://rna.bgsu.edu/experiments/annotations/" + filename)
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["100000"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["010000"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["001000"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["000100"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["000010"]))
+                            output.append(str(count_annotations_by_group[interaction][base_combination]["000001"]))
+                            output.append("https://rna.bgsu.edu/experiments/annotations/" + filename)
                             output_list.append(output)
 
                 output_list = sorted(output_list)             # sort by base combination
@@ -3071,7 +3381,7 @@ if __name__=="__main__":
                 if only_modified:
                     table_filename = table_filename.replace("table_","modified_table_")
 
-                with open(table_filename,'w') as f:
+                with open(table_filename,'wt') as f:
                     f.writelines(all_output_list)
 
                 print('Saved %s table in %s' % (resolution,table_filename))
@@ -3142,7 +3452,7 @@ if __name__=="__main__":
 
             print("Saved dist2 table in %s" % dist2_table_file)
 
-        if make_plots:
+        if show_fr3d_parameters:
             print("Saved figures in %s/plots" % outputNAPairwiseInteractions)
         if write_html_pages:
             print("Saved HTML files in %s" % OUTPUTPATH)
