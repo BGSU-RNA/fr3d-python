@@ -30,17 +30,17 @@ arc_group_names = ["nested-wc","lr-wc","lr-non-wc","nested-non-wc","bph","br","s
 arc_group_names_by_order = ["stacking","sr","so","br","bph","nested-non-wc","lr-non-wc","nested-wc","lr-wc","near"]
 
 arc_group_name_to_text = {}
-arc_group_name_to_text["nested-wc"]     = "Indicate %d nested Watson-Crick basepairs (AU, GC, GU cWW)"
-arc_group_name_to_text["lr-wc"]         = "Indicate %d long-range Watson-Crick basepairs"
-arc_group_name_to_text["nested-non-wc"] = "Indicate %d nested non-Watson-Crick basepairs"
+arc_group_name_to_text["nested-wc"]     = "%d nested Watson-Crick basepairs (AU, GC, GU cWW)"
+arc_group_name_to_text["lr-wc"]         = "%d long-range Watson-Crick basepairs"
+arc_group_name_to_text["nested-non-wc"] = "%d nested non-Watson-Crick basepairs"
 arc_group_name_to_text["bonus"]         = "(Includes AA cWW, AG cWW, UU cWW, AG tHS, etc.)"
-arc_group_name_to_text["lr-non-wc"]     = "Indicate %d long-range non-Watson-Crick basepairs"
-arc_group_name_to_text["stacking"]      = "Indicate %d stacking interactions"
-arc_group_name_to_text["bph"]           = "Indicate %d base-phosphate interactions"
-arc_group_name_to_text["br"]            = "Indicate %d base-ribose interactions"
-arc_group_name_to_text["sr"]            = "Indicate %d sugar-ribose interactions"
-arc_group_name_to_text["so"]            = "Indicate %d oxygen stacking interactions"
-arc_group_name_to_text["near"]          = "Indicate %d near interactions"
+arc_group_name_to_text["lr-non-wc"]     = "%d long-range non-Watson-Crick basepairs"
+arc_group_name_to_text["stacking"]      = "%d base stacking interactions"
+arc_group_name_to_text["bph"]           = "%d base-phosphate interactions"
+arc_group_name_to_text["br"]            = "%d base-ribose interactions"
+arc_group_name_to_text["sr"]            = "%d sugar-ribose interactions"
+arc_group_name_to_text["so"]            = "%d oxygen stacking interactions"
+arc_group_name_to_text["near"]          = "%d near basepairs or other interactions"
 
 # control points to map nucleotide number to the value of each of these parameters
 control_base_number_font_size=  [(35,7),(82,7),(132,7),(294,4),(585,2),(1522,1),(3000,0.5),(4000,0.4),(5000,0.4),(7000,0.25),(11662,0.15),(18000,0.1)]
@@ -292,10 +292,27 @@ def set_parameters_from_input(params,filename,pdb_id):
     if 'wc' in dim.split(","):
         dim = ",".join(dim.split(",") + ["nested-wc","lr-wc"])
 
+    if 'all' in hide:
+        show = ''
+        hide = ','.join(arc_group_names)
+        dim = ''
+
+    if 'all' in dim:
+        show = ''
+        hide = ''
+        dim = ','.join(arc_group_names)
+
+    if 'all' in show:
+        show = ''
+        hide = ''
+        dim = ''
+
     # clean up the comma-separated lists
     params['show'] = clean_comma_list(show, arc_group_names)
     params['hide'] = clean_comma_list(hide, arc_group_names, show)
     params['dim']  = clean_comma_list(dim, arc_group_names, hide+","+show)
+
+    print(params)
 
     text = params.get('text','').lower()
     params['text'] = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","near","all","helix","none"])
@@ -1885,10 +1902,10 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     num_distinct_chains = len(set([x['chain_name'] for x in chain_info]))
     if num_distinct_chains > 11:
         # allow a longer line length because the text will be smaller
-        max_length = int(55 * num_distinct_chains / 11.0)
+        max_length = int(60 * num_distinct_chains / 11.0)
     else:
         # reasonable line length
-        max_length = 55
+        max_length = 60
     for chain_data in chain_info:
         chain_name = chain_data['chain_name']
         if not chain_name in chains_printed:
@@ -1911,7 +1928,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % chain_table_font_size)
 
     # print list of chains and their display names below the diagram
-    x_chain_list = 360 * mul
+    x_chain_list = 320 * mul
     for chain_text in chain_lines:
         ct = chain_text.replace("(","\(").replace(")","\)")
         PSlist.append("%d %f moveto" % (x_chain_list, y))
@@ -2580,7 +2597,7 @@ if __name__ == '__main__':
 
         # allow user to specify input and output paths
         parser = argparse.ArgumentParser()
-        parser.add_argument('structure', type=str, nargs='+', help='PDB id like 1J5E, id with chain like 4V9F|1|9, id with model like 8QO5|2, etc.')
+        parser.add_argument('structure', type=str, nargs='+', help='PDB id like 7EZ2, id with chain like 4V9F|1|9, id with model like 8QO5|2, multiple chains like 4V9F|1|0,9, multiple ids like 7EZ2;8GLP;7K00')
         parser.add_argument("--assemblies", help='Assemblies to show, comma separated list like 1,2,3')
         parser.add_argument("--symmetries", help='Symmetries to show, comma separated, values like 1_555 for the default, 2_655, P_4, ASM_6, etc.')
         parser.add_argument("--data", help="Location for data files downloaded by the program")
@@ -2599,15 +2616,15 @@ if __name__ == '__main__':
 
         params = {}
         if args.structure:
-            requested_structure = args.structure[0]
+            requested_structure = args.structure[0].replace(" ","")
         else:
             print('Specify a structure to display, like 4TNA')
 
         if args.assemblies:
-            params['assembly'] = args.assemblies
+            params['assembly'] = args.assemblies.replace(" ","")
 
         if args.symmetries:
-            params['symmetry'] = args.symmetries
+            params['symmetry'] = args.symmetries.replace(" ","")
 
         if args.data:
             data_path = args.data
@@ -2639,7 +2656,7 @@ if __name__ == '__main__':
             params['coloring'] = args.coloring.lower()
 
         if args.format:
-            params['format'] = args.format.lower()
+            params['format'] = args.format.lower().replace(" ","")
             if not 'pdf' in params['format'] and not 'svg' in params['format']:
                 print('Producing pdf formatted output')
                 params['format'] = 'pdf'
@@ -2647,16 +2664,17 @@ if __name__ == '__main__':
             params['format'] = 'pdf'
 
         if args.hide:
-            params['hide'] = args.hide.lower()
+            params['hide'] = args.hide.lower().replace(" ","")
 
         if args.show:
-            params['show'] = args.show.lower()
+            params['show'] = args.show.lower().replace(" ","")
 
         if args.dim:
-            params['dim'] = args.dim.lower()
+            params['dim'] = args.dim.lower().replace(" ","")
 
         if args.text:
-            params['text'] = args.text.lower()
+            if not args.text.lower() == 'basepair':
+                params['text'] = args.text.lower().replace(" ","")
 
         if args.n3d and args.n3d.lower() == 'false':
             params['n3d'] = False
@@ -2673,11 +2691,11 @@ if __name__ == '__main__':
             params['description'] = args.description
 
         if args.header:
-            params['header'] = args.header.lower().replace("-","_")
+            params['header'] = args.header.lower().replace("-","_").replace(" ","")
 
         # repeat the same parameters for semicolon-separated list of pdb ids
         for pdbmodelchain in requested_structure.split(";"):
             filename = main(pdbmodelchain, params)
 
-        if len(filename) == 0:
-            print('Empty filename returned')
+            if len(filename) == 0:
+                print('Something went wrong with %s' % pdbmodelchain)
