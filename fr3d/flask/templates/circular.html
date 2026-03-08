@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="Center">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circular Diagram Server for RNA and DNA</title>
+  <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous"> -->
+  <!-- <script src="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script> -->
+
+  <link rel="shortcut icon" href="https://rna.bgsu.edu/rna3dhub/icons/C_icon.png">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<!-- <style>
+  .tooltip {
+    position: relative;
+    display: inline-block;
+  }
+
+  .tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    top: -30px; /* Adjust this value to control the distance of the tooltip from the input */
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+  }
+
+  .tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+  }
+</style> -->
+
+
+<style>
+    .tooltip-content {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .tooltip-content .tooltiptext {
+        visibility: hidden;
+        width: 400px;
+        background-color: #f9f9f9;
+        color: #000; /* Default color for tooltip text */
+        text-align: left;
+        padding: 5px;
+        border-radius: 8px;
+        position: absolute;
+        z-index: 1;
+        top: 100%; /* Position the tooltip above the text */
+        left: 50%;
+        margin-left: -110px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .tooltip-content:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .tooltip-key {
+        color: blue; /* Color for key terms */
+        font-weight: bold;
+    }
+</style>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="https://rna.bgsu.edu/fr3d/circular">Circular Diagram Server</a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <!-- Left side links -->
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="https://rna.bgsu.edu/rna3dhub/pdb" target="_blank">
+            RNA Structure Atlas
+          </a>
+        </li>
+
+        <!-- Dropdown menu -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="dropdownMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Representative Sets
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenu">
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/nrlist">Home</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/nrlist/release_history">Release history</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/nrlist/compare_releases">Compare releases</a></li>
+            <li class="divider"></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/nrlist/release/current">Compare releases</a></li>
+          </ul>
+        </li>
+
+        <!-- Dropdown menu -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="dropdownMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            RNA 3D Motif Atlas
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenu">
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs">Home</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release_history">Release history</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/compare_releases">Compare releases</a></li>
+            <li class="divider"></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/hl/current">View current HL</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/il/current">View current IL</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j3/current">View current J3</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j4/current">View current J4</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j5/current">View current J5</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j6/current">View current J6</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j7/current">View current J7</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j8/current">View current J8</a></li>
+            <li><a class="dropdown-item" href="https://rna.bgsu.edu/rna3dhub/motifs/release/j9/current">View current J9</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="https://rna.bgsu.edu/WebFR3D" target="_blank">WebFR3D</a>
+        </li>
+
+      </ul>
+
+      <!-- Right side link -->
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="https://docs.google.com/document/d/e/2PACX-1vQdAJK7Mz3q_s43F6ZxQ_pQMALevuOZ6kkoVOHC1J6KHA5F0rdPXo4O2yApTilHi0kiZRbLfbhQ_vEA/pub" target="_blank">
+            Help
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page_header">
+    <h1>Circular Diagram Server for RNA and DNA</h1>
+      <p align="justify" class="lead">
+        The Circular Diagram Server was recently deployed and is working well as of December 10, 2024.
+      </p>
+      <p align="justify" class="lead">
+        The Circular Diagram Server creates 2D diagrams showing interactions within RNA and DNA structures.
+        The server reduces intricate details from 3D RNA structures to a
+        comprehensible one-page 2D format, maintaining essential information while simplifying visualization.
+        Users can customize the diagram in several ways.
+        Clicking Submit will generate a diagram in PDF format.
+        For further guidance, click on the "Help" button above.
+    </p>
+  </div>
+
+  <div class="row">
+    <div class="col-sm-6" style="width:50%;float:left;">
+      <form class="form-horizontal" id="generateCircularDiagram">
+        <div class="mb-3">
+          <label for="chains">Enter the pdb id, or chain(s) in the form "pdb_id|model|chain1,pdb_id|model|chain2,..."</label>
+          <input type="text" class="form-control" id="chains" name="chains" value="">
+        </div>
+
+        <button type="button" id="clear_form" class="btn btn-light" style="float:right;" onclick="clearForm()">Clear</button>
+        <button type="submit" id="submit_test" class="btn btn-primary" style="float:right;">Submit</button>
+            <span id="loading" style="display: none;"><i class="fa fa-spinner fa-spin"></i> Loading... </span>
+        </form>
+        </br>
+        <!-- <div class="mb-3" style="text-align:center;">
+          <label style="font-weight:bold; color:rgb(79, 79, 231);">Choose options below</label>
+        </div> -->
+
+        <div class="mb-3">
+          <label>Choose the color scheme</label>
+      </div>
+      <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="color" id="colorDefault" value="default" checked>
+          <label class="form-check-label" for="colorDefault">Default</label>
+      </div>
+      <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="color" id="colorWong" value="wong">
+          <label class="form-check-label" for="colorWong">Wong</label>
+      </div>
+      <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="color" id="colorGrayscale" value="grayscale">
+          <label class="form-check-label" for="colorGrayscale">Grayscale</label>
+      </div>
+    </br>
+  </br>
+
+  <div class="mb-3">
+    <label>Would you like to display nucleotides with no 3D coordinates?</label>
+</div>
+<div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="n3d" id="n3dYes" value="true" checked>
+    <label class="form-check-label" for="n3dYes">Yes</label>
+</div>
+<div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="n3d" id="n3dNo" value="false">
+    <label class="form-check-label" for="n3dNo">No</label>
+</div>
+</br>
+</br>
+<div class="mb-3">
+  <label for="hs">Some chains are annotated with helix numbers.  Enter font size (0 for no numbers)</label>
+  <input type="text" class="form-control" id="hs" name="hs" value="4">
+</div>
+
+
+        <div class="mb-3">
+        <div>
+          <label>Choose interaction arcs to show, dim, or hide</label>
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Show</th>
+                <th>Dim</th>
+                <th>Hide</th>
+                <th>Interaction</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="radio" name="nested_wc" value="show" checked></td>
+                <td><input type="radio" name="nested_wc" value="dim"></td>
+                <td><input type="radio" name="nested_wc" value="hide"></td>
+                <td>nested Watson-Crick basepairs</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="lr_wc" value="show" checked></td>
+                <td><input type="radio" name="lr_wc" value="dim"></td>
+                <td><input type="radio" name="lr_wc" value="hide"></td>
+                <td>non-nested Watson-Crick basepairs</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="nested_non_wc" value="show" checked></td>
+                <td><input type="radio" name="nested_non_wc" value="dim"></td>
+                <td><input type="radio" name="nested_non_wc" value="hide"></td>
+                <td>nested non-Watson-Crick basepairs</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="lr_non_wc" value="show" checked></td>
+                <td><input type="radio" name="lr_non_wc" value="dim"></td>
+                <td><input type="radio" name="lr_non_wc" value="hide"></td>
+                <td>non-nested non-Watson-Crick basepairs</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="stacking" value="show" checked></td>
+                <td><input type="radio" name="stacking" value="dim"></td>
+                <td><input type="radio" name="stacking" value="hide"></td>
+                <td>stacking interactions</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="bph" value="show" checked></td>
+                <td><input type="radio" name="bph" value="dim"></td>
+                <td><input type="radio" name="bph" value="hide"></td>
+                <td>base-phosphate interactions</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="br" value="show" checked></td>
+                <td><input type="radio" name="br" value="dim"></td>
+                <td><input type="radio" name="br" value="hide"></td>
+                <td>base-ribose interactions</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="near" value="show" checked></td>
+                <td><input type="radio" name="near" value="dim"></td>
+                <td><input type="radio" name="near" value="hide"></td>
+                <td>near interactions</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+        <div class="mb-3">
+          <div id="checkOptions">
+            <label>Choose the text to list outside the circle</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="helix" id="checkHelix">
+              <label class="form-check-label" for="checkHelix">Helix numbers</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="basepair" id="checkBasepair" checked>
+              <label class="form-check-label" for="checkBasepair">Basepair interactions</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="stacking" id="checkStack">
+              <label class="form-check-label" for="checkStack">Stacking interactions</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="bph" id="checkBph">
+                <label class="form-check-label" for="checkBph">Base-phosphate interactions</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="br" id="checkBr">
+                <label class="form-check-label" for="checkBr">Base-ribose interactions</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="near" id="checkNear">
+              <label class="form-check-label" for="checkNear">Near interactions</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="all" id="checkAll">
+              <label class="form-check-label" for="checkAll">All of the above</label>
+            </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="col-sm-6" style="width:50%;float:right;">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Examples</h5>
+          <p><a href="https://rna.bgsu.edu/fr3d/circular?chains=7K00|1|b,7K00|1|a,7K00|1|A,7K00|1|X,7K00|1|Y,7K00|1|Z,7K00|1|5&input_form=True">Example 1</a><br>
+            Complete Escherichia coli ribosome showing the 5S chain, large subunit, small subunit,
+            and two tRNAs bound to the LSU and SSU and interacting with mRNA.</br>
+          <p><a href="https://rna.bgsu.edu/fr3d/circular?chains=8GLP|1|L8,8GLP|1|L5&dim=br,bph&hide=stacking,near&input_form=True">Example 2</a><br>
+            Human large ribosomal subunit and 5.8S chain.  These chains have more than 5000 nucleotides,
+            but large segments of chain L5 do not have 3D coordinates in the solved structure, and so are represented with base and sequence position only.
+            Stacking and near interactions are not shown, and base-backbone interactions are dimmed.<br>
+          <p><a href="https://rna.bgsu.edu/fr3d/circular?chains=7YGA%7C1%7CN&color=wong&hide=stacking%2Cbr&dim=bph&text=all&n3d=true&hs=5&input_form=True">Example 3</a><br>
+            This eukaryotic ribozyme from Tetrahymena features a pseudoknot and kissing hairpins between nucleotides G44 and C170.
+            It also includes a cis Watson-Crick/Watson-Crick (cWW) interaction between G100 and C274. G100 is located in the linker
+            region between helices, while C274 is situated on one strand of an internal loop.<br>
+          <p><a href ="https://rna.bgsu.edu/fr3d/circular?chains=8OM4|1|r&color=grayscale&hide=near,stacking,br,bph,nested_non_cww,lr_non_wc&dim=lr_wc&input_form=True">Example 4</a><br>
+            This presents the 8OM4 molecule, which is a mitochondrial small subunit ribosomal RNA (SSU rRNA)
+            from Saccharomyces cerevisiae, commonly known as baker's yeast. The diagram employs grayscale
+            coloring and highlights only the nested cWW interactions while reducing the prominence of long-range cWW interactions.<br>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    // Disable the submit button on page load
+    $('#submit_test').prop('disabled', true);
+
+    // Set a timeout to enable the button after 2 seconds (2000 milliseconds)
+    setTimeout(function() {
+        $('#submit_test').prop('disabled', false);
+    }, 2000);
+
+    // Parse URL parameters when pre-filled
+    const urlParams = new URLSearchParams(window.location.search);
+    const chainsParam = urlParams.get('chains');
+    const colorParam = urlParams.get('color');
+    const hideParam = urlParams.get('hide');
+    const dimParam = urlParams.get('dim');
+    const textParam = urlParams.get('text');
+    const n3dParam = urlParams.get('n3d');
+    const hsParam = urlParams.get('hs');
+
+    // If 'chains' parameter exists, update the input value
+    if (chainsParam) {
+      $('#chains').val(chainsParam);
+    }
+    // Update color radio button based on URL parameter
+    if (colorParam) {
+        $(`input[type=radio][name=color][value=${colorParam}]`).prop('checked', true);
+    }
+    if (hideParam) {
+      hideParam.split(',').forEach(value => {
+        $(`input[type=radio][name=${value}][value=hide]`).prop('checked', true);
+      });
+    }
+    if (dimParam) {
+      dimParam.split(',').forEach(value => {
+        $(`input[type=radio][name=${value}][value=dim]`).prop('checked', true);
+      });
+    }
+    if (textParam) {
+      // uncheck the default basepair checkbox until we see it is checked
+      $('#checkBasepair').prop('checked', false);
+      textParam.split(',').forEach(value => {
+        $(`input[type=checkbox][value=${value}]`).prop('checked', true);
+      });
+    }
+    if (n3dParam) {
+        $(`input[type=radio][name=n3d][value=${n3dParam}]`).prop('checked', true);
+    }
+    if (hsParam) {
+      $('#hs').val(hsParam);
+     }
+
+    $('#checkAll').change(function() {
+        // If the "all" checkbox gets checked, check all the other boxes, too
+        if ($(this).is(':checked')) {
+            $('#checkHelix').prop('checked', true);  // Check helix checkbox
+            $('#checkBasepair').prop('checked', true); // Check basepair checkbox
+            $('#checkStack').prop('checked', true); // Check stacking checkbox
+            $('#checkBph').prop('checked', true); // Check base-phosphate checkbox
+            $('#checkBr').prop('checked', true); // Check base-ribose checkbox
+            $('#checkNear').prop('checked', true); // Check near interactions checkbox
+            // uncheck checkAll now that all checkboxes are checked
+            $(this).prop('checked', false);
+        }
+    });
+  });
+
+  $('#generateCircularDiagram').on('submit', function(event) {
+
+    event.preventDefault(); // Prevent form submission on Enter key I think
+
+    showLoading(); // Show loading message
+
+    // Retrieve form values
+    const chains = $('#chains').val();
+    const color = $('input[name="color"]:checked').val();
+    const n3d = $('input[name="n3d"]:checked').val();
+    const hs = $("#hs").val();
+
+    // Handle show, dim, hide selections
+    let hide = "";
+    let dim = "";
+    $('input[type="radio"]:checked').each(function() {
+      const type = $(this).attr('name');
+      const value = $(this).val();
+      if (value === 'dim') {
+          dim += (dim.length > 0 ? ',' : '') + type;
+      } else if (value === 'hide') {
+          hide += (hide.length > 0 ? ',' : '') + type;
+      }
+    });
+
+    // Loop over checkboxes for text outside the circle
+    // Add text to the checkText string
+    // let checkText = "";
+    // $('input[type="checkbox"]:checked').each(function() {
+    //     const value = $(this).val();
+    //     checkText += (checkText.length > 0 ? ',' : '') + value;
+    // });
+
+    // code above did not seem to be working, so
+    // loop over checkboxes in a different way
+    // make checkText into a comma-separated list of values
+    let checkText = "";
+    if ($('#checkHelix').is(':checked')) {
+      checkText += "helix,";
+    }
+    if ($('#checkBasepair').is(':checked')) {
+      checkText += "basepair,";
+    }
+    if ($('#checkStack').is(':checked')) {
+      checkText += "stacking,";
+    }
+    if ($('#checkBph').is(':checked')) {
+      checkText += "bph,";
+    }
+    if ($('#checkBr').is(':checked')) {
+      checkText += "br,";
+    }
+    if ($('#checkNear').is(':checked')) {
+      checkText += "near,";
+    }
+    if ($('#checkAll').is(':checked')) {
+      checkText = "all";
+    }
+    if (checkText.includes("all")) {
+      checkText = "all";
+    }
+    if (checkText.endsWith(",")) {
+      checkText = checkText.slice(0, -1);
+    }
+
+    // Construct the URL piece by piece so it's only as long as it needs to be
+    let url = 'https://rna.bgsu.edu/fr3d/circular?chains=' + encodeURIComponent(chains);
+
+    // Don't include default values of parameters in the URL
+    if (color !== 'default') {
+      url += '&color=' + encodeURIComponent(color);
+    }
+    if (hide.length > 0) {
+      url += '&hide=' + encodeURIComponent(hide);
+    }
+    if (dim.length > 0) {
+      url += '&dim=' + encodeURIComponent(dim);
+    }
+    if (checkText.length > 0 && checkText !== "basepair") {
+      url += '&text=' + encodeURIComponent(checkText);
+    }
+    if (n3d !== 'true') {
+      url += '&n3d=' + encodeURIComponent(n3d);
+    }
+    if (hs !== '4') {
+      url += '&hs=' + encodeURIComponent(hs);
+    }
+
+    console.log(url);
+
+    // Redirect to the constructed URL
+    window.location.href = url;
+    // Make the url show in the address bar
+    window.history.pushState({}, '', url);
+  });
+
+  function showLoading() {
+      $('#loading').show();
+  }
+
+  function clearForm() {
+      $('#generateCircularDiagram').trigger('reset');
+      // $('#checkTextInput').hide();
+  }
+
+</script>
+</body>
+</html>

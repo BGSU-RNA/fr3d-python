@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="shortcut icon" href="https://rna.bgsu.edu/rna3dhub/icons/circular_icon.png">
+<title>R3DCID HTML Viewer</title>
+
+<style>
+/* Ensure predictable text scaling across browsers */
+html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+#container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;   /* change to 'auto' for scrollbars */
+    cursor: grab;
+}
+
+#container svg {
+  display: block;       /* prevent inline SVG baseline issues */
+    width: 100%;
+    height: 100%;
+    overflow: visible;    /* avoid clipping zoomed content */
+    margin: 0;
+}
+
+#container.dragging {
+    cursor: grabbing;
+}
+
+#svgContainer {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  touch-action: none;
+}
+
+svg {
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    user-select: none;
+}
+
+@media (max-width: 768px) {
+    #backlink {
+        padding: 12px;
+    }
+    #backlink a {
+        font-size: clamp(18px, 1.5vw, 28px);
+        line-height: 1.25;
+    }
+}
+
+/* Force larger link text on touch devices, independent of width */
+.touch #backlink a {
+    font-size: clamp(20px, 6.5vw, 34px);
+}
+
+#backlink {
+  flex: 0 0 auto;
+}
+
+#backlink a {
+    font-size: 18px;
+    line-height: 1.3;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;   /* change to 'auto' if you want scrollbars */
+    background: white;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+  display: flex;
+  justify-content: center;   /* center horizontally */
+  align-items: flex-start;   /* start near top */
+}
+
+#page-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;       /* center link + SVG */
+  max-width: 100vw;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+#container {
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: hidden;          /* keep pan/zoom sane */
+  flex: 1 1 auto;
+  width: 100%;
+}
+#status-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: sans-serif;
+    font-size: 18px;
+    color: #333;
+}
+
+#status-message.error {
+    color: #d32f2f;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+<div id="page-center">
+    <div id="backlink" style="padding: 8px; font-family: sans-serif;">
+    <a id="inputPageLink" href="#">Modify parameters on R3DCID input page</a> |
+    <a id="interactionList" href="#" target="_blank">Interaction list</a>
+    </div>
+
+    <div id="container"></div>
+    <div id="status-message">Loading SVG file...</div>
+</div>
+
+<script>
+(function () {
+    const params = new URLSearchParams(window.location.search);
+
+    // Force input_form=True
+    params.set("input_form", "True");
+
+    const url = "https://rna.bgsu.edu/fr3d/r3dcid?" + params.toString();
+
+    const link = document.getElementById("inputPageLink");
+    link.href = url;
+
+    let pdb_id = params.get("chains").split('|')[0].split('_')[0];
+    console.log(pdb_id);
+    const interaction_url = "https://rna.bgsu.edu/rna3dhub/pdb/" + pdb_id + "/interactions/fr3d/basepairs";
+    const interaction_link = document.getElementById("interactionList");
+    interaction_link.href = interaction_url;
+})();
+</script>
+
+<script>
+    const container = document.getElementById("container");
+    const statusMessage = document.getElementById("status-message");
+
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isFirefox = /firefox/i.test(navigator.userAgent);
+
+    if (isTouch) {
+        document.body.classList.add('touch');
+    }
+    if (isFirefox) {
+        document.body.classList.add('firefox');
+        let link = document.getElementById("inputPageLink");
+        if (link) {
+            link.style.fontSize = "18px";
+            link.style.lineHeight = "1.3";
+        }
+        link = document.getElementById("interactionList");
+        if (link) {
+            link.style.fontSize = "18px";
+            link.style.lineHeight = "1.3";
+        }
+    }
+
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let minScale = 1;
+    let initialOffsetX = 0;
+    let initialOffsetY = 0;
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let lastDist = null;
+
+    const params = new URLSearchParams(
+        {{ input_parameters | tojson }}
+    );
+
+    params.set("format", "svg");
+
+    fetch("/fr3d/r3dcid?" + params.toString())
+        .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text || `Request failed (${response.status})`);
+            });
+        }
+        const ct = response.headers.get("Content-Type") || "";
+        if (!ct.includes("image/svg+xml")) {
+            return response.text().then(text => {
+                throw new Error(text || "Unexpected response type");
+            });
+        }
+        return response.text();
+        })
+        .then(svgText => {
+            statusMessage.style.display = "none";
+            container.innerHTML = svgText;
+            const svg_overall = container.querySelector("svg");
+
+            // Check if we actually got SVG content
+            if (!svg_overall) {
+                const error = new Error("Response does not contain valid SVG");
+                error.text = svgText;
+                throw error;
+            }
+
+            const svg = svg_overall.querySelector("#zoomLayer");
+
+            // Ensure SVG viewport fills the container and doesn't clip zoomed content
+            svg_overall.style.width = "100%";
+            svg_overall.style.height = "100%";
+            svg_overall.style.overflow = "visible";
+            svg_overall.setAttribute(
+                "preserveAspectRatio",
+                isTouch ? "xMidYMin meet" : "xMidYMid meet"
+            );
+
+            if (isFirefox) {
+                svg_overall.style.shapeRendering = "geometricPrecision";
+                svg_overall.style.textRendering = "geometricPrecision";
+            }
+
+            function computeInitialView() {
+                // Adjust initial scale for device type using viewBox or bbox (more stable in Firefox)
+                const vb = svg_overall.viewBox.baseVal;
+                const bbox = svg.getBBox();
+                const contentWidth = (vb && vb.width) ? vb.width : (bbox.width || 0);
+                const contentHeight = (vb && vb.height) ? vb.height : (bbox.height || 0);
+                const containerRect = container.getBoundingClientRect();
+
+                minScale = 1;
+
+                // if (isFirefox) {
+                //     minScale = 1;
+                // } else if (isTouch && contentWidth > 0 && contentHeight > 0) {
+                //     // On phone, scale to fit inside viewport with a small margin
+                //     minScale = Math.min(
+                //         containerRect.width / contentWidth,
+                //         containerRect.height / contentHeight
+                //     ) * 0.7;
+                //     minScale = 1;
+                // // } else if (contentHeight > 0) {
+                // //     // On desktop, scale to fit the container height (which is 100% of remaining space)
+                // //     minScale = containerRect.height / contentHeight;
+                // } else {
+                //     minScale = 1;
+                // }
+
+            // console.log('minScale',minScale);
+
+                scale = minScale;
+                zoomCount = 0;
+
+                const viewportWidth = (vb && vb.width) ? vb.width : svg_overall.getBoundingClientRect().width;
+                const viewportHeight = (vb && vb.height) ? vb.height : svg_overall.getBoundingClientRect().height;
+
+                if (bbox.width > 0 && bbox.height > 0) {
+                    initialOffsetX = (viewportWidth - bbox.width * scale) / 2 - bbox.x * scale;
+                    if (isTouch) {
+                        initialOffsetY = -bbox.y * scale;
+                    } else {
+                        initialOffsetY = (viewportHeight - bbox.height * scale) / 2 - bbox.y * scale;
+                    }
+                }
+
+                offsetX = initialOffsetX;
+                offsetY = initialOffsetY;
+                applyTransform(svg);
+            }
+
+            // Defer initial measurement to ensure Firefox layout is stable
+            requestAnimationFrame(() => {
+                computeInitialView();
+            });
+
+            function getSvgPoint(clientX, clientY) {
+                const pt = svg_overall.createSVGPoint();
+                pt.x = clientX;
+                pt.y = clientY;
+                const ctm = svg_overall.getScreenCTM();
+                if (!ctm) return { x: clientX, y: clientY };
+                const sp = pt.matrixTransform(ctm.inverse());
+                return { x: sp.x, y: sp.y };
+            }
+
+            function zoomAt(clientX, clientY, newScale) {
+                const p = getSvgPoint(clientX, clientY);
+
+                const worldX = (p.x - offsetX) / scale;
+                const worldY = (p.y - offsetY) / scale;
+
+                scale = newScale;
+                offsetX = p.x - worldX * scale;
+                offsetY = p.y - worldY * scale;
+            }
+
+            /* ---------- Zoom with Ctrl + mouse wheel ---------- */
+            container.addEventListener("wheel", e => {
+                if (!e.ctrlKey) return;
+                e.preventDefault();
+
+                const zoomDelta = e.deltaY < 0 ? 1 : -1;
+                zoomCount = zoomCount + zoomDelta;
+                // const zoomFactor = e.deltaY < 0 ? 1.4 : 0.7;
+                // const newScale = scale * zoomFactor;
+                const newScale = minScale * (1.4 ** zoomCount);
+                if (newScale <= minScale) {
+                    scale = minScale;
+                    offsetX = initialOffsetX;
+                    offsetY = initialOffsetY;
+                } else {
+                    zoomAt(e.clientX, e.clientY, newScale);
+                }
+
+                applyTransform(svg);
+            }, { passive: false });
+
+            /* ---------- Keyboard zoom + reset ---------- */
+            window.addEventListener("keydown", e => {
+                if (!e.ctrlKey) return;
+
+                if (e.key === "+" || e.key === "=") {
+                    zoomCount += 1;
+                    scale = minScale * (1.4 ** zoomCount);
+                } else if (e.key === "-") {
+                    zoomCount -= 1;
+                    scale = minScale * (1.4 ** zoomCount);
+                } else if (e.key === "0") {
+                    scale = minScale;
+                    offsetX = initialOffsetX;
+                    offsetY = initialOffsetY;
+                } else {
+                    return;
+                }
+
+                e.preventDefault();
+                if (scale <= minScale) {
+                    scale = minScale;
+                    offsetX = initialOffsetX;
+                    offsetY = initialOffsetY;
+                } else {
+                    const rect = svg_overall.getBoundingClientRect();
+                    const cx = rect.left + rect.width / 2;
+                    const cy = rect.top + rect.height / 2;
+                    zoomAt(cx, cy, scale);
+                }
+                applyTransform(svg);
+            });
+
+            /* ---------- Drag to pan ---------- */
+            container.addEventListener("mousedown", e => {
+                if (e.button !== 0) return; // left button only
+                dragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                container.classList.add("dragging");
+            });
+
+            window.addEventListener("mousemove", e => {
+                if (!dragging) return;
+                if (scale <= minScale) {
+                    offsetX = initialOffsetX;
+                    offsetY = initialOffsetY;
+                } else {
+                    offsetX += e.clientX - lastX;
+                    offsetY += e.clientY - lastY;
+                }
+                lastX = e.clientX;
+                lastY = e.clientY;
+                applyTransform(svg);
+            });
+
+            window.addEventListener("mouseup", () => {
+                dragging = false;
+                container.classList.remove("dragging");
+            });
+
+            /* ---------- Phone touch screen unlimited zoom ---------- */
+            container.addEventListener("touchmove", e => {
+            if (e.touches.length !== 2) return;
+
+            e.preventDefault();
+
+            // center point between the two fingers; zoom relative to this
+            const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+
+            if (lastDist) {
+                const zoom = dist / lastDist;
+
+                const newScale = scale * zoom;
+                if (newScale <= minScale) {
+                    scale = minScale;
+                    offsetX = initialOffsetX;
+                    offsetY = initialOffsetY;
+                    lastDist = null;
+                } else {
+                    zoomAt(cx, cy, newScale);
+                }
+
+                applyTransform(svg);
+            }
+
+            lastDist = dist;
+            }, { passive: false });
+
+            container.addEventListener("touchend", () => {
+            lastDist = null;
+            });
+
+            /* ---------- Phone single-finger drag to pan ---------- */
+            container.addEventListener("touchstart", e => {
+                if (e.touches.length === 1) {
+                    dragging = true;
+                    lastX = e.touches[0].clientX;
+                    lastY = e.touches[0].clientY;
+                    container.classList.add("dragging");
+                }
+            });
+
+            container.addEventListener("touchmove", e => {
+                if (dragging && e.touches.length === 1) {
+                    e.preventDefault();
+                    if (scale == minScale) {
+                        offsetX = initialOffsetX;
+                        offsetY = initialOffsetY;
+                    } else {
+                        offsetX += e.touches[0].clientX - lastX;
+                        offsetY += e.touches[0].clientY - lastY;
+                    }
+
+                    lastX = e.touches[0].clientX;
+                    lastY = e.touches[0].clientY;
+                    applyTransform(svg);
+                }
+            });
+
+            container.addEventListener("touchend", () => {
+                dragging = false;
+                container.classList.remove("dragging");
+            });
+
+        })
+        .catch(error => {
+            // If we have text content that isn't SVG, display it
+            if (error.text) {
+                statusMessage.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word; max-width: 80vw; max-height: 60vh; overflow: auto;">${error.text}</pre>`;
+            } else {
+                statusMessage.textContent = `Error loading SVG: ${error.message}`;
+            }
+            statusMessage.classList.add("error");
+        });
+
+    function applyTransform(target) {
+        if (isFirefox) {
+            offsetX = Math.round(offsetX);
+            offsetY = Math.round(offsetY);
+        }
+        target.setAttribute(
+            "transform",
+            `translate(${offsetX}, ${offsetY}) scale(${scale})`
+        );
+    }
+
+
+</script>
+
+</div>
+
+</body>
+</html>

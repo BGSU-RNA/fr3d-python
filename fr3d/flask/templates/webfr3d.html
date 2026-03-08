@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>FR3D Search Page</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+        <link rel="shortcut icon" href="https://rna.bgsu.edu/rna3dhub/icons/F_icon.png">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+        <style>
+            .matrix-popup {
+                display: none;
+                border: none;
+                padding: 3px;
+                background-color: white;
+                position: fixed;
+                bottom: 3px; /* Position 20px from the bottom of the screen */
+                right: 3px;  /* Position 20px from the right side of the screen */
+                z-index: 50;
+            }
+            .rootdiv {
+                position: absolute;
+                background-color: #f0f0f0;
+                padding: 5px;
+                border: 1px solid #ddd;
+                display: none;
+            }
+            .handle {
+                cursor: move;
+                background-color: #ccc;
+                padding: 5px;
+            }
+            .content {
+                padding: 5px;
+            }
+        </style>
+    </head>
+
+<body>
+    <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/fr3d">WebFR3D Server</a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="https://rna.bgsu.edu/rna3dhub/" target="_blank">RNA 3D Hub</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="https://www.bgsu.edu/research/rna/web-applications/webfr3d.html" target="_blank">Help</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="https://www.bgsu.edu/research/rna/APIs.html" target="_blank">APIs</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+    <form action="javascript:submitForm()" method="post" id="mainform">
+
+        <div id="query_description" style="margin-bottom: 20px;">
+            <h2 style="margin-top: 0px;">WebFR3D Search Page</h2>
+        </div>
+        <p>
+            This page is newly constructed in September 2024.
+            It works reasonably well, but has not been extensively tested yet.
+            If you find a problem, please send an email to Craig Zirbel at <a href="mailto:zirbel@bgsu.edu">zirbel@bgsu.edu</a>.
+            Copy the URL of the result if one is produced, that will help to diagnose the problem.
+        </p>
+        <!-- Section to display the text of exampleDescription if that variable is set -->
+        <!-- Text should be bold and in a deep blue color -->
+        <!-- Initial value should be empty, but it can be set later -->
+         <!-- Center the paragraph on the screen -->
+         <p id="exampleDescription" style="color: rgb(141, 78, 0); font-weight: bold; width: 90%; ">
+        </p>
+        <table>
+            <tr>
+                <td><b>1.</b></td>
+                <td>Describe the motif you are looking for, using (a), (b), or both.</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    a. For a purely symbolic search, specify the number of positions in the motif
+                    <select id="numPositions" name="NT[]">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                    </select>
+                    and then add symbolic constraints below.
+                </td>
+            </tr>
+            <tr>
+                <td valign="top"></td>
+                <td>
+                    b. If you have a set of nucleotides that form the motif, and you want to search for other instances
+                    according to the geometry of the motif, fill in their
+                    <a href="https://www.bgsu.edu/research/rna/help/rna-3d-hub-help/unit-ids.html" target="_blank">unit IDs</a>, separated by commas:
+                    <input id="unitID" type="text" name="unitID" size="120" onchange="cleanunitID(this)"
+                           onkeydown="preventEnterKeySubmit(event)">
+                    <input type="button" id="viewquery" value="View nucleotides" enabled onclick="openViewWindow()">
+                    <br>
+                    and set the maximum geometric discrepancy from the query nucleotides: <input id='discrepancy'
+                            type="text" name='discrepancy' size="6" value="0.4"
+                            onchange="cleanDiscrepancy(this)" onkeydown="preventEnterKeySubmit(event)">
+                </td>
+            </tr>
+            <tr>
+                <td valign="top"><b>2.</b></td>
+                <td valign="top">
+                    To add symbolic constraints, click the button below
+                    and then fill in interactions like cWW or stack in the yellow boxes, and chain
+                    continuity constraints in the blue boxes.
+                </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <input type="button" id="constraintMatrix" value="Create Constraint Matrix"
+                        onclick="createConstraintMatrix()">
+                        <div id="mat" class="matrix-popup" style="position: relative; display: inline-block;">
+                        <table id="constraintMatrixTable" border="0"></table>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td><b>3.</b></td>
+                <td>What structures from the Protein Data Bank should be searched? Use (a), (b), or both.</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    a. List individual structures (like 6ZMI) or chains (like 6ZMI|1|L5), separated by commas:
+                    <input id="searchFiles" type="text" size="100" name="searchFiles"
+                      onchange="cleanSearchFiles(this)" onkeydown="preventEnterKeySubmit(event)">
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    b. Specify an
+                    <!-- radio buttons for RNA and DNA -->
+                    <input type="radio" id="RNA" name="repSetType" value="RNA" checked>
+                    <label for="RNA">RNA  <a href='https://rna.bgsu.edu/rna3dhub/nrlist' target='_blank'>representative set</a></label>
+                    or
+                    <input type="radio" id="DNA" name="repSetType" value="DNA">
+                    <label for="DNA">DNA  <a href='https://rna.bgsu.edu/rna3dhub/nrlist/dna' target='_blank'>representative set</a></label>
+                    by typing the release number
+                    <input id="repSetRelease" type="text" name="repSetRelease" onkeydown="preventEnterKeySubmit(event)"
+                            size="6" onchange="cleanRepSetRelease(this)" >
+                    and the resolution cutoff
+                    <select id="repSetResolution" name="repSetResolution">
+                        <option value="1.5A">1.5&Aring; X-ray</option>
+                        <option value="2.0A">2.0&Aring; X-ray and cryo-EM</option>
+                        <option value="2.5A" selected>2.5&Aring; X-ray and cryo-EM</option>
+                        <option value="3.0A">3.0&Aring; X-ray and cryo-EM</option>
+                        <option value="3.5A">3.5&Aring; X-ray and cryo-EM</option>
+                        <option value="4.0A">4.0&Aring; X-ray and cryo-EM</option>
+                        <option value="20.0A">X-ray and cryoEM</option>
+                        <option value="NMR">NMR</option>
+                        <option value="all">X-ray and cryoEM and NMR</option>
+                    </select>
+                    <br>
+                </td>
+            </tr>
+            <tr>
+                <td><b>4.</b></td>
+                <td>
+                    Give your search a description (0 to 150 characters):
+                    <input id="description" type="text" name="description" size="100"
+                         onkeydown="preventEnterKeySubmit(event)" onchange=cleanDescription(this)>
+                </td>
+            </tr>
+            <!-- <tr>
+                <td><b>5.</b></td>
+                <td>
+                    Email address for persistent link to results (optional, up to five, separated by commas):
+                    <input id="email" type="text" name="email" size="20" value="Not working yet"
+                            onkeydown="preventEnterKeySubmit(event)" onchange="cleanEmail(this)">
+                </td>
+            </tr> -->
+            <tr>
+                <td valign="center"><b>5.</b></td>
+                <td>
+                    When you are ready to launch the search, click the Search button:
+                    <input type="submit" id="submit" value="Search" disabled>
+                </td>
+            </tr>
+            <tr></tr>
+            <tr>
+                <td></td>
+                <td>
+                    <button type="button" onclick="window.location.replace('https://rna.bgsu.edu/fr3d');">Reset form</button>
+                    Clear the entire form to start again
+                </td>
+            </tr>
+        </table>
+    </form>
+
+    <br>
+    <div>
+        <h2>Examples</h2>
+        <ul>
+            <li>Example 1: <a href="modify?id=example_1.json" target="_blank">Symbolic search for A-minor motif</a></li>
+        </ul>
+    </div>
+
+    <script type="text/javascript" language="javascript">
+        // Use input parameters to set the form values
+        window.onload = function () {
+            var inputParameters = JSON.parse('{{ input_parameters|tojson|safe }}');
+
+            console.log(inputParameters);
+
+            var inputFound = false;
+
+            if (inputParameters.hasOwnProperty('numPositions')) {
+                document.getElementById('numPositions').value = inputParameters['numPositions'];
+            }
+            if (inputParameters.hasOwnProperty('unitID')) {
+                document.getElementById('unitID').value = inputParameters['unitID'];
+                inputFound = true;
+            }
+            if (inputParameters.hasOwnProperty('discrepancy')) {
+                document.getElementById('discrepancy').value = inputParameters['discrepancy'];
+            }
+            if (inputParameters.hasOwnProperty('repSetType')) {
+                // document.getElementById('repSetType').value = inputParameters['repSetRelease'];
+                if (inputParameters['repSetType'] == "DNA") {
+                    document.getElementById('DNA').checked = true;
+                } else {
+                    document.getElementById('RNA').checked = true;
+                }
+            }
+            if (inputParameters.hasOwnProperty('repSetRelease')) {
+                document.getElementById('repSetRelease').value = inputParameters['repSetRelease'];
+            }
+            if (inputParameters.hasOwnProperty('repSetResolution')) {
+                document.getElementById('repSetResolution').value = inputParameters['repSetResolution'];
+            }
+            if (inputParameters.hasOwnProperty('searchFiles')) {
+                // alert(inputParameters['searchFiles']);
+                var newSearchFiles = inputParameters['searchFiles'];
+
+                // if one of the searchFiles is a representative set, set the repSetRelease and repSetResolution
+                if (newSearchFiles.length > 0) {
+                    if (newSearchFiles.some(item => item.includes("nrlist"))) {
+                        var nrlist = newSearchFiles.filter(item => item.includes("nrlist"))[0];
+                        var fields = nrlist.split("/");
+                        if (fields.length == 7) {
+                            // https://rna.bgsu.edu/rna3dhub/nrlist/release/3.363/2.0A
+                            var release = fields[6];
+                            var resolution = fields[7];
+                            document.getElementById('repSetRelease').value = release;
+                            document.getElementById('repSetResolution').value = resolution;
+                            document.getElementById('RNA').checked = true;
+                        } else if (fields.length == 8) {
+                            // https://rna.bgsu.edu/rna3dhub/nrlist/release/rna/3.363/2.0A
+                            // https://rna.bgsu.edu/rna3dhub/nrlist/release/dna/0.5/2.0A
+                            var release = fields[7];
+                            var resolution = fields[8];
+                            document.getElementById('repSetRelease').value = release;
+                            document.getElementById('repSetResolution').value = resolution;
+                            if (fields[6] == "dna") {
+                                document.getElementById('DNA').checked = true;
+                            } else {
+                                document.getElementById('RNA').checked = true;
+                            }
+                        }
+                        // remove the url from the searchFiles
+                        newSearchFiles = newSearchFiles.filter(item => !item.includes("nrlist"));
+                    }
+                    document.getElementById('searchFiles').value = newSearchFiles.join(",");
+                }
+            }
+            if (inputParameters.hasOwnProperty('description')) {
+                document.getElementById('description').value = inputParameters['description'];
+            }
+            // if (inputParameters.hasOwnProperty('email')) {
+            //     document.getElementById('email').value = inputParameters['email'];
+            // }
+
+            //
+            createConstraintMatrix()
+
+            // loop over all possible i, j combinations
+            var constraintFound = false;
+            for (var i=1; i <= inputParameters['numPositions']; i++) {
+                for (var j=1; j <= inputParameters['numPositions']; j++) {
+                    var key = `constraintMatrix,${i},${j}`;
+                    if (inputParameters.hasOwnProperty(key)) {
+                        var input = document.querySelector(`input[name="constraint[${i}][${j}]"]`);
+                        if (input) {
+                            input.value = inputParameters[key];
+                            constraintFound = true;
+                            inputFound = true;
+                        }
+                    }
+                }
+            }
+
+            if (!constraintFound) {
+                hideConstraintMatrix();
+            }
+
+            if (inputParameters.hasOwnProperty('exampleDescription')) {
+                // Here we set the value of the text section above to exampleDescription
+                // The text should appear as a paragraph, not as a form field, and not with a box around it
+                // The text should wrap on the screen
+                document.getElementById('exampleDescription').textContent = inputParameters['exampleDescription'];
+
+                // rename submit button to be "View Result"
+                document.getElementById('submit').value = "View Result";
+            } else {
+                document.getElementById('exampleDescription').textContent = "";
+            }
+
+            if (inputFound) {
+                // Make the Submit button active after 2 seconds; slow down any automated submissions
+                setTimeout(function () {
+                    // Enable the submit button
+                    document.getElementById('submit').removeAttribute('disabled');
+                }, 2000);
+            }
+        }
+
+        function preventEnterKeySubmit(event) {
+            // Check if the key pressed is the Enter key (key code 13)
+            if (event.key === "Enter") {
+                event.preventDefault(); // Prevent form submission
+            }
+        }
+
+        function cleanunitID(inputField) {
+            var cleaned = document.getElementById("unitID").value;
+            // replace tabs with commas
+            cleaned = cleaned.replace(/\t/g, ",");
+            // replace semicolons with commas
+            cleaned = cleaned.replace(/;/g, ",");
+            // replace spaces with single comma
+            cleaned = cleaned.replace(/ +/g, ",");
+            // remove all unnecessary characters
+            cleaned = cleaned.replace(/[^a-zA-Z0-9|,\-_]/g, "");
+            // trim each item
+            cleaned = cleaned.split(",").map(item => item.trim()).join(",");
+            // make sure each entry has | character, omit those that don't
+            cleaned = cleaned.split(",").filter(item => (item.split("|").length >= 5)).join(",");
+            document.getElementById("unitID").value = cleaned;
+            if (cleaned.length > 0) {
+                document.getElementById("submit").disabled = false;
+                document.getElementById("viewquery").disabled = false;
+                document.getElementById("numPositions").value = cleaned.split(",").length;
+            } else {
+                document.getElementById("viewquery").disabled = true;
+            }
+        }
+
+        function openViewWindow() {
+            var unitIDs = document.getElementById("unitID").value;
+            var url = "http://rna.bgsu.edu/rna3dhub/display3D/unitid/" + unitIDs;
+            window.open(url, "_blank");
+        }
+
+        function cleanDiscrepancy(inputField) {
+            var discrepancy = document.getElementById('discrepancy');
+            var cleaned = parseFloat(discrepancy.value);
+            if (isNaN(cleaned)) {
+                cleaned = 0.4;
+            }
+            if (cleaned < 0.0) {
+                cleaned = abs(cleaned);
+            } else if (cleaned > 0.7) {
+                // Alert the user that the value is too high
+                alert("Maximum discrepancy is 0.7");
+                cleaned = 0.7;
+            }
+            discrepancy.value = cleaned;
+        }
+
+        function createConstraintMatrix() {
+            var numPositions = document.getElementById("numPositions").value;
+            var matrixPopup = document.getElementById("mat");
+            var matrixTable = document.getElementById("constraintMatrixTable");
+
+            // Clear existing table
+            matrixTable.innerHTML = "";
+
+            // Create table headers
+            var headerRow = matrixTable.insertRow();
+            for (var i = 0; i <= numPositions; i++) {
+                var cell = headerRow.insertCell();
+                if (i > 0) {
+                    cell.innerText = "Pos  " + i;
+                }
+            }
+
+            // Create table rows
+            for (var i = 1; i <= numPositions; i++) {
+                var row = matrixTable.insertRow();
+                var cell = row.insertCell();
+                cell.innerText = "Pos " + i;
+
+                for (var j = 1; j <= numPositions; j++) {
+                    var cell = row.insertCell();
+                    var input = document.createElement("input");
+                    input.type = "text";
+                    input.name = `constraint[${i}][${j}]`;
+                    input.size = "5"; // Adjust size as needed
+
+                    // Remove unwanted characters
+                    input.addEventListener("input", function(event) {
+                        var value = event.target.value;
+                        event.target.value = value.replace(/[^a-zA-Z0-9 =~,.><\-_]/g, "");
+                        // for now, if they modify the constraint matrix, enable the submit button
+                        if (value.length > 0) {
+                            document.getElementById("submit").disabled = false;
+                        }
+                    });
+
+                    // Attach keydown event to prevent "Enter" from submitting the form
+                    input.addEventListener("keydown", function(event) {
+                        if (event.key === "Enter") {
+                            event.preventDefault(); // Prevent form submission
+                        }
+                    });
+
+                    // Set cell background color for lower diagonal and upper diagonal
+                    if (i < j) {
+                        input.style.backgroundColor = "yellow"; // Above diagonal
+                    } else if (i > j) {
+                        input.style.backgroundColor = "lightblue"; // Below diagonal
+                    } else {
+                        input.style.backgroundColor = "white"; // Diagonal
+                    }
+
+                    cell.appendChild(input);
+                }
+            }
+
+            // Change button name
+            var constraintMatrixButton = document.getElementById("constraintMatrix");
+            constraintMatrixButton.value = "Clear Constraint Matrix";
+
+            matrixPopup.style.display = "block";
+        }
+
+        function hideConstraintMatrix() {
+            var matrixPopup = document.getElementById("mat");
+            if (matrixPopup) {
+                matrixPopup.style.display = "none";
+            }
+            var constraintMatrixButton = document.getElementById("constraintMatrix");
+            constraintMatrixButton.value = "Create Constraint Matrix";
+        }
+
+        function cleanSearchFiles(inputField) {
+            var searchFiles = document.getElementById("searchFiles");
+            // replace tabs with commas
+            searchFiles.value = searchFiles.value.replace(/\t/g, ",");
+            // replace semicolons with commas
+            searchFiles.value = searchFiles.value.replace(/;/g, ",");
+            // replace spaces with commas
+            searchFiles.value = searchFiles.value.replace(/ /g, ",");
+            // trim and remove empty entries
+            var cleaned = searchFiles.value.split(",").map(item => item.trim()).filter(item => item.length >= 4).join(",");
+            searchFiles.value = cleaned;
+        }
+
+        function cleanRepSetRelease(inputField) {
+            var repSetRelease = document.getElementById("repSetRelease");
+            // split on period
+            var cleaned = repSetRelease.value.split(".");
+            // make sure there are two parts and each is a digit
+            if (cleaned.length == 2 && !isNaN(cleaned[0]) && !isNaN(cleaned[1])) {
+                cleaned = cleaned.join(".");
+            } else {
+                cleaned = "";
+            }
+            repSetRelease.value = cleaned;
+        }
+
+        function cleanDescription(inputField) {
+            var description = document.getElementById("description");
+            // if "Example " is not in the description and "}}" is not in the description
+            if (!description.value.includes("Example ") || !description.value.includes("}}")) {
+                // no longer than 150 characters
+                cleaned = description.value.substring(0, 150);
+                description.value = cleaned;
+            }
+        }
+
+        // function cleanEmail(inputField) {
+        //     var email = document.getElementById("email");
+        //     // replace tabs with commas
+        //     email.value = email.value.replace(/\t/g, ",");
+        //     // replace semicolons with commas
+        //     email.value = email.value.replace(/;/g, ",");
+        //     // replace spaces with commas
+        //     email.value = email.value.replace(/ /g, ",");
+        //     var cleaned = email.value.split(",").map(item => item.trim()).join(",");
+        //     // make sure that each entry has @ character
+        //     cleaned = cleaned.split(",").filter(item => item.includes("@")).join(",");
+        //     // make sure that each entry has . character
+        //     cleaned = cleaned.split(",").filter(item => item.includes(".")).join(",");
+        //     // limit to 5 entries
+        //     cleaned = cleaned.split(",").slice(0, 5).join(",");
+        //     email.value = cleaned;
+        // }
+
+        function submitForm() {
+            var inputParameters = JSON.parse('{{ input_parameters|tojson|safe }}');
+            if (inputParameters.hasOwnProperty('resultHTML')) {
+                // redirect to output page for this example
+                window.location.href = inputParameters['resultHTML'];
+                return;
+            }
+
+            var form = document.getElementById("mainform");
+            var formData = new FormData(form);
+            var jsonOutput = {};
+
+            // Collect basic fields
+            jsonOutput.numPositions = parseInt(document.getElementById("numPositions").value, 10);
+            // trim and filter out empty entries
+            var unitID = (formData.get("unitID") || "").split(",").map(item => item.trim()).filter(item => item.length > 0);
+            if (unitID.length > 0) {
+                jsonOutput.unitID = unitID;
+                jsonOutput.discrepancy = parseFloat(formData.get('discrepancy')) || 0.4;
+            }
+            var searchFiles = (formData.get("searchFiles") || "").split(",").map(item => item.trim()).filter(item => item.length >= 4);
+            if (searchFiles.length > 0) {
+                jsonOutput.searchFiles = searchFiles;
+            }
+            if ((formData.get("repSetRelease") || "").length > 0) {
+                jsonOutput.repSetType = formData.get("repSetType");
+                jsonOutput.repSetRelease = formData.get("repSetRelease");
+                jsonOutput.repSetResolution = formData.get("repSetResolution");
+            }
+            if ((formData.get("description") || "").length > 0) {
+                jsonOutput.description = formData.get("description");
+            }
+
+            // Collect constraint matrix values
+            var constraintFound = false;
+            formData.forEach((value, key) => {
+                if (key.startsWith("constraint")) {
+                    let [_, i, j] = key.match(/constraint\[(\d+)\]\[(\d+)\]/);
+                    let matrixKey = `constraintMatrix,${i},${j}`;
+                    // constraints[matrixKey] = value || "";  // Empty string if no value entered
+                    if (value.length > 0) {
+                        jsonOutput[matrixKey] = value;  // only store non-empty constraints
+                        constraintFound = true;
+                    }
+                }
+            });
+
+            if (!constraintFound && unitID.length == 0) {
+                alert("Please enter unit IDs or a constraint matrix");
+                return;
+            }
+
+            if (searchFiles.length == 0 && !jsonOutput.hasOwnProperty('repSetRelease')) {
+                alert("Please enter search files or a representative set");
+                return;
+            }
+
+            var jsonData = JSON.stringify(jsonOutput);
+
+            // Send JSON to the Flask server using fetch API
+            fetch('/fr3d/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: jsonData
+            })
+            .then(response => response.json())
+            .then(data => {
+                    if (data.redirect) {
+                        // Redirect the user to the progress page provided by the server
+                        window.location.href = data.redirect;
+                    }
+                })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
