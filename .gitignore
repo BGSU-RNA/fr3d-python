@@ -16,6 +16,8 @@ skipped/
 diagnostic/
 base_plots/
 backbone_plots/
+r3dcid_output/
+r3dcid_data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
