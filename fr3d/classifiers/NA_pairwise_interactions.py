@@ -499,6 +499,12 @@ def reverse_edges(inter):
         rev = inter[0] + inter[2] + inter[1] + inter[3]
     elif len(inter) == 5:
         rev = inter[0] + inter[1] + inter[3] + inter[2] + inter[4]
+    elif len(inter.split(" ")) == 2:
+        fields = inter.split(" ")
+        if fields[0] == 'cur':
+            rev = inter[0:5] + inter[6] + inter[5]
+        else:
+            rev = inter[0] + inter[2] + inter[1] + inter[3:]
     else:
         rev = inter[0:(len(inter)-2)] + inter[len(inter)-1] + inter[len(inter)-2]
 
