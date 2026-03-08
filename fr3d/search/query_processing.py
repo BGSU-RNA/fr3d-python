@@ -1,6 +1,7 @@
 """
 Interpret the constraints in the query.
 For geometric and mixed searches, set up limits on pairwise distances.
+Characters needed are in this list: [^A-Za-z0-9<>\|_'=~&+\[\]\(\):.\n\r\t ]
 """
 
 from collections import defaultdict
