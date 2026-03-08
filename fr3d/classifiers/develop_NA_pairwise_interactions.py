@@ -120,7 +120,7 @@ def process_oo_distance_files():
 
                 # skip when both have a symmetry
                 if len(f1) == 9 and len(f2) == 9:
-                    print('Skipping %20s %20s' % (u1,u2))
+                    print('oo_distance skipping %20s %20s' % (u1,u2))
                     continue
 
                 # figure out what type of chains we have
@@ -198,7 +198,7 @@ else:
     categories['basepair'] = []
     categories['basepair_detail'] = []
     # categories['stacking'] = []
-    categories['backbone'] = []
+    # categories['backbone'] = []
     # categories['sO'] = []        # annotate all sO interactions
     # categories['sugar_ribose']   = []
 
@@ -208,28 +208,69 @@ else:
     worker = 0
 
 
-from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
+# from DNA_2A_list import PDB_list   # define PDB_list as a list of DNA structures
 
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.308/3.0A/csv']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/1.5A/csv']
 PDB_list = ['4V9F','6AZ3','6GYV','7O7Y','7OYC','7QI4','7QIW','7V9E','8A98','8AZW','8GLP','5J7L','7RQB']
 PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8B0X','8GLP','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.5A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/2.0A/csv','http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/1.5A/csv']
 PDB_list = ['4V9F']
+PDB_list = ['5WTI']
 
-if False:
-    # read chains from datmos / nabir
-    PDB_set = set()
-    PDB_chain_set = set()
-    for mt in ['RNA','DNA']:
-        filename = '%s_reference_chains.csv' % mt
-        path_filename = os.path.join('C:/Users/zirbel/Documents/PythonFR3D/data/pairs_datmos',filename)
-        with open(path_filename,'rt') as f:
-            lines = f.readlines()
-        for line in lines:
-            pdb,chain,desc,count = line.split(",")
-            PDB_set.add(pdb.upper())
-            PDB_chain_set.add(pdb.upper()+"|1|"+chain)
-    PDB_list = list(PDB_set)
+# make sure we have processed all files that are in the datmos list of curated pairs
+from plot_basepair_interactions import load_curated_pairs
+curated_pairs = load_curated_pairs()
+print("Curated pairs:")
+print(curated_pairs)
+PDB_list = set()
+for u1,u2 in curated_pairs:
+    pdb = u1.split("|")[0]
+    PDB_list.add(pdb)
+PDB_list = sorted(PDB_list)
+print("Processing these %d PDB files:" % len(PDB_list))
+print(PDB_list)
+
+compare_to_datmos = True
+compare_to_datmos = False
+
+if compare_to_datmos:
+    if not os.path.exists('C:/Users/zirbel/Documents/PythonFR3D/data/chain_list.pickle'):
+        # read chains from datmos / nabir annotations
+        # format:
+        # pdbid,model,family,class,chain1,nr1,res1,alt1,ins1,symmetry_operation1,chain2,nr2,res2,alt2,ins2,symmetry_operation2,confit,rmsd,curated_file,knn_metric,coplanarity_angle,coplanarity_shift1,coplanarity_shift2,coplanarity_edge_angle1,coplanarity_edge_angle2,C1_C1_yaw1,C1_C1_pitch1,C1_C1_roll1,C1_C1_yaw2,C1_C1_pitch2,C1_C1_roll2,hb_0_length,hb_0_donor_angle,hb_0_acceptor_angle,hb_0_OOPA1,hb_0_OOPA2,hb_1_length,hb_1_donor_angle,hb_1_acceptor_angle,hb_1_OOPA1,hb_1_OOPA2,hb_2_length,hb_2_donor_angle,hb_2_acceptor_angle,hb_2_OOPA1,hb_2_OOPA2,hb_3_length,hb_3_donor_angle,hb_3_acceptor_angle,hb_3_OOPA1,hb_3_OOPA2
+        # 1bpz,1,cWW,cWW-G-C,D,1,DG,"", ,,T,5,DC,"", ,,18.84,0.403,6l9z_J_DG_262_1_555_I_DC_77_1_555,0.898,178.63055,-0.08282822,-0.030659033,0.13888925,0.05842374,68.25878,3.9918058,-178.93614,68.293076,-2.466058,176.6849,2.8590918,109.56053,136.37636,-0.43760082,-1.7050114,2.9092517,128.96086,111.27294,-0.5603098,-1.8470126,2.8477883,138.41031,106.47203,-0.4901489,-1.7738901,,,,,
+
+        PDB_set = set()
+        PDB_chain_set = set()
+        import glob
+        # get all .csv files in directory
+        directory = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_datmos_2025-09-19'
+        file_list = glob.glob(os.path.join(directory,'*.csv'))
+        for filename in file_list:
+            print(filename)
+            with open(filename,'rt') as f:
+                lines = f.readlines()
+            for line in lines[1:]:
+                fields = line.strip().split(",")
+                pdb_id = fields[0].upper()
+                chain1 = fields[4]
+                chain2 = fields[10]
+                PDB_set.add(pdb_id)
+                PDB_chain_set.add(pdb_id+"|1|"+chain1)
+                PDB_chain_set.add(pdb_id+"|1|"+chain2)
+
+        PDB_list = sorted(PDB_set)
+
+        # write to .pickle file
+        with open('C:/Users/zirbel/Documents/PythonFR3D/data/chain_list.pickle','wb') as f:
+            pickle.dump(sorted(PDB_chain_set),f,2)
+
+    else:
+        with open('C:/Users/zirbel/Documents/PythonFR3D/data/chain_list.pickle','rb') as f:
+            PDB_chain_list = pickle.load(f)
+        print('Read %d chains from datmos annotations' % len(PDB_chain_list))
+        PDB_list = sorted(set([pdb_id.split("|")[0] for pdb_id in PDB_chain_list]))
+        print('Found %d unique PDB IDs from datmos annotations' % len(PDB_list))
 
 # save .pickle file for plot_basepair_interactions?
 get_datapoint = True
@@ -266,8 +307,8 @@ if False:
 
 # zzz
 
-OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 OverwriteDataFiles = True    # even if a data file already exists, annotate and overwrite
+OverwriteDataFiles = False   # to save time, if a data file exists, skip annotation
 
 base_seq_list = ['A','U','C','G']      # for RNA
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -373,7 +414,6 @@ for i in range(a,b,c):
     if not os.path.exists(outputDataFilePicklePath):
         os.mkdir(outputDataFilePicklePath)
 
-
     if annotate_units:
         unit_annotation_file = os.path.join(outputNAPairwiseInteractions,"%s_glycosidic.txt" % PDB_id)
         if not os.path.exists(unit_annotation_file):
@@ -381,6 +421,8 @@ for i in range(a,b,c):
             generateUnitAnnotation(PDB_id, '', inputPath, outputNAPairwiseInteractions, {'glycosidic':[]}, 'txt')
 
     outputDataFilePickle = os.path.join(outputDataFilePicklePath, PDB_id + "_RNA_pairs.pickle")
+
+    print("Annotating %s file %d of %s" % (PDB_id,i,b))
 
     if annotate_entire_PDB_files:
         # name for file with pairs and datapoint variable about annotations
@@ -551,7 +593,7 @@ for i in range(a,b,c):
 
 
 # when you had to run the code first
-process_oo_distance_files()
+# process_oo_distance_files()
 
 myTimer("summary",timerData)
 
