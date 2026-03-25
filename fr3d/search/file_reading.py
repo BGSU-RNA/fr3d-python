@@ -541,9 +541,8 @@ def readNAPositionsFile(Q, chainString, starting_index):
     fields = chainString.split('|')
     file_id = fields[0]
 
-    # filename = chainString.replace('|','-') + '_RNA.pickle'  # old, uses base center
-    filename = chainString.replace('|','-') + '_NA.pickle'   # new on 2023-02-20, covers RNA and DNA, uses glycosidic atom
-
+    # new on 2023-02-20, covers RNA and DNA, uses glycosidic atom
+    filename = chainString.replace('|','-') + '_NA.pickle'
     pathAndFileName = os.path.join(Q["DATAPATHUNITS"],filename)
 
     if not os.path.exists(pathAndFileName) and Q.get('downloadDataFiles',True):
