@@ -25,7 +25,7 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
 
     fields =  ifename.split('|')
 
-    # field 0 is generally PDB identifier, but could be user-defined instead
+    # field 0 is generally a PDB identifier, but could be user-defined instead
     file_id = fields[0]
 
     # lists should start empty, append with RNA if necessary, with DNA if necessary, with protein if necessary, etc.
