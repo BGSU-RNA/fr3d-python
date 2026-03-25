@@ -1582,7 +1582,7 @@ def calculateQueryConstraints(Q):
 
                     # make sure no file is listed twice
                     # alphabetical order can be nice, but then searches seem to slow down as they run
-                    newList = sorted(set(newList))
+                    newList = sorted(set(newList),reverse = True)
 
                     representativeSets[repSetKey] = newList
                     pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
