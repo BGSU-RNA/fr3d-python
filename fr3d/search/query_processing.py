@@ -571,6 +571,29 @@ def vectorDistance(x,y):
     return math.sqrt((x[0]-y[0])**2 + (x[1]-y[1])**2 + (x[2]-y[2])**2)
 
 
+def get_pdb_chains(Q,search_file_id_upper,searchingRNA,searchingDNA):
+    # given a pdb id, look up the chains and return those in a list
+
+    # load mapping from PDB id to chain and other information, if not already done
+    if not "PDB_data_file" in Q:
+        Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+
+    chains = []
+
+    if search_file_id_upper in Q["PDB_data_file"].keys():
+
+        pdb_chains = Q["PDB_data_file"][search_file_id_upper]['chains']
+
+        if searchingRNA and 'RNA' in pdb_chains:
+            chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['RNA']]
+        if (searchingRNA or searchingDNA) and 'hybrid' in pdb_chains:
+            chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['hybrid']]
+        if searchingDNA and 'DNA' in pdb_chains:
+            chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['DNA']]
+
+    return Q, chains
+
+
 def calculateQueryConstraints(Q):
     """
     Parse the constraints in interactionMatrix and convert to the form
@@ -1332,7 +1355,7 @@ def calculateQueryConstraints(Q):
         # but this code stays for backward compatibility
         # Example: 	"https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/3.0A/csv"
         # Example:  "https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/NMR/csv"
-        if "nrlist" in search_file:           # referring to lists that are posted online
+        if "nrlist" in search_file:           # referring to lists that are posted online, an older method
 
             # make sure that search_file fits the pattern; avoid code injection
             fields = search_file.split("/")
@@ -1364,31 +1387,19 @@ def calculateQueryConstraints(Q):
 
             continue
 
-        if len(search_file_id) == 4:
+        if not "|" in search_file:
             # process as a PDB id
-            # if RNA or DNA is being searched for, convert any 4-letter PDB IDs to strings
+            # if RNA or DNA is being searched for, convert any PDB IDs to strings
             # with chain strings separated by + signs
             # That way, all chains will be searched together, not individually
             # Then you can find motifs that have nucleotides from two or more chains
             # not needed for protein because they are not stored by chain
 
-            # load mapping from PDB id to chain and other information, if not already done
-            if not "PDB_data_file" in Q:
-                Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
-
             search_file_id_upper = search_file_id.upper()
 
-            if search_file_id_upper in Q["PDB_data_file"].keys():
-                chains = []
+            Q,chains = get_pdb_chains(Q,search_file_id_upper,searchingRNA,searchingDNA)
 
-                pdb_chains = Q["PDB_data_file"][search_file_id_upper]['chains']
-
-                if searchingRNA and 'RNA' in pdb_chains:
-                    chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['RNA']]
-                if (searchingRNA or searchingDNA) and 'hybrid' in pdb_chains:
-                    chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['hybrid']]
-                if searchingDNA and 'DNA' in pdb_chains:
-                    chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['DNA']]
+            if len(chains) > 0:
                 IFEList.append("+".join(chains))
 
                 if Q.get('printQueryDetails',False):
@@ -1488,16 +1499,23 @@ def calculateQueryConstraints(Q):
         else:
             Q["repSetType"] = ["RNA"]
 
+        if Q.get("repSetResolution","all") == "entire":
+            # search the entire set of PDB files in the "all" resolution
+            repSetResolution = 'all'
+        else:
+            repSetResolution = Q.get("repSetResolution","all")
+
         for repSetType in Q["repSetType"]:
             if repSetType == "RNA":
-                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
+                # https://rna.bgsu.edu/rna3dhub/nrlist/download/4.32/all/csv
+                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],repSetResolution)
             elif repSetType == "DNA":
-                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/dna/%s/%s/csv" % (Q["repSetRelease"],Q["repSetResolution"])
+                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/dna/%s/%s/csv" % (Q["repSetRelease"],repSetResolution)
 
             repSetKey = (repSetType,Q["repSetRelease"],Q["repSetResolution"])
 
             # check in local file of representative sets first, in case the list is already downloaded
-            # helps when working offline
+            # faster, and works better when working offline
             newList = []
             pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
             if os.path.exists(pathAndFileName):
@@ -1540,17 +1558,21 @@ def calculateQueryConstraints(Q):
                         # CSV file, split by comma
                         fields = line.split(",")
                         if len(fields) > 1:
-                            # second column has representative IFE; remove ""
-                            IFE = fields[1].replace('"','')
-                            if NMRonly:
-                                file_id = IFE.split("|")[0]
-                                if file_id in list(Q["PDB_data_file"]):
-                                    if 'method' in list(Q["PDB_data_file"][file_id]):
-                                        if 'NMR' in Q["PDB_data_file"][file_id]['method']:
-                                            newList.append(IFE.decode("ascii"))
-                                            # newList.append(IFE)
-                            elif len(IFE) > 1:
-                                newList.append(IFE)
+                            if Q["repSetResolution"] == "entire":
+                                # keep all PDB identifiers in the equivalence class
+                                newList += [x.replace('"','').split("|")[0] for x in fields[2:]]
+                            else:
+                                # second column has representative IFE; remove ""
+                                IFE = fields[1].replace('"','')
+                                if NMRonly:
+                                    file_id = IFE.split("|")[0]
+                                    if file_id in list(Q["PDB_data_file"]):
+                                        if 'method' in list(Q["PDB_data_file"][file_id]):
+                                            if 'NMR' in Q["PDB_data_file"][file_id]['method']:
+                                                newList.append(IFE.decode("ascii"))
+                                                # newList.append(IFE)
+                                elif len(IFE) > 1:
+                                    newList.append(IFE)
 
                     if os.path.exists(pathAndFileName):
                         with open(pathAndFileName, 'rb') as fh:
@@ -1560,7 +1582,9 @@ def calculateQueryConstraints(Q):
 
                     # make sure no file is listed twice
                     # alphabetical order can be nice, but then searches seem to slow down as they run
-                    representativeSets[repSetKey] = sorted(set(newList))
+                    newList = sorted(set(newList))
+
+                    representativeSets[repSetKey] = newList
                     pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
 
         IFEList += newList
@@ -1574,8 +1598,14 @@ def calculateQueryConstraints(Q):
         fields = ife.split("|")
         pdb = fields[0]
         if len(fields) == 1:
-            # only a pdb id, use all chains
-            pdb_to_chains[pdb] = set()
+            # only a pdb id, use all chains for what we are searching here
+            Q,chains = get_pdb_chains(Q,pdb,searchingRNA,searchingDNA)
+
+            if len(chains) > 0:
+                pdb_to_chains[pdb] = set(chains)
+            else:
+                print("No appropriate nucleic acid chains found in %s" % pdb)
+
         elif pdb in pdb_to_chains:
             if len(pdb_to_chains[pdb]) > 0:
                 # already has chains, just add more chains, and do not duplicate chains
@@ -1590,7 +1620,7 @@ def calculateQueryConstraints(Q):
             # chains from IFEs
             searchFiles.append("+".join(pdb_to_chains[pdb]))
         else:
-            # whole PDB file
+            # whole PDB file ... should not happen
             searchFiles.append(pdb)
 
     Q["searchFiles"] = searchFiles
