@@ -1522,7 +1522,7 @@ def calculateQueryConstraints(Q):
                 with open(pathAndFileName, 'rb') as fh:
                     representativeSets = pickle.load(fh)
                 if repSetKey in representativeSets and len(representativeSets[repSetKey]) > 0:
-                    newList = sorted(set(representativeSets[repSetKey]))
+                    newList = sorted(set(representativeSets[repSetKey]),reverse=True)
 
             if len(newList) == 0:
                 # need to download the representative set
