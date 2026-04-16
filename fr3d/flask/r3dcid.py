@@ -1624,7 +1624,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                             if len(fields) == 2:
                                 modified_base_to_parent[fields[0]] = fields[1]
 
-                unit_id_to_standard[unit_id] = modified_base_to_parent.get(base,base)
+                # if there is no mapping, use A to not crash, though that is not optimal!
+                unit_id_to_standard[unit_id] = modified_base_to_parent.get(base,'A')
 
     # identify basepairs actually present in the structure to save time later
     basepair_interaction = ['cWW','cWw','cwW','tWW','cWH','cHW','tWH','tHW','cHH','cHh','chH','tHH','tHh','thH','cWS','cSW','tWS','tSW','cHS','cSH','tHS','tSH','cSS','cSs','csS','tSS','tSs','tsS']
