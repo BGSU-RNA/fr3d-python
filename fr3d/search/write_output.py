@@ -126,10 +126,10 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
                 else:
                     csymm = ""
 
-                if fields[2] == cfields[2] and symm == csymm:
+                if fields[2] == cfields[2] and symm == csymm and candidate['chainindices'][j] and candidate['chainindices'][j+1]:
                     if candidate['chainindices'][j] + 1 == candidate['chainindices'][j+1]: # successive
                         sequence += "-"
-                    elif candidate['chainindices'][j] + 1 < candidate['chainindices'][j+1]: # later
+                    elif candidate['chainindices'][j] + 1 < candidate['chainindices'][j+1]: # later, use <
                         sequence += "&#8594;"
                     else:
                         sequence += "&#8592;"
@@ -412,7 +412,7 @@ def writeCSVOutput(Q,candidates):
                 else:
                     csymm = ""
 
-                if fields[2] == cfields[2] and symm == csymm:
+                if fields[2] == cfields[2] and symm == csymm and candidate['chainindices'][j] and candidate['chainindices'][j+1]:
                     if candidate['chainindices'][j] + 1 == candidate['chainindices'][j+1]: # successive
                         sequence += "--"
                     elif candidate['chainindices'][j] + 1 < candidate['chainindices'][j+1]: # later
