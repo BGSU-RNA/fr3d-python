@@ -19,8 +19,8 @@ Ideas for the next version:
 
 # user settings below
 
-color_scheme = 'CPK'         # use CPK coloring
 color_scheme = 'diagnostic'  # use many colors, to check the atom mappings
+color_scheme = 'CPK'         # use CPK coloring
 
 if color_scheme == 'diagnostic':
     plot_standard = True     # include the standard base in the plots
@@ -481,7 +481,7 @@ def get_mod_atom_closest_to(atom_list, parent_to_modified_atom, mod_coordinates,
     # return min_atom, min_dist, p, q
 
 
-def draw_base_coordinates(base_seq,coordinates,connections,atom_to_display,ax,limits=None,shift=(0,0,0)):
+def draw_base_coordinates(base_seq,coordinates,connections,atom_to_display,backbone,ax,limits=None,shift=(0,0,0)):
     """
     Connects atoms to draw one base
     ax is the current axis
@@ -1475,7 +1475,7 @@ def main(mod_nt=""):
                             parent_shift = (-10,0,0)
                         else:
                             parent_shift = (-8,0,0)
-                    xmin, xmax, ymin, ymax = draw_base_coordinates(parent,par_coordinates_standard[parent],par_connections[parent],par_atom_colors,ax,shift=parent_shift)
+                    xmin, xmax, ymin, ymax = draw_base_coordinates(parent,par_coordinates_standard[parent],par_connections[parent],par_atom_colors,backbone,ax,shift=parent_shift)
 
                     # expand a bit to include full atom dots, which are cropped when outside of the axis limits
                     # ax.set_xlim(xmin-shift,xmax+shift)
@@ -1545,7 +1545,7 @@ def main(mod_nt=""):
 
                 # plot modified nucleotide atoms
 
-                xmin2, xmax2, ymin2, ymax2 = draw_base_coordinates(modified,mod_coordinates_standard,mod_connections,mod_atom_colors,ax)
+                xmin2, xmax2, ymin2, ymax2 = draw_base_coordinates(modified,mod_coordinates_standard,mod_connections,mod_atom_colors,backbone,ax)
 
                 parent_to_min_max[parent]['xmin']  = min(xmin,parent_to_min_max[parent].get('xmin',xmin))
                 parent_to_min_max[parent]['xmax']  = max(xmax,parent_to_min_max[parent].get('xmax',xmax))
@@ -1675,7 +1675,7 @@ def main(mod_nt=""):
         for modified in list(modified_to_changes.keys()):
             if not modified in mod_to_count and not modified in ['DI','DU']:
                 del modified_to_changes[modified]
-                print('Deleted %s from modified_to_changes' % modified)
+                print('Deleted %s from modified_to_changes because NAKB count is zero' % modified)
         print('Now there are %d modified residues in the dataset' % len(modified_to_changes.keys()))
 
         changes_file = 'modified_to_change_data.json'

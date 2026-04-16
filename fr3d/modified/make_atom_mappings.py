@@ -293,7 +293,7 @@ def process_one_modified_nt(mod_nt,mappings=[]):
                 standard_to_mod[p2] = m2
                 mod_to_par[m2] = p2
                 new_par_atoms.append(p2)
-                manual_mappings.append("%s\t%s\t%s\t%s" % (standard_nt,p2,mod_nt,m2))
+                manual_mappings.append("%s\t%s\t%s\t%s\n" % (standard_nt,p2,mod_nt,m2))
 
     unresolved_par_atoms = set()  # atoms we were confused about at some point and not resolved
 
