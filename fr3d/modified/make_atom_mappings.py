@@ -599,6 +599,8 @@ def map_all_modified_nucleotides(focus_list = []):
                 for line in manual_lines:
                     f.write(line)
                     fields = line.split("\t")
+                    if len(fields) < 3:
+                        continue
                     if fields[2] == mod_nt and len(new_manual_mappings) > 0:
                         for manual_line in new_manual_mappings:
                             f.write(manual_line)
