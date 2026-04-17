@@ -1669,6 +1669,14 @@ def main(mod_nt=""):
             if parent in modified_to_changes:
                 del modified_to_changes[parent]
 
+        # for GitHub, save all modified to change data
+        changes_file = 'modified_to_change_data_all.json'
+        with open(changes_file, write_mode) as f:
+            # write modified_to_changes to a file in json format
+            f.write(json.dumps(modified_to_changes))
+        print('Wrote all changes to %s' % changes_file)
+
+        # for NAKB, save only modified nucleotides covered by NAKB non-standard list
         # keep only modified nucleotides identified by NAKB non-standard residue list
         # because the .json file is for the NAKB modified nucleotide site
         # add DI and DU because they are being added to the NAKB site soon
