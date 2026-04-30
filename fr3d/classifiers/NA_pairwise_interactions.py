@@ -2736,7 +2736,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
             datapoint['normal_Z'] = normal_Z
 
         # min_distance = calculate_min_distances(nt1, nt2, None)[1]
-        min_distance, heavy_min_distance, base_points, atomname = calculate_base_min_distances(nt1, nt2)
+        min_distance, heavy_min_distance, base_points, atom_name = calculate_base_min_distances(nt1, nt2)
 
         # check for true stacking. If it meets criteria, strip the n from the annotation
         if abs(min_distance) < true_z_cutoff and abs(min_distance) > 1 and abs(normal_Z) > 0.6 and nt2on1 == True and nt1on2 == True:
@@ -2753,7 +2753,7 @@ def check_base_base_stacking(nt1, nt2, parent1, parent2, datapoint):
         print('%s\t%s\t%s\t%0.4f\t%0.4f\t%0.4f\t\t=hyperlink("https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s")' % (nt1.unit_id(),nt2.unit_id(),interaction,coords[0],coords[1],coords[2],nt1.unit_id(),nt2.unit_id()))
 
     if datapoint and len(interaction) > 0:
-        datapoint['gap12'], base_points2, atomname2 = calculate_basepair_gap(nt1,nt2)
+        datapoint['gap12'], base_points2, atom_name2 = calculate_basepair_gap(nt1,nt2)
         try:
             datapoint['angle_in_plane'] = math.atan2(rotation_1_to_2[1,1],rotation_1_to_2[1,0])*57.29577951308232 - 90
         except:
@@ -2829,7 +2829,7 @@ def calculate_min_distances(nt1, nt2, base_points2):
     return min_distance, base_min_distance, base_points1
 
 
-def calculate_base_min_distances(nt1, nt2, base_points2 = [], atomname2 = []):
+def calculate_base_min_distances(nt1, nt2, base_points2 = [], atom_name2 = []):
     """
     Calculate minimum distances between the bases of two nucleotides
     Return the minimum distance between base 1 and base 2 as base_min_distance
@@ -2841,13 +2841,13 @@ def calculate_base_min_distances(nt1, nt2, base_points2 = [], atomname2 = []):
 
     if len(base_points2) == 0:
         base_points2 = []
-        atomname2 = []
+        atom_name2 = []
         base2_atoms = get_base_atom_names(nt2.sequence)
         for atom2 in nt2.atoms():
             if atom2.name in base2_atoms:
                 p = [atom2.x, atom2.y, atom2.z]
                 base_points2.append(p)
-                atomname2.append(atom2.name)
+                atom_name2.append(atom2.name)
 
     base_min_distance = 9999
     heavy_min_distance = 9999
@@ -2855,13 +2855,13 @@ def calculate_base_min_distances(nt1, nt2, base_points2 = [], atomname2 = []):
     base1_atoms = get_base_atom_names(nt1.sequence)
 
     base_points1 = []
-    atomname1 = []
+    atom_name1 = []
 
     for atom in nt1.atoms():              # nt1 atoms
         if atom.name in base1_atoms:
             q = [atom.x, atom.y, atom.z]      # nt1 base atoms including hydrogens
             base_points1.append(q)                 # save for later gap21 calculation
-            atomname1.append(atom.name)
+            atom_name1.append(atom.name)
             heavy1 = not atom.name.startswith("H")
 
             for i, p in enumerate(base_points2):                 # nt2 atoms
@@ -2869,10 +2869,10 @@ def calculate_base_min_distances(nt1, nt2, base_points2 = [], atomname2 = []):
                 if d < base_min_distance:
                     base_min_distance = d
 
-                if d < heavy_min_distance and heavy1 and not atomname2[i].startswith("H"):
+                if d < heavy_min_distance and heavy1 and not atom_name2[i].startswith("H"):
                     heavy_min_distance = d
 
-    return base_min_distance, heavy_min_distance, base_points1, atomname1
+    return base_min_distance, heavy_min_distance, base_points1, atom_name1
 
 
 def look_up_atom_coordinates(nt, firstAtoms = [], secondAtoms = []):
@@ -3159,7 +3159,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     displ12 = pair_data["displ12"]
 
     # calculate gap and standardized atoms from nt2
-    gap12, base_points2, atomname2 = calculate_basepair_gap(nt1,nt2)
+    gap12, base_points2, atom_name2 = calculate_basepair_gap(nt1,nt2)
     pair_data["gap12"] = gap12
 
     if datapoint:
@@ -3171,7 +3171,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     if gap12 >= 1.5179:
         return pair_data, datapoint
 
-    min_distance, heavy_min_distance, base_points1, atomname1 = calculate_base_min_distances(nt1, nt2, base_points2, atomname2)
+    min_distance, heavy_min_distance, base_points1, atom_name1 = calculate_base_min_distances(nt1, nt2, base_points2, atom_name2)
 
     pair_data["min_distance"] = min_distance
     pair_data["heavy_min_distance"] = heavy_min_distance
@@ -3205,7 +3205,7 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     if dot3 <= 0.7757:
         return pair_data, datapoint
 
-    gap21, base_points1, atomname1 = calculate_basepair_gap(nt2,nt1,base_points1)
+    gap21, base_points1, atom_name1 = calculate_basepair_gap(nt2,nt1,base_points1)
 
     if datapoint:
         datapoint['gap21'] = gap21
@@ -3279,10 +3279,13 @@ def check_coplanar(nt1,nt2,pair_data,datapoint):
     return pair_data, datapoint
 
 
-def calculate_basepair_gap(nt1,nt2,base_points2=[],atomname=[]):
+def calculate_basepair_gap(nt1,nt2,base_points2=[],atom_name2=[]):
     """
     Calculate the vertical distance between nearest edges of two bases,
     from the plane of nt1 to the nearest atom of nt2.
+    Accounts for modified nucleotides.
+    base_points2 can be a list of numpy vectors of base atom locations for nt2
+    atom_name2 can be a list of strings of atom names from nt2
     """
 
     displacements = []
@@ -3297,17 +3300,17 @@ def calculate_basepair_gap(nt1,nt2,base_points2=[],atomname=[]):
             distances.append(d)
 
     else:
-        # look up the base atoms in nt2
+        # look up the base atoms in nt2, mapping modified nt as necessary
         base_points2 = []
-        atomname = []
+        atom_name2 = []
 
-        base_atoms = get_base_atom_names(nt2.sequence)
+        base_atoms2 = get_base_atom_names(nt2.sequence)
 
         for atom in nt2.atoms():
-            if atom.name in base_atoms:
+            if atom.name in base_atoms2:
                 p = [atom.x, atom.y, atom.z]
                 base_points2.append(p)
-                atomname.append(atom.name)
+                atom_name2.append(atom.name)
 
                 v = np.subtract(p,nt1.centers["base"])
                 d = np.linalg.norm(v)
@@ -3326,7 +3329,7 @@ def calculate_basepair_gap(nt1,nt2,base_points2=[],atomname=[]):
         if z < gap12:
             gap12 = z                 # gap is smallest z value
 
-    return gap12, base_points2, atomname
+    return gap12, base_points2, atom_name2
 
 
 def check_sugar_ribose(nt1,nt2,parent1,datapoint):
@@ -3562,16 +3565,16 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
             if not 'gap12' in pair_data:
                 # calculate gap and standardized atoms from nt2
-                gap12, base_points2, atomname2 = calculate_basepair_gap(nt1,nt2)
+                gap12, base_points2, atom_name2 = calculate_basepair_gap(nt1,nt2)
                 pair_data["gap12"] = gap12
 
             if not 'gap21' in pair_data:
                 # calculate gap and standardized atoms from nt2
-                gap21, base_points1, atomname1 = calculate_basepair_gap(nt2,nt1)
+                gap21, base_points1, atom_name1 = calculate_basepair_gap(nt2,nt1)
                 pair_data["gap21"] = gap21
 
             if not 'heavy_min_distance' in pair_data:
-                min_distance, heavy_min_distance, base_points1, atomname1 = calculate_base_min_distances(nt1, nt2)
+                min_distance, heavy_min_distance, base_points1, atom_name1 = calculate_base_min_distances(nt1, nt2)
                 pair_data["min_distance"] = min_distance
                 pair_data["heavy_min_distance"] = heavy_min_distance
 
