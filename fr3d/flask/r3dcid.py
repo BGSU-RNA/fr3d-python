@@ -336,17 +336,19 @@ def set_parameters_from_input(params,filename,pdb_id):
     params['dim']  = clean_comma_list(dim, arc_group_names+['between','within'], hide+","+show)
 
     text = params.get('text','').lower()
-    text = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","none","between","within"])
+    text = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","none","blank","between","within"])
     if "between" in text and "within" in text:
         # default is to show both, so leave these out and save time
-        text = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","none"])
-    if "none" in text:
+        text = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","none","blank"])
+    if "blank" in text:
+        # no chain labels, no nucleotides, no interactions
+        text = 'blank'
+    elif "none" in text:
+        # no interactions
         text = 'none'
     elif "all" in text:
         text = clean_comma_list(text,['all','between','within'])
-    elif text == 'basepair':
-        # basepair is the default, do not add basepair to the filename
-        text = clean_comma_list(text,['between','within'])
+
     params['text'] = text
 
     # add user-specified display options to the filename unless they are the default
@@ -369,7 +371,19 @@ def set_parameters_from_input(params,filename,pdb_id):
         if type(params['n3d']) == 'string' and params['n3d'].lower() == 'false':
             params['n3d'] = False
         if params['n3d'] == False:
-            filename += "_n3d-false"
+            filename += "_n3d_false"
+
+    if 'counts' in params:
+        if type(params['counts']) == 'string' and params['counts'].lower() == 'false':
+            params['counts'] = False
+        if params['counts'] == False:
+            filename += "_counts_false"
+
+    if 'labels' in params:
+        if type(params['labels']) == 'string' and params['labels'].lower() == 'false':
+            params['labels'] = False
+        if params['labels'] == False:
+            filename += "_labels_false"
 
     if 'helix_size' in params:
         filename += '_hs_' + str(params['helix_size'])
@@ -377,15 +391,15 @@ def set_parameters_from_input(params,filename,pdb_id):
     if not 'header' in params:
         params['header'] = 'all'
 
-    params['header'] = clean_comma_list(params['header'],['title','method','source','release_date','resolution','all','none'])
+    params['header'] = clean_comma_list(params['header'],['filename','title','method','source','release_date','resolution','all','none'])
     if len(params['header']) == 0:
-        params['header'] = 'title,method,source,release_date,resolution'
+        params['header'] = 'filename,title,method,source,release_date,resolution'
     elif 'none' in params['header']:
         del params['header']
         filename += '_header_none'
     elif 'all' in params['header']:
-        params['header'] = 'title,method,source,release_date,resolution'
-    elif params['header'] == 'title,method,source,release_date,resolution':
+        params['header'] = 'filename,title,method,source,release_date,resolution'
+    elif params['header'] == 'filename,title,method,source,release_date,resolution':
         pass
     else:
         filename += '_header_' + params['header']
@@ -1415,7 +1429,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                             print(chain_data)
                             print(chain_to_units[chain])
                             symmetry = 'placeholder'
-                            input("Press Enter")
+                            # input("symmetry is None.  Press Enter")
 
                         # label for each chain around the outside of the circle
                         chain_label = make_chain_label(assemblies,requested_models,model,chain,chain_data,symmetry)
@@ -1494,7 +1508,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                         if symmetry == 'placeholder':
                             print('num_nts_found_this_chain')
                             print(num_nts_found_this_chain)
-                            input("Press Enter to continue")
+                            # input("symmetry is just a placeholder.  Press Enter to continue")
 
                         if num_nts_found_this_chain > 0:
                             max_chain_label_length = max(max_chain_label_length,len(chain_label))
@@ -1739,7 +1753,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     if len(basepairs_lost) > 0 or len(basepairs_gained) > 0:
         print("Basepairs lost  : %s" % basepairs_lost)
         print("Basepairs gained: %s" % basepairs_gained)
-        input("Press Enter")
+        input("Change in basepair lists. Press Enter")
 
     # get a list of all coplanar contacts that are not also annotated at basepairs or near basepairs
     all_basepairs = set()
@@ -1928,8 +1942,9 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     # collect together header lines
     header = []
-    title_text = filename.replace("R3DCID_","")
-    header.append(title_text)
+    if 'header' in params and 'filename' in params['header']:
+        title_text = filename.replace("R3DCID_","")
+        header.append(title_text)
     if 'description' in params:
         if '\\n' in params['description']:
             header += params['description'].split('\\n')
@@ -1986,105 +2001,104 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
         y -= header_vertical
 
-    # move origin back to lower left corner
-    # PSlist.append("-50 -760 translate")
-
-    # end the font choice
+    # end the header font choice
     SVGlist.append('</g>')
 
-    # draw the table of arc colors and counts
-    x_table = 50 * mul
     y_table = 160 * mul
     y_delta = -12 * mul
-    x_offset = 15 * mul
     table_font_size = 10 * mul
+    if params.get('counts',True):
+        # draw the table of arc colors and counts
+        x_table = 50 * mul
+        x_offset = 15 * mul
 
-    y = y_table + y_delta
+        y = y_table + y_delta
 
-    PSlist.append("newpath")
-    PSlist.append("/Times-Roman findfont")
-    PSlist.append("%f scalefont" % table_font_size)
-    PSlist.append("0 setgray")
-    PSlist.append("setfont")
+        PSlist.append("newpath")
+        PSlist.append("/Times-Roman findfont")
+        PSlist.append("%f scalefont" % table_font_size)
+        PSlist.append("0 setgray")
+        PSlist.append("setfont")
 
-    SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % table_font_size)
+        SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % table_font_size)
 
-    # count separately, because sometimes n1 BPh n2 and also n2 BPh n1, which is undercounted
-    for group_name in ["bph","br","sr","so"]:
-        total = 0
-        for interaction in arc_group_to_interactions[group_name]:
-            total += len(interaction_to_triple_list[interaction])
-        group_name_to_count[group_name] = max(total,group_name_to_count[group_name])
+        # count separately, because sometimes n1 BPh n2 and also n2 BPh n1, which is undercounted
+        for group_name in ["bph","br","sr","so"]:
+            total = 0
+            for interaction in arc_group_to_interactions[group_name]:
+                total += len(interaction_to_triple_list[interaction])
+            group_name_to_count[group_name] = max(total,group_name_to_count[group_name])
 
-    for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","coplanar","near"]:
-        if not group_name in hide and not (group_name == "bonus" and "nested-non-wc" in hide):
-            if not group_name == "bonus":
-                PSlist.append("%d %d moveto" % (x_table+x_offset,y))
-                PSlist.append("%f %f %f setrgbcolor" % group_name_to_color[group_name])
-                PSlist.append("%d %f %d %d rectfill" % (x_table, y, 10 * mul, 7 * mul))
+        for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","coplanar","near"]:
+            if not group_name in hide and not (group_name == "bonus" and "nested-non-wc" in hide):
+                if not group_name == "bonus":
+                    PSlist.append("%d %d moveto" % (x_table+x_offset,y))
+                    PSlist.append("%f %f %f setrgbcolor" % group_name_to_color[group_name])
+                    PSlist.append("%d %f %d %d rectfill" % (x_table, y, 10 * mul, 7 * mul))
 
-                r, g, b = group_name_to_color[group_name]
-                SVGlist.append('<rect x="%d" y="%d" width="%d" height="%d" fill="rgb(%d,%d,%d)" />'
-                                % (x_table, page_height - y - 7 * mul, 10 * mul, 7 * mul, int(255*r), int(255*g), int(255*b)))
+                    r, g, b = group_name_to_color[group_name]
+                    SVGlist.append('<rect x="%d" y="%d" width="%d" height="%d" fill="rgb(%d,%d,%d)" />'
+                                    % (x_table, page_height - y - 7 * mul, 10 * mul, 7 * mul, int(255*r), int(255*g), int(255*b)))
 
-            PSlist.append("%d %f moveto" % (x_table + x_offset, y))
-            PSlist.append("0 0 0 setrgbcolor")
-            if group_name == "bonus":
-                PSlist.append("(%s) show" % (arc_group_name_to_text[group_name]))
-                SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name]))
-            else:
-                PSlist.append("(%s) show" % (arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
-                SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
+                PSlist.append("%d %f moveto" % (x_table + x_offset, y))
+                PSlist.append("0 0 0 setrgbcolor")
+                if group_name == "bonus":
+                    PSlist.append("(%s) show" % (arc_group_name_to_text[group_name]))
+                    SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name]))
+                else:
+                    PSlist.append("(%s) show" % (arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
+                    SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
+
+                y = y + y_delta
+
+        # end the table font choice
+        SVGlist.append('</g>')
+
+    if params.get('labels',True):
+        # collect chain identifiers and display names, and break lines
+        chains_printed = set([])
+        chain_lines = []
+        num_distinct_chains = len(set([x['chain_name'] for x in chain_info]))
+        if num_distinct_chains > 11:
+            # allow a longer line length because the text will be smaller
+            max_length = int(60 * num_distinct_chains / 11.0)
+        else:
+            # reasonable line length
+            max_length = 60
+        for chain_data in chain_info:
+            chain_name = chain_data['chain_name']
+            if not chain_name in chains_printed:
+                chains_printed.add(chain_name)
+                display_name = chain_data['display_name']
+                chain_text = "Chain %s: %s" % (chain_name, display_name)
+                chain_lines += break_line(chain_text,max_length,max_length+5)
+
+        # font size for table of chain names and their standardized names
+        y = y_table + y_delta
+        chain_table_font_size = table_font_size
+        if len(chain_lines) > 11:
+            # reduce spacing between rows
+            y_delta = y_delta * 11.0 / len(chain_lines)
+            chain_table_font_size = chain_table_font_size*11.0/len(chain_lines)
+            PSlist.append("/Times-Roman findfont")
+            PSlist.append("%f scalefont" % (chain_table_font_size))
+            PSlist.append("setfont")
+
+        SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % chain_table_font_size)
+
+        # print list of chains and their display names below the diagram
+        x_chain_list = 320 * mul
+        for chain_text in chain_lines:
+            ct = chain_text.replace("(","\(").replace(")","\)")
+            PSlist.append("%d %f moveto" % (x_chain_list, y))
+            PSlist.append("(%s) show" % (ct))
+
+            SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_chain_list,page_height-y,ct))
 
             y = y + y_delta
 
-    # end the font choice
-    SVGlist.append('</g>')
-
-    # collect chain identifiers and display names, and break lines
-    chains_printed = set([])
-    chain_lines = []
-    num_distinct_chains = len(set([x['chain_name'] for x in chain_info]))
-    if num_distinct_chains > 11:
-        # allow a longer line length because the text will be smaller
-        max_length = int(60 * num_distinct_chains / 11.0)
-    else:
-        # reasonable line length
-        max_length = 60
-    for chain_data in chain_info:
-        chain_name = chain_data['chain_name']
-        if not chain_name in chains_printed:
-            chains_printed.add(chain_name)
-            display_name = chain_data['display_name']
-            chain_text = "Chain %s: %s" % (chain_name, display_name)
-            chain_lines += break_line(chain_text,max_length,max_length+5)
-
-    # font size for table of chain names and their standardized names
-    y = y_table + y_delta
-    chain_table_font_size = table_font_size
-    if len(chain_lines) > 11:
-        # reduce spacing between rows
-        y_delta = y_delta * 11.0 / len(chain_lines)
-        chain_table_font_size = chain_table_font_size*11.0/len(chain_lines)
-        PSlist.append("/Times-Roman findfont")
-        PSlist.append("%f scalefont" % (chain_table_font_size))
-        PSlist.append("setfont")
-
-    SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % chain_table_font_size)
-
-    # print list of chains and their display names below the diagram
-    x_chain_list = 320 * mul
-    for chain_text in chain_lines:
-        ct = chain_text.replace("(","\(").replace(")","\)")
-        PSlist.append("%d %f moveto" % (x_chain_list, y))
-        PSlist.append("(%s) show" % (ct))
-
-        SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_chain_list,page_height-y,ct))
-
-        y = y + y_delta
-
-    # end the font choice
-    SVGlist.append('</g>')
+        # end the chain label font choice
+        SVGlist.append('</g>')
 
     # move origin to center of the circle
     PSlist.append("%d %d translate" % (306 * mul, 445 * mul))
@@ -2353,7 +2367,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 longest_base_length = chain_to_longest_base_length.get(current_chain,1)
                 n3d_present = chain_to_n3d_present.get(current_chain,False)
 
-                if text == 'none':
+                if text == 'blank':
+                    # absolutely no text around the circle, not even base and number
                     t = ""
                 elif unit_id == "NULL":
                     if n3d_present:
@@ -2438,7 +2453,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
                 PSlist.append("grestore")
 
-            if feature == 1 and show_major_numbers and not text == 'none':
+            if feature == 1 and show_major_numbers and not text == 'blank':
                 # add large numbers around outside of the circle, all with the same font and color
 
                 if unit_id and not unit_id == "NULL":
@@ -2492,7 +2507,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             SVGlist += SVG[dim_level][arc_type]
 
     # draw chain labels outside the circle
-    if not text == 'none':
+    if not text == 'blank':
         if max_chain_label_length > 10:
             chain_label_font_size = chain_font_size * 10.0 / max_chain_label_length
         else:
@@ -2771,11 +2786,13 @@ if __name__ == '__main__':
         parser.add_argument("--show", help='Arcs to show, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,cp,near)')
         parser.add_argument("--hide", help='Arcs to hide, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,cp,near)')
         parser.add_argument("--dim", help='Arcs to dim, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,cp,near)')
-        parser.add_argument("--text", help='Text to show outside the circle, comma separated list from ([basepair],stacking,bph,br,sr,so,cp,near,helix,all,none)')
+        parser.add_argument("--text", help='Text to show outside the circle, comma separated list from ([basepair],stacking,bph,br,sr,so,cp,near,helix,all,none,blank)')
         parser.add_argument("--n3d", help='Show nucleotides with no 3D coordinates ([true] or false)')
         parser.add_argument("--helix_size", help='Font size for helix numbers when available, 0 for no helix numbers')
-        parser.add_argument("--header", help='PDB information to show from (title,method,release_date,source,resolution,[all],none)')
-        parser.add_argument("--description", help='Text description to show along the top of the diagram')
+        parser.add_argument("--header", help='Header information to show from (filename,title,method,release_date,source,resolution,[all],none)')
+        parser.add_argument("--description", help='Text description to show along the top of the diagram, limit 300 characters, \\n for line breaks')
+        parser.add_argument("--counts", help='Show interaction counts below diagram ([true] or false)')
+        parser.add_argument("--labels", help='Show chain labels below diagram ([true] or false)')
         args = parser.parse_args()
 
         params = {}
@@ -2842,6 +2859,12 @@ if __name__ == '__main__':
 
         if args.n3d and args.n3d.lower() == 'false':
             params['n3d'] = False
+
+        if args.counts and args.counts.lower() == 'false':
+            params['counts'] = False
+
+        if args.labels and args.labels.lower() == 'false':
+            params['labels'] = False
 
         if args.helix_size:
             try:
