@@ -126,7 +126,7 @@ body {
 <div id="page-center">
     <div id="backlink" style="padding: 8px; font-family: sans-serif;">
     <a id="inputPageLink" href="#">Modify parameters on R3DCID input page</a> |
-    <a id="interactionList" href="#" target="_blank">Interaction list</a>
+    <a id="interactionList" href="#" target="_blank">Basepair list and coordinate viewer</a>
     </div>
 
     <div id="container"></div>
@@ -181,6 +181,7 @@ body {
     let offsetX = 0;
     let offsetY = 0;
     let minScale = 1;
+    let zoomCount = 0;
     let initialOffsetX = 0;
     let initialOffsetY = 0;
 
@@ -312,15 +313,28 @@ body {
                 offsetY = p.y - worldY * scale;
             }
 
+            function isLikelyTouchpadWheel(e) {
+                // Heuristic only: pixel-mode + small/fractional deltas are usually touchpad.
+                if (e.deltaMode !== WheelEvent.DOM_DELTA_PIXEL) {
+                    return false;
+                }
+
+                const absX = Math.abs(e.deltaX);
+                const absY = Math.abs(e.deltaY);
+                const fractional = !Number.isInteger(absX) || !Number.isInteger(absY);
+                const smallDelta = absY > 0 && absY < 40;
+
+                return fractional || smallDelta || absX > 0;
+            }
+
             /* ---------- Zoom with Ctrl + mouse wheel ---------- */
             container.addEventListener("wheel", e => {
                 if (!e.ctrlKey) return;
                 e.preventDefault();
 
-                const zoomDelta = e.deltaY < 0 ? 1 : -1;
-                zoomCount = zoomCount + zoomDelta;
-                // const zoomFactor = e.deltaY < 0 ? 1.4 : 0.7;
-                // const newScale = scale * zoomFactor;
+                const baseZoomDelta = e.deltaY < 0 ? 1 : -1;
+                const wheelStep = isLikelyTouchpadWheel(e) ? 0.2 : 1;
+                zoomCount = Math.max(0, zoomCount + baseZoomDelta * wheelStep);
                 const newScale = minScale * (1.4 ** zoomCount);
                 if (newScale <= minScale) {
                     scale = minScale;
@@ -335,7 +349,7 @@ body {
 
             /* ---------- Keyboard zoom + reset ---------- */
             window.addEventListener("keydown", e => {
-                if (!e.ctrlKey) return;
+                if (!e.ctrlKey && !e.metaKey) return;
 
                 if (e.key === "+" || e.key === "=") {
                     zoomCount += 1;
