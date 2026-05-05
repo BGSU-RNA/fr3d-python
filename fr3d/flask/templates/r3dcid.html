@@ -209,7 +209,7 @@
     <div class="col-sm-6" style="width:50%;float:left;">
       <form class="form-horizontal" id="generateCircularDiagram">
         <div class="mb-3">
-          <label for="chains">Enter the pdb id, models, chains like "pdbid|model1|chain1+pdbid|model2|chain2+..."</label>
+          <label for="chains">Enter the PDB id, models, chains like "pdbid|model1|chain1+pdbid|model2|chain2+..."</label>
           <input type="text" class="form-control" id="chains" name="chains" value="">
         </div>
 
@@ -301,7 +301,7 @@
                 <td><input type="radio" name="lr-wc" value="show" checked></td>
                 <td><input type="radio" name="lr-wc" value="dim"></td>
                 <td><input type="radio" name="lr-wc" value="hide"></td>
-                <td>non-nested Watson-Crick basepairs</td>
+                <td>long-range Watson-Crick basepairs</td>
               </tr>
               <tr>
                 <td><input type="radio" name="nested-non-wc" value="show" checked></td>
@@ -313,13 +313,13 @@
                 <td><input type="radio" name="lr-non-wc" value="show" checked></td>
                 <td><input type="radio" name="lr-non-wc" value="dim"></td>
                 <td><input type="radio" name="lr-non-wc" value="hide"></td>
-                <td>non-nested non-Watson-Crick basepairs</td>
+                <td>long-range non-Watson-Crick basepairs</td>
               </tr>
               <tr>
                 <td><input type="radio" name="stacking" value="show" checked></td>
                 <td><input type="radio" name="stacking" value="dim"></td>
                 <td><input type="radio" name="stacking" value="hide"></td>
-                <td>stacking interactions</td>
+                <td>base stacking interactions</td>
               </tr>
               <tr>
                 <td><input type="radio" name="bph" value="show" checked></td>
@@ -346,10 +346,28 @@
                 <td>oxygen stacking interactions</td>
               </tr>
               <tr>
+                <td><input type="radio" name="cp" value="show" checked></td>
+                <td><input type="radio" name="cp" value="dim"></td>
+                <td><input type="radio" name="cp" value="hide"></td>
+                <td>coplanar contacts</td>
+              </tr>
+              <tr>
                 <td><input type="radio" name="near" value="show" checked></td>
                 <td><input type="radio" name="near" value="dim"></td>
                 <td><input type="radio" name="near" value="hide"></td>
                 <td>near interactions</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="within" value="show" checked></td>
+                <td><input type="radio" name="within" value="dim"></td>
+                <td><input type="radio" name="within" value="hide"></td>
+                <td>arcs within chains</td>
+              </tr>
+              <tr>
+                <td><input type="radio" name="between" value="show" checked></td>
+                <td><input type="radio" name="between" value="dim"></td>
+                <td><input type="radio" name="between" value="hide"></td>
+                <td>arcs between chains</td>
               </tr>
             </tbody>
           </table>
@@ -388,12 +406,28 @@
               <label class="form-check-label" for="checkSo">Oxygen stacking interactions</label>
             </div>
             <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="cp" id="checkCp">
+              <label class="form-check-label" for="checkSo">Coplanar contacts</label>
+            </div>
+            <div class="form-check">
               <input class="form-check-input" type="checkbox" value="near" id="checkNear">
               <label class="form-check-label" for="checkNear">Near interactions</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" value="all" id="checkAll">
               <label class="form-check-label" for="checkAll">All of the above</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="blank" id="checkBlank">
+              <label class="form-check-label" for="checkBlank">No text at all</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="within" id="checkWithin" checked>
+              <label class="form-check-label" for="checkWithin">Interactions within chains</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="between" id="checkBetween" checked>
+              <label class="form-check-label" for="checkBetween">Interactions between chains</label>
             </div>
         </div>
       </div>
@@ -422,6 +456,10 @@
           <div id="checkOptions">
             <label>Choose the fields to list in the header</label>
             <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="filename" id="checkFilename" checked>
+              <label class="form-check-label" for="checkTitle">R3DCID filename</label>
+            </div>
+            <div class="form-check">
               <input class="form-check-input" type="checkbox" value="title" id="checkTitle" checked>
               <label class="form-check-label" for="checkTitle">Structure title</label>
             </div>
@@ -430,8 +468,8 @@
               <label class="form-check-label" for="checkMethod">Experimental method</label>
             </div>
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="release" id="checkRelease" checked>
-              <label class="form-check-label" for="checkRelease">Release date</label>
+              <input class="form-check-input" type="checkbox" value="release_date" id="checkReleaseDate" checked>
+              <label class="form-check-label" for="checkReleaseDate">Release date</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" value="source" id="checkSource" checked>
@@ -443,17 +481,29 @@
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" value="noHeader" id="checkNoHeader">
-              <label class="form-check-label" for="checkNoHeader">No header fields</label>
+              <label class="form-check-label" for="checkNoHeader">No PDB data in the header</label>
             </div>
+            <br>
+            <br>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="counts" value="counts" id="checkCounts" checked>
+              <label class="form-check-label" for="checkNoHeader">Show interaction counts</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="labels" value="labels" id="checkLabels" checked>
+              <label class="form-check-label" for="checkNoHeader">Show chain labels</label>
+            </div>
+
         </div>
       </div>
+
     </div>
 
     <div class="col-sm-6" style="width:50%;float:right;">
       <div class="card">
         <div class="card-body">
           <h5 class="card-title">Examples</h5>
-          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=7EZ2&hs=9&text=all&input_form=True">Example 1</a><br>
+          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=7EZ2&hs=9&input_form=True">Example 1</a><br>
             The Tetrahymena ribozyme features kissing hairpin pseudoknots.
             Helices are labeled with a large font size, and basepairs are labeled with text around the outside of the circle.
             <br>
@@ -463,14 +513,17 @@
             R3DCID automatically puts ribosomal chains in a standard order, assigns standard labels to the chains,
             and labels the helices in 5S, LSU, SSU, and tRNAs.
             Outside the circle, basepair interactions are listed.
+            Nucleotides without 3D coordinates are listed around the circle and noted with parentheses, for example (U120).
           </br>
-          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=8GLP|1|L8,8GLP|1|L5&coloring=grayscale&dim=bph,br,sr,so&hide=stacking,near&text=basepair,bph,br,sr,so&input_form=True">Example 3</a><br>
-            Human large ribosomal subunit and 5.8S chain, drawn in grayscale.  These chains have more than 5000 nucleotides,
-            but large segments of chain L5 do not have 3D coordinates in the solved structure, and so are represented with base and sequence position only.
+          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=8GLP|1|L8+8GLP|1|L5&coloring=grayscale&dim=bph,br,sr,so&hide=stacking,near&text=basepair,bph,br,sr,so&n3d=false&input_form=True">Example 3</a><br>
+            Human large ribosomal subunit and 5.8S chain, drawn in grayscale.
+            Nucleotides without 3D coordinates are omitted from the diagram and noted by breaks in the outer black circle.
             For a cleaner diagram, stacking and near interactions are not shown, and base-backbone interactions are dimmed.<br>
           <p><a href ="https://rna.bgsu.edu/fr3d/r3dcid?chains=7JQQ|1|K,L,M,N,O&coloring=wong&text=basepair,bph,br,so&input_form=True">Example 4</a><br>
             The bacteriophage Phi-29 viral genome packaging motor assembly has five-fold symmetry.
-            This rendering using a safer palette for color blindness.<br>
+            We list the five chains as a comma-separated list.
+            This rendering using a safer palette for color blindness.
+            <br>
           <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=1WAN&input_form=True">Example 5</a><br>
             This NMR structure shows 7 models of a DNA triple helix, with nested Watson-Crick basepairs
             shown in blue and triple helix pairs with crossing green arcs.
@@ -487,7 +540,8 @@
           </br>
           <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=9I05&input_form=True">Example 9</a><br>
           Toxoplasma gondii mitochondrial ribosomal large subunit in 32 chains.
-          Note the interaction types which bind the chains to one another.
+          Interactions within each chain are dimmed and shown in the background,
+          making it easier to note the interaction types which bind the chains to one another.
           Helix numbering is not available for short matches to Rfam.
           Compare to the plant mitochondrial large subunit above.
           </br>
@@ -497,15 +551,23 @@
           The ligand chain appears in a natural location between DNA chains.
           </br>
           <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=1ENE&input_form=True">Example 11</a><br>
-          Chain A interacts with a symmetry operated counterpart of Chain A.
+          Chain A interacts with a symmetry operated counterpart of Chain A, making a DNA double helix.
           </br>
-          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=6HU6&input_form=True">Example 12</a><br>
+          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=6HU6|1|A,B,F,E&input_form=True">Example 12</a><br>
+          Four RNA chains making two RNA helices stacked on one another.
           Rather than ordering alphabetically, chains are ordered to keep Watson-Crick paired chains
-          adjacent to one another.
+          adjacent to one another in the diagram.
           </br>
           <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=2IZ8&input_form=True">Example 13</a><br>
           Viral capsid. Assembly 1 has 60 repetitions of the same unit using symmetry operators.
           Assembly 3 has five units. Assembly 4 has six units.
+          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=9HIO&input_form=True">Example 14</a><br>
+          NMR structure of a DNA molecule with many non-Watson-Crick basepairs and base-backbone interactions.
+          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=7EI6&input_form=True">Example 15</a><br>
+          Hybrid chain with 20 RNA and 15 DNA nucleotides, RNA-DNA basepairs, and a GNRA hairpin.
+          <p><a href="https://rna.bgsu.edu/fr3d/r3dcid?chains=4FEO|1|B&text=basepair,near,cp&header=none&counts=false&labels=false&hs=9&input_form=True">Example 16</a><br>
+          Purine riboswitch bound to modified nucleotide adenine 6AP.
+          The output page has only the diagram; no header, no counts of interactions, and no chain label.
           </br>
         </div>
       </div>
@@ -544,21 +606,26 @@
 
     // Parse URL parameters when pre-filled
     const urlParams = new URLSearchParams(window.location.search);
-    const chainsParam = urlParams.get('chains');
+
+    let raw = urlParams.get('chains') || '';
+    const chainsParam = raw.trim().replace(/\s+/g, '+');
+
     const assembliesParam = urlParams.get('assemblies');
     const symmetriesParam = urlParams.get('symmetries');
     const colorParam = (urlParams.get('coloring') ?? '').toLowerCase();
     const formatParam = (urlParams.get('format') ?? '').toLowerCase();
     const descriptionParam = (urlParams.get('description') ?? '');
-    const showParam = urlParams.get('show');
-    const dimParam = urlParams.get('dim');
-    const hideParam = urlParams.get('hide');
-    const textParam = urlParams.get('text');
-    const n3dParam = urlParams.get('n3d');
+    const showParam = (urlParams.get('show') ?? '').toLowerCase();
+    const dimParam = (urlParams.get('dim') ?? '').toLowerCase();
+    const hideParam = (urlParams.get('hide') ?? '').toLowerCase();
+    const textParam = (urlParams.get('text') ?? '').toLowerCase();
+    const n3dParam = (urlParams.get('n3d') ?? '').toLowerCase();
+    const countsParam = (urlParams.get('counts') ?? '').toLowerCase();
+    const labelsParam = (urlParams.get('labels') ?? '').toLowerCase();
     const hsParam = urlParams.get('hs');
-    const headerParam = urlParams.get('header');
+    const headerParam = (urlParams.get('header') ?? '').toLowerCase();
 
-    const all_arcs = 'nested-wc,lr-wc,nested-non-wc,lr-non-wc,stacking,bph,br,sr,so,near';
+    const all_arcs = 'nested-wc,lr-wc,nested-non-wc,lr-non-wc,stacking,bph,br,sr,so,cp,near';
 
     // If 'chains' parameter exists, update the input value
     if (chainsParam) {
@@ -608,16 +675,43 @@
       textParam.split(',').forEach(value => {
         $(`input[type=checkbox][value=${value}]`).prop('checked', true);
       });
+      if (textParam.includes('within') && !textParam.includes('between')) {
+        $(`input[type=checkbox][value=within]`).prop('checked', true);
+        $(`input[type=checkbox][value=between]`).prop('checked', false);
+      }
+      if (!textParam.includes('within') && textParam.includes('between')) {
+        $(`input[type=checkbox][value=within]`).prop('checked', false);
+        $(`input[type=checkbox][value=between]`).prop('checked', true);
+      }
+    }
+    if (headerParam) {
+      // start with each box unchecked
+      $('#checkFilename').prop('checked', false);
+      $('#checkTitle').prop('checked', false);
+      $('#checkMethod').prop('checked', false);
+      $('#checkReleaseDate').prop('checked', false);
+      $('#checkSource').prop('checked', false);
+      $('#checkResolution').prop('checked', false);
+      // check boxes included in the url
+      headerParam.split(',').forEach(value => {
+        $(`input[type=checkbox][value=${value}]`).prop('checked', true);
+      });
     }
     if (n3dParam) {
         $(`input[type=radio][name=n3d][value=${n3dParam}]`).prop('checked', true);
+    }
+    if (countsParam && countsParam.toLowerCase() == 'false') {
+        $(`input[type=checkbox][name=counts]`).prop('checked', false);
+    }
+    if (labelsParam && labelsParam.toLowerCase() == 'false') {
+        $(`input[type=checkbox][name=labels]`).prop('checked', false);
     }
     if (hsParam) {
       $('#hs').val(hsParam);
      }
 
     $('#checkAll').change(function() {
-        // If the "all" checkbox gets checked, check all the other boxes, too
+        // If the "all" checkbox gets checked, check all the other boxes above it, too
         if ($(this).is(':checked')) {
             $('#checkHelix').prop('checked', true);  // Check helix checkbox
             $('#checkBasepair').prop('checked', true); // Check basepair checkbox
@@ -626,26 +720,43 @@
             $('#checkBr').prop('checked', true); // Check base-ribose checkbox
             $('#checkSr').prop('checked', true); // Check sugar-ribose checkbox
             $('#checkSo').prop('checked', true); // Check oxygen stacking checkbox
+            $('#checkCp').prop('checked', true); // Check coplanar contact checkbox
             $('#checkNear').prop('checked', true); // Check near interactions checkbox
+            $('#checkBlank').prop('checked', false); // Uncheck no text checkbox
             // uncheck checkAll now that all checkboxes are checked
             $(this).prop('checked', false);
         }
     });
 
+    $('#checkBlank').change(function() {
+        // If the "no text" checkbox gets checked, check all the other boxes above it, too
+        if ($(this).is(':checked')) {
+            $('#checkHelix').prop('checked', false);  // Check helix checkbox
+            $('#checkBasepair').prop('checked', false); // Check basepair checkbox
+            $('#checkStack').prop('checked', false); // Check stacking checkbox
+            $('#checkBph').prop('checked', false); // Check base-phosphate checkbox
+            $('#checkBr').prop('checked', false); // Check base-ribose checkbox
+            $('#checkSr').prop('checked', false); // Check sugar-ribose checkbox
+            $('#checkSo').prop('checked', false); // Check oxygen stacking checkbox
+            $('#checkCp').prop('checked', false); // Check coplanar contact checkbox
+            $('#checkNear').prop('checked', false); // Check near interactions checkbox
+        }
+    });
+
     $('#checkNoHeader').change(function() {
-        // If the "none" checkbox gets checked, uncheck all the other boxes
-        //  title,method,release_date,source,resolution,[all],none
+        // If the "none" checkbox gets checked, uncheck all the other boxes of data from PDB
+        // Don't change the filename checkbox, require an extra click for that
+        //  filename,title,method,release_date,source,resolution,[all],none
         if ($(this).is(':checked')) {
             $('#checkTitle').prop('checked', false);
             $('#checkMethod').prop('checked', false);
-            $('#checkRelease').prop('checked', false);
+            $('#checkReleaseDate').prop('checked', false);
             $('#checkSource').prop('checked', false);
             $('#checkResolution').prop('checked', false);
             // uncheck checkNoHeader now that all checkboxes are unchecked
             $(this).prop('checked', false);
         }
     });
-
   });
 
   $('#generateCircularDiagram').on('submit', function(event) {
@@ -654,12 +765,14 @@
 
     showLoading(); // Show loading message
 
-    // Retrieve form values
+    // Retrieve form values from the input page
     const chains = $('#chains').val();
     const assemblies = $('#assemblies').val();
     const symmetries = $('#symmetries').val();
     const color = $('input[name="color"]:checked').val();
     const n3d = $('input[name="n3d"]:checked').val();
+    const counts = $('#checkCounts').is(':checked');
+    const labels = $('#checkLabels').is(':checked');
     const hs = $("#hs").val();
     const description = $("#description").val();
     const outputFormat = $('input[name="outputFormat"]:checked').val();
@@ -677,7 +790,12 @@
       }
     });
 
-    // make checkText into a comma-separated list of values
+    // hiding all interactions within and between chains
+    if (hide.includes('within') && hide.includes('between')) {
+      hide = 'all';
+    }
+
+    // make checkText into a comma-separated list of values to tell what text to show around the outside
     let checkText = "";
     if ($('#checkHelix').is(':checked')) {
       checkText += "helix,";
@@ -700,6 +818,9 @@
     if ($('#checkSo').is(':checked')) {
       checkText += "so,";
     }
+    if ($('#checkCp').is(':checked')) {
+      checkText += "cp,";
+    }
     if ($('#checkNear').is(':checked')) {
       checkText += "near,";
     }
@@ -707,22 +828,39 @@
       checkText = "all";
     }
     if (checkText.includes("all")) {
-      checkText = "all";
+      checkText = "all,";
     }
-    if (checkText.endsWith(",")) {
-      checkText = checkText.slice(0, -1);
+    if ($('#checkBlank').is(':checked')) {
+      checkText = "blank";
+    } else if (checkText.length == 0) {
+      checkText = "none";
+    } else if (!$('#checkWithin').is(':checked') && !$('#checkBetween').is(':checked')) {
+        checkText = "none";
+    } else {
+      if ($('#checkWithin').is(':checked') && !$('#checkBetween').is(':checked')) {
+        checkText += "within";
+      }
+      if (!$('#checkWithin').is(':checked') && $('#checkBetween').is(':checked')) {
+        checkText += "between";
+      }
+      if (checkText.endsWith(",")) {
+        checkText = checkText.slice(0, -1);
+      }
     }
 
     // turn header checks into comma-separated string
-    // title,method,release_date,source,resolution
+    // filename,title,method,release_date,source,resolution
     let headerFields = "";
+    if ($('#checkFilename').is(':checked')) {
+      headerFields += "filename,";
+    }
     if ($('#checkTitle').is(':checked')) {
       headerFields += "title,";
     }
     if ($('#checkMethod').is(':checked')) {
       headerFields += "method,";
     }
-    if ($('#checkRelease').is(':checked')) {
+    if ($('#checkReleaseDate').is(':checked')) {
       headerFields += "release_date,";
     }
     if ($('#checkSource').is(':checked')) {
@@ -737,8 +875,8 @@
     if (headerFields.length == 0) {
       headerFields = 'none';
     }
-    if (headerFields == 'title,method,release_date,source,resolution') {
-      // default is that all are checked
+    if (headerFields == 'filename,title,method,release_date,source,resolution') {
+      // default is that all are checked, then don't put that in the URL
       headerFields = '';
     }
 
@@ -771,6 +909,12 @@
     if (n3d !== 'true') {
       url += '&n3d=' + encodeURIComponent(n3d);
     }
+    if (!counts) {
+      url += '&counts=false';
+    }
+    if (!labels) {
+      url += '&labels=false';
+    }
     if (hs !== '') {
       url += '&hs=' + encodeURIComponent(hs);
     }
@@ -786,14 +930,42 @@
 
     console.log(url);
 
-    // Redirect to the constructed URL
+    const backUrl = new URL(url);
+    backUrl.searchParams.set('input_form', 'True');
+
+    if (outputFormat == 'pdf') {
+      window.history.replaceState({ submittedR3dcid: true }, '', backUrl.toString());
+      window.history.pushState({ submittedR3dcidDownload: true }, '', url);
+      triggerBackgroundDownload(url);
+      hideLoading();
+      return;
+    }
+
+    if (outputFormat == 'html' || outputFormat == 'svg') {
+      window.history.replaceState({ submittedR3dcid: true }, '', backUrl.toString());
+    }
+
+    // Redirect to the constructed URL.
     window.location.href = url;
-    // Make the url show in the address bar
-    window.history.pushState({}, '', url);
   });
 
   function showLoading() {
       $('#loading').show();
+  }
+
+  function hideLoading() {
+      $('#loading').hide();
+  }
+
+  function triggerBackgroundDownload(url) {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    window.setTimeout(function() {
+      iframe.remove();
+    }, 60000);
   }
 
   function clearForm() {
