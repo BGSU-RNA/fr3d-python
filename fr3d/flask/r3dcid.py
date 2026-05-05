@@ -24,11 +24,11 @@ arc_group_to_interactions["br"] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6
 arc_group_to_interactions["sr"] = ['cSR','tSR']
 arc_group_to_interactions["so"] = [a+b for a in ["s3","s5"] for b in ["O2'","O3'","O4'","O5'","OP1","OP2"]]
 arc_group_to_interactions["stacking"] = ['s35','s33','s55','s53']
-arc_group_to_interactions["coplanar"] = ['cp']
+arc_group_to_interactions["cp"] = ['cp']
 arc_group_to_interactions["near"] = ['all']
-arc_group_names = ["nested-wc","lr-wc","lr-non-wc","nested-non-wc","bph","br","sr","so","stacking","near","coplanar"]
+arc_group_names = ["nested-wc","lr-wc","lr-non-wc","nested-non-wc","bph","br","sr","so","stacking","near","cp"]
 
-arc_group_names_by_order = ["stacking","sr","so","br","bph","nested-non-wc","lr-non-wc","nested-wc","lr-wc","near","coplanar"]
+arc_group_names_by_order = ["stacking","sr","so","br","bph","nested-non-wc","lr-non-wc","nested-wc","lr-wc","near","cp"]
 
 arc_group_name_to_text = {}
 arc_group_name_to_text["nested-wc"]     = "%d nested Watson-Crick basepairs (AU, GC, GU cWW)"
@@ -41,7 +41,7 @@ arc_group_name_to_text["bph"]           = "%d base-phosphate interactions"
 arc_group_name_to_text["br"]            = "%d base-ribose interactions"
 arc_group_name_to_text["sr"]            = "%d sugar-ribose interactions"
 arc_group_name_to_text["so"]            = "%d oxygen stacking interactions"
-arc_group_name_to_text["coplanar"]      = "%s coplanar contacts, not a basepair"
+arc_group_name_to_text["cp"]            = "%s coplanar contacts, not a basepair or near pair"
 arc_group_name_to_text["near"]          = "%d near basepairs or other interactions"
 
 # control points to map nucleotide number to the value of each of these parameters
@@ -140,7 +140,7 @@ def get_fr3d_interaction_to_triple_list(pdb_id,data_directory=""):
         else:
             urllib.request.urlretrieve(url, fr3d_interaction_path_file)  # python 3
     except:
-        return None, "Unable to download %s, exiting" % fr3d_interaction_file
+        return None, "Unable to download %s from %s, exiting" % (fr3d_interaction_file,url)
 
     try:
         with open(fr3d_interaction_path_file, 'rb') as opener1:
@@ -216,7 +216,7 @@ def process_input_chains(input_text,params={}):
 
     if not pdb_id:
         print('No PDB id found')
-        return [], "", {}
+        return "", "", [], [], [], [], []
 
     if "assembly" in params:
         pa = params['assembly'].replace(";",",")
@@ -395,7 +395,6 @@ def set_parameters_from_input(params,filename,pdb_id):
     if len(params['header']) == 0:
         params['header'] = 'filename,title,method,source,release_date,resolution'
     elif 'none' in params['header']:
-        del params['header']
         filename += '_header_none'
     elif 'all' in params['header']:
         params['header'] = 'filename,title,method,source,release_date,resolution'
@@ -419,7 +418,7 @@ def get_header_information(params,pdb_id):
 
     if not type(data) is dict:
         message = 'Could not get PDB title from %s' % url
-    else:
+    elif 'header' in params:
         message = None
         if 'title' in params['header']:
             params['title'] = data['title']
@@ -1540,7 +1539,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             "scale":         "grayscale",
             "lr-wc":         (0,0,0),           # black
             "nested-wc":     (0.2,0.2,0.2),     # dark gray
-            "coplanar":            (0.3,0.3,0.3),     # dark gray
+            "cp":            (0.3,0.3,0.3),     # dark gray
             "nested-non-wc": (0.4,0.4,0.4),     #
             "lr-non-wc":     (0.5,0.5,0.5),
             "bph":           (0.6,0.6,0.6),
@@ -1563,7 +1562,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             "br":            (230.0/255,159.0/255,0.0/255),   # orange
             "sr":            (0.5,0.5,0.5),       # gray
             "so":            (0.6,0.6,0.6),       # gray
-            "coplanar":            (210/255,180/255,140/255),         # tan for now
+            "cp":            (210/255,180/255,140/255),         # tan for now
             "near":          (0.7,0.7,0.7),
             "labels":        (86.0/255,180.0/255,233.0/255)   # sky blue
         }
@@ -1579,7 +1578,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             "br":            (1,0.6,0.1),       # orange
             "sr":            (0.5,0,0.5),       # purple
             "so":            (0,0.5,0.5),       # teal
-            "coplanar":            (210/255,180/255,140/255),         # tan
+            "cp":            (210/255,180/255,140/255),         # tan
             "near":          (0.7,0.7,0.7),     # gray
             "labels":        (86.0/255,180.0/255,233.0/255)   # sky blue
         }
@@ -1787,7 +1786,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     for dim_level in ['dim','not_dim']:
         PS[dim_level] = {}
         SVG[dim_level] = {}
-        for arc_type in ['near','coplanar','true']:
+        for arc_type in ['near','cp','true']:
             PS[dim_level][arc_type] = []
             SVG[dim_level][arc_type] = []
 
@@ -1828,7 +1827,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 angle_shifter = 2.25*unit_shift
                 crossing = "all"
                 base_combination = "all"
-            elif group_name == "coplanar":
+            elif group_name == "cp":
                 angle_shifter = -0.75*unit_shift
                 crossing = "all"
                 base_combination = "all"
@@ -1912,7 +1911,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
                         gave_color_command = True
 
-                    if group_name in ["near","coplanar"]:
+                    if group_name in ["near","cp"]:
                         PS[dim_level][group_name] += PSarcs
                         SVG[dim_level][group_name] += SVGarcs
                     else:
@@ -1924,7 +1923,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
             if gave_color_command:
                 # close SVG color command groups
-                if group_name in ["near","coplanar"]:
+                if group_name in ["near","cp"]:
                     SVG[dim_level][group_name].append("</g>")
                 else:
                     SVG[dim_level]['true'].append("</g>")
@@ -1942,30 +1941,32 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     # collect together header lines
     header = []
-    if 'header' in params and 'filename' in params['header']:
-        title_text = filename.replace("R3DCID_","")
-        header.append(title_text)
-    if 'description' in params:
-        if '\\n' in params['description']:
-            header += params['description'].split('\\n')
-        else:
-            header += break_line(params['description'],130,145)
-    if len(assemblies['message']) > 0:
-        header.append(assemblies['message'])
-    if 'title' in params:
-        header += break_line(params['title'],130,145)
-    if 'method' in params:
-        header.append(params['method'])
-    if 'source' in params:
-        header.append(params['source'])
-    if 'release_date' in params:
-        header.append(params['release_date'])
-    if 'resolution' in params:
-        try:
-            r = float(params['resolution'])
-            header.append(params['resolution']+"A")
-        except:
-            pass
+    if params.get('header','') == 'none':
+        pass
+    else:
+        if 'header' in params and 'filename' in params['header']:
+            header.append(filename)
+        if 'description' in params:
+            if '\\n' in params['description']:
+                header += params['description'].split('\\n')
+            else:
+                header += break_line(params['description'],130,145)
+        if len(assemblies['message']) > 0:
+            header.append(assemblies['message'])
+        if 'title' in params:
+            header += break_line(params['title'],130,145)
+        if 'method' in params:
+            header.append(params['method'])
+        if 'source' in params:
+            header.append(params['source'])
+        if 'release_date' in params:
+            header.append(params['release_date'])
+        if 'resolution' in params:
+            try:
+                r = float(params['resolution'])
+                header.append(params['resolution']+"A")
+            except:
+                pass
 
     header_font_size = 10 * mul
     header_vertical = 15 * mul
@@ -2029,11 +2030,14 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 total += len(interaction_to_triple_list[interaction])
             group_name_to_count[group_name] = max(total,group_name_to_count[group_name])
 
-        for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","coplanar","near"]:
+        for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","cp","near"]:
             if not group_name in hide and not (group_name == "bonus" and "nested-non-wc" in hide):
                 if not group_name == "bonus":
                     PSlist.append("%d %d moveto" % (x_table+x_offset,y))
-                    PSlist.append("%f %f %f setrgbcolor" % group_name_to_color[group_name])
+                    rectangle_color = group_name_to_color[group_name]
+                    if group_name in dim:
+                        rectangle_color = dim_colors(rectangle_color)
+                    PSlist.append("%f %f %f setrgbcolor" % rectangle_color)
                     PSlist.append("%d %f %d %d rectfill" % (x_table, y, 10 * mul, 7 * mul))
 
                     r, g, b = group_name_to_color[group_name]
@@ -2129,8 +2133,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             interactions_by_importance = interactions_by_importance + arc_group_to_interactions['sr']
         if "so" in text:
             interactions_by_importance = interactions_by_importance + arc_group_to_interactions['so']
-        if "coplanar" in text:
-            interactions_by_importance = interactions_by_importance + arc_group_to_interactions['coplanar']
+        if "cp" in text:
+            interactions_by_importance = interactions_by_importance + arc_group_to_interactions['cp']
         if "near" in text:
             for interaction in interaction_to_triple_list.keys():
                 if interaction.startswith("n"):
@@ -2502,7 +2506,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     # add the arcs for interactions in the correct order
     for dim_level in ['dim','not_dim']:
-        for arc_type in ['near','coplanar','true']:
+        for arc_type in ['near','cp','true']:
             PSlist += PS[dim_level][arc_type]
             SVGlist += SVG[dim_level][arc_type]
 
@@ -2756,7 +2760,8 @@ def main(input_chains, params = {}):
 
         if not 'ps' in params['format'].lower():
             # remove the .ps file
-            os.remove(path_filename)
+            if os.path.exists(path_filename):
+                os.remove(path_filename)
 
     # return filename with no extension and empty message
     return filename, ""
