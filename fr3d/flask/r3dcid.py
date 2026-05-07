@@ -75,6 +75,15 @@ rfam_order = {
     "RF00005": 6    # tRNA goes last
 }
 
+rfam_order_to_category = {}
+rfam_order_to_category[1] = '5S'
+rfam_order_to_category[2] = '5.8S'
+rfam_order_to_category[3] = 'LSU'
+rfam_order_to_category[4] = 'SSU'
+rfam_order_to_category[5] = 'none'
+rfam_order_to_category[6] = 'tRNA'
+rfam_order_to_category[7] = 'none'
+
 simplify_entity_type = {}
 simplify_entity_type['Polydeoxyribonucleotide (DNA)'] = 'dna'
 simplify_entity_type['Polyribonucleotide (RNA)'] = 'rna'
@@ -155,7 +164,6 @@ def get_fr3d_interaction_to_triple_list(pdb_id,data_directory=""):
 
 def process_input_chains(input_text,params={}):
     """
-    Given just a PDB id like 8GLP, look up all the RNA and DNA chains in it
     Given a PDB id and one or more models like 8QO5|3,8QO5|2, focus on those models
     Given a PDB id, wildcard model, and chain like 1ABC|*|A, use all models, use that chain
     Given a PDB id and one or more assemblies like 4V9O_2,4V9O_4, show those
@@ -289,10 +297,10 @@ def set_parameters_from_input(params,filename,pdb_id):
         coloring = 'default'
     params['coloring'] = coloring
 
-    # process user requests
-    show = params.get('show','').lower()
-    hide = params.get('hide','').lower()
-    dim  = params.get('dim','').lower()
+    # process arc display
+    show = lowercase_comma_list(params.get('show','')).replace('coplanar','cp')
+    hide = lowercase_comma_list(params.get('hide','')).replace('coplanar','cp')
+    dim  = lowercase_comma_list(params.get('dim','')).replace('coplanar','cp')
 
     if 'wc' in show.split(","):
         show = ",".join(show.split(",") + ["nested-wc","lr-wc"])
@@ -330,6 +338,16 @@ def set_parameters_from_input(params,filename,pdb_id):
     elif 'within' in hide:
         params['within'] = 'hide'
 
+    # hide or dim interactions between specific chains?
+    params['hide_by_chain'] = set()
+    for t in hide.split(","):
+        if "-" in t and not 'wc' in t.lower():
+            params['hide_by_chain'].add(t)
+    params['dim_by_chain'] = set()
+    for t in dim.split(","):
+        if "-" in t and not 'wc' in t.lower():
+            params['hide_by_chain'].add(t)
+
     # clean up the comma-separated lists
     params['show'] = clean_comma_list(show, arc_group_names+['between','within'])
     params['hide'] = clean_comma_list(hide, arc_group_names+['between','within'], show)
@@ -358,11 +376,19 @@ def set_parameters_from_input(params,filename,pdb_id):
     if params['show']:
         filename += '_show_' + params['show']
 
-    if params['hide']:
-        filename += '_hide_' + params['hide']
+    if params['hide'] or params.get('hide_by_chain',set()):
+        joint_list = []
+        if params['hide']:
+            joint_list = params['hide'].split(",")
+        joint_list += sorted(params.get('hide_by_chain',set()))
+        filename += '_hide_' + ",".join(joint_list)
 
-    if params['dim']:
-        filename += '_dim_' + params['dim']
+    if params['dim'] or params.get('dim_by_chain',set()):
+        joint_list = []
+        if params['dim']:
+            joint_list = params['dim'].split(",")
+        joint_list += sorted(params.get('dim_by_chain',set()))
+        filename += '_dim_' + ",".join(joint_list)
 
     if params['text']:
         filename += '_text_' + params['text']
@@ -671,6 +697,7 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                             new_data['pdbx_description'] = chain_info.get("pdbx_description", "")
                             new_data['rfam_family'] = rfam_family
                             new_data['rfam_priority'] = rfam_order.get(rfam_family,7)
+                            new_data['rfam_category'] = rfam_order_to_category[rfam_order.get(rfam_family,7)]
                             new_data['symmetry'] = symmetry
                             new_data['symmetry_id'] = symmetry_id
 
@@ -757,6 +784,7 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                 # print('  ',text)
                 if text in pdbx_description:
                     data['rfam_priority'] = priority
+                    data['rfam_category'] = text.split(" ")[0].upper()
                     # print('Found %s in pdbx_description' % text)
 
         rfam_priority = data['rfam_priority']
@@ -1057,6 +1085,22 @@ def clean_comma_list(s, valid_list, exclude_string=''):
     return ",".join(ok_list)
 
 
+def lowercase_comma_list(s):
+    """
+    Turn entries lowercase except chain pairs like a-A
+    """
+    fields = s.replace(" ","").split(",")
+    new_s = []
+    for f in fields:
+        if "wc" in f.lower():
+            new_s.append(f.lower())
+        elif not "-" in f:
+            new_s.append(f.lower())
+        else:
+            new_s.append(f)
+    return ",".join(new_s)
+
+
 def dim_colors(original_color, factor=0.8):
     factor = 0.8
     # move each component of the color toward 1, more so if factor is near 1
@@ -1280,6 +1324,50 @@ def break_line(s,target_width,maximum_width):
 
     return lines
 
+
+def expand_chain_pairs(chain_sets,chain_info):
+    """
+    Process pairs or tuples of chains, which can be simple pairs like L5-L8
+    or longer like L5-L8-L2 or can include ribosomal categories like LSU-SSU-5S
+    """
+
+    chains = set()
+    category_to_chains = {}
+    for ci in chain_info:
+        chains.add(ci['chain_name'])
+        category = ci.get('rfam_category','')
+        if category:
+            if not category in category_to_chains:
+                category_to_chains[category] = set()
+            category_to_chains[category].add(ci['chain_name'])
+
+    chain_pairs = set()
+
+    for t in chain_sets:
+        fields = t.split("-")
+        for i in range(0,len(fields)):
+            for j in range(i+1,len(fields)):
+                p1 = fields[i]
+                p2 = fields[j]
+                # print('Requested to hide arcs between chains %s-%s' % (p1,p2))
+                if p1 in chains:
+                    c1 = [p1]
+                elif p1 in category_to_chains:
+                    c1 = list(category_to_chains[p1])
+                else:
+                    continue
+                if p2 in chains:
+                    c2 = [p2]
+                elif p2 in category_to_chains:
+                    c2 = list(category_to_chains[p2])
+                else:
+                    continue
+                for a in c1:
+                    for b in c2:
+                        chain_pairs.add((a,b))
+                        chain_pairs.add((b,a))
+
+    return chain_pairs
 
 def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_triple_list, params):
     """
@@ -1533,6 +1621,10 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     dim  = params.get('dim','')
     text = params.get('text','basepair')
 
+    # convert chain requests like LSU, SSU to actual chain name; keep only real chain names
+    hide_by_chain = expand_chain_pairs(params.get('hide_by_chain'),chain_info)
+    dim_by_chain  = expand_chain_pairs(params.get('dim_by_chain'), chain_info)
+
     coloring = params.get('coloring','default')
     if coloring == "grayscale":
         group_name_to_color = {
@@ -1776,6 +1868,10 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     # dimming or hiding arcs between or within chains?
     if not params['between'] == 'show' or not params['within'] == 'show':
         between_within = True
+    elif hide_by_chain:
+        between_within = True
+    elif dim_by_chain:
+        between_within = True
     else:
         between_within = False
 
@@ -1885,17 +1981,29 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                     pairs_and_crossing = []
                     for (u1,u2,c) in interaction_to_triple_list[interaction]:
                         f1 = u1.split("|")
+                        c1 = f1[2]
                         cs1 = chain_symmetry(f1)
                         f2 = u2.split("|")
+                        c2 = f2[2]
                         cs2 = chain_symmetry(f2)
+
                         if dim_level == "dim" and params["within"] == "dim" and cs1 == cs2:
-                            pairs_and_crossing.append((u1,u2,c))
+                            if not (c1,c2) in hide_by_chain:
+                                pairs_and_crossing.append((u1,u2,c))
                         elif dim_level == "dim" and params["between"] == "dim" and not cs1 == cs2:
-                            pairs_and_crossing.append((u1,u2,c))
+                            if not (c1,c2) in hide_by_chain:
+                                pairs_and_crossing.append((u1,u2,c))
+                        elif dim_level == "dim" and (c1,c2) in dim_by_chain:
+                            if not (params["within"] == "hide" and cs1 == cs2):
+                                pairs_and_crossing.append((u1,u2,c))
                         elif dim_level == "not_dim" and params["within"] == "show" and cs1 == cs2:
-                            pairs_and_crossing.append((u1,u2,c))
+                            if not (c1,c2) in dim_by_chain:
+                                if not (c1,c2) in hide_by_chain:
+                                    pairs_and_crossing.append((u1,u2,c))
                         elif dim_level == "not_dim" and params["between"] == "show" and not cs1 == cs2:
-                            pairs_and_crossing.append((u1,u2,c))
+                            if not (c1,c2) in dim_by_chain:
+                                if not (c1,c2) in hide_by_chain:
+                                    pairs_and_crossing.append((u1,u2,c))
                 else:
                     pairs_and_crossing = interaction_to_triple_list[interaction]
 
@@ -2348,7 +2456,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
             if feature == 0:
                 # draw tick mark at each nucleotide
-                if not unit_id == "NULL":
+                if not unit_id == "NULL" and not text == "blank":
                     co = math.cos(math.radians(a))
                     si = math.sin(math.radians(a))
 
@@ -2399,7 +2507,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 else:
                     interactions = ""
 
-                if 'helix' in text or text == 'all':
+                if 'helix' in text or 'all' in text:
                     if unit_id_to_annotation:
                         unit_id_5 = first_five_fields(unit_id)
                         helix = unit_id_to_annotation.get(unit_id_5,None)
@@ -2850,13 +2958,13 @@ if __name__ == '__main__':
             params['format'] = 'pdf'
 
         if args.hide:
-            params['hide'] = args.hide.lower().replace(" ","").replace("coplanar","cp")
+            params['hide'] = args.hide
 
         if args.show:
-            params['show'] = args.show.lower().replace(" ","").replace("coplanar","cp")
+            params['show'] = args.show
 
         if args.dim:
-            params['dim'] = args.dim.lower().replace(" ","").replace("coplanar","cp")
+            params['dim'] = args.dim
 
         if args.text:
             if not args.text.lower() == 'basepair':
