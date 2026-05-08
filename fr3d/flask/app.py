@@ -376,7 +376,8 @@ def r3dcid():
             # create both pdf and svg formatted output with no description
             params['format'] = 'pdf,svg'
             # check to see if the file already exists, to avoid generating it again
-            filename = r3dcid.get_filename(chains_string, params)
+            # this line modifies params
+            filename = r3dcid.get_filename(chains_string, params.copy())
 
             ps_gz_file = os.path.join(output_path,filename+".ps.gz")
             if 'ps' in display_format:
