@@ -346,7 +346,7 @@ def set_parameters_from_input(params,filename,pdb_id):
     params['dim_by_chain'] = set()
     for t in dim.split(","):
         if "-" in t and not 'wc' in t.lower():
-            params['hide_by_chain'].add(t)
+            params['dim_by_chain'].add(t)
 
     # clean up the comma-separated lists
     params['show'] = clean_comma_list(show, arc_group_names+['between','within'])
