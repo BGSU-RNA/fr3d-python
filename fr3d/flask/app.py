@@ -126,7 +126,10 @@ def fr3d_search():
     Q["seeModifyQuery"] = '<a href="https://rna.bgsu.edu/fr3d/modify?id=%s">See and modify query</a> ' % new_name
     Q["gzip"] = True
 
-    Q["MAXTIME"] = 1200             # seconds
+    if Q.get("repSetResolution","all") == "entire" and "entire" in Q.get("description","").lower():
+        Q["MAXTIME"] = 3600             # seconds, 60 minutes
+    else:
+        Q["MAXTIME"] = 1200             # seconds, 20 minutes
     Q["MAXCANDIDATESHEATMAP"] = 300
     Q["MAXCANDIDATES"] = 1000
     Q["REFRESHTIME"] = 2
@@ -300,8 +303,8 @@ def r3dcid():
 
     chains_string = query_parameters.get('chains','')
 
-    display_format = query_parameters.get('format','pdf').lower()
-    if not display_format in ['pdf','svg']:
+    display_format = query_parameters.get('format','pdf').lower().split(",")[0]
+    if not display_format in ['pdf','svg','ps']:
         display_format = 'pdf'
 
     # set parameters if they are specified in the URL
@@ -322,6 +325,18 @@ def r3dcid():
             params['n3d'] = False
         elif params['n3d'].lower() == 'true':
             params['n3d'] = True
+    if 'counts' in query_parameters:
+        params['counts'] = query_parameters.get('counts',True)
+        if params['counts'].lower() == 'false':
+            params['counts'] = False
+        elif params['counts'].lower() == 'true':
+            params['counts'] = True
+    if 'labels' in query_parameters:
+        params['labels'] = query_parameters.get('labels',True)
+        if params['labels'].lower() == 'false':
+            params['labels'] = False
+        elif params['labels'].lower() == 'true':
+            params['labels'] = True
     if 'header' in query_parameters:
         params['header'] = query_parameters.get('header','')
     if 'description' in query_parameters:
@@ -353,24 +368,30 @@ def r3dcid():
 
     try:
         if 'description' in params:
-            # generate PDF or SVG output, not both, with this description
+            # generate output fresh when there is a description
             params['format'] = display_format
             # get the filename without extension
             filename, message = r3dcid.main(chains_string, params)
         else:
             # create both pdf and svg formatted output with no description
             params['format'] = 'pdf,svg'
-
             # check to see if the file already exists, to avoid generating it again
-            filename = r3dcid.get_filename(chains_string, params)
+            # this line modifies params
+            filename = r3dcid.get_filename(chains_string, params.copy())
+
+            ps_gz_file = os.path.join(output_path,filename+".ps.gz")
+            if 'ps' in display_format:
+                if not os.path.exists(ps_gz_file):
+                    params['format'] = 'pdf,svg,ps'
 
             pdf_file = os.path.join(output_path,filename+".pdf")
+            svg_gz_file = os.path.join(output_path,filename+".svg.gz")
             if not os.path.exists(pdf_file):
                 filename, message = r3dcid.main(chains_string, params)
-            else:
-                svg_gz_file = os.path.join(output_path,filename+".svg.gz")
-                if not os.path.exists(svg_gz_file):
-                    filename, message = r3dcid.main(chains_string, params)
+            elif not os.path.exists(svg_gz_file):
+                filename, message = r3dcid.main(chains_string, params)
+            elif not os.path.exists(ps_gz_file):
+                filename, message = r3dcid.main(chains_string, params)
 
     except Exception as e:
         exception_type, exception_object, exception_traceback = sys.exc_info()
@@ -383,7 +404,7 @@ def r3dcid():
         return output
 
     if len(filename) == 0:
-        return "No chains found for the requested structure " + message
+        return "Unable to produce a diagram for the requested structure " + message
 
     # if a .ps file was produced, make sure the .pdf file is made
     pdf_file = os.path.join(output_path,filename+".pdf")
@@ -391,9 +412,19 @@ def r3dcid():
     if os.path.exists(ps_file) and not os.path.exists(pdf_file):
         try:
             subprocess.run(["ps2pdf", "-dFIXEDMEDIA", output_path, ps_file],check=True)
-            os.remove(ps_file)
         except:
             raise RuntimeError("ps2pdf failed for %s" % ps_file) from e
+
+    # if ps format was requested, gzip it; if not, remove the ps file
+    if 'ps' in display_format:
+        ps_gz_file = os.path.join(output_path,ps_file+".gz")
+        if os.path.exists(ps_file):
+            try:
+                subprocess.run(["gzip", "-f", ps_file],check=True)
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError("gzip failed for %s" % ps_file) from e
+    elif os.path.exists(ps_file):
+        os.remove(ps_file)
 
     # gzip every .svg file
     svg_file    = os.path.join(output_path,filename+".svg")
@@ -409,16 +440,20 @@ def r3dcid():
             return send_file(pdf_file, attachment_filename=filename+".pdf", as_attachment=True)  # instant download
         except Exception as e:
             return str(e)
+    elif display_format == 'ps':
+        try:
+            with gzip.open(ps_gz_file, "rb") as f:
+                ps_text = f.read()
+            return Response(ps_text, mimetype="text/plain", headers={"Content-Disposition": f'inline; filename="{filename}.ps"'})
+        except Exception as e:
+            return str(e)
     else:
         try:
             with gzip.open(svg_gz_file, "rb") as f:
                 svg_bytes = f.read()
             return Response(svg_bytes, mimetype="image/svg+xml", headers={"Content-Disposition": f'inline; filename="{filename}.svg"'})
-
-            # return send_file(svg_file, mimetype="image/svg+xml", download_name=filename+".svg", as_attachment=False)
         except Exception as e:
             return str(e)
-
 
 # Handle errors of different types
 @app.errorhandler(400)

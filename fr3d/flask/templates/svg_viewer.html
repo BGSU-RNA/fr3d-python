@@ -126,7 +126,7 @@ body {
 <div id="page-center">
     <div id="backlink" style="padding: 8px; font-family: sans-serif;">
     <a id="inputPageLink" href="#">Modify parameters on R3DCID input page</a> |
-    <a id="interactionList" href="#" target="_blank">Interaction list</a>
+    <a id="interactionList" href="#" target="_blank">Basepair list and coordinate viewer</a>
     </div>
 
     <div id="container"></div>
@@ -181,8 +181,12 @@ body {
     let offsetX = 0;
     let offsetY = 0;
     let minScale = 1;
+    let zoomCount = 0;
     let initialOffsetX = 0;
     let initialOffsetY = 0;
+    let rotationAngle = 0;
+    let rotationCenterX = 0;
+    let rotationCenterY = 0;
 
     let dragging = false;
     let lastX = 0;
@@ -304,12 +308,110 @@ body {
             function zoomAt(clientX, clientY, newScale) {
                 const p = getSvgPoint(clientX, clientY);
 
-                const worldX = (p.x - offsetX) / scale;
-                const worldY = (p.y - offsetY) / scale;
+                const world = getWorldPointFromSvgPoint(p.x, p.y);
+                const worldX = world.x;
+                const worldY = world.y;
+                const rotated = getRotatedWorldPoint(worldX, worldY);
 
                 scale = newScale;
-                offsetX = p.x - worldX * scale;
-                offsetY = p.y - worldY * scale;
+                offsetX = p.x - rotated.x * scale;
+                offsetY = p.y - rotated.y * scale;
+            }
+
+            function rotatePoint(x, y, angleDegrees) {
+                const rad = (angleDegrees * Math.PI) / 180;
+                const cosA = Math.cos(rad);
+                const sinA = Math.sin(rad);
+                return {
+                    x: x * cosA - y * sinA,
+                    y: x * sinA + y * cosA
+                };
+            }
+
+            function getWorldPointFromSvgPoint(svgX, svgY) {
+                // Inverse of: translate(offset) scale(scale) rotate(angle, cx, cy)
+                const localX = (svgX - offsetX) / scale;
+                const localY = (svgY - offsetY) / scale;
+
+                const relX = localX - rotationCenterX;
+                const relY = localY - rotationCenterY;
+                const unrot = rotatePoint(relX, relY, -rotationAngle);
+
+                return {
+                    x: rotationCenterX + unrot.x,
+                    y: rotationCenterY + unrot.y
+                };
+            }
+
+            function getRotatedWorldPoint(worldX, worldY) {
+                const relX = worldX - rotationCenterX;
+                const relY = worldY - rotationCenterY;
+                const rot = rotatePoint(relX, relY, rotationAngle);
+                return {
+                    x: rotationCenterX + rot.x,
+                    y: rotationCenterY + rot.y
+                };
+            }
+
+            function normalizeSignedAngle(angleDegrees) {
+                return ((angleDegrees + 180) % 360 + 360) % 360 - 180;
+            }
+
+            function chooseHorizontalUprightDelta(ctm) {
+                // x-axis of text baseline in screen coords
+                const baselineAngle = Math.atan2(ctm.b, ctm.a) * (180 / Math.PI);
+                // y-axis of text glyph space in screen coords
+                const yAxisX = ctm.c;
+                const yAxisY = ctm.d;
+
+                // Candidate 1: make baseline point right (0°)
+                // Candidate 2: make baseline point left (180°)
+                // Then choose the one that leaves glyph-space +Y pointing down on screen.
+                const candidates = [
+                    normalizeSignedAngle(-baselineAngle),
+                    normalizeSignedAngle(180 - baselineAngle)
+                ];
+
+                let bestDelta = candidates[0];
+                let bestScore = -Infinity;
+
+                for (const cand of candidates) {
+                    const rotatedYAxis = rotatePoint(yAxisX, yAxisY, cand);
+                    const uprightScore = rotatedYAxis.y >= 0 ? 1000 : 0;
+                    const smallTurnScore = 180 - Math.abs(cand);
+                    const score = uprightScore + smallTurnScore;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestDelta = cand;
+                    }
+                }
+
+                return bestDelta;
+            }
+
+            function resetToMinView() {
+                scale = minScale;
+                zoomCount = 0;
+                offsetX = initialOffsetX;
+                offsetY = initialOffsetY;
+                rotationAngle = 0;
+                rotationCenterX = 0;
+                rotationCenterY = 0;
+            }
+
+            function isLikelyTouchpadWheel(e) {
+                // Heuristic only: pixel-mode + small/fractional deltas are usually touchpad.
+                if (e.deltaMode !== WheelEvent.DOM_DELTA_PIXEL) {
+                    return false;
+                }
+
+                const absX = Math.abs(e.deltaX);
+                const absY = Math.abs(e.deltaY);
+                const fractional = !Number.isInteger(absX) || !Number.isInteger(absY);
+                const smallDelta = absY > 0 && absY < 40;
+
+                return fractional || smallDelta || absX > 0;
             }
 
             /* ---------- Zoom with Ctrl + mouse wheel ---------- */
@@ -317,15 +419,12 @@ body {
                 if (!e.ctrlKey) return;
                 e.preventDefault();
 
-                const zoomDelta = e.deltaY < 0 ? 1 : -1;
-                zoomCount = zoomCount + zoomDelta;
-                // const zoomFactor = e.deltaY < 0 ? 1.4 : 0.7;
-                // const newScale = scale * zoomFactor;
+                const baseZoomDelta = e.deltaY < 0 ? 1 : -1;
+                const wheelStep = isLikelyTouchpadWheel(e) ? 0.2 : 1;
+                zoomCount = Math.max(0, zoomCount + baseZoomDelta * wheelStep);
                 const newScale = minScale * (1.4 ** zoomCount);
                 if (newScale <= minScale) {
-                    scale = minScale;
-                    offsetX = initialOffsetX;
-                    offsetY = initialOffsetY;
+                    resetToMinView();
                 } else {
                     zoomAt(e.clientX, e.clientY, newScale);
                 }
@@ -335,7 +434,7 @@ body {
 
             /* ---------- Keyboard zoom + reset ---------- */
             window.addEventListener("keydown", e => {
-                if (!e.ctrlKey) return;
+                if (!e.ctrlKey && !e.metaKey) return;
 
                 if (e.key === "+" || e.key === "=") {
                     zoomCount += 1;
@@ -344,18 +443,14 @@ body {
                     zoomCount -= 1;
                     scale = minScale * (1.4 ** zoomCount);
                 } else if (e.key === "0") {
-                    scale = minScale;
-                    offsetX = initialOffsetX;
-                    offsetY = initialOffsetY;
+                    resetToMinView();
                 } else {
                     return;
                 }
 
                 e.preventDefault();
                 if (scale <= minScale) {
-                    scale = minScale;
-                    offsetX = initialOffsetX;
-                    offsetY = initialOffsetY;
+                    resetToMinView();
                 } else {
                     const rect = svg_overall.getBoundingClientRect();
                     const cx = rect.left + rect.width / 2;
@@ -393,6 +488,44 @@ body {
                 container.classList.remove("dragging");
             });
 
+            /* ---------- Double-click text to make it horizontal ---------- */
+            container.addEventListener("dblclick", e => {
+                const textEl = e.target && e.target.closest ? e.target.closest("text") : null;
+                if (!textEl) return;
+
+                e.preventDefault();
+
+                const ctm = textEl.getScreenCTM();
+                if (!ctm) return;
+
+                const delta = chooseHorizontalUprightDelta(ctm);
+                if (!isFinite(delta)) return;
+
+                const clickSvgPoint = getSvgPoint(e.clientX, e.clientY);
+                const pivotWorld = getWorldPointFromSvgPoint(clickSvgPoint.x, clickSvgPoint.y);
+
+                const newCenterX = pivotWorld.x;
+                const newCenterY = pivotWorld.y;
+                const newAngle = rotationAngle + delta;
+
+                // Preserve the clicked location on screen while changing both
+                // rotation angle and rotation center.
+                const relX = pivotWorld.x - newCenterX;
+                const relY = pivotWorld.y - newCenterY;
+                const rotatedRel = rotatePoint(relX, relY, newAngle);
+                const rotatedPivotX = newCenterX + rotatedRel.x;
+                const rotatedPivotY = newCenterY + rotatedRel.y;
+
+                offsetX = clickSvgPoint.x - rotatedPivotX * scale;
+                offsetY = clickSvgPoint.y - rotatedPivotY * scale;
+
+                rotationCenterX = newCenterX;
+                rotationCenterY = newCenterY;
+                rotationAngle = newAngle;
+
+                applyTransform(svg);
+            });
+
             /* ---------- Phone touch screen unlimited zoom ---------- */
             container.addEventListener("touchmove", e => {
             if (e.touches.length !== 2) return;
@@ -412,9 +545,7 @@ body {
 
                 const newScale = scale * zoom;
                 if (newScale <= minScale) {
-                    scale = minScale;
-                    offsetX = initialOffsetX;
-                    offsetY = initialOffsetY;
+                    resetToMinView();
                     lastDist = null;
                 } else {
                     zoomAt(cx, cy, newScale);
@@ -480,7 +611,7 @@ body {
         }
         target.setAttribute(
             "transform",
-            `translate(${offsetX}, ${offsetY}) scale(${scale})`
+            `translate(${offsetX}, ${offsetY}) scale(${scale}) rotate(${rotationAngle}, ${rotationCenterX}, ${rotationCenterY})`
         );
     }
 

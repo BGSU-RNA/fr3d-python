@@ -24,10 +24,11 @@ arc_group_to_interactions["br"] = ['0BR', '1BR', '2BR',  '3BR', '4BR', '5BR', '6
 arc_group_to_interactions["sr"] = ['cSR','tSR']
 arc_group_to_interactions["so"] = [a+b for a in ["s3","s5"] for b in ["O2'","O3'","O4'","O5'","OP1","OP2"]]
 arc_group_to_interactions["stacking"] = ['s35','s33','s55','s53']
+arc_group_to_interactions["cp"] = ['cp']
 arc_group_to_interactions["near"] = ['all']
-arc_group_names = ["nested-wc","lr-wc","lr-non-wc","nested-non-wc","bph","br","sr","so","stacking","near"]
+arc_group_names = ["nested-wc","lr-wc","lr-non-wc","nested-non-wc","bph","br","sr","so","stacking","near","cp"]
 
-arc_group_names_by_order = ["stacking","sr","so","br","bph","nested-non-wc","lr-non-wc","nested-wc","lr-wc","near"]
+arc_group_names_by_order = ["stacking","sr","so","br","bph","nested-non-wc","lr-non-wc","nested-wc","lr-wc","near","cp"]
 
 arc_group_name_to_text = {}
 arc_group_name_to_text["nested-wc"]     = "%d nested Watson-Crick basepairs (AU, GC, GU cWW)"
@@ -40,10 +41,11 @@ arc_group_name_to_text["bph"]           = "%d base-phosphate interactions"
 arc_group_name_to_text["br"]            = "%d base-ribose interactions"
 arc_group_name_to_text["sr"]            = "%d sugar-ribose interactions"
 arc_group_name_to_text["so"]            = "%d oxygen stacking interactions"
+arc_group_name_to_text["cp"]            = "%s coplanar contacts, not a basepair or near pair"
 arc_group_name_to_text["near"]          = "%d near basepairs or other interactions"
 
 # control points to map nucleotide number to the value of each of these parameters
-control_base_number_font_size=  [(35,7),(82,7),(132,7),(294,4),(585,2),(1522,1),(3000,0.5),(4000,0.4),(5000,0.4),(7000,0.25),(11662,0.15),(18000,0.1)]
+control_base_number_font_size=  [(35,7),(82,7),(132,7),(294,4),(585,2),(1522,1),(3000,0.5),(4000,0.4),(5000,0.35),(7000,0.25),(11662,0.15),(18000,0.1)]
 control_tick_mark_length=       [(35,4),(82,3),(500, 2),(1000,0.8),(2000, 0.6),(5000,0.5),(7228,0.4),(10000,0.3),(18263,0.2)] #length of radial tick mark lines
 
 control_linewidth=              [(35,2),(82,2),(122,1.4),(294,0.5),(585,0.3),(1522,0.1),(3000,0.1),(5000,0.1),(7000,0.1),(18000,0.045)]
@@ -73,6 +75,15 @@ rfam_order = {
     "RF00005": 6    # tRNA goes last
 }
 
+rfam_order_to_category = {}
+rfam_order_to_category[1] = '5S'
+rfam_order_to_category[2] = '5.8S'
+rfam_order_to_category[3] = 'LSU'
+rfam_order_to_category[4] = 'SSU'
+rfam_order_to_category[5] = 'none'
+rfam_order_to_category[6] = 'tRNA'
+rfam_order_to_category[7] = 'none'
+
 simplify_entity_type = {}
 simplify_entity_type['Polydeoxyribonucleotide (DNA)'] = 'dna'
 simplify_entity_type['Polyribonucleotide (RNA)'] = 'rna'
@@ -80,6 +91,15 @@ simplify_entity_type['polyribonucleotide'] = 'rna'
 simplify_entity_type['polydeoxyribonucleotide'] = 'dna'
 simplify_entity_type['polydeoxyribonucleotide/polyribonucleotide hybrid'] = 'hybrid'
 simplify_entity_type['DNA/RNA Hybrid'] = 'hybrid'
+
+def get_chain_index(id):
+    # id can be like 1Y26|sequence|X|G|71 or 1Y26|1|X|ADE|90
+    fields = id.split("|")
+
+    if len(fields) >= 5 and fields[1] == "sequence":
+        return int(id.split("|")[4])
+    else:
+        return -9
 
 
 def get_fr3d_interaction_to_triple_list(pdb_id,data_directory=""):
@@ -129,7 +149,7 @@ def get_fr3d_interaction_to_triple_list(pdb_id,data_directory=""):
         else:
             urllib.request.urlretrieve(url, fr3d_interaction_path_file)  # python 3
     except:
-        return None, "Unable to download %s, exiting" % fr3d_interaction_file
+        return None, "Unable to download %s from %s, exiting" % (fr3d_interaction_file,url)
 
     try:
         with open(fr3d_interaction_path_file, 'rb') as opener1:
@@ -144,7 +164,6 @@ def get_fr3d_interaction_to_triple_list(pdb_id,data_directory=""):
 
 def process_input_chains(input_text,params={}):
     """
-    Given just a PDB id like 8GLP, look up all the RNA and DNA chains in it
     Given a PDB id and one or more models like 8QO5|3,8QO5|2, focus on those models
     Given a PDB id, wildcard model, and chain like 1ABC|*|A, use all models, use that chain
     Given a PDB id and one or more assemblies like 4V9O_2,4V9O_4, show those
@@ -205,7 +224,7 @@ def process_input_chains(input_text,params={}):
 
     if not pdb_id:
         print('No PDB id found')
-        return [], "", {}
+        return "", "", [], [], [], [], []
 
     if "assembly" in params:
         pa = params['assembly'].replace(";",",")
@@ -278,10 +297,10 @@ def set_parameters_from_input(params,filename,pdb_id):
         coloring = 'default'
     params['coloring'] = coloring
 
-    # process user requests
-    show = params.get('show','').lower()
-    hide = params.get('hide','').lower()
-    dim  = params.get('dim','').lower()
+    # process arc display
+    show = lowercase_comma_list(params.get('show','')).replace('coplanar','cp')
+    hide = lowercase_comma_list(params.get('hide','')).replace('coplanar','cp')
+    dim  = lowercase_comma_list(params.get('dim','')).replace('coplanar','cp')
 
     if 'wc' in show.split(","):
         show = ",".join(show.split(",") + ["nested-wc","lr-wc"])
@@ -307,20 +326,48 @@ def set_parameters_from_input(params,filename,pdb_id):
         hide = ''
         dim = ''
 
-    # clean up the comma-separated lists
-    params['show'] = clean_comma_list(show, arc_group_names)
-    params['hide'] = clean_comma_list(hide, arc_group_names, show)
-    params['dim']  = clean_comma_list(dim, arc_group_names, hide+","+show)
+    # dim or hide arcs between or within chains?
+    params['between'] = 'show'
+    params['within'] = 'show'
+    if 'between' in dim:
+        params['between'] = 'dim'
+    elif 'between' in hide:
+        params['between'] = 'hide'
+    if 'within' in dim:
+        params['within'] = 'dim'
+    elif 'within' in hide:
+        params['within'] = 'hide'
 
-    print(params)
+    # hide or dim interactions between specific chains?
+    params['hide_by_chain'] = set()
+    for t in hide.split(","):
+        if "-" in t and not 'wc' in t.lower():
+            params['hide_by_chain'].add(t)
+    params['dim_by_chain'] = set()
+    for t in dim.split(","):
+        if "-" in t and not 'wc' in t.lower():
+            params['dim_by_chain'].add(t)
+
+    # clean up the comma-separated lists
+    params['show'] = clean_comma_list(show, arc_group_names+['between','within'])
+    params['hide'] = clean_comma_list(hide, arc_group_names+['between','within'], show)
+    params['dim']  = clean_comma_list(dim, arc_group_names+['between','within'], hide+","+show)
 
     text = params.get('text','').lower()
-    params['text'] = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","near","all","helix","none"])
+    text = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","none","blank","between","within"])
+    if "between" in text and "within" in text:
+        # default is to show both, so leave these out and save time
+        text = clean_comma_list(text, ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","none","blank"])
+    if "blank" in text:
+        # no chain labels, no nucleotides, no interactions
+        text = 'blank'
+    elif "none" in text:
+        # no interactions
+        text = 'none'
+    elif "all" in text:
+        text = clean_comma_list(text,['all','between','within'])
 
-    if "none" in params['text']:
-        params['text'] = 'none'
-    if "all" in params['text']:
-        params['text'] = "all"
+    params['text'] = text
 
     # add user-specified display options to the filename unless they are the default
     if not coloring == "default":
@@ -329,11 +376,19 @@ def set_parameters_from_input(params,filename,pdb_id):
     if params['show']:
         filename += '_show_' + params['show']
 
-    if params['hide']:
-        filename += '_hide_' + params['hide']
+    if params['hide'] or params.get('hide_by_chain',set()):
+        joint_list = []
+        if params['hide']:
+            joint_list = params['hide'].split(",")
+        joint_list += sorted(params.get('hide_by_chain',set()))
+        filename += '_hide_' + ",".join(joint_list)
 
-    if params['dim']:
-        filename += '_dim_' + params['dim']
+    if params['dim'] or params.get('dim_by_chain',set()):
+        joint_list = []
+        if params['dim']:
+            joint_list = params['dim'].split(",")
+        joint_list += sorted(params.get('dim_by_chain',set()))
+        filename += '_dim_' + ",".join(joint_list)
 
     if params['text']:
         filename += '_text_' + params['text']
@@ -342,7 +397,19 @@ def set_parameters_from_input(params,filename,pdb_id):
         if type(params['n3d']) == 'string' and params['n3d'].lower() == 'false':
             params['n3d'] = False
         if params['n3d'] == False:
-            filename += "_n3d-false"
+            filename += "_n3d_false"
+
+    if 'counts' in params:
+        if type(params['counts']) == 'string' and params['counts'].lower() == 'false':
+            params['counts'] = False
+        if params['counts'] == False:
+            filename += "_counts_false"
+
+    if 'labels' in params:
+        if type(params['labels']) == 'string' and params['labels'].lower() == 'false':
+            params['labels'] = False
+        if params['labels'] == False:
+            filename += "_labels_false"
 
     if 'helix_size' in params:
         filename += '_hs_' + str(params['helix_size'])
@@ -350,15 +417,14 @@ def set_parameters_from_input(params,filename,pdb_id):
     if not 'header' in params:
         params['header'] = 'all'
 
-    params['header'] = clean_comma_list(params['header'],['title','method','source','release_date','resolution','all','none'])
+    params['header'] = clean_comma_list(params['header'],['filename','title','method','source','release_date','resolution','all','none'])
     if len(params['header']) == 0:
-        params['header'] = 'title,method,source,release_date,resolution'
+        params['header'] = 'filename,title,method,source,release_date,resolution'
     elif 'none' in params['header']:
-        del params['header']
         filename += '_header_none'
     elif 'all' in params['header']:
-        params['header'] = 'title,method,source,release_date,resolution'
-    elif params['header'] == 'title,method,source,release_date,resolution':
+        params['header'] = 'filename,title,method,source,release_date,resolution'
+    elif params['header'] == 'filename,title,method,source,release_date,resolution':
         pass
     else:
         filename += '_header_' + params['header']
@@ -378,7 +444,7 @@ def get_header_information(params,pdb_id):
 
     if not type(data) is dict:
         message = 'Could not get PDB title from %s' % url
-    else:
+    elif 'header' in params:
         message = None
         if 'title' in params['header']:
             params['title'] = data['title']
@@ -505,9 +571,16 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                     dl['symmetry'] = '%s%d' % (symmetry_prefix,i)
                     dl['symmetry_id'] = '%d' % i
                     new_data_lines.append(dl)
+            elif data_line['symmetry_id'].isdigit() and int(data_line['symmetry_id']) > 0:
+                # a single operator, when most are lists of symmetry operators
+                dl = {}
+                dl['assembly_id'] = data_line['assembly_id']
+                dl['chain_name']  = data_line['chain_name']
+                dl['symmetry'] = '%s%s' % (symmetry_prefix,data_line['symmetry_id'])
+                dl['symmetry_id'] = '%s' % data_line['symmetry_id']
+                new_data_lines.append(dl)
             else:
                 new_data_lines.append(data_line)
-
         elif data_line['symmetry'] is None:
             numbered_symmetries = True
             data_line['symmetry'] = "ASM_%s" % data_line['symmetry_id']
@@ -624,6 +697,7 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                             new_data['pdbx_description'] = chain_info.get("pdbx_description", "")
                             new_data['rfam_family'] = rfam_family
                             new_data['rfam_priority'] = rfam_order.get(rfam_family,7)
+                            new_data['rfam_category'] = rfam_order_to_category[rfam_order.get(rfam_family,7)]
                             new_data['symmetry'] = symmetry
                             new_data['symmetry_id'] = symmetry_id
 
@@ -710,6 +784,7 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                 # print('  ',text)
                 if text in pdbx_description:
                     data['rfam_priority'] = priority
+                    data['rfam_category'] = text.split(" ")[0].upper()
                     # print('Found %s in pdbx_description' % text)
 
         rfam_priority = data['rfam_priority']
@@ -1010,6 +1085,29 @@ def clean_comma_list(s, valid_list, exclude_string=''):
     return ",".join(ok_list)
 
 
+def lowercase_comma_list(s):
+    """
+    Turn entries lowercase except chain pairs like a-A
+    """
+    fields = s.replace(" ","").split(",")
+    new_s = []
+    for f in fields:
+        if "wc" in f.lower():
+            new_s.append(f.lower())
+        elif not "-" in f:
+            new_s.append(f.lower())
+        else:
+            new_s.append(f)
+    return ",".join(new_s)
+
+
+def dim_colors(original_color, factor=0.8):
+    factor = 0.8
+    # move each component of the color toward 1, more so if factor is near 1
+    colors = tuple(((1-factor)*component + factor) for component in original_color)
+    return colors
+
+
 def draw_arcs(pairs_and_crossing, assembly_unit_id_to_angle, arcs_drawn, crossing, base_combination, unit_id_to_standard, angle_shifter, circle_radius, unit_id_to_annotation, helix_to_number_location, helix_radius_shift, unit_id_to_assemblies, valid_assembly_pairs):
     """
     Create the PostScript and SVG commands for a set of arcs all of the same color
@@ -1171,6 +1269,13 @@ def draw_arcs(pairs_and_crossing, assembly_unit_id_to_angle, arcs_drawn, crossin
     return PSarcs, SVGarcs, num_arcs_drawn, arcs_drawn, helix_to_number_location
 
 
+def chain_symmetry(fields):
+    if len(fields) == 9:
+        return fields[2] + fields[8]
+    else:
+        return fields[2]
+
+
 def make_chain_label(assemblies,requested_models,model,chain,chain_data,symmetry):
     if len(requested_models) > 1 or not requested_models[0] == '1':
         chain_label = "Chain %s|%s" % (model,chain)
@@ -1219,6 +1324,50 @@ def break_line(s,target_width,maximum_width):
 
     return lines
 
+
+def expand_chain_pairs(chain_sets,chain_info):
+    """
+    Process pairs or tuples of chains, which can be simple pairs like L5-L8
+    or longer like L5-L8-L2 or can include ribosomal categories like LSU-SSU-5S
+    """
+
+    chains = set()
+    category_to_chains = {}
+    for ci in chain_info:
+        chains.add(ci['chain_name'])
+        category = ci.get('rfam_category','')
+        if category:
+            if not category in category_to_chains:
+                category_to_chains[category] = set()
+            category_to_chains[category].add(ci['chain_name'])
+
+    chain_pairs = set()
+
+    for t in chain_sets:
+        fields = t.split("-")
+        for i in range(0,len(fields)):
+            for j in range(i+1,len(fields)):
+                p1 = fields[i]
+                p2 = fields[j]
+                # print('Requested to hide arcs between chains %s-%s' % (p1,p2))
+                if p1 in chains:
+                    c1 = [p1]
+                elif p1 in category_to_chains:
+                    c1 = list(category_to_chains[p1])
+                else:
+                    continue
+                if p2 in chains:
+                    c2 = [p2]
+                elif p2 in category_to_chains:
+                    c2 = list(category_to_chains[p2])
+                else:
+                    continue
+                for a in c1:
+                    for b in c2:
+                        chain_pairs.add((a,b))
+                        chain_pairs.add((b,a))
+
+    return chain_pairs
 
 def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_triple_list, params):
     """
@@ -1322,7 +1471,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
         requested_models = [str(m) for m in integer_models]
 
     # track the assemblies, models, chains around the circle
-    chain_name_list = []
+    max_chain_label_length = 0
     sequence_position_unit_id_pairs = []  # position of each unit around the circle
     max_nts_per_group = 0
 
@@ -1340,6 +1489,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 chain_data['symmetry'] = chain_data['symmetry'].replace("ASM_","P_")
 
     # loop over all potential models
+    num_chain_breaks = 0
+    num_continuity_breaks = 0
     for model in requested_models:
         # loop over all assemblies being shown, because chain-symmetry may be in more than one assembly
         for assembly in assemblies['ok_assemblies']:
@@ -1357,9 +1508,26 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                         unit_id_no_alt_set = set([])                   # keep simplest version of units
 
                         num_nts_found_this_chain = 0
+                        previous_index = 'start_chain'
+
+                        new_sequence_position_unit_id_pairs = []
+
+                        if symmetry is None:
+                            print(chain_data)
+                            print(chain_to_units[chain])
+                            symmetry = 'placeholder'
+                            # input("symmetry is None.  Press Enter")
+
+                        # label for each chain around the outside of the circle
+                        chain_label = make_chain_label(assemblies,requested_models,model,chain,chain_data,symmetry)
+                        # record the chain label at the start of the chain
+                        new_sequence_position_unit_id_pairs.append(('chain_start',chain_label))
+
                         for sequence_position, unit_id in chain_to_units[chain]:
                             if unit_id == "NULL" and not chain_to_n3d_present[chain]:
                                 continue
+
+                            current_index = get_chain_index(sequence_position)
 
                             # track which assembly(ies) each unit_id appears in
                             if unit_id in unit_id_to_assemblies:
@@ -1405,6 +1573,13 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
                             unit_id_no_alt_set.add(unit_id_no_alt) # record that we saw this one
 
+                            # note continuity breaks in the black arc around the outside
+                            if not previous_index == "start_chain" and not current_index == previous_index + 1:
+                                new_sequence_position_unit_id_pairs.append(('continuity_break',''))
+                                num_continuity_breaks += 1
+
+                            previous_index = current_index
+
                             # combined position is used as the key to angle around the circle
                             # it must have assembly because chains may be repeated
                             # it must have both sequence and unit id, because some sequence positions are
@@ -1414,22 +1589,24 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                             # it must have symmetry id because some structures like 8PZP use the
                             # symmetry operator 1_555 with position 6, 31, 56
                             combined_position = "%s %s %s %s %s" % (assembly,sequence_position,model,unit_id,symmetry_id)
-                            sequence_position_unit_id_pairs.append((combined_position,unit_id))
+                            new_sequence_position_unit_id_pairs.append((combined_position,unit_id))
                             num_nts_found_this_chain += 1
 
+                        if symmetry == 'placeholder':
+                            print('num_nts_found_this_chain')
+                            print(num_nts_found_this_chain)
+                            # input("symmetry is just a placeholder.  Press Enter to continue")
+
                         if num_nts_found_this_chain > 0:
-                            # label for each chain around the outside of the circle
-                            chain_label = make_chain_label(assemblies,requested_models,model,chain,chain_data,symmetry)
-
-                            chain_name_list.append(chain_label)
-                            sequence_position_unit_id_pairs.append(('chain_break','NULL'))
-
+                            max_chain_label_length = max(max_chain_label_length,len(chain_label))
+                            sequence_position_unit_id_pairs += new_sequence_position_unit_id_pairs
+                            sequence_position_unit_id_pairs.append(('chain_break',chain_label))
+                            num_chain_breaks += 1
                             max_nts_per_group = max(max_nts_per_group,num_nts_found_this_chain)
 
     number_of_nucleotides = 0
-    number_of_breaks = len(chain_name_list)
     for position, unit_id in sequence_position_unit_id_pairs:
-        if not position == 'chain_break':
+        if not position in ['chain_break','continuity_break','chain_start']:
             number_of_nucleotides += 1
 
     if number_of_nucleotides == 0:
@@ -1444,18 +1621,23 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     dim  = params.get('dim','')
     text = params.get('text','basepair')
 
+    # convert chain requests like LSU, SSU to actual chain name; keep only real chain names
+    hide_by_chain = expand_chain_pairs(params.get('hide_by_chain'),chain_info)
+    dim_by_chain  = expand_chain_pairs(params.get('dim_by_chain'), chain_info)
+
     coloring = params.get('coloring','default')
     if coloring == "grayscale":
         group_name_to_color = {
             "scale":         "grayscale",
             "lr-wc":         (0,0,0),           # black
             "nested-wc":     (0.2,0.2,0.2),     # dark gray
+            "cp":            (0.3,0.3,0.3),     # dark gray
             "nested-non-wc": (0.4,0.4,0.4),     #
             "lr-non-wc":     (0.5,0.5,0.5),
-            "stacking":      (0.8,0.8,0.8),     # light gray
             "bph":           (0.6,0.6,0.6),
             "br":            (0.7,0.7,0.7),
             "sr":            (0.75,0.75,0.75),
+            "stacking":      (0.8,0.8,0.8),     # light gray
             "so":            (0.85,0.85,0.85),
             "near":          (0.9,0.9,0.9),     # very light gray
             "labels":        (0.5, 0.5, 0.5)    # medium gray
@@ -1472,6 +1654,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             "br":            (230.0/255,159.0/255,0.0/255),   # orange
             "sr":            (0.5,0.5,0.5),       # gray
             "so":            (0.6,0.6,0.6),       # gray
+            "cp":            (210/255,180/255,140/255),         # tan for now
             "near":          (0.7,0.7,0.7),
             "labels":        (86.0/255,180.0/255,233.0/255)   # sky blue
         }
@@ -1487,38 +1670,36 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             "br":            (1,0.6,0.1),       # orange
             "sr":            (0.5,0,0.5),       # purple
             "so":            (0,0.5,0.5),       # teal
+            "cp":            (210/255,180/255,140/255),         # tan
             "near":          (0.7,0.7,0.7),     # gray
             "labels":        (86.0/255,180.0/255,233.0/255)   # sky blue
         }
 
-    # dim colors of entire groups, which means to make the arcs more white
-    for group_name in group_name_to_color:
-        if group_name in dim:
-            regular_color = group_name_to_color[group_name]
-            factor = 0.8
-            # move each component of the color toward 1, more so if factor is near 1
-            colors = tuple(((1-factor)*component + factor) for component in regular_color)
-            group_name_to_color[group_name] = colors
+    # # dim colors of entire groups, which means to make the arcs more white
+    # for group_name in group_name_to_color:
+    #     if group_name in dim:
+    #         regular_color = group_name_to_color[group_name]
+    #         group_name_to_color[group_name] = dim_colors(regular_color)
 
     # set numerical parameters based on total number of nucleotides
     # size of gaps between chains, as a multiple of the space for one nucleotide
     chain_gap_size = linear_interpolation(control_chain_gap_size, number_of_nucleotides)
 
+    # set a one-nucleotide gap size for continuity breaks or solitary nucleotides
+    continuity_gap_size = min(1,chain_gap_size/3)
+
     # make sure spaces allocated to gaps do not overwhelm nucleotides when many symmetries or models
-    chain_gap_size_alternative = 0.2 * number_of_nucleotides / number_of_breaks
+    chain_gap_size_alternative = 0.2 * number_of_nucleotides / num_chain_breaks
     if chain_gap_size > chain_gap_size_alternative:
         print("Reducing chain_gap_size from %0f to %0f" % (chain_gap_size,chain_gap_size_alternative))
         chain_gap_size = chain_gap_size_alternative
 
-    effective_size = number_of_nucleotides+chain_gap_size*number_of_breaks
+    effective_size = number_of_nucleotides + chain_gap_size * num_chain_breaks + continuity_gap_size * num_continuity_breaks
 
     print('number_of_nucleotides = %d' % number_of_nucleotides)
-    print('number_of_breaks      = %d' % number_of_breaks)
-    print('effective_size = number_of_nucleotides+chain_gap_size*number_of_breaks = %d' % (effective_size))
-
-    # print('chain_gap_size = %0.2f; effectively the number of nucleotide slots per gap' % chain_gap_size)
-    # gap_spaces = chain_gap_size * number_of_breaks
-    # print('gap_spaces = %0.2f' % gap_spaces)
+    print('num_chain_breaks      = %d' % num_chain_breaks)
+    print('num_continuity_breaks = %s' % num_continuity_breaks)
+    print('effective_size = number_of_nucleotides+chain_gap_size*num_chain_breaks+continuity_gap_size*num_continuity_breaks = %d' % (effective_size))
 
     # when the number of nucleotides is very large, increase the page size for PDF
     mul = 1
@@ -1580,9 +1761,15 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
     start_angle = -(-major_number_aligner_angle+chain_gap_location*(chain_gap_size+1)*angle_difference)
     angle = start_angle
 
+    chain_angle_label = []
+
     for sequence_position, unit_id in sequence_position_unit_id_pairs:
         if sequence_position == 'chain_break':
-            angle = angle - (chain_gap_size * angle_difference)
+            angle = angle - chain_gap_size * angle_difference
+        elif sequence_position == 'continuity_break':
+            angle = angle - continuity_gap_size * angle_difference
+        elif sequence_position == 'chain_start':
+            chain_angle_label.append((angle,unit_id))
         else:
             assembly = sequence_position.split(" ")[0]
             if not unit_id == 'NULL':
@@ -1627,25 +1814,44 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 # if there is no mapping, use A to not crash, though that is not optimal!
                 unit_id_to_standard[unit_id] = modified_base_to_parent.get(base,'A')
 
-    # identify basepairs actually present in the structure to save time later
+    # identify basepairs actually present in the structure to save time later ... older method
     basepair_interaction = ['cWW','cWw','cwW','tWW','cWH','cHW','tWH','tHW','cHH','cHh','chH','tHH','tHh','thH','cWS','cSW','tWS','tSW','cHS','cSH','tHS','tSH','cSS','cSs','csS','tSS','tSs','tsS']
-    basepairs_present = []
+    basepairs_present_old = []
     for bp in basepair_interaction:
-        for alternative in ["","a"]:
+        for alternative in ["","a","b","c"]:
             if bp+alternative in interaction_to_triple_list:
-                basepairs_present.append(bp+alternative)
-    near_basepairs_present = []
+                basepairs_present_old.append(bp+alternative)
+    near_basepairs_present_old = []
     for bp in basepair_interaction:
         for alternative in ["","a"]:
             if "n"+bp+alternative in interaction_to_triple_list:
-                near_basepairs_present.append("n"+bp+alternative)
+                near_basepairs_present_old.append("n"+bp+alternative)
 
-    # draw circular arcs for interactions
-    arc_commands = []
-    near_commands = []
+    # more robust method, not sensitive to future capitalization changes
+    basepair_interaction_lower = ['cww','tww','cwh','chw','twh','thw','cws','csw','tws','tsw','chh','thh','chs','csh','ths','tsh','css','tss']
+    basepairs_present = []
+    near_basepairs_present = []
+    for interaction in interaction_to_triple_list.keys():
+        core_interaction = interaction.lower().replace("n","").rstrip("a").rstrip("b").rstrip("c")
+        if core_interaction in basepair_interaction_lower:
+            if interaction.startswith("n"):
+                near_basepairs_present.append(interaction)
+            else:
+                basepairs_present.append(interaction)
 
-    SVG_near = []
-    SVG_true_arcs = []
+    basepairs_lost   = sorted(set(basepairs_present_old) - set(basepairs_present))
+    basepairs_gained = sorted(set(basepairs_present) - set(basepairs_present_old))
+    if len(basepairs_lost) > 0 or len(basepairs_gained) > 0:
+        print("Basepairs lost  : %s" % basepairs_lost)
+        print("Basepairs gained: %s" % basepairs_gained)
+        input("Change in basepair lists. Press Enter")
+
+    # get a list of all coplanar contacts that are not also annotated at basepairs or near basepairs
+    all_basepairs = set()
+    for interaction in basepairs_present + near_basepairs_present:
+        new_pairs = [(a,b) for (a,b,c) in interaction_to_triple_list[interaction]]
+        all_basepairs |= set(new_pairs)
+    interaction_to_triple_list["cp"] = [(a,b,c) for (a,b,c) in interaction_to_triple_list["cp"] if not (a,b) in all_basepairs]
 
     # record number of arcs drawn in each group
     group_name_to_count = {}
@@ -1656,9 +1862,30 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     # map helix label to outermost arc of the helix
     helix_to_number_location = {}
-    unit_shift = (linewidth*360)/(2*3.14*240*4)
+
+    unit_shift = min((linewidth*360)/(2*3.14*240*4),angle_difference / 10)
+
+    # dimming or hiding arcs between or within chains?
+    if not params['between'] == 'show' or not params['within'] == 'show':
+        between_within = True
+    elif hide_by_chain:
+        between_within = True
+    elif dim_by_chain:
+        between_within = True
+    else:
+        between_within = False
+
+    # plan out the arcs, to be able to count them and display the counts in the table
     # draw any dim arcs first, then regular colored arcs
+    PS = {}
+    SVG = {}
     for dim_level in ['dim','not_dim']:
+        PS[dim_level] = {}
+        SVG[dim_level] = {}
+        for arc_type in ['near','cp','true']:
+            PS[dim_level][arc_type] = []
+            SVG[dim_level][arc_type] = []
+
         # loop over groups of interactions to draw colored arcs for
         for group_name in arc_group_names_by_order:
             if group_name in hide:
@@ -1668,7 +1895,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             interactions = arc_group_to_interactions[group_name]
             if group_name == "near":
                 # draw gray arcs for all near interactions, to indicate additional close contacts
-                angle_shifter = 0
+                angle_shifter = 0.75*unit_shift
                 crossing = "all"
                 base_combination = "all"
                 # custom list of interactions
@@ -1696,6 +1923,10 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 angle_shifter = 2.25*unit_shift
                 crossing = "all"
                 base_combination = "all"
+            elif group_name == "cp":
+                angle_shifter = -0.75*unit_shift
+                crossing = "all"
+                base_combination = "all"
             elif group_name == "nested-non-wc":
                 angle_shifter = 1.5*unit_shift
                 crossing = "nested"
@@ -1718,9 +1949,9 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 interactions = list(set(basepairs_present) & set(['cWW','cwW','cWw','cWWa','cwWa','cWwa']))
 
             # set the color; skip if we are dimming now but group should not be dimmed, etc.
-            if dim_level == "dim" and group_name in dim:
-                colors = group_name_to_color[group_name]
-            elif dim_level == "not_dim" and not group_name in dim:
+            if dim_level == "dim" and (group_name in dim or between_within):
+                colors = dim_colors(group_name_to_color[group_name])
+            elif dim_level == "not_dim" and (not group_name in dim or between_within):
                 colors = group_name_to_color[group_name]
             else:
                 continue
@@ -1744,32 +1975,66 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                         bc = "all"
                 else:
                     bc = base_combination
-                pairs_and_crossing = interaction_to_triple_list[interaction]
+
+                if between_within:
+                    # keep only the arcs that are needed here
+                    pairs_and_crossing = []
+                    for (u1,u2,c) in interaction_to_triple_list[interaction]:
+                        f1 = u1.split("|")
+                        c1 = f1[2]
+                        cs1 = chain_symmetry(f1)
+                        f2 = u2.split("|")
+                        c2 = f2[2]
+                        cs2 = chain_symmetry(f2)
+
+                        if dim_level == "dim" and params["within"] == "dim" and cs1 == cs2:
+                            if not (c1,c2) in hide_by_chain:
+                                pairs_and_crossing.append((u1,u2,c))
+                        elif dim_level == "dim" and params["between"] == "dim" and not cs1 == cs2:
+                            if not (c1,c2) in hide_by_chain:
+                                pairs_and_crossing.append((u1,u2,c))
+                        elif dim_level == "dim" and (c1,c2) in dim_by_chain:
+                            if not (params["within"] == "hide" and cs1 == cs2):
+                                pairs_and_crossing.append((u1,u2,c))
+                        elif dim_level == "not_dim" and params["within"] == "show" and cs1 == cs2:
+                            if not (c1,c2) in dim_by_chain:
+                                if not (c1,c2) in hide_by_chain:
+                                    pairs_and_crossing.append((u1,u2,c))
+                        elif dim_level == "not_dim" and params["between"] == "show" and not cs1 == cs2:
+                            if not (c1,c2) in dim_by_chain:
+                                if not (c1,c2) in hide_by_chain:
+                                    pairs_and_crossing.append((u1,u2,c))
+                else:
+                    pairs_and_crossing = interaction_to_triple_list[interaction]
+
                 PSarcs, SVGarcs, num_arcs_drawn, arcs_drawn, helix_to_number_location = draw_arcs(pairs_and_crossing, assembly_unit_id_to_angle, arcs_drawn, crossing, bc, unit_id_to_standard, angle_shifter, circle_radius, unit_id_to_annotation, helix_to_number_location, helix_radius_shift, unit_id_to_assemblies, valid_assembly_pairs)
+
                 if num_arcs_drawn > 0:
                     if not gave_color_command:
-                        # now that we found an arc to draw, make sure the color is set exactly once
+                        # now that we found an arc to draw, set the color once
                         PSarcs = ["%f %f %f setrgbcolor" % colors] + PSarcs
 
                         svg_color = [int(255*c) for c in colors]
                         SVGarcs = ['<g fill="none" stroke="rgb(%d,%d,%d)" stroke-width="%f">' % (svg_color[0],svg_color[1],svg_color[2],linewidth)] + SVGarcs
 
                         gave_color_command = True
-                    if group_name == "near":
-                        near_commands += PSarcs  # draw near first
-                        SVG_near += SVGarcs
+
+                    if group_name in ["near","cp"]:
+                        PS[dim_level][group_name] += PSarcs
+                        SVG[dim_level][group_name] += SVGarcs
                     else:
-                        arc_commands += PSarcs
-                        SVG_true_arcs += SVGarcs
+                        PS[dim_level]['true'] += PSarcs
+                        SVG[dim_level]['true'] += SVGarcs
                         non_near_arcs_drawn = non_near_arcs_drawn.union(arcs_drawn)
 
                     group_name_to_count[group_name] += num_arcs_drawn
 
             if gave_color_command:
-                if group_name == "near":
-                    SVG_near.append("</g>")
+                # close SVG color command groups
+                if group_name in ["near","cp"]:
+                    SVG[dim_level][group_name].append("</g>")
                 else:
-                    SVG_true_arcs.append("</g>")
+                    SVG[dim_level]['true'].append("</g>")
 
     # accumulate a list of PostScript commands for the page
     PSlist = []
@@ -1784,29 +2049,32 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     # collect together header lines
     header = []
-    title_text = filename.replace("R3DCID_","")
-    header.append(title_text)
-    if 'description' in params:
-        if '\\n' in params['description']:
-            header += params['description'].split('\\n')
-        else:
-            header += break_line(params['description'],130,145)
-    if len(assemblies['message']) > 0:
-        header.append(assemblies['message'])
-    if 'title' in params:
-        header += break_line(params['title'],130,145)
-    if 'method' in params:
-        header.append(params['method'])
-    if 'source' in params:
-        header.append(params['source'])
-    if 'release_date' in params:
-        header.append(params['release_date'])
-    if 'resolution' in params:
-        try:
-            r = float(params['resolution'])
-            header.append(params['resolution']+"A")
-        except:
-            pass
+    if params.get('header','') == 'none':
+        pass
+    else:
+        if 'header' in params and 'filename' in params['header']:
+            header.append(filename)
+        if 'description' in params:
+            if '\\n' in params['description']:
+                header += params['description'].split('\\n')
+            else:
+                header += break_line(params['description'],130,145)
+        if len(assemblies['message']) > 0:
+            header.append(assemblies['message'])
+        if 'title' in params:
+            header += break_line(params['title'],130,145)
+        if 'method' in params:
+            header.append(params['method'])
+        if 'source' in params:
+            header.append(params['source'])
+        if 'release_date' in params:
+            header.append(params['release_date'])
+        if 'resolution' in params:
+            try:
+                r = float(params['resolution'])
+                header.append(params['resolution']+"A")
+            except:
+                pass
 
     header_font_size = 10 * mul
     header_vertical = 15 * mul
@@ -1842,105 +2110,107 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
         y -= header_vertical
 
-    # move origin back to lower left corner
-    # PSlist.append("-50 -760 translate")
-
-    # end the font choice
+    # end the header font choice
     SVGlist.append('</g>')
 
-    # draw the table of arc colors and counts
-    x_table = 50 * mul
     y_table = 160 * mul
     y_delta = -12 * mul
-    x_offset = 15 * mul
     table_font_size = 10 * mul
+    if params.get('counts',True):
+        # draw the table of arc colors and counts
+        x_table = 50 * mul
+        x_offset = 15 * mul
 
-    y = y_table + y_delta
+        y = y_table + y_delta
 
-    PSlist.append("newpath")
-    PSlist.append("/Times-Roman findfont")
-    PSlist.append("%f scalefont" % table_font_size)
-    PSlist.append("0 setgray")
-    PSlist.append("setfont")
+        PSlist.append("newpath")
+        PSlist.append("/Times-Roman findfont")
+        PSlist.append("%f scalefont" % table_font_size)
+        PSlist.append("0 setgray")
+        PSlist.append("setfont")
 
-    SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % table_font_size)
+        SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % table_font_size)
 
-    # count separately, because sometimes n1 BPh n2 and also n2 BPh n1, which is undercounted
-    for group_name in ["bph","br","sr","so"]:
-        total = 0
-        for interaction in arc_group_to_interactions[group_name]:
-            total += len(interaction_to_triple_list[interaction])
-        group_name_to_count[group_name] = max(total,group_name_to_count[group_name])
+        # count separately, because sometimes n1 BPh n2 and also n2 BPh n1, which is undercounted
+        for group_name in ["bph","br","sr","so"]:
+            total = 0
+            for interaction in arc_group_to_interactions[group_name]:
+                total += len(interaction_to_triple_list[interaction])
+            group_name_to_count[group_name] = max(total,group_name_to_count[group_name])
 
-    for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","near"]:
-        if not group_name in hide and not (group_name == "bonus" and "nested-non-wc" in hide):
-            if not group_name == "bonus":
-                PSlist.append("%d %d moveto" % (x_table+x_offset,y))
-                PSlist.append("%f %f %f setrgbcolor" % group_name_to_color[group_name])
-                PSlist.append("%d %f %d %d rectfill" % (x_table, y, 10 * mul, 7 * mul))
+        for group_name in ["nested-wc","lr-wc","nested-non-wc","bonus","lr-non-wc","stacking","bph","br","sr","so","cp","near"]:
+            if not group_name in hide and not (group_name == "bonus" and "nested-non-wc" in hide):
+                if not group_name == "bonus":
+                    PSlist.append("%d %d moveto" % (x_table+x_offset,y))
+                    rectangle_color = group_name_to_color[group_name]
+                    if group_name in dim:
+                        rectangle_color = dim_colors(rectangle_color)
+                    PSlist.append("%f %f %f setrgbcolor" % rectangle_color)
+                    PSlist.append("%d %f %d %d rectfill" % (x_table, y, 10 * mul, 7 * mul))
 
-                r, g, b = group_name_to_color[group_name]
-                SVGlist.append('<rect x="%d" y="%d" width="%d" height="%d" fill="rgb(%d,%d,%d)" />'
-                                % (x_table, page_height - y - 7 * mul, 10 * mul, 7 * mul, int(255*r), int(255*g), int(255*b)))
+                    r, g, b = group_name_to_color[group_name]
+                    SVGlist.append('<rect x="%d" y="%d" width="%d" height="%d" fill="rgb(%d,%d,%d)" />'
+                                    % (x_table, page_height - y - 7 * mul, 10 * mul, 7 * mul, int(255*r), int(255*g), int(255*b)))
 
-            PSlist.append("%d %f moveto" % (x_table + x_offset, y))
-            PSlist.append("0 0 0 setrgbcolor")
-            if group_name == "bonus":
-                PSlist.append("(%s) show" % (arc_group_name_to_text[group_name]))
-                SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name]))
-            else:
-                PSlist.append("(%s) show" % (arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
-                SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
+                PSlist.append("%d %f moveto" % (x_table + x_offset, y))
+                PSlist.append("0 0 0 setrgbcolor")
+                if group_name == "bonus":
+                    PSlist.append("(%s) show" % (arc_group_name_to_text[group_name]))
+                    SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name]))
+                else:
+                    PSlist.append("(%s) show" % (arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
+                    SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_table+x_offset,page_height-y,arc_group_name_to_text[group_name] % (group_name_to_count[group_name])))
+
+                y = y + y_delta
+
+        # end the table font choice
+        SVGlist.append('</g>')
+
+    if params.get('labels',True):
+        # collect chain identifiers and display names, and break lines
+        chains_printed = set([])
+        chain_lines = []
+        num_distinct_chains = len(set([x['chain_name'] for x in chain_info]))
+        if num_distinct_chains > 11:
+            # allow a longer line length because the text will be smaller
+            max_length = int(60 * num_distinct_chains / 11.0)
+        else:
+            # reasonable line length
+            max_length = 60
+        for chain_data in chain_info:
+            chain_name = chain_data['chain_name']
+            if not chain_name in chains_printed:
+                chains_printed.add(chain_name)
+                display_name = chain_data['display_name']
+                chain_text = "Chain %s: %s" % (chain_name, display_name)
+                chain_lines += break_line(chain_text,max_length,max_length+5)
+
+        # font size for table of chain names and their standardized names
+        y = y_table + y_delta
+        chain_table_font_size = table_font_size
+        if len(chain_lines) > 11:
+            # reduce spacing between rows
+            y_delta = y_delta * 11.0 / len(chain_lines)
+            chain_table_font_size = chain_table_font_size*11.0/len(chain_lines)
+            PSlist.append("/Times-Roman findfont")
+            PSlist.append("%f scalefont" % (chain_table_font_size))
+            PSlist.append("setfont")
+
+        SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % chain_table_font_size)
+
+        # print list of chains and their display names below the diagram
+        x_chain_list = 320 * mul
+        for chain_text in chain_lines:
+            ct = chain_text.replace("(","\(").replace(")","\)")
+            PSlist.append("%d %f moveto" % (x_chain_list, y))
+            PSlist.append("(%s) show" % (ct))
+
+            SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_chain_list,page_height-y,ct))
 
             y = y + y_delta
 
-    # end the font choice
-    SVGlist.append('</g>')
-
-    # collect chain identifiers and display names, and break lines
-    chains_printed = set([])
-    chain_lines = []
-    num_distinct_chains = len(set([x['chain_name'] for x in chain_info]))
-    if num_distinct_chains > 11:
-        # allow a longer line length because the text will be smaller
-        max_length = int(60 * num_distinct_chains / 11.0)
-    else:
-        # reasonable line length
-        max_length = 60
-    for chain_data in chain_info:
-        chain_name = chain_data['chain_name']
-        if not chain_name in chains_printed:
-            chains_printed.add(chain_name)
-            display_name = chain_data['display_name']
-            chain_text = "Chain %s: %s" % (chain_name, display_name)
-            chain_lines += break_line(chain_text,max_length,max_length+5)
-
-    # font size for table of chain names and their standardized names
-    y = y_table + y_delta
-    chain_table_font_size = table_font_size
-    if len(chain_lines) > 11:
-        # reduce spacing between rows
-        y_delta = y_delta * 11.0 / len(chain_lines)
-        chain_table_font_size = chain_table_font_size*11.0/len(chain_lines)
-        PSlist.append("/Times-Roman findfont")
-        PSlist.append("%f scalefont" % (chain_table_font_size))
-        PSlist.append("setfont")
-
-    SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="black">' % chain_table_font_size)
-
-    # print list of chains and their display names below the diagram
-    x_chain_list = 320 * mul
-    for chain_text in chain_lines:
-        ct = chain_text.replace("(","\(").replace(")","\)")
-        PSlist.append("%d %f moveto" % (x_chain_list, y))
-        PSlist.append("(%s) show" % (ct))
-
-        SVGlist.append('<text x="%d" y="%d">%s</text>' % (x_chain_list,page_height-y,ct))
-
-        y = y + y_delta
-
-    # end the font choice
-    SVGlist.append('</g>')
+        # end the chain label font choice
+        SVGlist.append('</g>')
 
     # move origin to center of the circle
     PSlist.append("%d %d translate" % (306 * mul, 445 * mul))
@@ -1956,10 +2226,10 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
         interactions_by_importance += arc_group_to_interactions['br'] + arc_group_to_interactions['stacking']
         interactions_by_importance += arc_group_to_interactions['sr'] + arc_group_to_interactions['so']
         for interaction in interaction_to_triple_list.keys():
-            if interaction.startswith("n"):
+            if interaction.startswith("n") or interaction == 'cp':
                 interactions_by_importance.append(interaction)
     else:
-        if not text or "basepair" in text:
+        if not text or "basepair" in text or text == "between" or text == "within":
             interactions_by_importance = basepairs_present
         if "bph" in text:
             interactions_by_importance = interactions_by_importance + arc_group_to_interactions['bph']
@@ -1971,6 +2241,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             interactions_by_importance = interactions_by_importance + arc_group_to_interactions['sr']
         if "so" in text:
             interactions_by_importance = interactions_by_importance + arc_group_to_interactions['so']
+        if "cp" in text:
+            interactions_by_importance = interactions_by_importance + arc_group_to_interactions['cp']
         if "near" in text:
             for interaction in interaction_to_triple_list.keys():
                 if interaction.startswith("n"):
@@ -1986,7 +2258,6 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                         interactions_by_importance.append(interaction)
                     if "so" in text and interaction[1:] in arc_group_to_interactions["so"]:
                         interactions_by_importance.append(interaction)
-
 
     # collect annotations to put outside of the labels of the base + number for each nt
     text_interactions = {}
@@ -2022,6 +2293,13 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                     n2_chain = n2.split("|")[2]
                 else:
                     n2_chain = ''
+
+                if 'between' in params['text'] and not 'within' in params['text']:
+                    if chain_symmetry(n1_fields) == chain_symmetry(n2_fields):
+                        continue
+                if 'within' in params['text'] and not 'between' in params['text']:
+                    if not chain_symmetry(n1_fields) == chain_symmetry(n2_fields):
+                        continue
 
                 if abs(angle1) < 90 or abs(angle1) > 270:
                     # n1 on right side of the circle, append interaction like n1 BPh n2
@@ -2143,17 +2421,30 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
         current_arc_start = start_angle
         current_arc_end   = start_angle + 0.001  # just in case
 
+        current_arc_start = None    # should be safe, right?
+        current_arc_end = None
+
         large_number_track = 0
         previous_helix_length = 2
         helix = ""
 
         longest_base_length = 1
         for sequence_id,unit_id in sequence_position_unit_id_pairs:
-            if sequence_id == 'chain_break':
+            if sequence_id in ['chain_break','continuity_break']:
                 if feature == 0:
-                    # record the starting and ending angles of the chain that just ended
-                    outside_arcs.append([current_arc_start,current_arc_end])
-                current_arc_start = None    # next nucleotide will start the next chain
+                    if sequence_id == 'chain_break':
+                        # record the starting and ending angles of the chain that just ended
+                        # chain label is stored in the unit_id field here
+                        outside_arcs.append([current_arc_start,current_arc_end,unit_id])
+                    else:
+                        # end the current arc because of a continuity break
+                        outside_arcs.append([current_arc_start,current_arc_end,''])
+
+                current_arc_start = None    # next nucleotide will start the next arc
+
+                continue
+
+            if sequence_id == 'chain_start':
                 continue
 
             # sequence_id contains information on assembly, model, chain, symmetry, etc.
@@ -2165,7 +2456,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
             if feature == 0:
                 # draw tick mark at each nucleotide
-                if not unit_id == "NULL":
+                if not unit_id == "NULL" and not text == "blank":
                     co = math.cos(math.radians(a))
                     si = math.sin(math.radians(a))
 
@@ -2188,7 +2479,8 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 longest_base_length = chain_to_longest_base_length.get(current_chain,1)
                 n3d_present = chain_to_n3d_present.get(current_chain,False)
 
-                if text == 'none':
+                if text == 'blank':
+                    # absolutely no text around the circle, not even base and number
                     t = ""
                 elif unit_id == "NULL":
                     if n3d_present:
@@ -2215,7 +2507,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 else:
                     interactions = ""
 
-                if 'helix' in text or text == 'all':
+                if 'helix' in text or 'all' in text:
                     if unit_id_to_annotation:
                         unit_id_5 = first_five_fields(unit_id)
                         helix = unit_id_to_annotation.get(unit_id_5,None)
@@ -2273,7 +2565,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
                 PSlist.append("grestore")
 
-            if feature == 1 and show_major_numbers and not text == 'none':
+            if feature == 1 and show_major_numbers and not text == 'blank':
                 # add large numbers around outside of the circle, all with the same font and color
 
                 if unit_id and not unit_id == "NULL":
@@ -2320,23 +2612,16 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
         if not feature == 1 or show_major_numbers:
             SVGlist.append('</g>')
 
-    # add the arcs for near interactions first so they are underneath
-    PSlist += near_commands
-    # draw the arcs for stacking, then base-backbone, then basepairs
-    PSlist += arc_commands
-
-    SVGlist += SVG_near
-    SVGlist += SVG_true_arcs
-
-    # outside_arcs and chain_name_list need to have the same length or the next step fails
-    if not len(outside_arcs) == len(chain_name_list):
-        print('Problem: outside_arcs and chain_name_list should have the same length, but do not')
+    # add the arcs for interactions in the correct order
+    for dim_level in ['dim','not_dim']:
+        for arc_type in ['near','cp','true']:
+            PSlist += PS[dim_level][arc_type]
+            SVGlist += SVG[dim_level][arc_type]
 
     # draw chain labels outside the circle
-    if not text == 'none':
-        max_chain_label = max([len(x) for x in chain_name_list])
-        if max_chain_label > 10:
-            chain_label_font_size = chain_font_size * 10.0 / max_chain_label
+    if not text == 'blank':
+        if max_chain_label_length > 10:
+            chain_label_font_size = chain_font_size * 10.0 / max_chain_label_length
         else:
             chain_label_font_size = chain_font_size
 
@@ -2348,14 +2633,17 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
         SVGlist.append('<g font-family="Times-Roman" font-size="%f" fill="rgb(%f,%f,%f)" stroke="none">' % (chain_label_font_size,int(255*gntc[0]),int(255*gntc[1]),int(255*gntc[2])))
 
-        for e in range(len(outside_arcs)):
+        for start_angle, chain_label in chain_angle_label:
+            # # at the start of a chain, chain_label is the correct text; for continuity breaks it is empty
+            # if len(chain_label) == 0 or start_angle is None:
+            #     continue
+
             # keep the chain label from going off the page
             radius = min(circle_radius + major_number_distance,max_major_number_radius)
-            chain_label = chain_name_list[e]
             PSlist.append("gsave")
-            if abs(outside_arcs[e][0]) >= 90 and abs(outside_arcs[e][0]) <= 270:
+            if abs(start_angle) >= 90 and abs(start_angle) <= 270:
                 # left side of the circle, right justify
-                ang = outside_arcs[e][0]+major_number_aligner_angle+chain_gap_location*(chain_gap_size+1)*angle_difference+180
+                ang = start_angle+major_number_aligner_angle+chain_gap_location*(chain_gap_size+1)*angle_difference+180
                 PSlist.append("%s rotate" % (ang))
                 PSlist.append("%0.3f 0 moveto" % (-radius))
                 PSlist.append("(%s) dup stringwidth pop neg 0 rmoveto show" % chain_label)
@@ -2365,7 +2653,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
                 SVGlist.append('</g>')
             else:
                 # right side of the circle, left justify
-                ang = outside_arcs[e][0]-major_number_aligner_angle+chain_gap_location*(chain_gap_size+1)*angle_difference
+                ang = start_angle-major_number_aligner_angle+chain_gap_location*(chain_gap_size+1)*angle_difference
                 PSlist.append("%s rotate" % (ang))
                 PSlist.append("%0.3f 0 moveto" % radius)
                 PSlist.append("(%s) show" % chain_label)
@@ -2415,7 +2703,7 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
 
     SVGlist.append('<g fill="none" stroke="black" stroke-width="%f">' % outer_arc_line_width)
 
-    for start_angle, end_angle in outside_arcs:
+    for start_angle, end_angle, label in outside_arcs:
         if start_angle is not None and end_angle is not None:
             PSlist.append("0 0 %f %f %f arc" % (circle_radius+outer_arc_line_width/4.0,end_angle - 0.25*angle_difference,start_angle + 0.25*angle_difference))
             PSlist.append("stroke")
@@ -2539,46 +2827,49 @@ def main(input_chains, params = {}):
             svgfile.write(SVGcommands)
         print("Wrote output file %s.svg" % filename)
 
-    if 'format' in params and 'pdf' in params['format'].lower():
+    if 'format' in params and ('pdf' in params['format'].lower() or 'ps' in params['format'].lower()):
         path_filename = os.path.join(output_directory,filename + ".ps")
         path_filename_pdf = os.path.join(output_directory,filename + ".pdf")
 
         with open(path_filename, 'w') as newpsfile:
             newpsfile.write(PScommands)
 
-        try:
-            if shutil.which("ps2pdf"):
-                subprocess.run(
-                    ["ps2pdf", path_filename, path_filename_pdf],
-                    check=True,
-                )
-            elif shutil.which("gs"):
-                subprocess.run(
-                    [
-                        "gs",
-                        "-sDEVICE=pdfwrite",
-                        "-sPAPERSIZE=custom ",
-                        "-dDEVICEWIDTHPOINTS=%d " % page_width,
-                        "-dDEVICEHEIGHTPOINTS=%d " % page_height,
-                        "-dFIXEDMEDIA ",
-                        "-dNOPAUSE",
-                        "-dBATCH",
-                        "-dSAFER",
-                        f"-sOutputFile={path_filename_pdf}",
-                        path_filename,
-                    ],
-                    check=True,
-                )
-            else:
-                raise RuntimeError("Neither gs nor ps2pdf found on system")
+        if 'pdf' in params['format'].lower():
+            try:
+                if shutil.which("ps2pdf"):
+                    subprocess.run(
+                        ["ps2pdf", path_filename, path_filename_pdf],
+                        check=True,
+                    )
+                elif shutil.which("gs"):
+                    subprocess.run(
+                        [
+                            "gs",
+                            "-sDEVICE=pdfwrite",
+                            "-sPAPERSIZE=custom ",
+                            "-dDEVICEWIDTHPOINTS=%d " % page_width,
+                            "-dDEVICEHEIGHTPOINTS=%d " % page_height,
+                            "-dFIXEDMEDIA ",
+                            "-dNOPAUSE",
+                            "-dBATCH",
+                            "-dSAFER",
+                            f"-sOutputFile={path_filename_pdf}",
+                            path_filename,
+                        ],
+                        check=True,
+                    )
+                else:
+                    raise RuntimeError("Neither gs nor ps2pdf found on system")
 
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"PDF conversion failed: {e}")
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"PDF conversion failed: {e}")
 
-        print("Wrote output file %s.pdf" % filename)
+            print("Wrote output file %s.pdf" % filename)
 
-        # remove the .ps file
-        os.remove(path_filename)
+        if not 'ps' in params['format'].lower():
+            # remove the .ps file
+            if os.path.exists(path_filename):
+                os.remove(path_filename)
 
     # return filename with no extension and empty message
     return filename, ""
@@ -2604,15 +2895,17 @@ if __name__ == '__main__':
         parser.add_argument("--data", help="Location for data files downloaded by the program")
         parser.add_argument("--output", help="Location for diagrams produced by the program")
         parser.add_argument("--coloring", help='Arc colors, choose from ([default],wong,grayscale)')
-        parser.add_argument("--format", help='Output format, comma separated list from (pdf,svg)')
-        parser.add_argument("--show", help='Arcs to show, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,near)')
-        parser.add_argument("--hide", help='Arcs to hide, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,near)')
-        parser.add_argument("--dim", help='Arcs to dim, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,near)')
-        parser.add_argument("--text", help='Text to show outside the circle, comma separated list from ([basepair],stacking,bph,br,sr,so,near,helix,all,none)')
+        parser.add_argument("--format", help='Output format, comma separated list from (pdf,svg,ps)')
+        parser.add_argument("--show", help='Arcs to show, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,cp,near)')
+        parser.add_argument("--hide", help='Arcs to hide, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,cp,near)')
+        parser.add_argument("--dim", help='Arcs to dim, comma separated list from (nested-wc,lr-wc,wc,nested-non-wc,lr-non-wc,non-wc,stacking,bph,br,sr,so,cp,near)')
+        parser.add_argument("--text", help='Text to show outside the circle, comma separated list from ([basepair],stacking,bph,br,sr,so,cp,near,helix,all,none,blank)')
         parser.add_argument("--n3d", help='Show nucleotides with no 3D coordinates ([true] or false)')
         parser.add_argument("--helix_size", help='Font size for helix numbers when available, 0 for no helix numbers')
-        parser.add_argument("--header", help='PDB information to show from (title,method,release_date,source,resolution,[all],none)')
-        parser.add_argument("--description", help='Text description to show along the top of the diagram')
+        parser.add_argument("--header", help='Header information to show from (filename,title,method,release_date,source,resolution,[all],none)')
+        parser.add_argument("--description", help='Text description to show along the top of the diagram, limit 300 characters, \\n for line breaks')
+        parser.add_argument("--counts", help='Show interaction counts below diagram ([true] or false)')
+        parser.add_argument("--labels", help='Show chain labels below diagram ([true] or false)')
         args = parser.parse_args()
 
         params = {}
@@ -2658,27 +2951,33 @@ if __name__ == '__main__':
 
         if args.format:
             params['format'] = args.format.lower().replace(" ","")
-            if not 'pdf' in params['format'] and not 'svg' in params['format']:
+            if not 'pdf' in params['format'] and not 'svg' in params['format'] and not 'ps' in params['format']:
                 print('Producing pdf formatted output')
                 params['format'] = 'pdf'
         else:
             params['format'] = 'pdf'
 
         if args.hide:
-            params['hide'] = args.hide.lower().replace(" ","")
+            params['hide'] = args.hide
 
         if args.show:
-            params['show'] = args.show.lower().replace(" ","")
+            params['show'] = args.show
 
         if args.dim:
-            params['dim'] = args.dim.lower().replace(" ","")
+            params['dim'] = args.dim
 
         if args.text:
             if not args.text.lower() == 'basepair':
-                params['text'] = args.text.lower().replace(" ","")
+                params['text'] = args.text.lower().replace(" ","").replace("coplanar","cp")
 
         if args.n3d and args.n3d.lower() == 'false':
             params['n3d'] = False
+
+        if args.counts and args.counts.lower() == 'false':
+            params['counts'] = False
+
+        if args.labels and args.labels.lower() == 'false':
+            params['labels'] = False
 
         if args.helix_size:
             try:

@@ -100,7 +100,7 @@ for i, chain_string in enumerate(chain_strings):
     if random.random() < 0.1:
         # select one or more from arc_group_to_interactions.keys()
         dim_set = []
-        for a in arc_group_to_interactions.keys():
+        for a in list(arc_group_to_interactions.keys()) + ['between','within']:
             if random.random() < 0.3:
                 dim_set.append(a)
         params['dim'] = ",".join(dim_set)
@@ -108,7 +108,7 @@ for i, chain_string in enumerate(chain_strings):
     if random.random() < 0.1:
         # select one or more from arc_group_to_interactions.keys()
         text_set = []
-        for a in ["basepair","stacking","bph","br","sr","so","near","all","helix"]:
+        for a in ["basepair","stacking","bph","br","sr","so","cp","near","all","helix","between","within","blank"]:
             if random.random() < 0.3:
                 text_set.append(a)
         params['text'] = ",".join(text_set)
@@ -117,14 +117,23 @@ for i, chain_string in enumerate(chain_strings):
         params['n3d'] = False
 
     if random.random() < 0.1:
-        text_set = []
-        for a in ["title","method","release_date","source","resolution","none","all"]:
+        header_set = []
+        for a in ["filename","title","method","release_date","source","resolution","none","all"]:
             if random.random() < 0.2:
-                text_set.append(a)
-        if len(text_set) > 0:
-            params['header'] = ",".join(text_set)
+                header_set.append(a)
+        if len(header_set) > 0:
+            params['header'] = ",".join(header_set)
 
-    params['format'] = "pdf,svg"
+    if random.random() < 0.1:
+        params['counts'] = False
+
+    if random.random() < 0.1:
+        params['labels'] = False
+
+    if random.random() < 0.1:
+        params['description'] = 'Random description text\nSecond line'
+
+    params['format'] = "pdf,svg,ps"
 
     output = r3dcid(chain_string, params)
 
