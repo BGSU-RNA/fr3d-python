@@ -1,4 +1,5 @@
-"""This is a package for generating unit ids for units from data. This checks
+"""
+This is a package for generating unit ids for units from data. This checks
 if the id is valid, which means it contains all the required fields.
 """
 
@@ -21,7 +22,8 @@ DEFAULTS = {
 
 
 class InvalidUnitId(Exception):
-    """This is generated whenever we attempt to encode an invalid unit id. This
+    """
+    This is generated whenever we attempt to encode an invalid unit id. This
     means we raise if this exception if we are missing required fields such as
     PDB, model and chain.
     """
@@ -29,7 +31,8 @@ class InvalidUnitId(Exception):
 
 
 def encode(data, full=False):
-    """Generate a unit ID for the given data. All possible fields in the
+    """
+    Generate a unit ID for the given data. All possible fields in the
     given dictonary will be used to generate the id.
 
     :data: Dictonary of fields to use in unit id.
@@ -65,7 +68,8 @@ def encode(data, full=False):
 
 
 def decode(unit_id):
-    """Turn a unit id into a dictonary of it's components. This will infer any
+    """
+    Turn a unit id into a dictonary of its components. This will infer any
     fields which are not shown, such as symmetry and atom name.
 
     :unit_id: A unit id string.
