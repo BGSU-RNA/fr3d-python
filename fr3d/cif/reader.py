@@ -689,7 +689,12 @@ class Cif(object):
                 symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database.
                                                     # This is only applied for the structures in the old symmetry list.
         elif not symmetry_name or symmetry_name == '?':
-            symmetry_name = 'ASM_%s' % symmetry['id'] #we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
+            # we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
+            symmetry_name = 'ASM_%s' % symmetry['id']
+        elif symmetry_name == '1_555' and symmetry['type'] == 'point symmetry operation':
+            # 9o9k has two symmetries called 1_555 but one is not the identity operation
+            # Call that one ASM_ and use its number
+            symmetry_name = 'ASM_%s' % symmetry['id']
 
         return symmetry_name
 
