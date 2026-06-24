@@ -986,6 +986,12 @@ def calculateQueryConstraints(Q):
                 #     Q["requiredMoleculeType"][i].add('RNA')
                 pass
 
+            elif Q["interactionMatrix"][i][i].strip().lower() in ['mod','modified']:
+                Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_modified_set
+
+            elif Q["interactionMatrix"][i][i].strip().lower() in ['~mod','~modified']:
+                Q["requiredUnitType"][i] = RNA_standard
+
             else:
                 iMtext = Q["interactionMatrix"][i][i].replace(","," ").upper()
 
