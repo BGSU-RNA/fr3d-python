@@ -28,9 +28,9 @@ RNA_modified_set = set()
 DNA_modified_set = set()
 
 for modified, parent in modified_base_to_parent.items():
-    if parent in RNA_standard:
+    if parent in RNA_standard and not modified in RNA_standard | DNA_standard:
         RNA_modified_set.add(modified)
-    else:
+    elif not modified in RNA_standard | DNA_standard:
         DNA_modified_set.add(modified)
 
 protein_unit_types = set(["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"])
