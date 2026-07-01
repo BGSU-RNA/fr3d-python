@@ -691,7 +691,7 @@ class Cif(object):
         elif not symmetry_name or symmetry_name == '?':
             # we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
             symmetry_name = 'ASM_%s' % symmetry['id']
-        elif symmetry_name == '1_555' and symmetry['type'] == 'point symmetry operation':
+        elif symmetry_name == '1_555' and 'type' in symmetry and symmetry['type'] == 'point symmetry operation':
             # 9o9k has two symmetries called 1_555 but one is not the identity operation
             # Call that one ASM_ and use its number
             symmetry_name = 'ASM_%s' % symmetry['id']
