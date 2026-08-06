@@ -997,7 +997,7 @@ def calculateQueryConstraints(Q):
 
                 iMarray = iMtext.split(" ")
                 for iM in iMarray:
-                    iMlower = iM.lower()
+                    iMlower = iM.lower().replace("chain_length","chainlength")
 
                     if len(iM) == 0:
                         continue
