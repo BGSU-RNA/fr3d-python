@@ -966,7 +966,7 @@ def calculateQueryConstraints(Q):
         foundChainLength = False
         foundSolitaryConstraint = False
 
-        # process unary constraints
+        # process unary constraints, constraints on the diagonal
         for i in range(Q["numPositions"]):
             Q["requiredUnitType"][i] = set()
             Q["glycosidicBondOrientation"][i] = []
@@ -1166,6 +1166,10 @@ def calculateQueryConstraints(Q):
                             Q["errorMessage"].append('Could not parse chi constraint %d' % i)
 
                     elif "chainlength" in iMlower:
+                        # chain length constraints
+                        # chainLength_1000_2000 to get chain length between 1000 and 2000
+                        # chainlength_2000_inf
+                        # chainlength_500_200 to get chain length outside [200,500]
                         fields = iMlower.replace("(","_").replace(")","")
                         fields = fields.replace("[","_").replace("]","")
                         fields = fields.replace(":","_")
