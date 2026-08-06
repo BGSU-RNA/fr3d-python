@@ -146,6 +146,7 @@ body {
     link.href = url;
 
     let pdb_id = params.get("chains").split('|')[0].split('_')[0];
+    document.title = pdb_id + " R3DCID HTML Viewer";
     console.log(pdb_id);
     const interaction_url = "https://rna.bgsu.edu/rna3dhub/pdb/" + pdb_id + "/interactions/fr3d/basepairs";
     const interaction_link = document.getElementById("interactionList");
