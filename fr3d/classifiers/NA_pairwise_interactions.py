@@ -717,7 +717,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     bph_center_center_distance = 0     # record the largest screening distance for which an interaction is found
     oo_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
-    basepair_parent_base_combination_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','DT,DT'])
+    basepair_parent_base_combination_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','U,DT','DT,DT'])
 
     # keep track of overlapping chains
     overlapping_chains = set()
@@ -1021,6 +1021,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
                                     interaction_reversed = reverse_edges(interaction)
                                     category_to_interactions['sugar_ribose'].add(interaction_reversed)
                                     max_center_center_distance = max(max_center_center_distance,center_center_distance)  # for setting optimally
+
 
                         # annotate basepairs
                         if 'basepair' in categories:
@@ -2235,6 +2236,8 @@ def annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs={}
         nt_nt_screen_distance = base_backbone_center_center_distance_cutoff
     if 'oo_distance' in categories:
         nt_nt_screen_distance = oo_distance_center_center_distance_cutoff
+    if 'datapoint' in categories:
+        get_datapoint = True
 
     timerData = myTimer("Build cubes for neighbors",timerData)
     baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
@@ -4322,8 +4325,8 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
         else:
             for category in category_list:
                 c = category.lower()
-                if c in all_categories.split(","):
-                    categories[category.lower()] = []
+                if c in all_categories.split(",") or c == 'datapoint':
+                    categories[c] = []
                 else:
                     print('Category %s is not recognized' % c)
                 categories['basepair'] = []         # always basepairs, to get crossing numbers
