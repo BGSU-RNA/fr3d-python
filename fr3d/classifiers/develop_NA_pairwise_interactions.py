@@ -13,11 +13,6 @@ python27 NA_pairwise_interactions.py -c basepair,stacking,sugar_ribose 4TNA
 python38 NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
 python311 NA_pairwise_interactions.py -c basepair,sugar_ribose 4TNA
 
-python38 develop_NA_pairwise_interactions.py
-python311 develop_NA_pairwise_interactions.py 1
-python311 develop_NA_pairwise_interactions.py 2
-python311 develop_NA_pairwise_interactions.py 4
-python311 develop_NA_pairwise_interactions.py 5
 
 """
 
@@ -40,6 +35,8 @@ from fr3d.localpath import fr3d_pickle_path
 
 from hydrogen_bonds import load_ideal_basepair_hydrogen_bonds
 from fr3d.modified.mapping import modified_base_to_parent
+
+from plot_basepair_interactions import load_napair_chains
 
 def process_oo_distance_files():
 
@@ -179,8 +176,8 @@ if False:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('worker', type=str, nargs='+', help='0 for all, 1 to process evens, 2 to process odds, 3 to start at end')
-parser.add_argument('-c', "--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
+parser.add_argument('--worker', help='0 for all, 1 to process evens, 2 to process odds, 3 to start at end')
+parser.add_argument("--category", help='Interaction category or categories (basepair,stacking,sO,basepair_detail, bphosphate)')
 args = parser.parse_args()
 
 Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW']
@@ -190,7 +187,6 @@ if args.category:
     for category in args.category.split(","):
         categories[category] = []
 else:
-    # default is to annotate and write just "true" basepairs
     categories = {}
     categories['basepair'] = Leontis_Westhof_basepairs
     # tell which types of interactions to annotate
@@ -217,25 +213,25 @@ PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/NR/3.349/3.0A/csv','8B
 PDB_list = ['4V9F']
 PDB_list = ['5WTI']
 
-# make sure we have processed all files that are in the datmos list of curated pairs
-from plot_basepair_interactions import load_curated_pairs
-curated_pairs = load_curated_pairs()
-print("Curated pairs:")
-print(curated_pairs)
-PDB_list = set()
-for u1,u2 in curated_pairs:
-    pdb = u1.split("|")[0]
-    PDB_list.add(pdb)
-PDB_list = sorted(PDB_list)
-print("Processing these %d PDB files:" % len(PDB_list))
-print(PDB_list)
+if False:
+    # make sure we have processed all files that are in the NAPAIR list of curated pairs
+    from plot_basepair_interactions import load_curated_pairs
+    curated_pairs = load_curated_pairs()
+    print("Curated pairs:")
+    print(curated_pairs)
+    PDB_list = set()
+    for u1,u2 in curated_pairs:
+        pdb = u1.split("|")[0]
+        PDB_list.add(pdb)
 
-compare_to_datmos = True
-compare_to_datmos = False
 
-if compare_to_datmos:
+if True:
+    pdb_list, chain_list = load_napair_chains()
+
+if False:
+    # read old NAPAIR/NABIR/datmos annotations to determine PDB list
     if not os.path.exists('C:/Users/zirbel/Documents/PythonFR3D/data/chain_list.pickle'):
-        # read chains from datmos / nabir annotations
+        # read chains from NAPAIR / nabir annotations
         # format:
         # pdbid,model,family,class,chain1,nr1,res1,alt1,ins1,symmetry_operation1,chain2,nr2,res2,alt2,ins2,symmetry_operation2,confit,rmsd,curated_file,knn_metric,coplanarity_angle,coplanarity_shift1,coplanarity_shift2,coplanarity_edge_angle1,coplanarity_edge_angle2,C1_C1_yaw1,C1_C1_pitch1,C1_C1_roll1,C1_C1_yaw2,C1_C1_pitch2,C1_C1_roll2,hb_0_length,hb_0_donor_angle,hb_0_acceptor_angle,hb_0_OOPA1,hb_0_OOPA2,hb_1_length,hb_1_donor_angle,hb_1_acceptor_angle,hb_1_OOPA1,hb_1_OOPA2,hb_2_length,hb_2_donor_angle,hb_2_acceptor_angle,hb_2_OOPA1,hb_2_OOPA2,hb_3_length,hb_3_donor_angle,hb_3_acceptor_angle,hb_3_OOPA1,hb_3_OOPA2
         # 1bpz,1,cWW,cWW-G-C,D,1,DG,"", ,,T,5,DC,"", ,,18.84,0.403,6l9z_J_DG_262_1_555_I_DC_77_1_555,0.898,178.63055,-0.08282822,-0.030659033,0.13888925,0.05842374,68.25878,3.9918058,-178.93614,68.293076,-2.466058,176.6849,2.8590918,109.56053,136.37636,-0.43760082,-1.7050114,2.9092517,128.96086,111.27294,-0.5603098,-1.8470126,2.8477883,138.41031,106.47203,-0.4901489,-1.7738901,,,,,
@@ -244,7 +240,7 @@ if compare_to_datmos:
         PDB_chain_set = set()
         import glob
         # get all .csv files in directory
-        directory = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_datmos_2025-09-19'
+        directory = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_NAPAIR_2025-09-19'
         file_list = glob.glob(os.path.join(directory,'*.csv'))
         for filename in file_list:
             print(filename)
@@ -268,15 +264,18 @@ if compare_to_datmos:
     else:
         with open('C:/Users/zirbel/Documents/PythonFR3D/data/chain_list.pickle','rb') as f:
             PDB_chain_list = pickle.load(f)
-        print('Read %d chains from datmos annotations' % len(PDB_chain_list))
+        print('Read %d chains from NAPAIR annotations' % len(PDB_chain_list))
         PDB_list = sorted(set([pdb_id.split("|")[0] for pdb_id in PDB_chain_list]))
-        print('Found %d unique PDB IDs from datmos annotations' % len(PDB_list))
+        print('Found %d unique PDB IDs from NAPAIR annotations' % len(PDB_list))
+
+PDB_list = sorted(PDB_list)
+print("Processing %d PDB files:" % len(PDB_list))
 
 # save .pickle file for plot_basepair_interactions?
 get_datapoint = True
 
-# temporary for oo_distance
 if False:
+    # temporary for oo_distance
     categories = {}
     categories['oo_distance'] = []
 
@@ -320,31 +319,42 @@ ShowStructureReadingErrors = False
 experimental = True          # save interactions in pairs_exp folder so they can be compared to ones from the server
 experimental = False
 
-# this path should be specified in localpath.py
-# intended for writing out a .pickle file to be used by the FR3D motif search tool
-
 # annotate all nucleotides in all chains, even when a representative set is used
-annotate_entire_PDB_files = False
 annotate_entire_PDB_files = True
+annotate_entire_PDB_files = False
 
+# annotate glycosidic bond angle, etc.
 annotate_units = False
+
+# save a .pickle file like what you could download from RNA 3D Hub for pairs
+save_pairs_pickle_file = False
 
 timerData = myTimer("start")
 lastwritetime = time()
+
+if not annotate_entire_PDB_files:
+    save_pairs_pickle_file = False
 
 allInteractionDictionary = defaultdict(list)
 
 timerData = myTimer("Making PDB list",timerData)
 
-PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
+if chain_list:
+    PDB_IFE_Dict = {}
+    for c in chain_list:
+        fields = c.split("|")
+        pdb_id = fields[0]
+        if not pdb_id in PDB_IFE_Dict:
+            PDB_IFE_Dict[pdb_id] = c
+        else:
+            PDB_IFE_Dict[pdb_id] += "+" + c
+else:
+    PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
 
 print("PDB_IFE_Dict is %s" % PDB_IFE_Dict)
 
-counter = 0
-count_pair = 0
-
-# loop through 3D structures and annotate interactions
 PDBs = PDB_IFE_Dict.keys()
+PDBs = sorted(PDBs)
 #PDBs = PDBs[::-1]  # reverse the order of the list, for debugging
 
 print('Annotating these %d PDB files:' % len(PDBs))
@@ -360,8 +370,6 @@ else:
 Leontis_Westhof_basepairs = ['cWW', 'cSS', 'cHH', 'cHS', 'cHW', 'cSH', 'cSW', 'cWH', 'cWS', 'tSS', 'tHH', 'tHS', 'tHW', 'tSH', 'tSW', 'tWH', 'tWS', 'tWW', 'cWB', 'cBW']
 focused_basepair_cutoffs = focus_basepair_cutoffs(nt_nt_cutoffs,Leontis_Westhof_basepairs)
 ideal_hydrogen_bonds = load_ideal_basepair_hydrogen_bonds()
-
-PDBs = sorted(PDBs)
 
 # simple parallelization
 if worker == 0:     # start at 0 and process all files
@@ -393,11 +401,13 @@ else:
     b = len(PDBs)
     c = 1
 
+counter = 0
+count_pair = 0
+
 for i in range(a,b,c):
 
-    PDB = PDBs[i]
-
-    PDB_id = PDB[0:4]
+    PDB_id = PDBs[i]
+    PDB = PDB_id
 
     counter += 1
 
@@ -420,177 +430,65 @@ for i in range(a,b,c):
             print('Annotating units in %s, which is %d out of %d' % (PDB_id,i+1,len(PDB_IFE_Dict)))
             generateUnitAnnotation(PDB_id, '', inputPath, outputNAPairwiseInteractions, {'glycosidic':[]}, 'txt')
 
-    outputDataFilePickle = os.path.join(outputDataFilePicklePath, PDB_id + "_RNA_pairs.pickle")
-
-    print("Annotating %s file %d of %s" % (PDB_id,i,b))
-
     if annotate_entire_PDB_files:
-        # name for file with pairs and datapoint variable about annotations
-        pair_to_datapoint_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % PDB)
-
-        if not os.path.exists(pair_to_datapoint_file) or len(PDBs) <= 10 or OverwriteDataFiles or not get_datapoint:
-
-            print("Reading file %s, which is number %d out of %d" % (PDB,i+1,len(PDB_IFE_Dict)))
-            timerData = myTimer("Reading CIF files",timerData)
-
-            structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
-            print(messages)
-
-            if not structure:
-                continue
-
-            """
-            print('Loading directly with the cif reader')
-            rm = read_mode
-            filename = os.path.join(inputPath,PDB+".cif.gz")
-            if filename.lower().endswith('.cif.gz'):
-                with gzip.open(filename, rm) as raw:
-                    from fr3d.cif.reader import Cif
-                    structure = Cif(raw).structure()
-            """
-
-            """
-            for base in structure.residues(type = ["RNA linking","DNA linking"]):
-                #print(base.unit_id())
-                #print(base.centers['glycosidic'])
-                #print(base.centers['base'])
-
-                if base.unit_id() in ['1Q96|1|B|A|20','1Q96|1|A|A|9']:
-                    print(base.unit_id())
-                    print(base.centers['glycosidic'])
-                    print(base.centers['base'])
-
-                if base.unit_id() in ['7QI4|1|AA|G|1355']:
-                    print('7QI4|1|AA|G|1355 H21 %s' % base.centers['H21'])
-                    print('7QI4|1|AA|G|1355 H22 %s' % base.centers['H22'])
-            """
-
-            # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
-            # need to be able to identify each chain that is available
-            # write_unit_data_file(PDB,fr3d_pickle_path,structure)
-
-            # annotate interactions and return pair_to_data
-            interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,[],timerData,get_datapoint)
-
-            # for pair,data in pair_to_data.items():
-            #     print(pair,data)
-
-            # turn this off during development and testing
-            if False:
-                print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
-                pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
-                print('  Wrote FR3D pair file %s' % outputDataFilePickle)
-
-            if get_datapoint:
-                timerData = myTimer("Recording interactions",timerData)
-                pickle.dump(pair_to_data,open(pair_to_datapoint_file,"wb"),5)
-                print('  Wrote classification data file %s' % pair_to_datapoint_file)
-
-            if len(interaction_to_list_of_tuples['oo_distance']) > 0:
-                write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
-
-            if len(PDBs) > 10:
-                myTimer("summary",timerData)
-
-
+        chains = []
+        print("Annotating %s file %d of %s" % (PDB_id,i,b))
     else:
-        # only process individual IFEs
-        # this has not been tested recently and may need to be modified
-        # This would be most relevant for statistical tallies, finding exemplars, etc.
-        # But that could be done by just downloading the annotations, not creating them anew
-        print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
+        ife = PDB_IFE_Dict[PDB_id]
+        chains = [x.split("|")[2] for x in ife.split("+")]
+        print("Annotating %s file %d of %s, focusing on chains %s" % (PDB_id,i,b,chains))
+
+    # name for file with pairs and datapoint variable about annotations
+    pair_to_datapoint_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % PDB)
+
+    if not os.path.exists(pair_to_datapoint_file) or len(PDBs) <= 10 or OverwriteDataFiles or not get_datapoint:
+
+        print("Reading file %s, which is number %d out of %d" % (PDB,i+1,len(PDB_IFE_Dict)))
         timerData = myTimer("Reading CIF files",timerData)
 
-        if ShowStructureReadingErrors:
-            # do this to make sure to see any error messages
-            structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'),PDB)
-        else:
-            # do it this way to suppress error messages
-            try:
-                structure, messages = load_structure(os.path.join(inputPath,PDB+'.cif'))
-            except:
-                print("Could not load structure %s" % PDB)
-                continue
+        structure, messages = load_structure(os.path.join(inputPath,PDB),PDB)
+        print(messages)
 
-        # extract nucleotides to analyze
-        IFE = PDB_IFE_Dict[PDB]          #
-        if len(IFE) == 0:                # use the whole PDB file
-            if base_seq_list:
-                bases = structure.residues(sequence = base_seq_list)  # load just the types of bases in base_seq_list
-            else:
-                bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-        else:                            # use specific chains only
-            chain_ids = []
-            print("  Keeping only bases in chains %s" % IFE)
-            chains = IFE.split("+")
-            for chain in chains[1:]:            #skip element zero, leading +
-                fields = chain.split("|")
-                chain_ids.append(fields[2])
-            if base_seq_list:
-                bases = structure.residues(chain = chain_ids, sequence = base_seq_list)  # load just the types of bases in base_seq_list
-            else:
-                if structure:
-                    bases = structure.residues(chain = chain_ids)  # load all bases
-                else:
-                    continue
+        if not structure:
+            continue
 
-        # ??? record which RNA/DNA chains are actually present
-        # count nucleotides
-        numBases = 0
-        for base in bases:
-            numBases += 1
-        print("  Found " + str(numBases) + " bases in " + PDB)
-
-        # build cubes to be able to find potential pairs quickly
-        timerData = myTimer("Building cubes",timerData)
-        print("  Building nucleotide cubes in " + PDB)
-        baseCubeList, baseCubeNeighbors = make_nt_cubes_half(bases, nt_nt_screen_distance, nt_reference_point)
-
-        # annotate nt-nt interactions
-        timerData = myTimer("Annotating interactions",timerData)
-
-        # annotate interactions and return pair_to_data
-        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,timerData,True)
-
-        # used to return Python_pairs, pair_to_data, timerData
-
-        timerData = myTimer("Recording interactions",timerData)
-
-        # write out pairs in the format that WebFR3D reads
-        # accumulate list of interacting units by base, interaction type, and edges
+        # write out data file of nucleotide centers and rotations that can be used by FR3D for searches
+        # need to be able to identify each chain that is available
         # write_unit_data_file(PDB,fr3d_pickle_path,structure)
 
-        # for nt1, nt2, interaction, edge, standard_aa, param in list_nt_nt:
-        #     base = base_residue.unit_id()
-        #     # skip symmetry operated instances; generally these are just duplicates anyway
-        #     if not "||||" in str(base):
-        #         aa = aa_residue.unit_id()
-        #         base_component = str(base).split("|")
-        #         aa_component = str(aa).split("|")
-        #         key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
-        #         count_pair += 1
-        #         allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
-            # turn this off during development and testing
-        pair_file = "%s_pairs.pickle" % (PDB)
-        pair_file = outputNAPairwiseInteractions + pair_file
+        # annotate interactions and return pair_to_data
+        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData,get_datapoint)
 
-        if False:
+        if save_pairs_pickle_file:
+            outputDataFilePickle = os.path.join(outputDataFilePicklePath, PDB_id + "_RNA_pairs.pickle")
             print("  Annotated these interactions: %s" % interaction_to_list_of_tuples.keys())
             pickle.dump(interaction_to_list_of_tuples,open(outputDataFilePickle,"wb"),2)
             print('  Wrote FR3D pair file %s' % outputDataFilePickle)
 
-        timerData = myTimer("Recording interactions",timerData)
-        pickle.dump(pair_to_data,open(pair_file,"wb"),5)
-        print('  Wrote classification data file %s' % pair_file)
+        if get_datapoint:
+            timerData = myTimer("Recording interactions",timerData)
+            if 'basepair' in categories:
+                limit_data = {}
+                for pair,data in pair_to_data.items():
+                    if 'basepair' in data or 'atom_set_to_results' in data:
+                        limit_data[pair] = data
+                        del limit_data[pair]['url']
+                pickle.dump(limit_data,open(pair_to_datapoint_file,"wb"),5)
+                print('  Wrote classification datapoint file %s with %d pairs' % (pair_to_datapoint_file,len(limit_data)/2))
 
-        # write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
-        # print('  Wrote CSV file(s) to %s' % outputNAPairwiseInteractions)
+                # for p,d in limit_data.items():
+                #     print_dictionary(d)
+                #     print()
+
+            else:
+                pickle.dump(pair_to_data,open(pair_to_datapoint_file,"wb"),5)
+                print('  Wrote classification datapoint file %s with %d pairs' % (pair_to_datapoint_file,len(pair_to_data)/2))
+
+        if len(interaction_to_list_of_tuples['oo_distance']) > 0:
+            write_txt_output_file(outputNAPairwiseInteractions,PDB,interaction_to_list_of_tuples,categories, category_to_interactions)
 
         if len(PDBs) > 10:
             myTimer("summary",timerData)
-        myTimer("summary",timerData)
-
-
 
 # when you had to run the code first
 # process_oo_distance_files()
