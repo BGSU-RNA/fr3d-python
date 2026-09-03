@@ -99,7 +99,8 @@ atom_atom_min_distance = 5    # minimum distance between atoms in nts to conside
 base_seq_list = []                     # for all nucleic acids, modified or not
 
 verbose = 2  # also print diagnostic information about basepairs
-verbose = 3  # also print information about loops
+verbose = 3  # also print detailed information about basepair classification near misses
+verbose = 4  # print information about loops when verbose == 4
 verbose = 0  # do not print much at all
 verbose = 1  # print basic information about input, output, and number of interactions
 
@@ -1344,7 +1345,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
     MCS_to_nested_cWW_endpoints = {}
     MCS_to_endpoints = defaultdict(set)
     for MCS, index_to_unit_id in sorted(MCS_index_to_unit_id.items()):
-        if verbose >= 3:
+        if verbose == 4:
             print("  MCS %s has %4d nucleotides" % (MCS,len(index_to_unit_id)))
 
         # at first, each index maps to itself
@@ -1398,7 +1399,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
     # by mapping one index to the other in MCS_to_nested_cWW_endpoints
     bss_endpoints = set()
     for MCS, pairs in MCS_to_canonical_cWW_indices.items():
-        if verbose >=3:
+        if verbose >=4:
             print("  Getting nested for model %s chain %s symmetry %s" % MCS)
         cWW_pairs = sorted(pairs, key=lambda p: (p[1]-p[0],p[0]))
 
@@ -1476,7 +1477,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 if not isinstance(j,tuple) and (j < index1 or j > index2):
                                     crossing += 1
 
-                            if verbose >= 3 and crossing > 0:
+                            if verbose == 4 and crossing > 0:
                                 print("%-20s and %-20s make %5s and have crossing number %3d" % (u1,u2,interaction,crossing))
                     else:
                         # different chains or different symmetries
@@ -1615,14 +1616,14 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         bSS_list = []
         bSS_list_ordered = []
         for MCS, endpoints in MCS_to_endpoints.items():
-            if verbose >= 3:
+            if verbose == 4:
                 print("  Getting bSS for %s %s %s" % MCS)
 
             # c is the "lower" index; we increase it in this process
             c = MCS_to_min_index[MCS]
 
             if not c == 1:
-                if verbose >=3:
+                if verbose == 4:
                     print('  Minimum index is %d' % c)
 
             # highest index in the chain is also an endpoint
@@ -1650,7 +1651,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 u1 = MCS_index_to_unit_id[MCS][c]
                 u2 = MCS_index_to_unit_id[MCS][e]
 
-                if c < 100 and verbose >= 3:
+                if c < 100 and verbose == 4:
                     print('  Thinking about bSS between %-20s and %-20s' % (u1,u2), end=" ")
                     print('  c is %d, pc is %d, e is %d, pe is %d' % (c,pc,e,pe))
 
@@ -1661,7 +1662,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     bSS_list_ordered.append((u1,u2))
                     unitid_to_bss_partner[u1].add(u2)
 
-                    if verbose >= 3:
+                    if verbose == 4:
                         if c == MCS_to_min_index[MCS]:
                             print("  %-20s bSS %-20s at start of chain &" % (u1,u2))
                         elif e == MCS_to_max_index[MCS]:
@@ -1670,7 +1671,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             print("  %-20s bSS %-20s between chains" % (u1,u2))
                 elif c == MCS_to_min_index[MCS] and pc == c and not MCS2:
                     # c is at start of chain but does not make a cWW pair
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("  %-20s bSS %-20s at start of chain *" % (u1,u2))
                         print(c,pc,e,pe,MCS,MCS2,MCS3)
                     bSS_list.append((u1,u2,0))
@@ -1679,7 +1680,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     unitid_to_bss_partner[u1].add(u2)
                 elif e == MCS_to_max_index[MCS] and pe == e and not MCS3:
                     # e is at end of chain but does not make a cWW pair
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("  %-20s bSS %-20s at end of chain *" % (u1,u2))
                     bSS_list.append((u1,u2,0))
                     bSS_list.append((u2,u1,0))
@@ -1743,12 +1744,12 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 for (v1,v2) in opposite_pairs:
                                     int1 = unit_id_pair_to_interaction.get((v1,v2),None)
                                     int2 = unit_id_pair_to_interaction.get((v2,v1),None)
-                                    if verbose >= 3:
+                                    if verbose == 4:
                                         print("  Found complementary pair %s and %s making %s or %s" % (v1,v2,int1,int2))
                                 if found_other_interaction:
-                                    if verbose >= 3:
+                                    if verbose == 4:
                                         print('  Found other interaction in this IL')
-                                if verbose >= 3:
+                                if verbose == 4:
                                     print('  Recording bSS between %s and %s' % (u1,u2))
                             else:
                                 pass
@@ -1761,7 +1762,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             bSS_list.append((u2,u1,0))
                             bSS_list_ordered.append((u1,u2))
                             unitid_to_bss_partner[u1].add(u2)
-                            if verbose >= 3:
+                            if verbose == 4:
                                 print('  %-20s bSS %-20s from symmetric IL' % (u1,u2))
 
                     else:
@@ -1769,10 +1770,10 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         bSS_list.append((u2,u1,0))
                         bSS_list_ordered.append((u1,u2))
                         unitid_to_bss_partner[u1].add(u2)
-                        if verbose >= 3:
+                        if verbose == 4:
                             print("  %-20s bSS %-20s gap between cWW's" % (u1,u2))
                 elif abs(pc-pe) > 1:
-                    if verbose >= 3:
+                    if verbose == 4:
                         if c == MCS_to_min_index[MCS]:
                             print('  %-20s bSS %-20s at start of chain #' % (u1,u2))
                         else:
@@ -1785,7 +1786,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 # move up the "lower" index
                 c = e
 
-            if verbose >= 3:
+            if verbose == 4:
                 print("  Last index is %d" % c)
                 print("  Max  index is %s" % MCS_to_max_index[MCS])
 
@@ -1901,7 +1902,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     full_loop['merged_from'] = [len(all_loops)]
                     all_loops.append(full_loop)
 
-                    if verbose >= 3:
+                    if verbose == 4:
                         for i, unitid in enumerate(full_loop['unit_ids']):
                             print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
                         print()
@@ -1944,7 +1945,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
         if len(cWW_pairs_to_check) > 0:
             # record unit id pairs to interactions
             unit_id_pair_to_interaction = {}
-            if verbose >= 3:
+            if verbose == 4:
                 print("Setting up unit_id_pair_to_interaction")
             for interaction in sorted(interaction_to_pair_list.keys()):
                 # print("  Processing %s" % interaction)
@@ -1976,7 +1977,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 loop0 = all_loops[index0]
                 loop1 = all_loops[index1]
 
-                if verbose >= 3:
+                if verbose == 4:
                     print('  Found %s and %s sharing cWW pair %s and %s' % (loop0['type'],loop1['type'],u1,u2))
 
                 loop0_unit_ids = set(loop0['unit_ids']) - set([u1,u2])
@@ -1990,12 +1991,12 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         if (v1,v2) in unit_id_pair_to_interaction:
                             interaction = unit_id_pair_to_interaction[(v1,v2)]
                             merge_loops = True
-                            if verbose >= 3:
+                            if verbose == 4:
                                 print('    Found interaction %s between %s and %s' % (interaction,v1,v2))
                         if (v2,v1) in unit_id_pair_to_interaction:
                             interaction = unit_id_pair_to_interaction[(v2,v1)]
                             merge_loops = True
-                            if verbose >= 3:
+                            if verbose == 4:
                                 print('    Found interaction %s between %s and %s' % (interaction,v2,v1))
 
                 # is there a stacking interaction to the opposite side of the cWW pair?
@@ -2008,22 +2009,22 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                 intersect = unitid_face_to_stacking_partners[(a1,'5')] & loop1_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("    Found 5' face of %s stacking on %s" % (a1,str(intersect)))
                 intersect = unitid_face_to_stacking_partners[(a2,'3')] & loop1_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("    Found 3' face of %s stacking on %s" % (a2,str(intersect)))
                 intersect = unitid_face_to_stacking_partners[(b1,'5')] & loop0_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("    Found 5' face of %s stacking on %s" % (b1,str(intersect)))
                 intersect = unitid_face_to_stacking_partners[(b2,'3')] & loop0_unit_ids
                 if len(intersect) > 0:
                     merge_loops = True
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("    Found 3' face of %s stacking on %s" % (b2,str(intersect)))
 
                 if merge_loops:
@@ -2035,7 +2036,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     # ids0 = keep_loop_ids(ids0,u1,u2)
                     # ids1 = keep_loop_ids(ids1,u1,u2)
 
-                    if verbose >= 3:
+                    if verbose == 4:
                         print('    Merging loops')
                         print('    ids0 is %s' % ids0)
                         print('    ids1 is %s' % ids1)
@@ -2080,7 +2081,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             new_loop.append(ids0[i])
                             i += 1
 
-                    if verbose >= 3:
+                    if verbose == 4:
                         print("    new loop is: %s" % new_loop)
 
                     full_loop, loop_counter = fill_in_strands_of_loop(new_loop,unit_id_to_fields,MCS_index_to_unit_id,loop_counter)
@@ -2097,7 +2098,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                                 if t[0] == index0 or t[0] == index1:
                                     flanking_cWW_pair_to_loop[cWW_pair][i] = (loop_index,t[1],t[2])
 
-                        if verbose >= 3:
+                        if verbose == 4:
                             for i, unitid in enumerate(full_loop['unit_ids']):
                                 print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
                             print()
@@ -3452,6 +3453,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
     if abs(displ[0,2]) > 3.6:     # too far out of plane for a basepair; don't check further
+        if verbose == 3:
+            print("%-20s %-20s out of plane                              z %7.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,2]))
         return "", "", quality, datapoint
 
     # check sign of normal vector to cut number of possible families in half
@@ -3535,6 +3538,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
             # if not close to meeting any cutoffs and we are not collecting data, return now to save time
             if len(ok_normal_displ) == 0 and not datapoint:
+                if verbose == 3:
+                    print("%-20s %-20s not ok_normal_displ   x %7.4f y %7.4f z %7.4f n %7.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,0],displ[0,1],displ[0,2],normal_Z))
                 return "", "", quality, datapoint
 
             # calculation revised to have the right sense to it 2023-07-19 CLZ
@@ -3564,6 +3569,8 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
             # if not close to meeting any cutoffs and we are not collecting data, return now
             if len(ok_angle_in_plane) == 0 and not datapoint:
+                if verbose == 3:
+                    print("%-20s %-20s not ok_angle_in_plane x %7.4f y %7.4f z %7.4f n %7.4f a %8.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,0],displ[0,1],displ[0,2],normal_Z,angle_in_plane))
                 return "", "", quality, datapoint
 
             if not 'gap12' in pair_data:
@@ -3823,9 +3830,13 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             match = [near_matches[0][0:3]]     # use the nearest one, call it near
         else:
             # no matches at all, return what we have so far
+            if verbose == 3:
+                print("%-20s %-20s nothing near          x %7.4f y %7.4f z %7.4f n %7.4f a %8.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,0],displ[0,1],displ[0,2],normal_Z,angle_in_plane))
             return "", "", quality, datapoint
     else:
         # no matches at all, return what we have so far
+        if verbose == 3:
+            print("%-20s %-20s no matches            x %7.4f y %7.4f z %7.4f n %7.4f a %8.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,0],displ[0,1],displ[0,2],normal_Z,angle_in_plane))
         return "", "", quality, datapoint
 
     if len(match) == 1:
