@@ -3452,7 +3452,7 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
-    if abs(displ[0,2]) > 3.6:     # too far out of plane for a basepair; don't check further
+    if abs(displ[0,2]) > 3.7:     # too far out of plane for a basepair; don't check further
         if verbose == 3:
             print("%-20s %-20s out of plane                              z %7.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,2]))
         return "", "", quality, datapoint
