@@ -4199,7 +4199,7 @@ def write_unit_data_file(PDB,unit_data_path,structure):
                 print("  Wrote unit data file %s" % filename)
 
 
-def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions):
+def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data):
     """
     Write interactions according to category, and within each
     category, write by annotation.
@@ -4207,7 +4207,7 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
 
     # loop over types of output files requested
     for category in categories:
-        if category in ["near","lower","alternative","cwb","loops"]:
+        if category in ["near","lower","alternative","cwb","loops","datapoint"]:
             continue
 
         filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + category + ".txt")
@@ -4253,6 +4253,12 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                     f.write("%s\t%s\t%s\t%s\n" % (o))
                 elif len(o) == 6:
                     f.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (o))
+
+    if 'datapoint' in categories:
+        # name for file with pairs and datapoint variable about annotations
+        pair_to_datapoint_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % file_id)
+        pickle.dump(pair_to_data,open(pair_to_datapoint_file,"wb"),5)
+        print('  Wrote classification datapoint file %s with %d pairs' % (pair_to_datapoint_file,len(pair_to_data)/2))
 
     if 'loops' in interaction_to_list_of_tuples:
         # follow format used by https://rna.bgsu.edu/rna3dhub/loops/download_with_breaks/8GLP
@@ -4452,7 +4458,7 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
             print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
         if output_format == 'txt':
-            write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions)
+            write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
         elif output_format == 'ebi_json':
             if chains:
                 bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
