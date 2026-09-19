@@ -488,7 +488,7 @@ def reverse_edges(inter):
 
     if len(inter) <= 2:
         rev = inter
-    elif inter == 'N/A':
+    elif 'N/A' in inter:
         rev = inter
     elif len(inter) == 3:
         rev = inter[0] + inter[2] + inter[1]
@@ -3452,11 +3452,13 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
 
     displ = pair_data["displ12"]  # vector from origin to nt2 when standardized
 
-    if pair_data['parent2'] in ['C','U'] and abs(displ[0,2]) > 3.6:     # too far out of plane for a basepair; don't check further
+    if datapoint:
+        pass
+    elif pair_data['parent2'] in ['C','U'] and abs(displ[0,2]) > 3.6:     # too far out of plane for a basepair; don't check further
         if verbose == 3:
             print("%-20s %-20s out of plane                              z %7.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,2]))
         return "", "", quality, datapoint
-    elif pair_data['parent2'] in ['A','G'] and abs(displ[0,2]) > 3.8:   # too far out of plane for a basepair; don't check further
+    elif pair_data['parent2'] in ['A','G'] and abs(displ[0,2]) > 4.5:   # too far out of plane for a basepair; don't check further
         if verbose == 3:
             print("%-20s %-20s out of plane                              z %7.4f" % (nt1.unit_id(),nt2.unit_id(),displ[0,2]))
         return "", "", quality, datapoint
@@ -3858,6 +3860,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
             datapoint['cut_dist'] = match[0][2]
             #datapoint['hbond'] = LW_bonds[interaction]
             #datapoint['hbond_messages'] = LW_bond_messages[interaction]
+        if verbose == 3:
+            print("%-20s %-20s %5s                 x %7.4f y %7.4f z %7.4f n %7.4f a %8.4f" % (nt1.unit_id(),nt2.unit_id(),LW,displ[0,0],displ[0,1],displ[0,2],normal_Z,angle_in_plane))
+
         return LW, subcategory, quality, datapoint
     else:
         # multiple matching basepair interactions between these two nucleotides
@@ -3878,6 +3883,9 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 datapoint['cut_dist'] = cutoff_distance
                 #datapoint['hbond'] = LW_bonds[LW]
                 #datapoint['hbond_messages'] = LW_bond_messages[LW]
+            if verbose == 3:
+                print("%-20s %-20s %5s                 x %7.4f y %7.4f z %7.4f n %7.4f a %8.4f" % (nt1.unit_id(),nt2.unit_id(),LW,displ[0,0],displ[0,1],displ[0,2],normal_Z,angle_in_plane))
+
             return LW, subcategory, quality, datapoint
 
         else:
@@ -3912,6 +3920,10 @@ def check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs,hydrogen_bonds,datapoint):
                 datapoint['cut_dist'] = cutoff_distance
                 #datapoint['hbond'] = LW_bonds[LW]
                 #datapoint['hbond_messages'] = LW_bond_messages[LW]
+
+            if verbose == 3:
+                print("%-20s %-20s %5s                 x %7.4f y %7.4f z %7.4f n %7.4f a %8.4f" % (nt1.unit_id(),nt2.unit_id(),LW,displ[0,0],displ[0,1],displ[0,2],normal_Z,angle_in_plane))
+
             return LW, subcategory, quality, datapoint
 
 
@@ -4378,6 +4390,10 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
         categories['basepair'] = Leontis_Westhof_basepairs
         categories['basepair'] = []
 
+    if 'datapoint' in categories:
+        categories['basepair_detail'] = []
+        categories['basepair'] = Leontis_Westhof_basepairs + ['cWB','cBW']  # bifurcated pairs
+        categories['coplanar'] = []
 
     # check existence of input path
     if len(inputPath) > 0 and not os.path.exists(inputPath):
