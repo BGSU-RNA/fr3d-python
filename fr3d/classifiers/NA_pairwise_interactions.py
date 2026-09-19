@@ -718,7 +718,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
     bph_center_center_distance = 0     # record the largest screening distance for which an interaction is found
     oo_center_center_distance = 0     # record the largest screening distance for which an interaction is found
 
-    basepair_parent_base_combination_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','U,DT','DT,DT'])
+    basepair_parent_base_combination_set = set(['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,DT','C,DT','G,DT','U,DT','DT,DT','DT,U'])
 
     # keep track of overlapping chains
     overlapping_chains = set()
