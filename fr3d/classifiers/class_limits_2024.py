@@ -160,6 +160,7 @@ nt_nt_cutoffs["A,U"]["cWW"][0]["normalmax"] = -0.70       # expand 2025-01-12
 nt_nt_cutoffs["A,U"]["cWW"][0]["anglemin"] = 45.00
 nt_nt_cutoffs["A,U"]["cWW"][0]["anglemax"] = 90.00
 nt_nt_cutoffs["A,U"]["cWW"][0]["anglemax"] = 85.00        # tighten 2023-02-04 CLZ
+nt_nt_cutoffs["A,U"]["cWW"][0]["anglemax"] = 90.00        # expand for DA-DT 2026-09-05 CLZ
 nt_nt_cutoffs["A,U"]["cWW"][0]["gapmax"] = 1.60
 nt_nt_cutoffs["A,U"]["cWW"][0]["gapmax"] = 1.40           # tighten 2023-02-04 CLZ
 nt_nt_cutoffs["A,U"]["cWW"][0]["radiusmax"] = 9.8         # new 2023-07-16 CLZ
