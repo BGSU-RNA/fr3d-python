@@ -45,6 +45,7 @@ from fr3d.search.file_reading import readPDBDatafile
 from fr3d.search.file_reading import readUnitAnnotations
 
 # very specific directories, for data files in specific formats.  Hard for others to run!
+data_path = 'C:/Users/zirbel/Documents/PythonFR3D/data'
 dssr_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_dssr'
 rnaview_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_rnaview'
 mcannotate_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_mcannotate'
@@ -452,10 +453,14 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
     if first_listed_base == base_combination.split(",")[0] or show_fr3d_parameters:
         id_1 = 'unit_id_1'
         id_2 = 'unit_id_2'
+        original_id_1 = 'original_unit_id_1'
+        original_id_2 = 'original_unit_id_2'
     else:
         # switch order of bases to match the order they appear in the filename
         id_1 = 'unit_id_2'
         id_2 = 'unit_id_1'
+        original_id_1 = 'original_unit_id_2'
+        original_id_2 = 'original_unit_id_1'
 
     # print('First listed base is %s, base_combination is %s' % (first_listed_base,base_combination))
 
@@ -466,7 +471,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
 
         candidatelist += '<tr><td>'+str(i+1)+'.</td>'
         candidatelist += '<td><label><input type="checkbox" id="'+str(i)+'" class="jmolInline" data-coord="'
-        candidatelist += candidate[id_1] + ',' + candidate[id_2]
+        candidatelist += candidate[original_id_1] + ',' + candidate[original_id_2]
         candidatelist += '">&nbsp</label></td>'
 
         pdb_id = candidate['unit_id_1'][0:4]
@@ -577,7 +582,7 @@ def writeHTMLOutput(Q,candidates,interaction_to_atom_sets,distance_angle_message
         if not Q['DNA']:
             candidatelist += '<td><a href="https://rna.bgsu.edu/correspondence/comparison?selection=%s,%s&exp_method=all&resolution=3.0" target="_blank" rel="noopener noreferrer">Compare 3D</a></td>' % (candidate[id_1],candidate[id_2])
             candidatelist += '<td><a href="https://rna.bgsu.edu/correspondence/variability?id=%s,%s&format=unique" target="_blank" rel="noopener noreferrer">Compare sequence</a></td>' % (candidate[id_1],candidate[id_2])
-            candidatelist += '<td><a href="https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" target="_blank" rel="noopener noreferrer">View</a></td>' % (candidate[id_1],candidate[id_2])
+            candidatelist += '<td><a href="https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" target="_blank" rel="noopener noreferrer">View</a></td>' % (candidate[original_id_1],candidate[original_id_2])
 
         candidatelist += '</tr>\n'
     candidatelist += '</table>\n'
@@ -1382,10 +1387,6 @@ def load_pairs_from_pickle_files(all_pdb_ids, method, basepair_path, pdb_id_to_a
                 else:
                     interaction_to_triples = pickle.load(open(pickle_filename,"rb"), encoding = 'latin1')
 
-                    if pdb_id == "4WO2":
-                        print(interaction_to_triples)
-                        input("Press Enter when ready")
-
                     if len(interaction_to_triples) == 0:
                         empty.append(pdb_id)
                     else:
@@ -1750,6 +1751,37 @@ def evaluate_pair_from_datapoint(datapoint,interaction,nt_nt_cutoffs_bc):
     return datapoint, pdata, angle_out_of_order
 
 
+def remove_alt_id(u):
+    f = u.split("|")
+    if len(f) > 6:
+        if len(f) == 7:
+            v = "|".join(f[0:5])
+        elif len(f) > 7:
+            f[6] = ''
+            v = "|".join(f)
+    else:
+        v = u
+
+    return v
+
+
+def map_interactions_without_alt_ids(pair_to_interaction):
+    """
+    For each pair to interaction mapping, if there is an alt id, remove it and add the mapping from cleaned pair to interaction
+    """
+
+    for pair,interaction in list(pair_to_interaction.items()):
+        u1, u2 = pair
+        v1 = remove_alt_id(u1)
+        v2 = remove_alt_id(u2)
+        if not (v1,v2) in pair_to_interaction:
+            pair_to_interaction[(v1,v2)] = interaction
+            # if (not v1 == u1 or not v2 == u2) and '6UKG' in u1:
+            #     print('Mapping simplified unit id %s %s to interaction %s' % (v1,v2,interaction))
+            #     input("Press Enter for more mappings")
+    return pair_to_interaction
+
+
 #=========================================== Main block =============================
 
 if __name__=="__main__":
@@ -1780,6 +1812,7 @@ if __name__=="__main__":
     base_combination_list = ['C,U','G,G','G,U','U,U','A,A','A,C','A,G','A,U','C,C','G,C']
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
     base_combination_list = ['G,G','G,U','U,U','A,A','A,C','A,G','A,U','C,C','G,C','C,U']
+    base_combination_list = ['A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U','A,A','A,C']
 
     base_combination_to_interaction = {}
     base_combination_to_interaction['A,A'] = ['cWw','tWW','cWH','tWH','cWS','tWS','cHh','tHH','cHS','tHS','cSs','tSs','cWB']
@@ -1841,8 +1874,8 @@ if __name__=="__main__":
     compare_annotators = False     # write HTML pages for internal evaluation of FR3D annotations
     compare_annotators = True      # write HTML pages to compare FR3D, RNAview, MC-Annotate, DSSR, PDB, napair for basepair group
 
-    show_fr3d_parameters = True
     show_fr3d_parameters = False   # only show 300 candidates, do not show all those details
+    show_fr3d_parameters = True
 
     # O2_bond_length = 'short'
     # O2_bond_length = 'long'
@@ -1851,13 +1884,19 @@ if __name__=="__main__":
     # zzz quick way to get to this location
 
     if VERSION == 'v9':
-        resolution_list = ['25','35']
         resolution_list = ['35','25']
+        resolution_list = ['25']
+        resolution_list = ['25','35']
+        resolution_list = ['35']
     else:
         resolution_list = ['1.5A','2.0A','2.5A','3.0A']
 
     PDB_skip_set = set()
     unit_id_to_glycosidic = defaultdict(str)
+
+    pdb_to_chain_to_bundle = pickle.load(open(os.path.join(data_path,'pdb_to_chain_to_bundle.pickle'),'rb'))
+    # print('pdb_to_chain_to_bundle 4V9F|1|0',pdb_to_chain_to_bundle['4V9F']['0'])
+    # print('pdb_to_chain_to_bundle 4V9F|1|9',pdb_to_chain_to_bundle['4V9F']['9'])
 
     for resolution in resolution_list:
 
@@ -1888,7 +1927,18 @@ if __name__=="__main__":
 
             napair_pdbs, napair_chains = load_napair_chains(filenames = ['RS_filtered_chains_' + resolution])
 
+            # if '5BTW' in napair_pdbs:
+            #     print('Why is 5BTW in napair_pdbs?')
+            #     input("Really, why?")
+            # if '5BTW|1|1' in napair_chains:
+            #     print('Why is 5BTW in napair_chains?')
+            #     input("Really, why?")
+
             PDB_list = sorted(napair_pdbs)
+
+            # print(PDB_list)
+            # input("Waiting")
+
             all_pdb_ids = PDB_list
 
             # write the list of NAPAIR PDB files so that RNAview, MC-Annotate can be run on them
@@ -1986,11 +2036,10 @@ if __name__=="__main__":
                 print('Found . in unit id when counting %s %s' % (u1,u2))
                 print(crash)
 
-
-        pair_to_interaction_dssr       = defaultdict(str)
-        pair_to_interaction_rnaview    = defaultdict(str)
-        pair_to_interaction_mcannotate = defaultdict(str)
-        pair_to_interaction_pdb        = defaultdict(str)
+        pair_to_interaction_rnaview      = defaultdict(str)
+        pair_to_interaction_dssr         = defaultdict(str)
+        pair_to_interaction_mcannotate   = defaultdict(str)
+        pair_to_interaction_pdb          = defaultdict(str)
 
         skip_pair_set = set()
         model_notification_counter = 0
@@ -2010,8 +2059,6 @@ if __name__=="__main__":
         if not resolution in ['25','35']:
             print('Loading NAPAIR   annotations from %s' % napair_basepair_path)
             pair_to_interaction_napair, pdb_id_to_annotators, empty, missing = load_pairs_from_pickle_files(all_pdb_ids,'NAPAIR', napair_basepair_path, pdb_id_to_annotators, resolution)
-
-        input("Press Enter to continue")
 
         count_annotations = {}
         count_annotations_by_group = {}
@@ -2070,6 +2117,7 @@ if __name__=="__main__":
                                     break
 
                             if found_basepair:
+                                alt_counter = 0
                                 for pair, datapoint in new_dict.items():
                                     # reduce memory usage by only storing pairs we will process
                                     u1,u2 = pair
@@ -2095,24 +2143,31 @@ if __name__=="__main__":
                                         # need both nucleotides in a representative chain
                                         continue
 
-                                    # if both are from a symmetry operator, skip, because we probably already have it
+                                    # if both are from a symmetry operator, save the datapoint without the symmetry
+                                    # operator so we are sure to have it stored, as with 8F69
                                     if len(fields1) == 9 and len(fields2) == 9:
                                         #print('Skipping %s - %s because both have a symmetry operator' % (u1,u2))
                                         skip_symmetry_pairs.add((u1,u2))
                                         continue
 
-                                    # if both have an alternate id, like 7MDL|1|E|U|6	7MDL|1|E|U|67, remove both
-                                    if len(fields1) == 7 and len(fields2) == 7:
-                                        if fields1[6] == fields2[6]:
-                                            interaction = datapoint.get('basepair','')
-                                            print('Removing alt ids from %s %s %s' % (u1,interaction,u2))
-                                            u1 = "|".join(fields1[0:5])
-                                            u2 = "|".join(fields2[0:5])
-                                            pair = (u1,u2)
-                                            if pair in pair_to_datapoint:
-                                                # do not overwrite what was already there
-                                                continue
-                                            # print('New pair is %s %s %s' % (u1,interaction,u2))
+                                    # store original unit ids in case alt ids get dropped later
+                                    datapoint["original_unit_id_1"] = u1
+                                    datapoint["original_unit_id_2"] = u2
+
+                                    # if both have an alternate id, like 7MDL|1|E|U|6	7MDL|1|E|U|67, simplify both
+                                    # if len(fields1) == 7 and len(fields2) == 7:
+                                    #     if fields1[6] == fields2[6]:
+                                    #         interaction = datapoint.get('basepair','')
+                                    #         if alt_counter < 5:
+                                    #             alt_counter += 1
+                                    #             print('Removing alt ids from %s %s %s' % (u1,interaction,u2))
+                                    #         u1 = "|".join(fields1[0:5])
+                                    #         u2 = "|".join(fields2[0:5])
+                                    #         pair = (u1,u2)
+                                    #         if pair in pair_to_datapoint:
+                                    #             # do not overwrite what was already there
+                                    #             continue
+                                    #         # print('New pair is %s %s %s' % (u1,interaction,u2))
 
                                     # for some resolutions, focus on one base combination at a time
                                     if not DNA and resolution in resolution_memory_challenge_list:
@@ -2137,7 +2192,6 @@ if __name__=="__main__":
                                     # remove unnecessary fields to conserve memory
                                     try:
                                         del datapoint["center_center_distance"]
-                                        del datapoint["url"]
                                     except:
                                         pass
 
@@ -2149,6 +2203,7 @@ if __name__=="__main__":
                                         #     print(sorted(datapoint_keys))
 
                                     pair_to_datapoint[pair] = datapoint
+
                     else:
                         print('Cannot open FR3D annotation file %s' % pair_to_datapoint_file)
 
@@ -2177,6 +2232,10 @@ if __name__=="__main__":
                 # focus_pair = ("4V9F|1|0|A|2812","4V9F|1|0|A|2814")
                 # print(focus_pair,' 2143 priority ',pair_to_priority.get(focus_pair,'nothing'))
 
+                # remove alt ids from pairs and add those to pair_to_interaction_napair
+                # pair_to_interaction_napair = map_interactions_without_alt_ids(pair_to_interaction_napair)
+                # pair_to_interaction_pdb = map_interactions_without_alt_ids(pair_to_interaction_pdb)
+
                 # remove pairs with symmetry operators, alternate ids, insertion codes when comparing annotators
                 if compare_annotators:
                     for u1,u2 in pair_to_priority.keys():
@@ -2185,13 +2244,15 @@ if __name__=="__main__":
 
                         if True  and len(fields1) > 5:
                             skip_complicated_unit_id.add(u1)                      # blacklist the full unit id
-                            # skip_complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the plain unit id as well
-                            # skip_complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the paired plain unit id as well
+                            # if len(fields1) >= 7 and fields1[6] == 'B':
+                            skip_complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the plain unit id as well
+                            skip_complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the paired plain unit id as well
                             #print('Omitting',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]))
                         if True  and len(fields2) > 5:
                             skip_complicated_unit_id.add(u2)                      # blacklist the full unit id
-                            # skip_complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the plain unit id as well
-                            # skip_complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the paired plain unit id as well
+                            # if len(fields2) >= 7 and fields2[6] == 'B':
+                            skip_complicated_unit_id.add("|".join(fields1[0:5]))  # blacklist the plain unit id as well
+                            skip_complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist the paired plain unit id as well
                             #print('Omitting',u1,"|".join(fields1[0:5]),u2,"|".join(fields2[0:5]))
 
                         # some x-ray structures like 3CMY have a model 2 that RNAview does not mark as model 2,
@@ -2204,7 +2265,7 @@ if __name__=="__main__":
                             fields2[1] = '1'
                             skip_complicated_unit_id.add("|".join(fields2[0:5]))  # blacklist any model 1 version of the unit id
                             if model_notification_counter < 20:
-                                print('Removing %24s %24s because of model numbers other than 1' % (u1,u2))
+                                print('Removing %-24s %-24s because of model numbers other than 1' % (u1,u2))
                                 model_notification_counter += 1
 
                 print('Found %d pair_to_priority pairs to work with; culling pairs next' % len(pair_to_priority))
@@ -2270,6 +2331,9 @@ if __name__=="__main__":
                 pairs_in_order = sorted(pair_to_priority_final.keys(), key=lambda x:pair_to_priority_final[x])
 
                 print('Sorted them')
+
+                # store datapoint information without alt ids
+                # pair_to_datapoint = map_interactions_without_alt_ids(pair_to_datapoint)
 
                 # try to reduce memory usage
                 pair_to_priority = {}
@@ -2363,10 +2427,28 @@ if __name__=="__main__":
 
                     if not pair in pair_to_datapoint:
                         u1, u2 = pair
+
+
+                        # diagnose why some pairs lack datapoint information
+                        if not (u2,u1) in pair_to_datapoint:
+                            # not present in either order
+                            dssr_annotation = pair_to_interaction_dssr[pair]
+                            napair_annotation = pair_to_interaction_napair[pair]
+                            rnaview_annotation = pair_to_interaction_rnaview[pair].replace("n","!")
+                            mcannotate_annotation = pair_to_interaction_mcannotate[pair]
+                            pdb_annotation = pair_to_interaction_pdb[pair]
+
+
+
+                            print("https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s does not have datapoint information dssr %s napair %s rnaview %s mca %s pdb %s" % (pair[0],pair[1],dssr_annotation,napair_annotation,rnaview_annotation,mcannotate_annotation,pdb_annotation))
+                            # input("Press Enter to continue")
+
+
+
                         if (u2,u1) in pair_to_datapoint:
                             # pick this up next time it is listed
                             continue
-                        elif (u2,u1) in pair_to_datapoint and not pair_to_datapoint[(u2,u1)].get('basepair','N/A') == 'N/A':
+                        elif (u2,u1) in pair_to_datapoint and not 'N/A' in pair_to_datapoint[(u2,u1)].get('basepair','N/A'):
                             print('Encountered %s %s but other order would be better, with %s' % (u1,u2,pair_to_datapoint[(u2,u1)]['basepair']))
                             if (u2,u1) in bc_to_pairs_in_order:
                                 print('Waiting for the next version of it')
@@ -2391,6 +2473,10 @@ if __name__=="__main__":
                             continue
 
                     datapoint = pair_to_datapoint[pair]
+                    if not 'original_unit_id_1' in datapoint:
+                        datapoint['original_unit_id_1'] = pair[0]
+                    if not 'original_unit_id_2' in datapoint:
+                        datapoint['original_unit_id_2'] = pair[1]
 
                     if compare_annotators and pair in pair_counted:
                         #print('Already counting and displaying %s,%s' % pair)
@@ -2486,13 +2572,14 @@ if __name__=="__main__":
                     else:
                         mcannotate = False
 
-                    # skip cases where RNAview may need to annotate across chains in different bundles
+                    # skip cases where chains come from different PDB bundles
                     chain1 = pair[0].split("|")[2]
                     chain2 = pair[1].split("|")[2]
-                    if True  and compare_annotators and not rnaview and (python_true or python_near or mcannotate or dssr or napair) and not chain1 == chain2 and not DNA:
-                        if bundle_message_count < 20:
-                            print('Skipping %-24s-%-24s %s because the chains may be from different bundles' % (pair[0],pair[1],interaction))
-                            bundle_message_count += 1
+                    b1 = pdb_to_chain_to_bundle[pdb_id].get(chain1,'')
+                    b2 = pdb_to_chain_to_bundle[pdb_id].get(chain2,'')
+                    if compare_annotators and not b1 == b2:
+                        print('Skipping %-24s-%-24s %s because the chains are from different bundles' % (pair[0],pair[1],interaction))
+                        bundle_message_count += 1
                         continue
 
                     # PDB annotations do not distinguish between edges, so tHS and tSH get the same PDB annotation
@@ -2708,6 +2795,8 @@ if __name__=="__main__":
 
                             pdata['unit_id_1'] = pair[0]
                             pdata['unit_id_2'] = pair[1]
+                            pdata['original_unit_id_1'] = datapoint['original_unit_id_1']
+                            pdata['original_unit_id_2'] = datapoint['original_unit_id_2']
                             pdata['dssr_annotation'] = dssr_annotation
                             pdata['rnaview_annotation'] = rnaview_annotation
                             pdata['mcannotate_annotation'] = mcannotate_annotation
