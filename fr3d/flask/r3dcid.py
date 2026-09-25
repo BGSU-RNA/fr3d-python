@@ -740,7 +740,7 @@ def order_chains_around_diagram(pdb_id, requested_assemblies, requested_models, 
                             sortable_chain_data.append(new_data)
 
     if len(sortable_chain_data) == 0:
-        message = 'Could not find chains in %s, exiting' % pdb_id
+        message = 'Could not find chains in the file, exiting'
         return [], {}, message
 
     if len(requested_assemblies) == 0:
@@ -2056,9 +2056,15 @@ def draw_circular_diagram(chain_info, assemblies, filename, interaction_to_tripl
             header.append(filename)
         if 'description' in params:
             if '\\n' in params['description']:
-                header += params['description'].split('\\n')
+                description_lines = params['description'].split('\\n')
             else:
-                header += break_line(params['description'],130,145)
+                description_lines = break_line(params['description'],130,145)
+
+            for line in description_lines:
+                # escape characters that have special meaning in PostScript
+                line = line.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+                header.append(line)
+
         if len(assemblies['message']) > 0:
             header.append(assemblies['message'])
         if 'title' in params:
