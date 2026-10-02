@@ -4309,30 +4309,30 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
             if "cWB" in interaction or "cBW" in interaction:
                 continue
             if category == 'basepair':
-                # capitalize base edges
-                inter = interaction.replace("w","W").replace("s","S").replace("h","H")
-                inter = interaction.replace("a","")
+                # capitalize base edges, simplify alternative categories
+                inter = interaction.replace("w","W").replace("s","S").replace("h","H").replace("a","").replace("b","")
             # if this category has a restricted list of interactions to output
             if len(categories[category]) == 0 or inter in categories[category]:
                 for a,b,c in interaction_to_list_of_tuples[interaction]:
                     fields1 = a.split("|")
                     fields2 = b.split("|")
                     if fields1[2] == chain and fields2[2] == chain:
-                        if unit_id_to_sequence_position[a] < unit_id_to_sequence_position[b]:
-                            ann = {}
-                            ann["seq_id1"]  = str(unit_id_to_sequence_position[a])
-                            ann["3d_id1"]   = fields1[4]
-                            ann["nt1"]      = fields1[3]
-                            ann["unit1"]    = fields1[3]
-                            ann["bp"]       = inter
-                            ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
-                            ann["nt2"]      = fields2[3]
-                            ann["unit2"]    = fields2[3]
-                            ann["3d_id2"]   = fields2[4]
-                            ann["crossing"] = str(c)
-                            #{"seq_id1":"1","3d_id1":"13","nt1":"C","bp":"cWW","seq_id2":"71","nt2":"G","3d_id2":"83","crossing":"0"}
+                        if a in unit_id_to_sequence_position and b in unit_id_to_sequence_position:
+                            if unit_id_to_sequence_position[a] < unit_id_to_sequence_position[b]:
+                                ann = {}
+                                ann["seq_id1"]  = str(unit_id_to_sequence_position[a])
+                                ann["3d_id1"]   = fields1[4]
+                                ann["nt1"]      = fields1[3]
+                                ann["unit1"]    = fields1[3]
+                                ann["bp"]       = inter
+                                ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
+                                ann["nt2"]      = fields2[3]
+                                ann["unit2"]    = fields2[3]
+                                ann["3d_id2"]   = fields2[4]
+                                ann["crossing"] = str(c)
+                                #{"seq_id1":"1","3d_id1":"13","nt1":"C","bp":"cWW","seq_id2":"71","nt2":"G","3d_id2":"83","crossing":"0"}
 
-                            annotations.append(ann)
+                                annotations.append(ann)
 
         output["annotations"] = annotations
 
