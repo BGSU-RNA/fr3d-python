@@ -1,0 +1,34 @@
+name: Docker CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKER_IMAGE: fr3d-python
+      DOCKER_CONTAINER: fr3d-python-container
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build the docker image
+        run: DOCKER_BUILDKIT=1 docker build --progress=plain -t $DOCKER_IMAGE .
+
+      - name: Create the docker container
+        run: docker create --name $DOCKER_CONTAINER $DOCKER_IMAGE
+
+      - name: Start the docker container
+        run: docker start $DOCKER_CONTAINER
+
+      - name: Install test requirements
+        run: docker exec $DOCKER_CONTAINER bin/bash -c "pip3 install -r test_requirements.txt"
+
+      - name: Run test
+        run: docker exec $DOCKER_CONTAINER bin/bash -c "pytest"
