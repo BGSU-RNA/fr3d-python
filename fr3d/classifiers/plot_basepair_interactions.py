@@ -1884,10 +1884,10 @@ if __name__=="__main__":
     # zzz quick way to get to this location
 
     if VERSION == 'v9':
-        resolution_list = ['35','25']
-        resolution_list = ['25']
-        resolution_list = ['25','35']
         resolution_list = ['35']
+        resolution_list = ['25']
+        resolution_list = ['35','25']
+        resolution_list = ['25','35']
     else:
         resolution_list = ['1.5A','2.0A','2.5A','3.0A']
 
@@ -1952,6 +1952,9 @@ if __name__=="__main__":
 
             print('Found %d NAPAIR chains' % len(napair_chains))
 
+            # note: do not update pair_to_interaction_napair with curated pairs because they are sometimes out of date
+            # pair_to_interaction_napair.update(pair_to_interaction_curated)
+
             interaction_pair_to_count = defaultdict(int)
             napair_chain_set = set(napair_chains)
             chains_seen = set()
@@ -1967,7 +1970,8 @@ if __name__=="__main__":
                     chains_seen.add(c1)
                     chains_seen.add(c2)
                 else:
-                    print(u1,u2,c1,c2,"seem to be the wrong chains")
+                    pass
+                    # print(u1,u2,c1,c2,"seem to be the wrong chains")
 
             print('NAPAIR interaction counts in resolution %s:' % resolution)
             for interaction_pair, count in sorted(interaction_pair_to_count.items()):
@@ -1982,7 +1986,6 @@ if __name__=="__main__":
             # print('found %5d curated basepairs' % len(pair_to_interaction_curated.keys()))
             # print(sorted(pair_to_interaction_curated.items())[0:20])
 
-            pair_to_interaction_napair.update(pair_to_interaction_curated)
             representative_chains = napair_chains
 
             print('Found %5d NAPAIR basepairs' % len(pair_to_interaction_napair.keys()))
