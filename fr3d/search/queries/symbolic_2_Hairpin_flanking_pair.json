@@ -1,0 +1,16 @@
+{
+"name": "symbolic_2_Hairpin_flanking_pair", 
+"numpositions": 2, 
+"searchFiles": ["4V9F|1|9"], 
+"constraintMatrix,1,2": "bSS and cWW", 
+"constraintMatrix,2,1": ">", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

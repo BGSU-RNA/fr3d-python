@@ -3,27 +3,8 @@
 import numpy as np
 import os
 from collections import defaultdict
-from fr3d_configuration import SERVER
-from fr3d_configuration import OUTPUTPATH
-from fr3d_configuration import TEMPLATEPATH
-from fr3d_configuration import JS1
-from fr3d_configuration import JS2
-from fr3d_configuration import JS3
-from fr3d_configuration import JS4
-from fr3d_configuration import JS5
-from fr3d_configuration import REFRESHTIME
 
-def getCSVfilename(Q):
-    if SERVER:
-        csvfilename = Q['queryID'] + "/" + Q['queryID'] + ".csv"
-        csvlink     = Q['queryID'] + ".csv"
-    else:
-        csvfilename = "%s.csv" % Q['name'].encode('ascii', 'ignore')
-        csvfilename = "%s.csv" % Q['name']
-        csvfilename = csvfilename.replace(" ","_")
-        csvlink     = csvfilename
-
-    return(csvfilename, csvlink)
+pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','sR','coplanar','BPh','BR','sO','crossingNumber']
 
 def format_resolution(data):
 
@@ -41,11 +22,11 @@ def format_resolution(data):
     return s
 
 def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
-    """ Write the list of candidates in an HTML format that also shows
+    """
+    Write the list of candidates in an HTML format that also shows
     the coordinate window and a heat map of all-against-all distances.
     """
 
-    pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','coplanar','BPh','BR','sO','crossingNumber']
     pairsToPrint = defaultdict(list)
 
     # record which of the many possible pairwise interaction columns contain data
@@ -62,17 +43,16 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
                          and interactions[(a,b,pairType)][0] != 'None':
                             pairsToPrint[pairType].append((a,b))
 
-    pagetitle = "FR3D %s" % Q['name'].encode('ascii','ignore')
-
-    if SERVER:
-        htmlfilename = Q['queryID'] + "/" + Q['queryID']
+    if Q.get('name',None):
+        pagetitle = "FR3D %s" % Q['name']
+    elif Q.get('description',None):
+        pagetitle = "FR3D %s" % Q['description']
     else:
-        htmlfilename = Q['name'].replace(" ","_").encode('ascii', 'ignore')
-        htmlfilename = Q['name'].replace(" ","_")
+        pagetitle = "FR3D search results"
 
     candidatelist = '<table id="instances"; style="white-space:nowrap;">\n'
 
-    numPositions = Q["numpositions"]
+    numPositions = Q["numPositions"]
 
     # write header line, with instructions about how to sort each column
     candidatelist += "<tr><th onclick=\"sortTable(0,\'instances\',\'numeric\')\">S.</th><th onclick=\"sortTable(1,\'instances\',\'checkbox\')\">Show</th>"
@@ -117,9 +97,9 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         if(Q["type"] == "geometric" or Q["type"] == "mixed"):
             candidatelist += "<td>%0.4f" % candidate["discrepancy"] + "</td>"
 
-        PDB_id = candidate["unitids"][0][0:4]
-        if PDB_id in Q["PDB_data_file"]:
-            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][PDB_id])
+        file_id = candidate["unitids"][0].split("|")[0]
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += "<td>%s</td>" % format_resolution(Q["PDB_data_file"][file_id])
         else:
             candidatelist += "<td>NA</td>"
 
@@ -146,10 +126,10 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
                 else:
                     csymm = ""
 
-                if fields[2] == cfields[2] and symm == csymm:
+                if fields[2] == cfields[2] and symm == csymm and candidate['chainindices'][j] and candidate['chainindices'][j+1]:
                     if candidate['chainindices'][j] + 1 == candidate['chainindices'][j+1]: # successive
                         sequence += "-"
-                    elif candidate['chainindices'][j] + 1 < candidate['chainindices'][j+1]: # later
+                    elif candidate['chainindices'][j] + 1 < candidate['chainindices'][j+1]: # later, use <
                         sequence += "&#8594;"
                     else:
                         sequence += "&#8592;"
@@ -172,6 +152,8 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
     candidatelist += '</table>\n'
 
     discrepancydata = "var data =  []\n"
+
+    # print("  write_output: ", allvsallmatrix)
 
     if np.size(allvsallmatrix) > 0:
         # write discrepancy data in new 2022 list format
@@ -204,61 +186,110 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
             else:
                 discrepancydata += "]\n]" # end list of instances, end list of data
 
-    # get the path of the current program
-    current_path,current_program = os.path.split(os.path.abspath(__file__))
-
-    filename = os.path.join(current_path,'template.html')
+    # find the location of the template for the HTML file
+    if "TEMPLATEFILENAME" in Q:
+        template_filename = Q["TEMPLATEFILENAME"]
+    else:
+        # get the path of the current program
+        current_path,current_program = os.path.split(os.path.abspath(__file__))
+        template_filename = os.path.join(current_path,'template.html')
 
     # read template.html into one string
-    with open(filename, 'r') as myfile:
+    with open(template_filename, 'r') as myfile:
         template = myfile.read()
 
     # replace ###PAGETITLE### with pagetitle
     template = template.replace("###PAGETITLE###",pagetitle)
     template = template.replace("###sequencecolumn###",str(sequence_column))
 
+    if Q.get('name',None):
+        name_text = "Query name: " + Q['name']
+    elif Q.get('description',None):
+        name_text = "Query description: " + Q['description']
+    else:
+        name_text = "FR3D search results"
+
     if len(candidates) == 1:
-        queryNote = "Query name: %s.  Found %d candidate from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
-        queryNote = "Query name: %s.  Found %d candidate from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+        s_text = ""
     else:
-        queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'].encode('ascii','ignore'),len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
-        queryNote = "Query name: %s.  Found %d candidates from %d of %d files in %0.0f seconds." % (Q['name'],len(candidates),Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+        s_text = "s"
 
-    if len(Q["errorMessage"]) > 0:
-        queryNote += "<br>\n"
-        queryNote += "Error Message:<br>\n"
-        for line in Q["errorMessage"]:
-            queryNote += line + "<br>\n"
+    queryNote = "%s.<br>Found %d candidate%s from %d of %d files in %0.0f seconds." % (name_text,len(candidates),s_text,Q["numFilesSearched"],len(Q["searchFiles"]),Q["elapsedClockTime"])
+
     if "moreCandidatesThanHeatMap" in Q:
-        queryNote += " " + Q["moreCandidatesThanHeatMap"] + "\n"
-    else:
-        queryNote += "\n"
+        queryNote += " " + Q["moreCandidatesThanHeatMap"]
 
-    template = template.replace("###QUERYNAME###",str(queryNote.encode('ascii','ignore')))
+    template = template.replace("###QUERYNAME###",str(queryNote))
 
-    if SERVER:
-        seeModifyQuery = '<a href="http://rna.bgsu.edu/webfr3d/fr3d.php?id=%s">See and modify query</a> ' % Q["queryID"]
-    else:
-        seeModifyQuery = ''
+    seeModifyQuery = Q.get("seeModifyQuery","")
 
     template = template.replace("###SEEMODIFYQUERY###",seeModifyQuery)
 
-    csvfilename,csvlink = getCSVfilename(Q)
+    if "CSVFILENAME" in Q and not Q.get("reloadOutputPage",False):
+        csvlink = os.path.split(Q["CSVFILENAME"])[1]
+        seeCSVOutput = '<a href="%s">See CSV output</a>' % csvlink
+    else:
+        seeCSVOutput = ""
 
-    seeCSVOutput = '<a href="%s">See CSV output</a>' % csvlink
     template = template.replace("###seeCSVOutput###",seeCSVOutput)
 
-    description = "<br>Columns of the table show candidate number in similarity order, checkbox to display coordinates or not, structure resolution, discrepancy from query in geometric or mixed searches, units matching each position in the query, sequence of the units and backbone connectivity, glycosidic bond conformation if requested, pair and stack interactions present, base-phosphate interactions, base-ribose interactions, oxygen stacking interactions, and the number of nested AU, GC, GU Watson-Crick pairs crossed by each annotated interaction.<br>"
+    description = """
+    <br>Columns of the table show candidate number in geometric similarity order,
+    checkbox to display coordinates or not, structure resolution,
+    discrepancy from query in geometric or mixed searches,
+    unit ids matching each position in the query,
+    sequence of the units and backbone connectivity,
+    glycosidic bond conformation if requested,
+    basepair and stack interactions present, base-phosphate interactions,
+    base-ribose interactions, oxygen stacking interactions,
+    and the number of nested AU, GC, GU Watson-Crick pairs crossed by each annotated interaction.
+    Click on a column header to sort by that column.
+    Click on the diagonal of the heatmap to select an instance; right click to de-select.
+    Click above the diagonal to select a range of instances, below the diagonal to compare two instances.
+    """
 
     template = template.replace("###DESCRIPTION###",description)
 
     # replace ###CANDIDATELIST### with candidatelist
     template = template.replace("###CANDIDATELIST###",candidatelist)
 
+    # identify the location of js folder for interactivity, coordinates
+    JSLOCATION = '.'           # js folder is in HTML directory
+    if Q.get('JSLOCATION',None):
+        JSLOCATION = Q['JSLOCATION']
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import JSLOCATION
+        except:
+            pass
+
+
+    JS2 = '<script src="%sjs/jquery.jmolTools.WebFR3D.js"></script>' % JSLOCATION
+    if JSLOCATION == "./":
+        JS1 = '<script src="%sjs/JSmol.min.nojq.js"></script>' % JSLOCATION
+        JS3 = '<script src="%sjs/imagehandlinglocal.js"></script>' % JSLOCATION
+    else:
+        JS1 = '<script src="%sjs/jsmol/JSmol.min.nojq.js"></script>' % JSLOCATION
+        JS3 = '<script src="%sjs/imagehandling.js"></script>' % JSLOCATION
+    JS4 = '<script src="%sjs/jmolplugin.js" type="text/javascript"></script>' % JSLOCATION
+    JS5 = '<script src="%sjs/heatmap_2024.js" type="text/javascript"></script>' % JSLOCATION
+    JS6 = '<script src="%sjs/sort.table.js" type="text/javascript"></script>' % JSLOCATION
+    JS7 = '<script src="%sjs/shift.click.checkbox.js" type="text/javascript"></script>' % JSLOCATION
+
     template = template.replace("###JS1###",JS1)
     template = template.replace("###JS2###",JS2)
     template = template.replace("###JS3###",JS3)
     template = template.replace("###JS4###",JS4)
+    template = template.replace("###JS6###",JS6)
+    template = template.replace("###JS7###",JS7)
+
+    if "REFRESHTIME" in Q:
+        REFRESHTIME = Q["REFRESHTIME"]
+    else:
+        try:
+            from fr3d.search.fr3d_configuration import REFRESHTIME
+        except:
+            REFRESHTIME = 2
 
     refresh = ""
     if "reloadOutputPage" in Q and Q["reloadOutputPage"]:
@@ -273,36 +304,38 @@ def writeHTMLOutput(Q,candidates,allvsallmatrix=np.empty( shape=(0, 0) )):
         template = template.replace("###DISCREPANCYDATA###","")
         template = template.replace("###JS5###","")    # do not display a heat map
 
-    outputfilename = os.path.join(OUTPUTPATH,htmlfilename+".html")
-
-    print("Writing to %s" % outputfilename)
-
     messages = ""
-
-    messages += "\n<br>"
+    messages += "<br>"
+    if len(Q["errorMessage"]) > 0:
+        messages += "Error messages:<br>"
+        for line in Q["errorMessage"]:
+            messages += line + "<br>"
     if len(Q["userMessage"]) > 0:
-        messages += "User messages:<br>\n"
+        messages += "User messages:<br>"
         for line in Q["userMessage"]:
-            messages += line + "<br>\n"
+            messages += line + "<br>"
     else:
         messages += "No error or warning messages.<br>\n"
 
     template = template.replace("###MESSAGES###",messages)
 
-    with open(outputfilename, 'w') as myfile:
+    if Q.get('printFileOperations',False):
+        print("Writing to %s" % Q['HTMLFILENAME'])
+
+    # could write directly to .gz when desired
+    with open(Q['HTMLFILENAME'], 'w') as myfile:
         myfile.write(template)
 
-    if SERVER:
-        os.system("rm %s.gz" % outputfilename)
-        os.system("gzip %s" % outputfilename)
-
+    if "gzip" in Q and Q["gzip"]:
+        os.system("rm -f %s.gz" % Q['HTMLFILENAME'])
+        os.system("gzip %s" % Q['HTMLFILENAME'])
 
 
 def writeCSVOutput(Q,candidates):
-    """Write the list of candidates in comma separated value format
+    """
+    Write the list of candidates in comma separated value format
     """
 
-    pairTypes = ['glycosidicBondOrientation','chiDegree','pairsStacks','BPh','BR','sO','crossingNumber']
     pairsToPrint = defaultdict(list)
 
     # record which of the many possible columns contain data
@@ -314,11 +347,9 @@ def writeCSVOutput(Q,candidates):
                     if (a,b,pairType) in interactions:
                         pairsToPrint[pairType].append((a,b))
 
-    pagetitle = "FR3D %s" % Q['name'].encode('ascii','ignore')
-
     candidatelist = ''
 
-    numPositions = Q["numpositions"]
+    numPositions = Q["numPositions"]
 
     # write header line
     candidatelist += "Similarity order,"
@@ -352,9 +383,9 @@ def writeCSVOutput(Q,candidates):
         if(Q["type"] == "geometric" or Q["type"] == "mixed"):
             candidatelist += "%0.4f," % candidate["discrepancy"]
 
-        PDB_id = candidate["unitids"][0][0:4]
-        if PDB_id in Q["PDB_data_file"]:
-            candidatelist += format_resolution(Q["PDB_data_file"][PDB_id]) + ","
+        file_id = candidate["unitids"][0].split("|")[0]
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += format_resolution(Q["PDB_data_file"][file_id]) + ","
         else:
             candidatelist += "NA,"
 
@@ -381,7 +412,7 @@ def writeCSVOutput(Q,candidates):
                 else:
                     csymm = ""
 
-                if fields[2] == cfields[2] and symm == csymm:
+                if fields[2] == cfields[2] and symm == csymm and candidate['chainindices'][j] and candidate['chainindices'][j+1]:
                     if candidate['chainindices'][j] + 1 == candidate['chainindices'][j+1]: # successive
                         sequence += "--"
                     elif candidate['chainindices'][j] + 1 < candidate['chainindices'][j+1]: # later
@@ -412,53 +443,48 @@ def writeCSVOutput(Q,candidates):
                 unit_id_list += ','
 
         # make link to view
-        candidatelist += '"http://rna.bgsu.edu/rna3dhub/display3D/unitid/' + unit_id_list + '",'
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += '"https://rna.bgsu.edu/rna3dhub/display3D/unitid/' + unit_id_list + '",'
+        else:
+            candidatelist += ','
 
         # make link to coordinates
-        candidatelist += '"http://rna.bgsu.edu/rna3dhub/rest/getCoordinates?coord=' + unit_id_list + '",'
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += '"https://rna.bgsu.edu/rna3dhub/rest/getCoordinates?coord=' + unit_id_list + '",'
+        else:
+            candidatelist += ','
 
         # make link to sequence variability server
-        candidatelist += '"http://rna.bgsu.edu/correspondence/variability?id=' + unit_id_list + '&format=unique",'
+        if "PDB_data_file" in Q and file_id in Q["PDB_data_file"]:
+            candidatelist += '"https://rna.bgsu.edu/correspondence/variability?id=' + unit_id_list + '&format=unique",'
+        else:
+            candidatelist += ','
 
         candidatelist += '\n'
 
-    csvfilename,csvlink = getCSVfilename(Q)
+    if Q.get('printFileOperations',False):
+        print("Writing to %s" % Q["CSVFILENAME"])
 
-    outputfilename = os.path.join(OUTPUTPATH,csvfilename)
-
-    if not 'server' in Q:
-        print("Writing to %s" % outputfilename)
-
-    with open(outputfilename, 'w') as myfile:
+    with open(Q["CSVFILENAME"], 'w') as myfile:
         myfile.write(candidatelist)
 
-    """
-    # Unfortunately, this doesn't work in practice, because the downloaded file is
-    # unzipped but still has the .gz extension and does not have .csv.gz extension.
-    # Don't know why.  If you rename it from .gz to .csv, it's fine.
-    if SERVER:
-        os.system("rm %s" % (OUTPUTPATH+csvfilename+'.gz'))
-        os.system("gzip %s" % (OUTPUTPATH+csvfilename))
-    """
 
-def writeCandidateOutput(candidates, Q, ifedata):
-    queryName = Q['name']
-    fileName =   '../output/' + queryName.encode('ascii','ignore') + '_python_output.txt'
-    file = open(fileName, 'w')
-    file.write("Found " + str(len(candidates)) + " candidates\n")
+# def writeCandidateOutput(candidates, Q, ifedata):
+#     queryName = Q['name']
+#     fileName =   '../output/' + queryName.encode('ascii','ignore') + '_python_output.txt'
+#     file = open(fileName, 'w')
+#     file.write("Found " + str(len(candidates)) + " candidates\n")
 
+#     for candidate in candidates:
+#         dataLine = ""
 
+#         indices = ""
+#         for index in candidate['indices']:
+#             indices += "%6s" % str(index)
 
-    for candidate in candidates:
-        dataLine = ""
+#         dataLine += indices
 
-        indices = ""
-        for index in candidate['indices']:
-            indices += "%6s" % str(index)
-
-        dataLine += indices
-
-        file.write(dataLine + '\n')
-    file.close()
+#         file.write(dataLine + '\n')
+#     file.close()
 
 

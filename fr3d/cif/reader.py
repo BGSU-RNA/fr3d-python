@@ -12,7 +12,7 @@ import os
 
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter # old name
-    from pdbx.reader.PdbxReader import PdbxReader as Reader #If running python 2.7, use pdbx reader 
+    from pdbx.reader.PdbxReader import PdbxReader as Reader #If running python 2.7, use pdbx reader
 else:
     from pdbx import PdbxReader as Reader #if running in python 3, install mmcif package to deal with reading. ([mmcif_pdbx] will need added to setup.py for this)
 
@@ -90,7 +90,11 @@ class Cif(object):
     makes things easier.
     """
 
-    def __init__(self, handle=None, data=None):
+    def __init__(self, handle=None, data=None, preferred_id=None):
+
+        if handle is None and data is None:
+            raise ValueError("Must give either handle or data")
+
         if data is None:
             reader = Reader(handle)
             self.data = []
@@ -99,12 +103,13 @@ class Cif(object):
         else:
             self.data = data
 
-        if handle is None and data is None:
-            raise ValueError("Must give either handle or data")
-        if sys.version_info[0] < 3:
+        if preferred_id:
+            self.pdb = preferred_id
+        elif sys.version_info[0] < 3:
             self.pdb = self.data.getName()
-        else: 
+        else:
             self.pdb = self.data.name
+
         self._operators = self.__load_operators__()
         self._assemblies = self.__load_assemblies__()
         self._entities = self.__load_entities__()
@@ -160,8 +165,11 @@ class Cif(object):
     def __load_assemblies__(self):
         listOfNumbers = []
         assemblies = coll.defaultdict(list)
-        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-        if self.pdb in oldStructures: # For our database, we have to deal with a small list of structures in an old manner to maintain old unit ids and naming conventions
+        # Some old structures need to have processing for the sake of the server and naming conventions.
+        # Default to this for these structures.
+        if self.pdb in oldStructures:
+            # For our database, we have to deal with a small list of structures in an
+            # old manner to maintain old unit ids and naming conventions
             if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
                 for assembly in self.pdbx_struct_assembly_gen:
                     oper_expression = assembly['oper_expression']
@@ -188,12 +196,12 @@ class Cif(object):
 
                 return assemblies
         ###########################################################################################
-        # Otherwise, Default to this main way of processing 
+        # Otherwise, Default to this main way of processing
         if hasattr(self, 'pdbx_struct_assembly_gen'): #3% of structures don't have an assembly gen
             for assembly in self.pdbx_struct_assembly_gen:
                 oper_expression = assembly['oper_expression']
 
-                # Attempt to handle complex symettries. These symmetries have characters such as -, X, and P 
+                # Attempt to handle complex symettries. These symmetries have characters such as -, X, and P
                 operators = oper_expression.split(',')
 
                 for asym_id in assembly['asym_id_list'].split(','):
@@ -202,16 +210,16 @@ class Cif(object):
                         #Some Cif files such as 5MSF use a whole list of operators, a hyphen should do an adequte job of flagging these situations
                         if '-' in operator and 'X' not in operator and 'P' not in operator:# list of operators, but not crystallographic operators
                             op1 = operator.replace("(", "")
-                            op1 = op1.replace(")", "") 
+                            op1 = op1.replace(")", "")
                             startEnd = op1.split('-')
                             if sys.version_info[0] < 3:
                                 for number in xrange(int(startEnd[0]), int(startEnd[1])+1):
-                                    listOfNumbers.append(number)                                
+                                    listOfNumbers.append(number)
                             else:
                                 for number in range(int(startEnd[0]), int(startEnd[1])+1):
                                     listOfNumbers.append(number)
                             for symmetry in listOfNumbers: #Add all of these symmetry operators and then go to the next operator
-                                op = self._operators[str(symmetry)]    
+                                op = self._operators[str(symmetry)]
                                 previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
                                 if not op['id'] in previous_id:
                                     assemblies[asym_id].append(op)
@@ -223,7 +231,7 @@ class Cif(object):
                             pass # I don't think we need to apply anything.
                         elif 'P' in operator:  # P moves coordinates into a "standard" icosahedral point symmettry frame
                             if self.pdb in oldStructures:
-                                op = self._operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                                op = self._operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database.
                                                                # This is only applied for the structures in the old structures list.
                         else: #Normal case
                             if '(' in operator or ')' in operator:
@@ -271,15 +279,18 @@ class Cif(object):
             # look for other components like modified nucleotides
             chain_to_chem = {}  # track known chain types
             comp_id_to_chain = {}  # track unknown chem types
-            for line in self.atom_site:
-                chain_id = line['label_asym_id']  # current chain
-                comp_id = line['label_comp_id']   # current component
-                if comp_id in chem and not chain_id in chain_to_chem:
-                    chain_to_chem[chain_id] = chem[comp_id] # this chain is this type
 
-                # record the chain that an unknown component resides in, resolve it later
-                if not comp_id in chem:
-                    comp_id_to_chain[comp_id] = chain_id
+            # some integrative structures have no atom_site block, so no units fr3d can process
+            if hasattr(self, 'atom_site'):
+                for line in self.atom_site:
+                    chain_id = line['label_asym_id']  # current chain
+                    comp_id = line['label_comp_id']   # current component
+                    if comp_id in chem and not chain_id in chain_to_chem:
+                        chain_to_chem[chain_id] = chem[comp_id] # this chain is this type
+
+                    # record the chain that an unknown component resides in, resolve it later
+                    if not comp_id in chem:
+                        comp_id_to_chain[comp_id] = chain_id
 
             # inherit the type from other components in the same chain
             for comp_id, chain in comp_id_to_chain.items():
@@ -294,8 +305,12 @@ class Cif(object):
         """
         if sys.version_info[0] < 3:
             pdb = self.data.getName()
-        else: 
+        else:
             pdb = self.data.name
+
+        pdb = self.pdb
+        #print('  reader: using pdb = %s' % pdb)
+
         residues = self.__residues__(pdb)
         return Structure(list(residues), pdb=pdb)
 
@@ -331,7 +346,10 @@ class Cif(object):
         if isinstance(chain, (list, tuple, set)):
             chain_compare = ft.partial(op.contains, set(chain))
 
-        pdb = self.data.getName()
+        # pdb = self.data.getName()
+
+        pdb = self.pdb
+
         mapping = coll.defaultdict(list)
         for residue in self.__residues__(pdb):
             if chain_compare(residue.chain):
@@ -420,22 +438,51 @@ class Cif(object):
         def ordering_key(atoms):
             return atoms[0].alt_id
 
-        alt_ids = coll.defaultdict(list)
+        alt_id_to_atoms = coll.defaultdict(list)
         for atom in atoms:
-            alt_ids[atom.alt_id].append(atom)
+            alt_id_to_atoms[atom.alt_id].append(atom)
 
-        if len(alt_ids) == 1:
-            return list(alt_ids.values())
+        if len(alt_id_to_atoms) == 1:
+            # only one alt_id, all atoms go with that one
+            return list(alt_id_to_atoms.values())
 
-        if None in alt_ids:
-            common = alt_ids.pop(None)
-            for alt_id, specific_atoms in list(alt_ids.items()):
-                for common_atom in common:
-                    copied = copy.deepcopy(common_atom)
-                    copied.alt_id = alt_id
-                    specific_atoms.append(copied)
+        # print('Incoming atoms:')
+        # for alt_id in alt_id_to_atoms.keys():
+        #     print("alt_id: ", alt_id)
+        #     for atom in alt_id_to_atoms[alt_id]:
+        #         print(atom.pdb,atom.model,atom.chain,atom.component_id,atom.component_number,atom.alt_id, atom.name)
 
-        return sorted(list(alt_ids.values()), key=ordering_key)
+        # there is more than one alt_id, which could be None(.), A, B, C, etc.
+
+        # search for the alt_id for common atoms, which are . in the .cif file
+        # Python 2 gave alt_id None, Python 3 gives alt_id '' for . in the .cif file
+        if None in alt_id_to_atoms:
+            common_key = None
+        elif '' in alt_id_to_atoms:
+            common_key = ''
+        else:
+            # for example, alt_id values A and B and no common atoms
+            return sorted(list(alt_id_to_atoms.values()), key=ordering_key)
+
+        # print(alt_id_to_atoms[common_key])
+
+        # at least one atom has alt_id equal to . in the .cif file
+        # take those atoms out of the dictionary, so there is no . alt_id
+        common_atoms = alt_id_to_atoms.pop(common_key)
+
+        # add common atoms to each alt_id
+        for alt_id, specific_atoms in list(alt_id_to_atoms.items()):
+            for common_atom in common_atoms:
+                copied = copy.deepcopy(common_atom)
+                copied.alt_id = alt_id
+                specific_atoms.append(copied)
+
+            # print("Final atom set for alt_id ", alt_id)
+            # print("Total of %d atoms" % len(specific_atoms))
+            # for atom in specific_atoms:
+            #     print(atom.pdb,atom.model,atom.chain,atom.component_id,atom.component_number,atom.alt_id, atom.name)
+
+        return sorted(list(alt_id_to_atoms.values()), key=ordering_key)
 
     def __residues__(self, pdb):
         key = op.attrgetter(
@@ -447,18 +494,21 @@ class Cif(object):
             'insertion_code',
             'symmetry',
             )
+        # sort atoms by pdb, model, chain and then group by key defined above
         # in Python 3.8, sorted cannot have None values; this also works in 2.7
-        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb,x.model,x.chain,x.component_id,x.component_number,x.insertion_code or '',x.symmetry)), key)
+        mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb or '',x.model or '',x.chain or '',x.component_index or 0,x.component_id or '',x.insertion_code or '',x.symmetry or '')), key)
 
         for comp_id, all_atoms in mapping:
             for atoms in self.__group_alt_atoms__(list(all_atoms)):
 
                 first = atoms[0]
-                atom_type = self._chem.get(first.component_id, {})
-                atom_type = atom_type.get('type', None)
+                component_type = self._chem.get(first.component_id, {})
+                component_type = component_type.get('type', None)
                 alt_id = first.alt_id
                 if alt_id == '.':
                     alt_id = None
+
+                # print('%s|%s|%s|%s|%s index %s type %s' % (first.pdb, first.model, first.chain, first.component_id, first.component_number, first.component_index, component_type))
 
                 """
                 # testing
@@ -472,7 +522,7 @@ class Cif(object):
                     atoms,
                     pdb=first.pdb,
                     model=first.model,
-                    type=atom_type,
+                    type=component_type,
                     alt_id=alt_id,
                     chain=first.chain,
                     symmetry=first.symmetry,
@@ -484,12 +534,19 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-        if self.pdb in oldStructures: 
+
+        # some integrative structures have no atom_site block, so no units fr3d can process
+        if not hasattr(self, 'atom_site'):
+            return []
+
+        # Some old structures need special processing for the sake of the BGSU RNA server and
+        # naming conventions. Default to this for these structures.
+        if self.pdb in oldStructures:
             if hasattr(self, '_assemblies.values()'):
                 max_operators = max(len(op) for op in list(self._assemblies.values()))
             else:
-                max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
+                # if there aren't any operators, there should be one operator applied and it's the identity
+                max_operators=1
             if not max_operators:
                 raise ValueError("Could not find any operators")
 
@@ -520,12 +577,13 @@ class Cif(object):
                     filtered = filter(None, with_operators)
                     atoms.append(map(lambda a: self.__atom__(*a), filtered))
             return it.chain.from_iterable(atoms)
-        ###########################################################################
-        # Otherwise, this is the default way to handle this 
+
+        # Otherwise, this is the way to get the atoms
         try:
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         except:
-            max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
+            #if there aren't any operators, there should be one operator applied and it's the identity
+            max_operators=1
 
         if not self._assemblies:
             if sys.version_info[0] < 3:
@@ -534,7 +592,7 @@ class Cif(object):
                 zipped = it.izip(pdbs, self.atom_site, operators)
                 return it.imap(lambda a: self.__atom__(*a), zipped)
             else:
-                operators = it.repeat(self.__identity_operator__(), len(self.atom_site)) 
+                operators = it.repeat(self.__identity_operator__(), len(self.atom_site))
                 pdbs = it.repeat(pdb, len(self.atom_site))
                 zipped = list(zip(pdbs, self.atom_site, operators))
                 return list(map(lambda a: self.__atom__(*a), zipped))
@@ -571,6 +629,8 @@ class Cif(object):
     def __atom__(self, pdb, atom, symmetry):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
 
+        # print('%s|%s|%s|%s|%s index %s' % (pdb, atom['pdbx_PDB_model_num'], atom['auth_asym_id'], atom['label_comp_id'], atom['auth_seq_id'], atom['label_seq_id'])) #debugging
+
         index = atom['label_seq_id'] if 'label_seq_id' in atom else '.'
         if index != '.' and index != '':
             index = int(index)
@@ -578,48 +638,40 @@ class Cif(object):
             index = None
 
         symmetry_name = self.__symmetry_name__(symmetry)
+
         ins_code = atom['pdbx_PDB_ins_code'] if 'pdbx_PDB_ins_code' in atom else '?'
         if ins_code == '?':
             ins_code = None #Maybe this should be "" in python 3
 
         alt_id = atom['label_alt_id'] if 'label_alt_id' in atom else '.'
-        if alt_id == '.':
+        if alt_id == '' or alt_id == '.':
             alt_id = None
 
         model = atom['pdbx_PDB_model_num'] if 'pdbx_PDB_model_num' in atom else 1
         component_id = atom['label_comp_id'] if 'label_comp_id' in atom else atom['auth_comp_id']
         atom_id = atom['label_atom_id'] if 'label_atom_id' in atom else atom['auth_atom_id']
-        try:
-            return Atom(pdb=pdb,
-                        model=model,
-                        chain=atom['auth_asym_id'],
-                        component_id=component_id,
-                        component_number = int(atom['auth_seq_id']),
-                        component_index=index,
-                        insertion_code=ins_code,
-                        alt_id=alt_id,
-                        x=x, y=y, z=z,
-                        group=atom['group_PDB'],
-                        type=atom['type_symbol'],
-                        name=atom_id,
-                        symmetry=symmetry_name,
-                        polymeric=self.is_polymeric_atom(atom))
-        except: 
-            comp_num = re.sub('\D', '',atom['auth_seq_id'])
-            return Atom(pdb=pdb,
-                        model=model,
-                        chain=atom['auth_asym_id'],
-                        component_id=component_id,
-                        component_number = int(comp_num),
-                        component_index=index,
-                        insertion_code=ins_code,
-                        alt_id=alt_id,
-                        x=x, y=y, z=z,
-                        group=atom['group_PDB'],
-                        type=atom['type_symbol'],
-                        name=atom_id,
-                        symmetry=symmetry_name,
-                        polymeric=self.is_polymeric_atom(atom))
+
+        if 'auth_seq_id' in atom:
+            digits = "".join(c for c in atom['auth_seq_id'] if (c.isdigit() or c=="-"))
+            component_number = int(digits) if digits else None
+        elif 'label_seq_id' in atom:
+            component_number = int(atom['label_seq_id'])
+
+        return Atom(pdb=pdb,
+                    model=model,
+                    chain=atom['auth_asym_id'],
+                    component_id=component_id,
+                    component_number = component_number,
+                    component_index=index,
+                    insertion_code=ins_code,
+                    alt_id=alt_id,
+                    x=x, y=y, z=z,
+                    group=atom['group_PDB'],
+                    type=atom['type_symbol'],
+                    name=atom_id,
+                    symmetry=symmetry_name,
+                    polymeric=self.is_polymeric_atom(atom))
+
     def __apply_symmetry__(self, atom, symmetry):
         coords = [float(atom['Cartn_x']),
                   float(atom['Cartn_y']),
@@ -634,10 +686,15 @@ class Cif(object):
         if self.pdb in oldStructures:
              if not symmetry_name or symmetry_name == '?':
                 #6QNQ is in old structures for a seperate reason than the rest of the structures. Doesn't apply the p annotation.
-                symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database. 
+                symmetry_name = 'P_%s' % symmetry['id'] # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database.
                                                     # This is only applied for the structures in the old symmetry list.
-        elif not symmetry_name or symmetry_name == '?': 
-            symmetry_name = 'ASM_%s' % symmetry['id'] #we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
+        elif not symmetry_name or symmetry_name == '?':
+            # we've decided this is the best way to annotate these symmetries going forward as they're not named and this is what Cathy Lawson recommended.
+            symmetry_name = 'ASM_%s' % symmetry['id']
+        elif symmetry_name == '1_555' and 'type' in symmetry and symmetry['type'] == 'point symmetry operation':
+            # 9o9k has two symmetries called 1_555 but one is not the identity operation
+            # Call that one ASM_ and use its number
+            symmetry_name = 'ASM_%s' % symmetry['id']
 
         return symmetry_name
 
@@ -650,7 +707,7 @@ class Cif(object):
         return bool(block)
 
     def operators(self, asym_id):
-        
+
         assemblies = self._assemblies[asym_id]
 
         if not assemblies:
@@ -674,7 +731,7 @@ class Cif(object):
         block_name = re.sub('^_', '', name)
         if sys.version_info[0] < 3:
             block = self.data.getObj(block_name)
-        else: 
+        else:
             block = self.data.get_object(block_name)
         if not block:
             raise MissingBlockException("Unknown block " + name)
@@ -697,7 +754,7 @@ class Table(object):
         self._cif = cif
         self.block = block
         self.rows = rows
-        
+
         if sys.version_info[0] < 3:
             self.columns = self.block.getItemNameList()
         else:

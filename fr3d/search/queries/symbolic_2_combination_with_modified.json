@@ -1,0 +1,16 @@
+{
+"numpositions": 2,
+"searchFiles": ["4TNA","7K00","100D"],
+"constraintMatrix,1,1": "RNA, DNA",
+"constraintMatrix,1,2": "cWW G,C AU +modAsRNA",   # allow G,C A,U and any modified versions
+"constraintMatrix,2,2": "RNA, DNA",
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 1,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 1,
+"printTimer": 1
+}

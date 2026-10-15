@@ -1,7 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-    This program reads one or more CIF files and produces annotations
-    the glycosidic bond orientation.
+This program reads one or more CIF files and produces annotations
+the glycosidic bond orientation and the self base-backbone interactions.
+Example:
+python NA_unit_annotation.py 4TNA    # produces output files 4TNA_glycosidic.txt and 4TNA_self_backbone.txt
+python NA_unit_annotation.py 4TNA -c glycosidic    # produces output file 4TNA_glycosidic.txt
+python NA_unit_annotation.py 4TNA -c self_backbone    # produces output file 4TNA_self_backbone.txt
+
+Output files are tab delimited
+
+Use -i <directory> to specify the input path
+For .pdb formatted files, use the .pdb extension, for example:
+python NA_unit_annotation.py 4TNA.pdb
+
+If the input file is not found in the input directory, the program attempts to download it from PDB,
+and will store it in the input directory.
 
 """
 
@@ -11,26 +24,27 @@ import math
 import os
 
 #from fr3d.modified_parent_mapping import modified_nucleotides
-from fr3d.data.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
+from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
 
 from fr3d.cif.reader import Cif
-from fr3d.definitions import RNAconnections
-from fr3d.definitions import NAbaseheavyatoms
-from fr3d.definitions import NAbasehydrogens
-from fr3d.definitions import nt_sugar
-from fr3d.definitions import nt_phosphate
-from fr3d.definitions import Ribophos_connect
-from fr3d.definitions import aa_connections
-from fr3d.definitions import aa_backconnect
-from fr3d.definitions import aa_hydrogen_connections
-from fr3d.definitions import aa_fg
-from fr3d.definitions import aa_linker
-from fr3d.definitions import aa_backbone
-from fr3d.definitions import tilt_cutoff
-from fr3d.definitions import planar_atoms
-from fr3d.definitions import HB_donors
-from fr3d.definitions import HB_weak_donors
-from fr3d.definitions import HB_acceptors
+# from fr3d.definitions import RNAconnections
+# from fr3d.definitions import NAbaseheavyatoms
+# from fr3d.definitions import NAbasehydrogens
+# from fr3d.definitions import nt_sugar
+# from fr3d.definitions import nt_phosphate
+# from fr3d.definitions import Ribophos_connect
+# from fr3d.definitions import aa_connections
+# from fr3d.definitions import aa_backconnect
+# from fr3d.definitions import aa_hydrogen_connections
+# from fr3d.definitions import aa_fg
+# from fr3d.definitions import aa_linker
+# from fr3d.definitions import aa_backbone
+# from fr3d.definitions import tilt_cutoff
+# from fr3d.definitions import planar_atoms
+# from fr3d.definitions import HB_donors
+# from fr3d.definitions import HB_weak_donors
+# from fr3d.definitions import HB_acceptors
+from fr3d.definitions import amino_acids
 
 # read input and output paths from localpath.py
 # note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
@@ -41,16 +55,26 @@ except:
     inputPath = ""
     outputNAPairwiseInteractions = ""
 
-from NA_pairwise_interactions import load_structure
-from NA_pairwise_interactions import get_parent
-from NA_pairwise_interactions import myTimer
+from fr3d.classifiers.NA_pairwise_interactions import load_structure
+from fr3d.classifiers.NA_pairwise_interactions import get_parent
+from fr3d.classifiers.NA_pairwise_interactions import myTimer
+from fr3d.classifiers.NA_pairwise_interactions import check_base_backbone_interactions
+from fr3d.classifiers.NA_pairwise_interactions import map_unit_id_to_previous_O3
+
+ShowStructureReadingErrors = True
+
+verbose = 2  # also print diagnostic information
+verbose = 0  # do not print much at all
+verbose = 1  # print basic information about input, output, and number of interactions
 
 def annotate_bond_orientation(structure,pipeline=False):
 
     bond_annotations = []
     error_message = []
 
-    nts = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
+    nts = structure.residues(type = ["RNA","DNA","PNA","SOLITARY"])  # load all RNA/DNA nucleotides
+
+    announced_parents = set(['MG','NA'])  # don't mention that no parent was found
 
     num_nts = 0
     for nt in nts:
@@ -63,6 +87,9 @@ def annotate_bond_orientation(structure,pipeline=False):
         C2C4 = np.empty( shape=(0, 0) )
         parent = np.empty( shape=(0, 0) )
 
+        if not nt.index:
+            continue
+
         if nt.sequence in ['A','G','DA','DG']:
             N1N9 = nt.centers["N9"]
             C2C4 = nt.centers["C4"]
@@ -71,6 +98,8 @@ def annotate_bond_orientation(structure,pipeline=False):
             N1N9 = nt.centers["N1"]
             C2C4 = nt.centers["C2"]
             parent = nt.sequence
+        elif nt.sequence in amino_acids:
+            continue
         else:
             parent = get_parent(nt.sequence)
             if parent in ['A','G','DA','DG']:
@@ -92,17 +121,14 @@ def annotate_bond_orientation(structure,pipeline=False):
                 else:
                     print('No C2 atom correspondence in %s, parent is %s' % (nt.sequence,parent))
             else:
-                if pipeline:
-                    error_message.append("%s has no identified parent" % nt.unit_id())
-                else:
-                    print("%s has no identified parent" % nt.unit_id())
+                if not nt.sequence in announced_parents:
+                    announced_parents.add(nt.sequence)
+                    if pipeline:
+                        error_message.append("%s has no identified parent" % nt.sequence)
+                    else:
+                        print("%s has no identified parent nucleotide" % (nt.unit_id()))
 
-                N1N9 = nt.centers["N9"]      # maybe this is present
-                if len(N1N9) == 3:
-                    C2C4 = nt.centers["C4"]
-                else:
-                    N1N9 = nt.centers["N1"]
-                    C2C4 = nt.centers["C2"]
+                continue
 
         if len(N1N9) == 3 and len(C2C4) == 3:
             C1P = nt.centers["C1'"]
@@ -161,7 +187,7 @@ def annotate_bond_orientation(structure,pipeline=False):
         else:
             if pipeline:
                 error_message.append('%s had a calculation error' % nt.unit_id())
-            else:
+            elif verbose >= 2:
                 print('%s had a calculation error' % nt.unit_id())
 
             bond_annotations.append({'unit_id'    : nt.unit_id(),
@@ -170,7 +196,37 @@ def annotate_bond_orientation(structure,pipeline=False):
 
     return bond_annotations, error_message
 
-def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,categories):
+
+def annotate_self_base_backbone(structure,pipeline=False,get_datapoint=False):
+
+    annotations = []
+    error_message = []
+
+    nts = structure.residues(type = ["RNA","DNA","PNA","SOLITARY"])  # load all RNA/DNA nucleotides
+
+    unit_id_to_previous_O3 = map_unit_id_to_previous_O3(nts)
+
+    for nt in nts:
+        parent = get_parent(nt.sequence)
+
+        if not parent:
+            continue
+
+        datapoint = {}
+        if get_datapoint:
+            datapoint['unit_id'] = nt.unit_id()
+
+        previousO3 = unit_id_to_previous_O3.get(nt.unit_id(),np.empty([1,3]))
+
+        interactionBPh, interactionBR, datapoint = check_base_backbone_interactions(nt, nt, previousO3, parent, parent, datapoint)
+
+        if interactionBPh or interactionBR:
+            annotations.append({'unit_id'    : nt.unit_id(), 'BPh' : interactionBPh, 'BR' : interactionBR})
+
+    return annotations, error_message
+
+
+def write_txt_output_file(outputNAPairwiseInteractions,PDBid,annotations,categories):
     """
     Write interactions according to category, and within each
     category, write by annotation.
@@ -179,26 +235,29 @@ def write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,ca
 
     # loop over types of output files requested
     for category in categories.keys():
+        tuples_to_write = []
+        if category == 'glycosidic':
+            # loop over all interactions found in this category
+            for d in annotations[category]:
+                tuples_to_write.append((d['unit_id'],d['orientation'],d['chi_degree']))
+        elif category == 'self_backbone':
+            for d in annotations[category]:
+                tuples_to_write.append((d['unit_id'],d['BPh'],d['BR']))
+
+        # sort tuples by model, first chain, first number, first unit id (for alt id, insertion code, symmetry), interaction
+        ordered = sorted(tuples_to_write, key=lambda x: (x[0].split("|")[1],x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1]))
+
         filename = os.path.join(outputNAPairwiseInteractions,PDBid + "_" + category + ".txt")
         with open(filename,'w') as f:
-            # loop over all interactions found in this category
-            if category == 'glycosidic':
-                for d in bond_annotations:
-                    a = d['unit_id']
-                    if d['orientation'] == 'NA':
-                        f.write("%s\t%s\t%s\n" % (d['unit_id'],d['orientation'],d['chi_degree']))
-                    else:
-                        f.write("%s\t%s\t%s\n" % (d['unit_id'],d['orientation'],d['chi_degree']))
-
-#=======================================================================
-
-ShowStructureReadingErrors = True
-
-
+            if category in ['glycosidic','self_backbone']:
+                for a,b,c in ordered:
+                    f.write("%s\t%s\t%s\n" % (a,b,c))
 
 
 def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat):
-
+    """
+    Calculate the requested annotations at the unit level
+    """
     if isinstance(entry_id,str):
         entry_id = entry_id.split(",")
 
@@ -235,6 +294,8 @@ def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIntera
 
         PDBid = PDB[-8:-4]
 
+        annotations = {}
+
         #print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDBs)))
         timerData = myTimer("Reading CIF files",timerData)
 
@@ -251,12 +312,17 @@ def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIntera
         if 'glycosidic' in category:
             timerData = myTimer("Annotating bond orientation",timerData)
             bond_annotations, error_message = annotate_bond_orientation(structure)
+            annotations['glycosidic'] = bond_annotations
 
-            #print(bond_annotations)
+        if 'self_backbone' in category:
+            timerData = myTimer("Annotating backbone orientation",timerData)
+            backbone_annotations, error_message = annotate_self_base_backbone(structure)
+            annotations['self_backbone'] = backbone_annotations
 
-            timerData = myTimer("Recording interactions",timerData)
-            print("  Recording interactions in %s" % outputNAPairwiseInteractions)
-            write_txt_output_file(outputNAPairwiseInteractions,PDBid,bond_annotations,category)
+        timerData = myTimer("Recording interactions",timerData)
+        print("  Recording interactions in %s" % outputNAPairwiseInteractions)
+        write_txt_output_file(outputNAPairwiseInteractions,PDBid,annotations,category)
+
 
     myTimer("summary",timerData)
 
@@ -265,7 +331,7 @@ def generateUnitAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIntera
     else:
         print("All files read successfully")
 
-
+#=======================================================================
 if __name__=="__main__":
 
     # allow user to specify input and output paths
@@ -273,9 +339,10 @@ if __name__=="__main__":
     parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
-    parser.add_argument('-c', "--category", help='Interaction category or categories (glycosidic)')
+    parser.add_argument('-c', "--category", help='Interaction category or categories (glycosidic,self_backbone)')
     parser.add_argument('-f', "--format", help='Output format (txt)')
-    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
+    parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2)')
+    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one file')
 
     # process command line arguments
     args = parser.parse_args()
@@ -283,6 +350,7 @@ if __name__=="__main__":
         inputPath = args.input
     elif not inputPath:
         inputPath = ""
+
     if args.output:
         outputNAPairwiseInteractions = args.output     # set output path
     elif not outputNAPairwiseInteractions:
@@ -294,10 +362,11 @@ if __name__=="__main__":
     category = {}
 
     if args.category:
-        for categ in args.category[0].split(","):
+        for categ in args.category.split(","):
             category[categ] = []
     else:
         category['glycosidic'] = {}
+        category['self_backbone'] = {}
 
     if args.format:
         outputFormat = args.format
@@ -308,6 +377,9 @@ if __name__=="__main__":
         chain_id = args.chain
     else:
         chain_id = None
+
+    if args.verbose:
+        verbose = int(args.verbose)
 
     entry_id = args.PDBfiles[0].split(",")
 

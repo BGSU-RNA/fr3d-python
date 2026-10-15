@@ -2,6 +2,7 @@
 """
     This program reads one or more CIF files and produces annotations
     the glycosidic bond orientation.
+    It's a bit of a mess, having been used just to test NA_unit_annotation.py
 
 """
 
@@ -27,7 +28,6 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 
-from discrepancy import matrix_discrepancy
 import csv
 import urllib
 import pickle
@@ -54,8 +54,6 @@ import os
 from os import path
 
 from time import time
-
-from class_limits import nt_nt_cutoffs
 
 HB_donor_hydrogens = {}
 HB_donor_hydrogens['A'] = {"N6":["1H6","2H6"], "C2":["H2"], "C8":["H8"], "O2'":[]}
@@ -303,98 +301,6 @@ def reverse_edges(interaction):
         return interaction[0] + interaction[1] + interaction[3] + interaction[2]
     else:
         return None
-
-def annotate_nt_nt_interactions(bases, screen_distance_cutoff, baseCubeList, baseCubeNeighbors):
-
-    # loop through nt cubes, loop through neighboring nt cubes,
-    # then loop through bases in the two cubes,
-    # screening distances between them, then annotating interactions
-
-    count_pair = 0
-
-    pair_to_bp_type = {}
-
-    list_base_coord = []
-    list_nt_nt = []
-    contact_list = []
-    output = []
-
-    max_screen_distance = 0     # record the largest screening distance for which an interaction is found
-
-    for nt1key in baseCubeList:                                # key to first cube
-        for nt2key in baseCubeNeighbors[nt1key]:               # key to each potential neighboring cube, including the first
-            if nt2key in baseCubeList:                         # if this cube was actually made
-                for nt1 in baseCubeList[nt1key]:               # first nt of a potential pair
-                    parent1 = get_parent(nt1.sequence)
-                    gly1 = get_glycosidic_atom_coordinates(nt1,parent1)
-
-                    if len(nt1.centers["base"]) < 3:
-                        print("Missing base center for %s" % nt1.unit_id())
-                        print(nt1.centers["base"])
-                        continue
-                    for nt2 in baseCubeList[nt2key]:           # second nt of a potential pair
-                        if len(nt2.centers["base"]) < 3:
-                            print("Missing base center for %s" % nt2.unit_id())
-                            print(nt2.centers["base"])
-                            continue
-                        displacement = abs(nt2.centers["base"]-nt1.centers["base"]) # center-center
-
-                        if displacement[0] > screen_distance_cutoff or \
-                           displacement[1] > screen_distance_cutoff:
-                            continue
-
-                        screen_distance = np.linalg.norm(displacement)
-
-                        if screen_distance > screen_distance_cutoff:
-                            continue
-
-                        if screen_distance < 2:       # some structures have overlapping nucleotides
-                            continue
-
-#                        print("  Checking for an interaction between %-18s and %-18s center-center distance %7.4f" % (nt1.unit_id(),nt2.unit_id(),screen_distance))
-
-                        parent2 = get_parent(nt2.sequence)
-                        parent_pair = parent1 + "," + parent2
-
-#                       Note that AA, CC, GG, UU are being checked twice already!
-#                       need to add T and have a plan for DNA nucleotides as well
-                        if parent_pair in ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']:
-#                        if parent_pair in ['A,U']:
-                            cutoffs = nt_nt_cutoffs[parent1+","+parent2]
-
-                            gly2 = get_glycosidic_atom_coordinates(nt2,parent2)
-                            glycosidic_displacement = np.subtract(gly2,gly1)
-
-                            pair_data = check_coplanar(nt1,nt2,glycosidic_displacement)
-
-                            base_ribose_stack = check_base_ribose_stack(nt1,nt2,pair_data)
-
-                            interaction = check_basepair_cutoffs(nt1,nt2,pair_data,cutoffs)
-                            if False and len(interaction) > 1:
-                                print("  Identified parents as %s and %s" % (parent1,parent2))
-                                print("  Found %s interaction between %-18s and %-18s" % (interaction,nt1.unit_id(),nt2.unit_id()))
-                                print("  Gap value %0.8f" % pair_data["gap12"])
-                                print("  Coplanar value %0.8f" % pair_data["coplanar_value"])
-                                #print(pair_data)
-                                print("  http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (nt1.unit_id(),nt2.unit_id()))
-                                print("")
-
-                            if len(interaction) > 0:
-                                count_pair += 1
-
-                                inter = interaction[0][0]
-
-                                pair_to_bp_type[(nt1.unit_id(),nt2.unit_id())] = inter
-                                pair_to_bp_type[(nt2.unit_id(),nt1.unit_id())] = reverse_edges(inter)
-
-
-    #print(pair_to_bp_type)
-
-    print("  Found %d nucleotide-amino acid pairs" % count_pair)
-    print("  Recorded %d nucleotide-amino acid pairs" % len(list_nt_nt))
-    print("  Maximum screen distance for actual contacts is %8.4f" % max_screen_distance)
-
-    return pair_to_bp_type, list_nt_nt, list_base_coord
 
 def get_parent(sequence):
     """ Look up parent sequence for RNA, DNA, and modified nucleotides

@@ -1,0 +1,22 @@
+{
+"name": "geometric_4_RNA-protein-cWW-minor-groove", 
+"numpositions": 4, 
+"unitID": ["4V9F|1|0|C|2035", "4V9F|1|0|G|1744", "4V9F|1|K|HIS|44", "4V9F|1|K|GLU|13"], 
+"discrepancy": 0.5, 
+"requiredUnitType": {"0": [], "1": [], "2": ["HIS"], "3": []}, 
+"searchFiles": ["4V9F"], 
+"constraintMatrix,1,2": "cWW", 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"constraintMatrix,3,3": "protein", 
+"constraintMatrix,4,4": "protein", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

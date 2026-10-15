@@ -1,4 +1,5 @@
-"""Superpositions contains functions to superpose sets of 3-dimensional
+"""
+Superpositions contains functions to superpose sets of 3-dimensional
 coordinates.
 """
 
@@ -8,7 +9,8 @@ from fr3d.geometry.RMSD import RMSD
 
 
 def besttransformation(set1, set2):
-    """This finds the 3x3 rotation matrix which optimally superimposes
+    """
+    This finds the 3x3 rotation matrix which optimally superimposes
     the nx3 matrix of points in set1 onto the nx3 matrix of points set2.
     One reference is this: http://en.wikipedia.org/wiki/Kabsch_algorithm
     Another is a python implementation that goes with pymol, see
@@ -90,7 +92,8 @@ def besttransformation(set1, set2):
 
 
 def besttransformation_weighted(set1, set2, weights=[1.0]):
-    """This finds the besttransformation rotation matrix with predetermined
+    """
+    This finds the besttransformation rotation matrix with predetermined
     weights.  The weights are used to give some coordinates more influence than
     others.
     """
@@ -115,10 +118,10 @@ def besttransformation_weighted(set1, set2, weights=[1.0]):
     U = numpy.dot(numpy.dot(numpy.transpose(Wt), I), numpy.transpose(V))
     new1 = numpy.dot(dev1, U)
     new2 = dev2
-    rmsd = RMSD(new1, new2)
+    # rmsd = RMSD(new1, new2)
     sse = sumsquarederror(new1, new2)
     rotation_matrix = U
-    return rotation_matrix, new1, mean1, rmsd, sse
+    return rotation_matrix, new1, mean1, new2, mean2, sse
 
 #For weighted discrepancies, I think you just set up a diagonal matrix with
 #non-negative weights on the diagonal, then multiply this diagonal matrix

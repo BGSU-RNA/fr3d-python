@@ -736,11 +736,12 @@ aa_connections['CYS'] =['CA','CB','CB','SG']
 
 # Definitions for drawing the amino acid hydrogens.  Each tuple defines a line to be drawn.
 aa_hydrogen_connections['ALA']=[('CA','HA'),('CB','HB1'),('CB','HB2'),('CB','HB3')]
-aa_hydrogen_connections['ARG']=[('N','H'),('N','H2'),('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('CD','HD2'),('CD','HD3'),('NE','HE'),('NH1','HH11'),('NH1','HH12'),('NH2','HH21'),('NH2','HH22')]
+aa_hydrogen_connections['ARG']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('CD','HD2'),('CD','HD3'),('NE','HE'),('NH1','HH11'),('NH1','HH12'),('NH2','HH21'),('NH2','HH22')]
 aa_hydrogen_connections['ASN']=[('CA','HA'),('CB','HB3'),('CB','HB2'),('ND2','HD21'),('ND2','HD22')]
 aa_hydrogen_connections['ASP']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('HD2','OD2')]
 aa_hydrogen_connections['CYS']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('SG','HG')]
 aa_hydrogen_connections['GLU']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3')]
+aa_hydrogen_connections['GLN']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CG','HG2'),('CG','HG3'),('NE2','HE21'),('NE2','HE22')]
 aa_hydrogen_connections['GLY']=[('CA','HA3'),('CA','HA2')]
 aa_hydrogen_connections['HIS']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD2','HD2'),('NE2','HE2'),('CE1','HE1'),('ND1','HD1')]
 aa_hydrogen_connections['ILE']=[('CA','HA'),('CB','HB'),('CG1','HG12'),('CG1','HG13'),('CG2','HG21'),('CG2','HG22'),('CG2','HG23'),('CD1','HD11'),('CD1','HD12'),('CD1','HD13')]
@@ -755,3 +756,7 @@ aa_hydrogen_connections['TRP']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD1','HD
 aa_hydrogen_connections['TYR']=[('CA','HA'),('CB','HB2'),('CB','HB3'),('CD2','HD2'),('CE2','HE2'),('OH','HH'),('CE1','HE1'),('CD1','HD1')]
 aa_hydrogen_connections['VAL']=[('CA','HA'),('CB','HB'),('CG2','HG21'),('CG2','HG22'),('CG2','HG23'),('CG1','HG11'),('CG1','HG12'),('CG1','HG13')]
 
+# common amino acids
+amino_acids = ['ALA','ARG','ASN','ASP','CYS','GLN','GLU','GLY','HIS','ILE','LEU','LYS','MET','PHE','PRO','SER','THR','TRP','TYR','VAL']
+# less common amino acids
+amino_acids += ['SEC','PYL','HYP','SEP','TPO','PTY','MLY']

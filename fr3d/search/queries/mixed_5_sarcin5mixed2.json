@@ -1,0 +1,23 @@
+{
+"name": "mixed_5_sarcin5mixed2", 
+"numpositions": 5, 
+"unitID": ["4V9F|1|0|G|2692", "4V9F|1|0|U|2693", "4V9F|1|0|A|2694", "4V9F|1|0|G|2701", "4V9F|1|0|A|2702"], 
+"unittype": ["RNA", "RNA", "RNA", "RNA", "RNA"], 
+"discrepancy": 0.5, 
+"searchFiles": ["4V9F"], 
+"constraintMatrix,2,5": "tWH", 
+"constraintMatrix,1,1": "RNA", 
+"constraintMatrix,2,2": "RNA", 
+"constraintMatrix,3,3": "RNA", 
+"constraintMatrix,4,4": "RNA", 
+"constraintMatrix,5,5": "RNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

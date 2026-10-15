@@ -1,0 +1,17 @@
+{
+"name": "symbolic_2_unary_test", 
+"numpositions": 2, 
+"searchFiles": ["4V9F|1|9"], 
+"constraintMatrix,1,1": "G", 
+"constraintMatrix,1,2": "cWW", 
+"constraintMatrix,2,2": "C", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

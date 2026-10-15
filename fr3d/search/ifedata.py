@@ -1,14 +1,16 @@
-import numpy as np
-from file_reading import readNAPairsFile
-from file_reading import readNAPositionsFile
-from file_reading import readProteinPositionsFile
-from file_reading import readUnitAnnotations
+"""
+Read centers and rotations and pairwise interactions for an IFE or entire 3D structure file
+"""
 
-component_to_NA_type = {}
-for comp in ['A','C','G','U']:
-    component_to_NA_type[comp] = 'RNA'
-for comp in ['DA','DC','DG','DT']:
-    component_to_NA_type[comp] = 'DNA'
+import numpy as np
+
+from fr3d.search.file_reading import readNAPairsFile
+from fr3d.search.file_reading import readNAPositionsFile
+from fr3d.search.file_reading import readProteinPositionsFile
+from fr3d.search.file_reading import readUnitAnnotations
+
+from fr3d.search.query_processing import getMoleculeType
+
 
 def combine_dicts(x,y):
     z = x.copy()
@@ -16,13 +18,17 @@ def combine_dicts(x,y):
     return z
 
 def readPositionsAndInteractions(Q, ifename, alternate=""):
+    """
+    FR3D calls this function to read the units, map their unit ids to internal index,
+    and also read the pairwise interactions they make.
+    """
 
     fields =  ifename.split('|')
-    PDBID = fields[0]
 
-    NA_positions_file_name = ifename.replace("|","-")
+    # field 0 is generally a PDB identifier, but could be user-defined instead
+    file_id = fields[0]
 
-    # lists should start empty, append with RNA if necessary, with protein if necessary, with DNA if necessary, etc.
+    # lists should start empty, append with RNA if necessary, with DNA if necessary, with protein if necessary, etc.
     starting_index = 0
     ifedata = {}
     ifedata['index_to_id'] = {}
@@ -34,20 +40,23 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
 
     # accumulate the set of all requiredMoleculeType lists
     requiredMoleculeTypes = []
-    for index in range(len(Q["requiredMoleculeType"])):
-        requiredMoleculeTypes += Q["requiredMoleculeType"][index]
+    for p in range(len(Q["requiredMoleculeType"])):
+        requiredMoleculeTypes += Q["requiredMoleculeType"][p]
     requiredMoleculeTypes = list(set(requiredMoleculeTypes))
 
     # check to see if RNA or DNA is a required unit type, and if so, read NA data
     if "RNA" in requiredMoleculeTypes or "DNA" in requiredMoleculeTypes:
 
+        if "getParentType" in Q or "getParentAsRNA" in Q:
+            # Modified nucleotide mappings
+            from fr3d.modified.mapping import modified_base_to_parent
+
         # split chains in an IFE, which are separated by the + character
-        for chainString in NA_positions_file_name.split("+"):
+        for chainString in ifename.split("+"):
 
             Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices = readNAPositionsFile(Q,chainString,starting_index)
 
             if len(centers) > 0:
-
                 # the following lines set up separate but parallel lists
                 # if you want to insert, or re-order, you need to do that for all lists simultaneously
                 # should we instead make a list of units, and each unit is a dictionary with these fields?
@@ -62,18 +71,25 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
                     unit_information["rotations"] = rotations[id_to_index[unitID]-starting_index]
                     data = unitID.split("|")
                     ifedata['models'].append(data[1])
-                    unit_information["unitType"] = data[3] # extract out base from unitID
+                    unit_information["unitType"] = data[3] # extract out base sequence from unitID
+
+                    if "getParentType" in Q:
+                        unit_information["parentType"] = modified_base_to_parent.get(data[3], data[3])
+
+                    if "getParentAsRNA" in Q:
+                        p = modified_base_to_parent.get(data[3], data[3])
+                        if p in ['DA','DC','DG']:
+                            p = p[1]
+                        elif p == 'DT':
+                            p = 'U'
+                        unit_information["parentAsRNA"] = p
 
                     # use component type to infer RNA or DNA
-                    if data[3] in component_to_NA_type:
-                        unit_information["moleculeType"] = component_to_NA_type[data[3]]
-                    else:
-                        # temporary ... replace with code that uses mappings of modified nucleotides
-                        unit_information["moleculeType"] = 'RNA'
+                    unit_information["moleculeType"] = getMoleculeType(data[3])
 
                     unit_information["chainindex"] = chainIndices[id_to_index[unitID]-starting_index]
 
-                    ifedata["units"].append(unit_information) #append center and rotation information for each unit ID
+                    ifedata["units"].append(unit_information) # append center and rotation information for each unit ID
 
                 starting_index += len(centers)
 
@@ -118,7 +134,7 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
     # load NA pair data; even if not part of the query, it's part of the results
     if "RNA" in requiredMoleculeTypes or "DNA" in requiredMoleculeTypes:
         if len(ifedata['units']) > 1:
-            Q, interactionToPairs, pairToInteractions, pairToCrossingNumber = readNAPairsFile(Q, PDBID, ifedata["id_to_index"], alternate)
+            Q, interactionToPairs, pairToInteractions, pairToCrossingNumber = readNAPairsFile(Q, file_id, ifedata["id_to_index"], alternate)
             ifedata['interactionToPairs'] = interactionToPairs
             ifedata['pairToInteractions'] = pairToInteractions
             ifedata['pairToCrossingNumber'] = pairToCrossingNumber
@@ -129,7 +145,7 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
 
     # also read protein position file if necessary and append to centers, rotations, ids, ...
     if "protein" in requiredMoleculeTypes:
-        Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q, PDBID, starting_index)
+        Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q, file_id, starting_index)
 
         if len(ids) > 0:
             ifedata['index_to_id'] =  combine_dicts(ifedata['index_to_id'], index_to_id)
@@ -143,7 +159,7 @@ def readPositionsAndInteractions(Q, ifename, alternate=""):
                 unit_information["rotations"] = None  # amino acids do not have a rotation matrix
                 data = unitID.split("|")
                 ifedata['models'].append(data[1])
-                unit_information["unitType"] = data[3] #extract out base from unitID
+                unit_information["unitType"] = data[3] # extract out sequence from unitID
                 unit_information["moleculeType"] = "protein"
                 unit_information["chainindex"] = chainIndices[id_to_index[unitID]-starting_index]
 

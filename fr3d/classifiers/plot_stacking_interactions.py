@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import pickle
 import math
-import sys 
+import sys
 import os
 from collections import defaultdict
 import urllib
@@ -22,7 +22,6 @@ from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
-from class_limits import nt_nt_cutoffs
 
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
@@ -42,7 +41,7 @@ if sys.version_info[0] < 3:
     import __builtin__
     from urllib import urlopen
 else:
-    from urllib.request import urlopen 
+    from urllib.request import urlopen
     import builtins as __builtin__
 
 
@@ -313,75 +312,14 @@ def print_datapoint(datapoint):
             print("  %20s = %11.6f" % (f,datapoint[f]))
 
     return None
-#=======================================================================
-def plot_nt_nt_cutoffs(base_combination,lowercase_list,ax,variables):
 
-    color = ["#BA55D3","#63B8FF","#00EE76","#FF8C00","#CDC9A5","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A","#8A8A8A"]
-    cc = 0
 
-    for bc in nt_nt_cutoffs.keys():
-        if bc == base_combination:
-            for interaction in nt_nt_cutoffs[bc].keys():
-                if interaction.lower().replace("a","") in lowercase_list:
-                    for subcategory in nt_nt_cutoffs[bc][interaction].keys():
-                        limits = nt_nt_cutoffs[bc][interaction][subcategory]
-                        if variables == 1:            # x and y
-                            xmin = limits['xmin']
-                            xmax = limits['xmax']
-                            ymin = limits['ymin']
-                            ymax = limits['ymax']
-                            ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
-                            ax.text(0,cc*0.7,"%s %d" % (interaction,subcategory),color = color[cc],fontsize=12)
-                            cc += 1
-                        if variables == 2:            # theta and r
-                            xmin = limits['xmin']
-                            xmax = limits['xmax']
-                            ymin = limits['ymin']
-                            ymax = limits['ymax']
-                            t1 = math.atan2(ymin,xmax)*180/3.141592654
-                            t2 = math.atan2(ymax,xmax)*180/3.141592654
-                            t3 = math.atan2(ymax,xmin)*180/3.141592654
-                            t4 = math.atan2(ymin,xmin)*180/3.141592654
-                            r1 = math.sqrt(xmax**2+ymin**2)
-                            r2 = math.sqrt(xmax**2+ymax**2)
-                            r3 = math.sqrt(xmin**2+ymax**2)
-                            r4 = math.sqrt(xmin**2+ymin**2)
-
-                            ax.plot([t1,t2,t3,t4,t1],[r1,r2,r3,r4,r1],color[cc])
-                            ax.text(0,cc*0.7,"%s %d" % (interaction,subcategory),color = color[cc],fontsize=12)
-                            cc += 1
-                        if variables == 3:            # angle and normal
-                            xmin = limits['anglemin']
-                            xmax = limits['anglemax']
-                            ymin = max(-1.005,limits['normalmin'])  # clamp
-                            if ymin < -1:
-                                ymin -= cc*0.001                   # don't overlap
-                            ymax = min( 1.005,limits['normalmax'])  # clamp
-                            if ymax > 1:
-                                ymax += cc*0.001                   # don't overlap
-
-                            if xmin < xmax:
-                                # angle does not wrap around 270 degrees
-                                ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
-                            else:
-                                # angle wraps around 270 degrees
-                                ax.plot([270,xmin,xmin,270],[ymin,ymin,ymax,ymax],color[cc])
-                                ax.plot([-90,xmax,xmax,-90],[ymin,ymin,ymax,ymax],color[cc])
-
-                            cc += 1
-                        if variables == 4:            # gap and z
-                            xmin = -0.01
-                            xmax = limits['gapmax']
-                            ymin = limits['zmin'] - cc*0.04
-                            ymax = limits['zmax'] + cc*0.04
-                            ax.plot([xmin,xmax,xmax,xmin,xmin],[ymin,ymin,ymax,ymax,ymin],color[cc])
-                            cc += 1
 #=======================================================================
 def plot_confusion_matrix(confusionMatrix, interaction_list):
     "Tabular construction of confusion matrix created from a dictionary of dictionaries of values."
     row = [['s33'],['s35'],['s55'],['s53'],['ns33'],['ns35'],['ns55'],['ns53'],['blank']]
     border = ['----','----','----','----','----','----','----','----','----','----']
-    col = 0 
+    col = 0
     interaction_list.append('blank')
     for interaction in interaction_list:
         for interaction2 in interaction_list:
@@ -394,12 +332,12 @@ def plot_confusion_matrix(confusionMatrix, interaction_list):
     print_function(*interaction_list, sep='\t')
     print_function(*border, sep = "\t")
     for rows in row:
-        print_function(*rows, sep='\t')    
-    
-    #### 
+        print_function(*rows, sep='\t')
+
+    ####
     #row = [['s33'],['s35'],['s55'],['ns33'],['ns35'],['ns55'],['blank']]
     border = ['----','----','----','----','----','----','----','----']
-    col = 0 
+    col = 0
     #interaction_list.append('blank')
     for interaction in interaction_list:
         for interaction2 in interaction_list:
@@ -473,13 +411,13 @@ if __name__=="__main__":
 
     base_combination_list = ['A,A','A,C','A,G','A,U','C,C','G,C','C,U','G,G','G,U','U,U']
     symmetric_base_combination_list = ['A,A','C,C','G,G','U,U']
-    
+
     ###############################################################################################################
     # Data collection for confusion matrix ########################################################################
     # each main key represents annotations found in python. The Keys within represent annotations found in matlab #
     # This dictionary is used to detect instances where python and matlab agree vs where they disagree ############
     ###############################################################################################################
-    confusionMatrix = {} 
+    confusionMatrix = {}
     confusionMatrix['s33']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
     confusionMatrix['s35']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
     confusionMatrix['s55']={'s33':0,'s35':0,'s55':0,'s53':0,'ns33':0,'ns35':0,'ns55':0,'ns53':0,'blank':0}
@@ -495,11 +433,11 @@ if __name__=="__main__":
     # Collection to display totals ################################################################################
     ###############################################################################################################
     incorrectFaces = []
-    nearVSTrue = [] 
+    nearVSTrue = []
     matlabNoPythonMatch = []
     pythonNoMatlabMatch = []
 
-    pythonNotMatlab = {} 
+    pythonNotMatlab = {}
     pythonNotMatlab['s33']=0
     pythonNotMatlab['s35']=0
     pythonNotMatlab['s55']=0
@@ -512,7 +450,7 @@ if __name__=="__main__":
 
     incorrectFaces = []
 
-    pythonTotals = {} 
+    pythonTotals = {}
     pythonTotals['s33']=0
     pythonTotals['s35']=0
     pythonTotals['s55']=0
@@ -523,7 +461,7 @@ if __name__=="__main__":
     pythonTotals['ns53']=0
     pythonTotals['total']=0
 
-    matlabTotals = {} 
+    matlabTotals = {}
     matlabTotals['s33']=0
     matlabTotals['s35']=0
     matlabTotals['s55']=0
@@ -534,7 +472,7 @@ if __name__=="__main__":
     matlabTotals['ns53']=0
     matlabTotals['total']=0
 
-    matlabNotPython = {} 
+    matlabNotPython = {}
     matlabNotPython['s33']=0
     matlabNotPython['s35']=0
     matlabNotPython['s55']=0
@@ -587,7 +525,7 @@ if __name__=="__main__":
     print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
 
-    
+
     #Loading MatLAB Annotations for Stacking##################################
     print('Loading Matlab annotations of these files')
     Matlab_annotation_to_pair = defaultdict(list)
@@ -613,7 +551,7 @@ if __name__=="__main__":
 
 
     #Loading FR3D Python Annotations########################################
-    
+
     all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
     print("Loading Python annotations from %d PDB files" % len(all_PDB_ids))
 
@@ -680,19 +618,19 @@ if __name__=="__main__":
                 if 'sInteraction' in datapoint:
                     modified_annotation = datapoint['sInteraction']
                     modified_pairs.append((pair[0],pair[1],nt1_seq, nt2_seq, datapoint['xStack'],datapoint['yStack'],datapoint['zStack'],datapoint['gap12'],datapoint['angle_in_plane'],datapoint['normal_Z'],datapoint['min_distance'],modified_annotation))
-     
+
         # identify unit id pairs that are annotated as basestacking by Matlab code
         for interaction in interaction_list:
             Matlab_pairs[interaction] = []
             Matlab_pairs[interaction] += Matlab_annotation_to_pair[interaction]
         # Matlab_pairs = set(Matlab_pairs)
-        # print(Matlab_pairs[interaction])        
+        # print(Matlab_pairs[interaction])
         # if True:
         check_for_matching_pairs(Matlab_pairs, pair_to_data, not_loaded)
         index='0'
         for base_combination in base_combination_list:
             nt1_seq, nt2_seq = base_combination.split(",")
-         
+
             # accumulate data specific to this interaction and base combination
             xvalues = []
             yvalues = []
@@ -706,7 +644,7 @@ if __name__=="__main__":
             sizes = []
 
             c = 0
- 
+
             for pair,datapoint in pair_to_data.items():
                 # restrict to the current base combination
                 if not datapoint['nt1_seq'] == nt1_seq:
@@ -728,7 +666,7 @@ if __name__=="__main__":
                 fields2 = pair[1].split("|")
                 if len(fields2) > 5 and not fields2[5] == 'A':
                     continue
-                
+
                 standardBases = ["A", "C", "G", "U"]
                 fields3 = pair[0].split("|")
 
@@ -803,12 +741,12 @@ if __name__=="__main__":
                         print(pair)
                         # Python finds an annotation and matlab does not ######################################
                         confusionMatrix[stacking]['blank'] += 1
-                        confusionMatrix['total'] += 1    
+                        confusionMatrix['total'] += 1
                         pythonNotMatlab[stacking] += 1
                         pythonNotMatlab['total'] += 1
                         pythonTotals[stacking] += 1
                         pythonNoMatlabMatch.append((pair, stacking,pair_to_Matlab_annotation[pair],datapoint["nt1on2"],datapoint["nt2on1"],datapoint["min_distance"],datapoint['normal_Z'], datapoint['url']))
-                    elif stacking == "   " and Matlab_annotation_to_pair != "":  
+                    elif stacking == "   " and Matlab_annotation_to_pair != "":
                         # Python does not find an annotation and matlab does ##################################
                         confusionMatrix['blank'][pair_to_Matlab_annotation[pair]] += 1
                         confusionMatrix['total'] += 1
@@ -844,14 +782,14 @@ if __name__=="__main__":
 
             for pair in ml:
                 if ml[pair]['id'] not in not_loaded:
-                    if '_' not in ml[pair]['pair'][0] and '_' not in ml[pair]['pair'][1]: 
+                    if '_' not in ml[pair]['pair'][0] and '_' not in ml[pair]['pair'][1]:
                         confusionMatrix['blank'][pair_to_Matlab_annotation[ml[pair]['pair']]] += 1
                         confusionMatrix['total'] += 1
                         matlabNotPython[pair_to_Matlab_annotation[ml[pair]['pair']]] += 1
                         matlabNotPython['total'] += 1
                         matlabTotals[pair_to_Matlab_annotation[ml[pair]['pair']]] += 1
                         matlabNoPythonMatch.append((ml[pair]['pair'], pair_to_Matlab_annotation[ml[pair]['pair']]))
-                        
+
                 index = str(int(index)+1)
 
             if c > 0:
@@ -959,14 +897,14 @@ if __name__=="__main__":
                                             if  1.656548*x + -1.350181*y +  4.208981 > 0:  # Left of N7-H8
                                                 if  1.473113*x +  2.101573*y +  7.865111 > 0:  # Left of H8-H9'
                                                     inside = True
-                    
+
                     elif parent1 == 'U':
                         if -0.960553*x +  2.292490*y +  5.471254 > 0:  # Left of H1'-O2
                             if -2.493573*x + -0.200338*y +  4.589448 > 0:  # Left of O2-H3
                                 if -1.574881*x + -1.914996*y +  4.563214 > 0:  # Left of H3-O4
                                     if  1.403523*x + -2.301733*y +  5.976805 > 0:  # Left of O4-H5
                                         if  2.504701*x +  0.041797*y +  6.092950 > 0:  # Left of H5-H6
-                                            if  1.120783*x +  2.082780*y +  5.621468 > 0:  # Left of H6-H1' 
+                                            if  1.120783*x +  2.082780*y +  5.621468 > 0:  # Left of H6-H1'
                                                 inside = True
                     elif parent1 == 'DT':
                         if -1.125648*x +  2.281277*y +  6.199955 > 0:  # Left of C1'-O2
@@ -977,7 +915,7 @@ if __name__=="__main__":
                                             if  1.687080*x +  1.205236*y +  3.097805 > 0:  # Left of C6-C1'
                                                 inside = True
 
-                    if inside:     
+                    if inside:
                         xvalues.append(datapoint['xStack'])
                         yvalues.append(datapoint['yStack'])
                         zvalues.append(datapoint['zStack'])
@@ -1025,7 +963,7 @@ if __name__=="__main__":
         plt.close()
 
 
-    matlabDictionary = {} 
+    matlabDictionary = {}
     # loop over sets of interactions, plotting histograms of z values
     interaction_list = ["s33", "s35", "s55", "s53",
                         "ns33", "ns35", "ns55", "ns53"]
@@ -1078,11 +1016,11 @@ if __name__=="__main__":
     plot_unmatched_pairs(pythonNotMatlab, interaction_list, "python")
     plot_unmatched_pairs(matlabNotPython, interaction_list, "matlab")
     print("Unit ids of pairs that disagree on faces being used. \n ('unit_id_1', 'unit_id_2','PythonAnnotation,MatLabAnnotation) ")
-    
+
 
     ## Create files in pwd to output pairs stored annotations ##########################################################################
     original_stdout = sys.stdout # Save a reference to the original standard output
-    if True: 
+    if True:
         with open('incorrectFaces_Stacking.txt', 'w') as f:
             sys.stdout = f # Change the standard output to the file we created.
             print('Annotations where the faces of the two nucleotides annotated as stacking or near stacking dont match')
@@ -1090,14 +1028,14 @@ if __name__=="__main__":
                 print(pair)
             sys.stdout = original_stdout
 
-    if True: 
+    if True:
         with open('nearVsTrue_Stacking.txt', 'w') as f:
             sys.stdout = f # Change the standard output to the file we created.
             print('Annotations where Python and Matlab stacking annotations disagree on near and true stacking')
             for pair in nearVSTrue:
                 print(pair)
             sys.stdout = original_stdout
-    if True: 
+    if True:
         with open('PythonNoMatlabMatch_Stacking.txt', 'w') as f:
             sys.stdout = f # Change the standard output to the file we created.
             print('Annotations where Python finds an interaction but Matlab doesnt')
@@ -1105,7 +1043,7 @@ if __name__=="__main__":
                 print(pair)
             sys.stdout = original_stdout
 
-    if True: 
+    if True:
         with open('MatlabNoPythonMatch_Stacking.txt', 'w') as f:
             sys.stdout = f # Change the standard output to the file we created.
             print('Annotations where Matlab finds an interaction but Python doesnt')
@@ -1114,11 +1052,11 @@ if __name__=="__main__":
             sys.stdout = original_stdout
 
     #####################################################################################################################################
-    
+
     if True: #Output Near/Total and matching/total percents
         percents = {}
         percents['overallML'] = 0
-        percents['overallPy'] = 0 
+        percents['overallPy'] = 0
 
         pythonTotals['near']=0
         pythonTotals['true']=0
@@ -1128,7 +1066,7 @@ if __name__=="__main__":
             if cat[0] == "n":
                 pythonTotals['near'] += pythonTotals[cat]
                 matlabTotals['near'] += matlabTotals[cat]
-            else: 
+            else:
                 matlabTotals['true'] += matlabTotals[cat]
                 pythonTotals['true'] += pythonTotals[cat]
             pythonTotals["total"] += pythonTotals[cat]
@@ -1161,19 +1099,19 @@ if __name__=="__main__":
             for mlInteraction in interaction_list:
                 if pyInteraction == mlInteraction:
                     matching += confusionMatrix[pyInteraction][mlInteraction]
-                    total += confusionMatrix[pyInteraction][mlInteraction] 
+                    total += confusionMatrix[pyInteraction][mlInteraction]
                 else:
-                    total += confusionMatrix[pyInteraction][mlInteraction] 
+                    total += confusionMatrix[pyInteraction][mlInteraction]
             total += confusionMatrix[pyInteraction]['blank']
 
         print("MATCHING: " + str(matching))
-        if total != 0: 
+        if total != 0:
             print("Percent Matching: " + str(float(matching)/float(total)))
 
         standard_bases = ['A', 'C', 'G', 'U', 'DA', 'DC', 'DG', 'DT']
         for first_base in standard_bases:
             for pair in modified_pairs:
-                if pair[2] == first_base: 
+                if pair[2] == first_base:
 
                     if write_html_pages_for_modified:
 

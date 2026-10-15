@@ -1,48 +1,93 @@
-from file_reading import readNAPositionsFile
-from file_reading import readProteinPositionsFile
-from file_reading import readPDBDatafile
+"""
+Interpret the constraints in the query.
+For geometric and mixed searches, set up limits on pairwise distances.
+Characters needed are in this list: [^A-Za-z0-9<>\|_'=~&+\[\]\(\):.\n\r\t ]
+"""
+
 from collections import defaultdict
-from fr3d_configuration import DATAPATH
-from fr3d_configuration import JSONPATH
-from fr3d_configuration import SERVER
-
-from fr3d.modified_parent_mapping import modified_nucleotides
-
-import numpy as np
-import math
-import urllib
 import json
-import sys
-import pickle
-import string
+import math
+import numpy as np
 import os
+import pickle
+import sys
+import urllib
+
+from fr3d.search.file_reading import readNAPositionsFile
+from fr3d.search.file_reading import readProteinPositionsFile
+from fr3d.search.file_reading import readPDBDatafile
+from fr3d.search.file_reading import get_CIFPATH
+
+from fr3d.modified.mapping import modified_base_to_parent
 
 # identify codes that go with each type of molecule
-RNAUnitTypes = ["A","C","G","U"] + list(modified_nucleotides.keys())
-DNAUnitTypes = ["DA","DC","DG","DT"]
-proteinUnitTypes = ["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"]
+RNA_standard = set(["A","C","G","U"])
+DNA_standard = set(["DA","DC","DG","DT"])
 
-RNA_modified_list = []
-DNA_modified_list = []
+RNA_modified_set = set()
+DNA_modified_set = set()
 
-for x in modified_nucleotides.keys():
-    if modified_nucleotides[x]['standard'] in ['A','C','G','U']:
-        RNA_modified_list.append(x)
+for modified, parent in modified_base_to_parent.items():
+    if parent in RNA_standard and not modified in RNA_standard | DNA_standard:
+        RNA_modified_set.add(modified)
+    elif not modified in RNA_standard | DNA_standard:
+        DNA_modified_set.add(modified)
+
+protein_unit_types = set(["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"])
+# it would be good to have a list of modified amino acids
+
+
+def getMoleculeType(unitType):
+    """
+    Determine molecule type from unit ID by identifying unit type specifiers
+    """
+
+    if "|" in unitType:
+        fields = unitType.split('|')
+        unitType = fields[3]
+
+    unitType = unitType.upper()
+
+    # if sys.version_info[0] < 3:
+    #     unitType = string.upper(unitType)    # convert to uppercase
+    # else:
+    #     unitType = unitType.upper()
+
+    if unitType in RNA_standard:
+        return "RNA"
+    elif unitType in DNA_standard:
+        return "DNA"
+    elif unitType in protein_unit_types:
+        return "protein"
+    elif unitType in RNA_modified_set:
+        return "RNA"
+    elif unitType in DNA_modified_set:
+        return "DNA"
     else:
-        DNA_modified_list.append(x)
-RNA_modified_list = sorted(RNA_modified_list)
-DNA_modified_list = sorted(DNA_modified_list)
-
+        return ""
 
 # synonyms and abbreviations for pairwise constraints
+# might be better to make these sets instead of lists
 synonym = {}
-synonym["pair"] = ['acWW','cWW','tWW','cHH','tHH','cSS','tSS','cWH','cHW','tWH','tHW','cWS','cSW','tWS','tSW','cHS','cSH','tHS','tSH']
-synonym["cis"] = ['acWW','cWW','cHH','cSS','cWH','cHW','cWS','cSW','cHS','cSH']
-synonym["trans"] = ['tWW','tHH','tSS','tWH','tHW','tWS','tSW','tHS','tSH']
+# synonym["pair"] = ['cWW','cWWa','cWw','cwW','tWW','tWWa','cHH','tHH','cSS','tSS','cWH','cHW','tWH','tHW','cWS','cSW','tWS','tSW','cHS','cSH','tHS','tSH']
+synonym["cis"] = ['cWW','cWw','cwW','cWWa','cHH','cHh','chH','cHHa','cSS','cSs','csS','cWH','cHW','cWS','cSW','cHS','cSH']
+synonym["trans"] = ['tWW','tWWa','tHH','tHh','thH','tSS','tSs','tsS','tWH','tHW','tWS','tWSa','tSW','tSWa','tHS','tHSa','tSH','tSHa']
+synonym["pair"]  = synonym["cis"] + synonym["trans"]
+synonym['cWW'] = ['cWW','cWWa','cWw','cwW']
+synonym['tWW'] = ['tWW','tWWa']
+synonym['cHH'] = ['cHH','cHHa','cHh','chH']
+synonym['tHH'] = ['tHH','tHh','thH']
+synonym['cSS'] = ['cSS','cSs','csS']
+synonym['tSS'] = ['tSS','tSs','tsS']
+synonym['tWS'] = ['tWS','tWSa']
+synonym['tSW'] = ['tSW','tSWa']
+synonym['tHS'] = ['tHS','tHSa']
+synonym['tSH'] = ['tSH','tSHa']
 synonym["stack"] = ['s35','s53','s33','s55']
 synonym["BPh"] = ['0BPh','1BPh','2BPh','3BPh','4BPh','5BPh','6BPh','7BPh','8BPh','9BPh']
 synonym["BR"] = ['0BR','1BR','2BR','3BR','4BR','5BR','6BR','7BR','8BR','9BR']
 synonym["coplanar"] = ['cp']
+synonym["sugar_ribose"] = ['cSR','cRS','tSR','tRS']
 
 synonym["s3O"] = ["s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2"]
 synonym["s5O"] = ["s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2"]
@@ -57,7 +102,11 @@ synonym["sOP2"] = ["sOP23","sOP25"]
 synonym["sOP"] = ["sOP13","sOP23","sOP15","sOP25"]
 synonym["sO"]  = synonym["sO3"] + synonym["sO5"]
 
-# list of interactions, to facilitate reversing them
+# the ones above can also start with "n" for "near"
+for k in list(synonym.keys()):
+    synonym["n"+k] = ["n"+s for s in synonym[k]]
+
+# list of oxygen-face stacking interactions, to facilitate reversing them
 sOF_interactions = ["s3O","s5O","s3O2'","s3O3'","s3O4'","s3O5'","s3OP1","s3OP2","s5O2'","s5O3'","s5O4'","s5O5'","s5OP1","s5OP2"]
 sFO_interactions = ["sO3","sO5","sO2'3","sO3'3","sO4'3","sO5'3","sOP13","sOP23","sO2'5","sO3'5","sO4'5","sO5'5","sOP15","sOP25"]
 
@@ -65,10 +114,6 @@ map_sFO_to_sOF = {}
 for i in range(0,len(sOF_interactions)):
     map_sFO_to_sOF[sFO_interactions[i]] = sOF_interactions[i]
     map_sFO_to_sOF["n"+sFO_interactions[i]] = "n"+sOF_interactions[i]
-
-# the ones above can also start with "n" for "near"
-for k in list(synonym.keys()):
-    synonym["n"+k] = ["n"+s for s in synonym[k]]
 
 synonym["borderSS"] = ["bSS"]
 synonym["flankSS"] = ["bSS"]
@@ -96,40 +141,25 @@ for key in synonym:
     allInteractionConstraints.extend(synonym[key])
 allInteractionConstraints = set(allInteractionConstraints)
 
-# Determine molecule type from unit ID by identifying unit type specifiers
-def getMoleculeType(unitType):
-    if "|" in unitType:
-        fields = unitType.split('|')
-        unitType = fields[3]
 
-    if sys.version_info[0] < 3:
-        unitType = string.upper(unitType)    # convert to uppercase
-    else:
-        unitType = unitType.upper()
-
-    if unitType in RNAUnitTypes:
-        return "RNA"
-    elif unitType in proteinUnitTypes:
-        return "protein"
-    elif unitType in DNAUnitTypes:
-        return "DNA"
-    elif unitType in modified_nucleotides.keys():
-        return modified_nucleotides[unitType]["standard"]
-    else:
-        return ""
-
-# set up an empty list of required interactions,
-# then the user only needs to set the actual constraints needed
 def emptyInteractionList(n):
+    """
+    set up an empty list of required interactions,
+    then the user only needs to set the actual constraints needed
+    """
+
     emptyList = defaultdict(dict)
     for i in range(0,n):
         for j in range(0,n):
             emptyList[i][j] = []
     return emptyList
 
-# set up an empty list of required interactions,
-# then the user only needs to set the actual constraints needed
 def emptyInteractionMatrix(n):
+    """
+    set up an empty list of required interactions,
+    then the user only needs to set the actual constraints needed
+    """
+
     emptyList = defaultdict(dict)
     for i in range(0,n):
         for j in range(0,n):
@@ -137,19 +167,21 @@ def emptyInteractionMatrix(n):
     return emptyList
 
 
-def readUnitFileNames(PDB_data_file):
+def readUnitFileNames(Q,PDB_data_file):
     """
-    Read all filenames in DATAPATH + '/units' to know which chains are available,
-    that are not downloaded from PDB
+    Read all filenames in DATAPATHUNITS to know which chains are available,
+    that are not downloaded from PDB.
+    A typical filename is 4V9F-1-0_NA.pickle or user-data_file-1-A_NA.pickle
     """
 
     import glob
 
-    units_path = os.path.join(DATAPATH,'units','*')
+    units_path = os.path.join(Q["DATAPATHUNITS"],'*')
     allfiles = glob.glob(units_path)
-    print("  query_processing: There are %d files in %s" % (len(allfiles),units_path))
+    if Q.get('printQueryDetails',False):
+        print("  query_processing: There are %d files in %s" % (len(allfiles),units_path))
 
-    # mimic the structure of PDB_data_file
+    # mimic the structure of PDB_data_file; map file_id to list of chains
     unit_data_file = {}
 
     for file in allfiles:
@@ -157,89 +189,277 @@ def readUnitFileNames(PDB_data_file):
         chain_filename = os.path.split(file)[1]
 
         # split by '_' character to identify molecule type
-        type_field = chain_filename.split('_')
-        if len(type_field) < 3:
+        fields = chain_filename.split('_')
+
+        if len(fields) < 2:
             continue
         else:
-            # move toward all the NA files being _NA.pickle
-            if type_field[-1] == 'RNA.pickle':
+            if fields[-1] == 'RNA.pickle':
                 molecule_type = 'NA'
-            elif type_field[-1] == 'DNA.pickle':
+                chain_id = chain_filename.replace('_RNA.pickle','')
+            elif fields[-1] == 'DNA.pickle':
                 molecule_type = 'NA'
-            elif type_field[-1] == 'NA.pickle':
+                chain_id = chain_filename.replace('_NA.pickle','')
+            elif fields[-1] == 'NA.pickle':
                 molecule_type = 'NA'
-            elif type_field[-1] == 'protein.pickle':
+                chain_id = chain_filename.replace('_NA.pickle','')
+            elif fields[-1] == 'protein.pickle':
                 molecule_type = 'protein'
+                chain_id = chain_filename.replace('_protein.pickle','')
             else:
                 continue
 
-            # split out chain to see if it is already known
-            fields = chain_filename.split('-')
+            chain_fields = chain_id.split('-')
 
-            if len(fields) < 3:
+            if len(chain_fields) < 3:
                 continue
             else:
-                chain = fields[-1].split('_')[0]
-                model = fields[-2]
-                filename = '-'.join(fields[0:-2])
+                model = chain_fields[-2]
+                chain = chain_fields[-1]
+                file_id = '-'.join(chain_fields[0:-2])
 
                 # skip files that are already in PDB_data_file
-                if not filename in PDB_data_file.keys():
-                    if not filename in unit_data_file:
-                        unit_data_file[filename] = {}
-                        unit_data_file[filename]['chains'] = {}
-                        unit_data_file[filename]['chains']['NA'] = []
-                        unit_data_file[filename]['chains']['protein'] = []
-                        unit_data_file[filename]['model'] = []
+                if not file_id in PDB_data_file:
+                    if not file_id in unit_data_file:
+                        unit_data_file[file_id] = {}
+                        unit_data_file[file_id]['chains'] = {}
+                        unit_data_file[file_id]['chains']['NA'] = []
+                        unit_data_file[file_id]['chains']['protein'] = []
+                        unit_data_file[file_id]['model'] = set()
 
-                    unit_data_file[filename]['chains'][molecule_type].append(chain)
-                    unit_data_file[filename]['model'].append(model)
-
-                    #print('  query_processing: Found units for chain %s|%s|%s' % (filename,model,chain))
-
-    # store only unique model names
-    for filename in unit_data_file.keys():
-        unit_data_file[filename]['model'] = list(set(unit_data_file[filename]['model']))
+                    unit_data_file[file_id]['chains'][molecule_type].append(chain)
+                    unit_data_file[file_id]['model'].add(model)
 
     return unit_data_file
 
+
 def readQueryFromJSON(JSONfilename):
-    # Read query specification in JSON file and interpret as a query specification
+    """
+    Read query specification in JSON file and interpret as a query specification
+    """
 
-    directory = JSONPATH
-    try:
-        os.stat(directory)
-    except:
-        os.mkdir(directory)
-        print("Made " + directory + " directory")
+    JSONfilename = JSONfilename.replace('"','')
+    JSONfilename = JSONfilename.replace("'","")
 
-    pathAndFileName = JSONPATH + JSONfilename
+    filename = None
 
-    id = JSONfilename.replace("Query_","").replace(".json","")
+    if os.path.exists(JSONfilename):
+        # when given a direct reference to the JSON file, use that
+        filename = JSONfilename
 
-    if not os.path.exists(pathAndFileName):
-        queryURL = "http://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
-        print("Downloading "+JSONfilename+" from "+queryURL)
-        if sys.version_info[0] < 3:
-            urllib.urlretrieve(queryURL, pathAndFileName)  # python 2
+    if not filename:
+        # look in the usual places for the file
+        try:
+            from fr3d.search.fr3d_configuration import JSONPATH
+            pathAndFileName = os.path.join(JSONPATH,JSONfilename)
+            if os.path.exists(pathAndFileName):
+                filename = pathAndFileName
+        except:
+            pass
+
+    if not filename:
+        # look in the fr3d-python distribution for this as a standard example
+        pathAndFileName = os.path.join('queries',JSONfilename)
+        if os.path.exists(pathAndFileName):
+            filename = pathAndFileName
+
+    query_loaded = False
+    error_message = ""
+
+    if filename:
+        # open and read the json file
+        fn = os.path.basename(filename)
+
+        try:
+            with open(filename) as json_file:
+                lines = json_file.readlines()
+
+            # strip out comments from each line, starting at # and going to the end of the line
+            cleaned_lines = []
+            for line in lines:
+                fields = line.split("#")   # the only allowed comment marker
+                if len(fields) > 1:
+                    cleaned_lines.append(fields[0])
+                else:
+                    cleaned_lines.append(line)
+
+            Q = json.loads("\n".join(cleaned_lines))
+            Q["JSONFILENAME"] = fn
+            query_loaded = True
+        except:
+            error_message = "Error: Could not read query file " + JSONfilename
+
+    else:
+        # try to download the JSON file directly from the web
+
+        # extract the randomly-generated id from the filename
+        id = JSONfilename.replace("Query_","").replace(".json","")
+
+        if JSONfilename.startswith("Query_"):
+            # format before 2024
+            queryURL = "https://rna.bgsu.edu/webfr3d/Results/" + id + "/" + JSONfilename
+        elif JSONfilename.startswith("fr3d_"):
+            # format as of 2024
+            queryURL = "https://rna.bgsu.edu/fr3d/results/" + id + ".json"
         else:
-            urllib.request.urlretrieve(queryURL, pathAndFileName)  # python 3
+            # unrecognized format
+            queryURL = ""
 
-    with open(JSONPATH + JSONfilename) as json_file:
-        Q = json.load(json_file)
+        if queryURL:
+            print("Downloading %s from %s" % (JSONfilename,queryURL))
+            try:
+                # download the file directly to a variable
+                response = urllib.request.urlopen(queryURL)
+                data = response.read()
+                text = data.decode('utf-8')
+                Q = json.loads(text)
+                query_loaded = True
+                Q["JSONFILENAME"] = JSONfilename
+            except:
+                error_message = "Error: Could not find or download query file " + JSONfilename
+        else:
+            error_message = "Error: Could not find a URL to download " + JSONfilename
 
-    if not "name" in Q:
-        Q["name"] = id
+    if not query_loaded:
+        print(error_message)
+        # place to save all query information
+        Q = {}
+        Q["errorMessage"] = []
+        Q["errorMessage"].append(error_message)
+        Q["errorStatus"] = "write and exit"
+        Q["numPositions"] = 0
+        Q["type"] = "symbolic"
+        Q["searchFiles"] = []
+        Q["numFilesSearched"] = 0
+        Q["elapsedClockTime"] = 0
+        Q["userMessage"] = [error_message]
+        return Q
 
-    if not Q["name"]:
-        Q["name"] = id
+    # fill in defaults for any missing fields
+    try:
+        from fr3d.search.fr3d_configuration import Q as Q_defaults
+        for key in Q_defaults:
+            if not key in Q:
+                Q[key] = Q_defaults[key]
+    except:
+        pass
+
+    if "queryMoleculeType" in Q:
+        # make sure all keys are numbers and not strings
+        if type(Q["queryMoleculeType"]) is dict:
+            for key in list(Q["queryMoleculeType"].keys()):
+                if type(key) is str:
+                    Q["queryMoleculeType"][int(key)] = Q["queryMoleculeType"][key]
+                    del Q["queryMoleculeType"][key]
+
+    if "requiredMoleculeType" in Q:
+        # if Q["requiredMoleculeType"] is a dictionary, do this:
+        if type(Q["requiredMoleculeType"]) is dict:
+            for key in list(Q["requiredMoleculeType"].keys()):
+                if type(key) is str:
+                    Q["requiredMoleculeType"][int(key)] = Q["requiredMoleculeType"][key]
+                    del Q["requiredMoleculeType"][key]
+
+
+
+    if not "numPositions" in Q:
+        if "unitID" in Q:
+            Q["numPositions"] = len(Q["unitID"])
+        elif "unittype" in Q:
+            Q["numPositions"] = len(Q["unittype"])
+        elif "interactionMatrix" in Q:
+            m = 0
+            for key1 in Q["interactionMatrix"].keys():
+                m = max(m,int(key1))
+                for key2 in Q["interactionMatrix"][key1].keys():
+                    m = max(m,int(key1))
+            Q["numPositions"] = m + 1
+        elif "queryMoleculeType" in Q and type(Q["queryMoleculeType"]) is dict:
+            Q["numPositions"] = max(Q["queryMoleculeType"].keys()) + 1
+        elif "queryMoleculeType" in Q and type(Q["queryMoleculeType"]) is list:
+            Q["numPositions"] = len(Q["queryMoleculeType"])
+        elif "requiredMoleculeType" in Q and type(Q["requiredMoleculeType"]) is dict:
+            Q["numPositions"] = max(Q["requiredMoleculeType"].keys())+1
+        elif "requiredMoleculeType" in Q and type(Q["requiredMoleculeType"]) is list:
+            Q["numPositions"] = len(Q["requiredMoleculeType"])
+        else:
+            np = 0
+            for key in Q.keys():
+                fields = key.split(",")
+                if len(fields) == 3 and fields[0] == "constraintMatrix":
+                    np = max(np,int(fields[1]),int(fields[2]))
+            if np > 0:
+                Q["numPositions"] = np
+
+    if not "numPositions" in Q:
+        Q["errorMessage"].append("Error: Could not determine number of positions in query")
+        return Q
+
+    if "requiredMoleculeType" in Q:
+        if type(Q["requiredMoleculeType"]) is str:
+            fields = Q["requiredMoleculeType"].split(",")
+            if len(fields) > 1:
+                Q["requiredMoleculeType"] = fields
+                if not "numPositions" in Q:
+                    Q["numPositions"] = len(fields)
+            else:
+                # repeat the string in each position
+                Q["requiredMoleculeType"] = [Q["requiredMoleculeType"]] * Q["numPositions"]
+
+    if "interactionMatrix" in Q:
+        # make sure all keys are present in interactionMatrix
+        # make sure all keys are numbers and not strings
+        iM = emptyInteractionMatrix(Q["numPositions"])
+
+        for i in range(0,Q["numPositions"]):
+            for j in range(0,Q["numPositions"]):
+                if str(i) in Q["interactionMatrix"]:
+                    if str(j) in Q["interactionMatrix"][str(i)]:
+                        iM[i][j] = Q["interactionMatrix"][str(i)][str(j)]
+
+        Q["interactionMatrix"] = iM
 
     return Q
+
 
 def retrieveQueryInformation(Q):
     """
     retrieveQueryInformation reads data files to get necessary information for a query
     """
+
+    # check for constraint matrix, move entries found there to interactionMatrix
+    # constraintMatrix counts positions from 1
+    # example:  Q["constraintMatrix,1,2"] = "cWW"
+    for key in list(Q.keys()):
+        fields = key.split(",")
+        if len(fields) == 3 and fields[0] == "constraintMatrix":
+            # convert position numbers to python indices
+            i = int(fields[1])-1
+            j = int(fields[2])-1
+            if not "interactionMatrix" in Q:
+                Q["interactionMatrix"] = emptyInteractionMatrix(Q["numPositions"])
+            Q["interactionMatrix"][i][j] += " " + Q[key]
+
+    # check for non-trivial unitIDs
+    if "unitID" in Q:
+        unitID = Q["unitID"]
+        okID = []
+        for u in unitID:
+            if len(u.split("|")) >= 5:
+                okID.append(u)
+        if len(okID) > 0:
+            # strip out any defective unitIDs
+            Q["unitID"] = okID
+        else:
+            # no unitIDs after all, remove this field
+            del Q["unitID"]
+
+    # infer query type from other fields being present
+    if not "type" in Q:
+        if "unitID" in Q:
+            Q["type"] = "mixed"     # no need to identify "geometric"
+        else:
+            Q["type"] = "symbolic"
 
     Q['centers'] = []
     Q['rotations'] = []
@@ -252,87 +472,134 @@ def retrieveQueryInformation(Q):
 
         if "unitID" in Q:
             if len(Q["unitID"]) > 0:
-                Q["numpositions"] = len(Q["unitID"])
+                Q["numPositions"] = len(Q["unitID"])
             else:
                 print("Error:  Need to specify unit IDs for geometric or mixed query")
                 Q["errorMessage"].append("Need to specify unit IDs for geometric or mixed query")
-
         else:
             print("Error:  Need to specify unit IDs for geometric or mixed query")
             Q["errorMessage"].append("Need to specify unit IDs for geometric or mixed query")
 
-        for i in range(0,Q["numpositions"]):
+        for i in range(0,len(Q["unitID"])):
             Q["unitID"][i] = Q["unitID"][i].replace(" ","")  # strip spaces
             unitID = Q["unitID"][i]
             originalUnitID = Q["unitID"][i]
-            foundID = False
 
             fields = unitID.split('|')
 
-            fields[0] = fields[0].upper()                # force PDB ID to be uppercase for unix
-            fields[3] = fields[3].upper()                # force unittype to be uppercase, A, PHE, DT, etc.
+            if len(fields) < 5:
+                # program should not get so far with this problem
+                pass
+            else:
+                file_id = fields[0]
+                if len(file_id) == 4:
+                    # read information about PDB files, if not already done
+                    if not "PDB_data_file" in Q:
+                        Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
 
-            unitID = "|".join(fields)
+                    if file_id.upper() in Q["PDB_data_file"]:
+                        # use uppercase for PDB identifiers
+                        file_id = file_id.upper()
+                        fields[0] = fields[0].upper()
 
-            chainString = fields[0] + '-' + fields[1] + '-' + fields[2]
-            moleculeType = getMoleculeType(fields[3])
-            # if unitType is not specified, try reading it as RNA, then as protein, ...
-            for mt in moleculeTypes:
-                if moleculeType == '' or moleculeType == mt:
-                    if not chainString in chainData:         # only load once
-                        if mt == "RNA" or mt == "DNA":
-                            Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices = readNAPositionsFile(Q,chainString,0)
-                        elif mt == "protein":
-                            Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q,fields[0],0)
+                chainString = fields[0] + '|' + fields[1] + '|' + fields[2]
 
-                        chainData[chainString] = [centers,rotations,id_to_index,index_to_id]
+                fields[3] = fields[3].upper()                # force unittype to be uppercase, A, PHE, DT, etc.
+                moleculeType = getMoleculeType(fields[3])
 
-                    centers = chainData[chainString][0]
-                    rotations = chainData[chainString][1]
-                    id_to_index = chainData[chainString][2]
-                    index_to_id = chainData[chainString][3]
+                unitID = "|".join(fields)
 
-                    if not unitID in id_to_index:            # covers the case that unitType (sequence) is missing
-                        for uid in list(id_to_index.keys()):
-                            f = uid.split("|")
-                            f[3] = ""                        # blank out the unitType
-                            newID = "|".join(f)              # collapse list into string
-                            id_to_index[newID] = id_to_index[uid] # add new unit ids without unit type to dictionary
+                # if unitType is not specified, try finding it as NA, then as protein
+                foundID = False
+                for mt in moleculeTypes:
+                    if moleculeType == '' or moleculeType == mt:
+                        if Q.get('printQueryDetails',False):
+                            print("  query_processing: Retrieving data about %s in chain %s" % (unitID,chainString))
+
+                        if not chainString in chainData:         # only load the chain once
+                            if mt == "RNA" or mt == "DNA" or mt == "PNA":
+                                Q, centers, rotations, ids, id_to_index, index_to_id, chainIndices = readNAPositionsFile(Q,chainString,0)
+                            elif mt == "protein":
+                                Q, centers, ids, id_to_index, index_to_id, chainIndices = readProteinPositionsFile(Q,fields[0],0)
+
+                            chainData[chainString] = [centers,rotations,id_to_index,index_to_id]
+
+                        # this code trusts that centers all have 3 components; that might not always be true
+                        centers = chainData[chainString][0]
+                        rotations = chainData[chainString][1]
+                        id_to_index = chainData[chainString][2]
+                        index_to_id = chainData[chainString][3]
+
+                        if not unitID in id_to_index:            # covers the case that unitType (sequence) is missing
+                            for uid in list(id_to_index.keys()):
+                                f = uid.split("|")
+                                f[3] = ""                        # blank out the unitType
+                                newID = "|".join(f)              # collapse list into string
+                                id_to_index[newID] = id_to_index[uid] # add new unit ids without unit type to dictionary
+
+                            if unitID in id_to_index:
+                                newID = index_to_id[id_to_index[unitID]]
 
                         if unitID in id_to_index:
-                            newID = index_to_id[id_to_index[unitID]]
+                            foundID = True
+                            moleculeType = getMoleculeType(index_to_id[id_to_index[unitID]])
+                            if originalUnitID != unitID and Q.get('printQueryDetails',False):
+                                print("Given " + originalUnitID + ", converted to " + unitID + ", using " + index_to_id[id_to_index[unitID]])
 
-                    if unitID in id_to_index:
-                        foundID = True
-                        moleculeType = getMoleculeType(index_to_id[id_to_index[unitID]])
-                        if originalUnitID != unitID:
-                            print("Given " + originalUnitID + ", converted to " + unitID + ", using " + index_to_id[id_to_index[unitID]])
-
-                        Q['centers'].append(centers[id_to_index[unitID]])
-                        if moleculeType == "RNA":
-                            Q['rotations'].append(rotations[id_to_index[unitID]])
-                        elif moleculeType == "protein":
-                            Q['rotations'].append(np.empty( shape=(0, 0) ))
-                        else:
-                            print("Unknown molecule type " + moleculeType + "**********")
+                            if len(centers[id_to_index[unitID]]) == 3:
+                                Q['centers'].append(centers[id_to_index[unitID]])
+                            if moleculeType in ["DNA","RNA","PNA"]:
+                                Q['rotations'].append(rotations[id_to_index[unitID]])
+                            elif moleculeType == "protein":
+                                Q['rotations'].append(np.empty( shape=(0, 0) ))
+                            elif Q.get('printQueryDetails',False):
+                                print("Unknown molecule type " + moleculeType)
 
             if not foundID:
-                print("Not able to find coordinates for unit ID " + unitID + " ************** ")
+                print("Error: Not able to find coordinates for unit ID " + unitID)
                 Q["errorMessage"].append("Not able to find coordinates for unit ID " + unitID)
                 Q["errorStatus"] = "write and exit"
+
+        if len(Q['centers']) < len(Q["unitID"]):
+            print("Error: Not able to find coordinates for all unit IDs")
+            Q["errorMessage"].append("Not able to find coordinates for all unit IDs")
+            Q["errorStatus"] = "write and exit"
     return Q
+
 
 def vectorDistance(x,y):
     return math.sqrt((x[0]-y[0])**2 + (x[1]-y[1])**2 + (x[2]-y[2])**2)
 
-def synonymAlernateConstraint(synonym,alternate,constraint):
 
-    return constraints
+def get_pdb_chains(Q,search_file_id_upper,searchingRNA,searchingDNA):
+    # given a pdb id, look up the chains and return those in a list
+
+    # load mapping from PDB id to chain and other information, if not already done
+    if not "PDB_data_file" in Q:
+        Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+
+    chains = []
+
+    if search_file_id_upper in Q["PDB_data_file"].keys():
+
+        pdb_chains = Q["PDB_data_file"][search_file_id_upper]['chains']
+
+        if searchingRNA and 'RNA' in pdb_chains:
+            chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['RNA']]
+        if (searchingRNA or searchingDNA) and 'hybrid' in pdb_chains:
+            chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['hybrid']]
+        if searchingDNA and 'DNA' in pdb_chains:
+            chains += ["|".join([search_file_id_upper,'1',x]) for x in Q["PDB_data_file"][search_file_id_upper]['chains']['DNA']]
+
+    return Q, chains
+
 
 def calculateQueryConstraints(Q):
     """
     Parse the constraints in interactionMatrix and convert to the form
     that the search code needs.
+    For geometric and mixed searches, find the minimum and maximum pairwise distances
+    to maintain the specified geometric discrepancy cutoff.
     """
 
     # If interactionMatrix is part of Q, then parse it and overwrite various other fields of Q
@@ -342,17 +609,17 @@ def calculateQueryConstraints(Q):
     if "interactionMatrix" in Q:
 
         # make sure the matrix has all of the entries expected
-        while len(Q["interactionMatrix"]) < Q["numpositions"]:
+        while len(Q["interactionMatrix"]) < Q["numPositions"]:
             Q["interactionMatrix"].append([])
 
-        for i in range(0,Q["numpositions"]):
-            while len(Q["interactionMatrix"][i]) < Q["numpositions"]:
+        for i in range(0,Q["numPositions"]):
+            while len(Q["interactionMatrix"][i]) < Q["numPositions"]:
                 Q["interactionMatrix"][i].append('')
 
         # parse continuity constraints
         Q["continuityConstraint"] = defaultdict(dict)
         foundContinuityConstraint = False
-        for i in range(0,Q["numpositions"]):
+        for i in range(0,Q["numPositions"]):
             for j in range(i):                      # look at entries below the diagonal
 
                 iM = Q["interactionMatrix"][i][j]
@@ -505,15 +772,14 @@ def calculateQueryConstraints(Q):
         if not foundContinuityConstraint:
             del Q["continuityConstraint"]          # remove this field so we don't take time to check
 
-
-        # Parse interaction matrix to look for interaction constraints
+        # Parse interaction matrix to look for interaction and combination constraints
 
         RNACombinationConstraints = ['AA','AC','AG','AU','CA','CC','CG','CU','GA','GC','GG','GU','UA','UC','UG','UU']
 
-        Q["requiredInteractions"] = emptyInteractionList(Q["numpositions"])
-        Q["prohibitedInteractions"] = emptyInteractionList(Q["numpositions"])
-        Q["crossingNumber"] = emptyInteractionList(Q["numpositions"])
-        Q["combinationConstraint"] = emptyInteractionList(Q["numpositions"])
+        Q["requiredInteractions"] = emptyInteractionList(Q["numPositions"])
+        Q["prohibitedInteractions"] = emptyInteractionList(Q["numPositions"])
+        Q["crossingNumber"] = emptyInteractionList(Q["numPositions"])
+        Q["combinationConstraint"] = emptyInteractionList(Q["numPositions"])
 
         foundRequiredInteraction = False
         foundProhibitedInteraction = False
@@ -521,18 +787,20 @@ def calculateQueryConstraints(Q):
         foundCombinationConstraint = False
         Q["alternateInteractions"] = set([])       # for _exp and possibly others
         foundAlternateInteractions = False
+        foundParentType = False
+        foundParentAsRNA = False
 
-        for i in range(Q["numpositions"]):
-            for j in range(Q["numpositions"]):
-
-                #print("interactions",i,j)
+        for i in range(Q["numPositions"]):
+            for j in range(Q["numPositions"]):
 
                 requiredInteractions = []
                 prohibitedInteractions = []
                 combinationConstraints = []
 
                 iM = Q["interactionMatrix"][i][j]
-                if(iM != None and len(iM) > 0):
+                iM_lower = iM.lower()
+
+                if iM != None and len(iM) > 0:
 
                     rawInteractionConstraints = iM.split(" ")
 
@@ -546,8 +814,6 @@ def calculateQueryConstraints(Q):
                             interactionConstraints.append(constraint)
 
                     for constraint in interactionConstraints:
-                        #print("Constraint: " + constraint)
-
                         # enable reading alternate annotations from different annotation files
                         # these are distinguished by "_" in the annotation and search terms
                         constraintType = ""
@@ -567,6 +833,7 @@ def calculateQueryConstraints(Q):
 
                         if j >= i or asymmetricPair:  # yellow box or special interaction
                             if len(constraint) > 0 and constraint[0] == "~":
+                                # prohibited interaction
                                 constraint = constraint[1:]
                                 if constraint in synonym:
                                     constraints = synonym[constraint]
@@ -582,7 +849,12 @@ def calculateQueryConstraints(Q):
                                 elif constraintType in allInteractionConstraints:
                                     prohibitedInteractions.append(constraint)
                                     foundProhibitedInteraction = True
+                            elif constraint in ["and","&","&&"]:
+                                # apply the next group of constraints using logical and with previous ones
+                                if len(requiredInteractions) > 0 and not requiredInteractions[-1] == "and":
+                                    requiredInteractions.append("and")
                             else:
+                                # required interaction
                                 if constraint in synonym:
                                     constraints = synonym[constraint]
                                     requiredInteractions.extend(constraints)
@@ -596,17 +868,33 @@ def calculateQueryConstraints(Q):
                                     foundCrossingNumber = True
                                 elif "crossing" in constraint:
                                     limits = constraint.replace("crossing","").split("_")
-                                    print("Crossing number limits " + str(limits))
+                                    # print("Crossing number limits " + str(limits))
                                     Q["crossingNumber"][i][j] = [int(limits[1]),int(limits[2])]
-                                    print("Crossing number limits " + str(Q["crossingNumber"][i][j]))
+                                    # print("Crossing number limits " + str(Q["crossingNumber"][i][j]))
                                     foundCrossingNumber = True
-                                elif j>i and "," in constraint:
-                                    units = constraint.split(",")
-                                    combinationConstraints.append((units[0],units[1]))
+                                elif j>i and ("," in constraint or constraint.upper() in RNACombinationConstraints):
                                     foundCombinationConstraint = True
-                                elif j>i and constraint in RNACombinationConstraints:  # for backward compatibility
-                                    combinationConstraints.append((constraint[0],constraint[1]))
-                                    foundCombinationConstraint = True
+                                    # combination constraint, add as a tuple
+                                    if "," in constraint:
+                                        units = constraint.split(",")
+                                        if len(units) == 2:
+                                            combinationConstraints.append((units[0],units[1]))
+                                    else:
+                                        combinationConstraints.append((constraint[0],constraint[1]))
+
+                                    # check for requests for modified versions of these combinations
+                                    if "+modasrna" in iM_lower:
+                                        foundParentAsRNA = True
+                                        combinationConstraints.append("+modAsRNA")
+                                    elif "+mod" in iM_lower:
+                                        foundParentType = True
+                                        combinationConstraints.append("+mod")
+                                    elif "modasrna" in iM_lower:
+                                        foundParentAsRNA = True
+                                        combinationConstraints.append("modAsRNA")
+                                    elif "mod" in iM_lower:
+                                        foundParentType = True
+                                        combinationConstraints.append("mod")
                                 elif constraint in allInteractionConstraints:
                                     requiredInteractions.append(constraint)
                                     foundRequiredInteraction = True
@@ -621,10 +909,14 @@ def calculateQueryConstraints(Q):
                         while len(requiredInteractions) > 0 and requiredInteractions[0] == "and":
                             requiredInteractions = requiredInteractions[1:]
 
-
                 Q["requiredInteractions"][i][j] = requiredInteractions
                 Q["prohibitedInteractions"][i][j] = prohibitedInteractions
                 Q["combinationConstraint"][i][j] = combinationConstraints
+
+                if foundParentType:
+                    Q["getParentType"] = True
+                if foundParentAsRNA:
+                    Q["getParentAsRNA"] = True
 
         if not foundRequiredInteraction:
             del Q["requiredInteractions"]          # remove this field so we don't take time to check
@@ -643,140 +935,219 @@ def calculateQueryConstraints(Q):
 
         # Parse Unary Constraints
 
-        letterToConstraint ={ 'A': ['A'],
-        'C': ['C'],
-        'G': ['G'],
-        'U': ['U'],
-        'M' :[ 'A', 'C' ],
-        'R' : ['A', 'G'],
-        'W' : ['A' , 'U'],
-        'S' : ['C' , 'G'],
-        'Y' : ['C' , 'U'],
-        'K' : ['G' , 'U'],
-        'V' : ['A', 'C', 'G'],
-        'H' : ['A', 'C', 'U'],
-        'D' : ['A', 'G', 'U'],
-        'B' : ['C', 'G', 'U'],
-        'N' : ['A', 'C', 'G', 'U']
+        letterToConstraint = { 'A': {'A'},
+        'C': {'C'},
+        'G': {'G'},
+        'U': {'U'},
+        'M' :{ 'A', 'C' },
+        'R' : {'A', 'G'},
+        'W' : {'A' , 'U'},
+        'S' : {'C' , 'G'},
+        'Y' : {'C' , 'U'},
+        'K' : {'G' , 'U'},
+        'V' : {'A', 'C', 'G'},
+        'H' : {'A', 'C', 'U'},
+        'D' : {'A', 'G', 'U'},
+        'B' : {'C', 'G', 'U'},
+        'N' : {'A', 'C', 'G', 'U'}
         }
 
-        #RNAUnitTypes = ["A","C","G","U","M","R","W","S","Y","K","V","H","D","B","N"]
-        #DNAUnitTypes = ["DA","DC","DG","DT"]
-        #proteinUnitTypes = ["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","PYL","SER","SEC","THR","TRP","TYR","VAL","ASX","GLX","XAA","XLE"]
+        Q["requiredUnitType"] = [None] * Q["numPositions"]
 
-        Q["requiredUnitType"] = [None] * Q["numpositions"]
-        Q["requiredMoleculeType"] = [None] * Q["numpositions"]
+        if not "requiredMoleculeType" in Q:
+            Q["requiredMoleculeType"] = [None] * Q["numPositions"]
 
-        Q["glycosidicBondOrientation"] = [None] * Q["numpositions"]
+        Q["glycosidicBondOrientation"] = [None] * Q["numPositions"]
         foundGlycosidicBondOrientation = False
-        Q["chiAngle"] = [None] * Q["numpositions"]
-        Q["chainLength"] = [None] * Q["numpositions"]
+        Q["chiAngle"] = [None] * Q["numPositions"]
+        Q["chainLength"] = [None] * Q["numPositions"]
+        Q["solitary"] = [None] * Q["numPositions"]
         foundChiAngle = False
         foundChainLength = False
+        foundSolitaryConstraint = False
 
-        # process unary constraints
-        for i in range(Q["numpositions"]):
-            Q["requiredUnitType"][i] = []
-            Q["requiredMoleculeType"][i] = []
+        # process unary constraints, constraints on the diagonal
+        for i in range(Q["numPositions"]):
+            Q["requiredUnitType"][i] = set()
             Q["glycosidicBondOrientation"][i] = []
+            if not i in Q["requiredMoleculeType"]:
+                Q["requiredMoleculeType"][i] = set()
+            else:
+                Q["requiredMoleculeType"][i] = set(Q["requiredMoleculeType"][i])
             Q["chiAngle"][i] = []
             Q["chainLength"][i] = []
 
-            if(Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0):
-                if('RNA' not in Q["requiredMoleculeType"][i]):
-                    Q["requiredMoleculeType"][i].append('RNA')
+            Q["solitary"][i] = []
+
+            if Q["interactionMatrix"][i][i] == None or len(Q["interactionMatrix"][i][i]) == 0:
+                # if "repSetType" in Q and "DNA" in Q["repSetType"]:
+                #     Q["requiredMoleculeType"][i].add('DNA')
+                # else:
+                #     Q["requiredMoleculeType"][i].add('RNA')
+                pass
+
+            elif Q["interactionMatrix"][i][i].strip().lower() in ['mod','modified']:
+                Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_modified_set
+
+            elif Q["interactionMatrix"][i][i].strip().lower() in ['~mod','~modified']:
+                Q["requiredUnitType"][i] = RNA_standard
 
             else:
-                iMtext = Q["interactionMatrix"][i][i].replace(","," ")
+                iMtext = Q["interactionMatrix"][i][i].replace(","," ").upper()
 
                 iMarray = iMtext.split(" ")
                 for iM in iMarray:
-                    if iM == "x" or iM == "X":
-                        iM = "protein"
+                    iMlower = iM.lower().replace("chain_length","chainlength")
 
-                    if iM.lower() == 'modified':
-                        if 'rna' in iMtext.lower():
-                            Q["requiredUnitType"][i] += RNA_modified_list
-                            if not 'RNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('RNA')
-                        elif 'dna' in iMtext.lower():
-                            Q["requiredUnitType"][i] += DNA_modified_list
-                            if not 'DNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('DNA')
+                    if len(iM) == 0:
+                        continue
+
+                    if iM in RNA_standard:
+                        # A, C, G, U
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
+                        elif 'MOD' in iMtext:
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
                         else:
-                            Q["requiredUnitType"][i] += RNA_modified_list
-                            Q["requiredUnitType"][i] += DNA_modified_list
-                            if not 'RNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('RNA')
-                            if not 'DNA' in Q["requiredMoleculeType"][i]:
-                                Q["requiredMoleculeType"][i].append('DNA')
-
-
-                    elif iM in RNAUnitTypes:
-                        Q["requiredUnitType"][i].append(iM)
-                        if('RNA' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('RNA')
+                            Q["requiredUnitType"][i].add(iM)
 
                     elif iM in letterToConstraint:
-                        Q["requiredUnitType"][i] += letterToConstraint[iM]
-                        if('RNA' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('RNA')
+                        # IUPAC abbreviations for RNA nucleotides
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | letterToConstraint[iM]
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | letterToConstraint[iM]
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent in letterToConstraint[iM]:
+                                    Q["requiredUnitType"][i].add(modified)
+                        elif 'MOD' in iMtext:
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent in letterToConstraint[iM]:
+                                    Q["requiredUnitType"][i].add(modified)
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | letterToConstraint[iM]
 
-                    elif(iM in DNAUnitTypes):
-                        Q["requiredUnitType"][i].append(iM)
-                        if('DNA' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('DNA')
+                    elif iM in DNA_standard:
+                        # DA, DC, DG, DT
+                        Q["requiredMoleculeType"][i].add('DNA')
 
-                    elif(iM in proteinUnitTypes):
-                        Q["requiredUnitType"][i].append(iM)
-                        if('protein' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('protein')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i].add(iM)
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
+                        elif 'MOD' in iMtext:
+                            for modified, parent in modified_base_to_parent.items():
+                                if parent == iM:
+                                    Q["requiredUnitType"][i].add(modified)
+                        else:
+                            Q["requiredUnitType"][i].add(iM)
 
-                    elif(iM == "RNA"):
-                        if('RNA' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('RNA')
+                    elif iM in RNA_modified_set:
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        Q["requiredUnitType"][i].add(iM)
 
-                    elif(iM == "DNA"):
-                        if('DNA' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('DNA')
+                    elif iM in DNA_modified_set:
+                        Q["requiredMoleculeType"][i].add('DNA')
+                        Q["requiredUnitType"][i].add(iM)
 
-                    elif(iM == "protein"):
-                        if('protein' not in Q["requiredMoleculeType"][i]):
-                            Q["requiredMoleculeType"][i].append('protein')
+                    elif iM == "RNA":
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | RNA_modified_set
+                        elif 'MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_modified_set
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | RNA_modified_set
 
-                    elif iM.lower() == "syn":
+                    elif iM == "DNA":
+                        Q["requiredMoleculeType"][i].add('DNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_standard
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_standard | DNA_modified_set
+                        elif 'MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_modified_set
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | DNA_standard | DNA_modified_set
+
+                    elif iM == "NA":
+                        Q["requiredMoleculeType"][i].add('RNA')
+                        Q["requiredMoleculeType"][i].add('DNA')
+                        if '~MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | DNA_standard
+                        elif '+MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | DNA_standard | RNA_modified_set | DNA_modified_set
+                        elif 'MOD' in iMtext:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_modified_set | DNA_modified_set
+                        else:
+                            Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | RNA_standard | DNA_standard | RNA_modified_set | DNA_modified_set
+
+                    elif iM in ["MOD","~MOD","+MOD","MODIFIED","~MODIFIED","+MODIFIED"]:
+                        pass
+
+                    elif iM in protein_unit_types:
+                        Q["requiredUnitType"][i].add(iM)
+                        Q["requiredMoleculeType"][i].add('protein')
+
+                    elif iM == "X" or iMlower == "protein":
+                        Q["requiredUnitType"][i] = Q["requiredUnitType"][i] | protein_unit_types
+                        Q["requiredMoleculeType"][i].add('protein')
+
+                    elif iMlower == "syn":
                         Q["glycosidicBondOrientation"][i].append("syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "anti":
+                    elif iMlower == "anti":
                         Q["glycosidicBondOrientation"][i].append("anti")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "is" or iM.lower() == "int syn" or iM.lower() == "int_syn" or iM.lower() == "int-syn" or iM.lower() == "intermediate syn":
+                    elif iMlower == "is" or iMlower == "int syn" or iMlower == "int_syn" or iMlower == "int-syn" or iMlower == "intermediate syn":
                         Q["glycosidicBondOrientation"][i].append("int_syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "~syn":
+                    elif iMlower == "~syn":
                         Q["glycosidicBondOrientation"][i].append("anti")
                         Q["glycosidicBondOrientation"][i].append("int_syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "~anti":
+                    elif iMlower == "~anti":
                         Q["glycosidicBondOrientation"][i].append("syn")
                         Q["glycosidicBondOrientation"][i].append("int_syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "~is" or iM.lower() == "~int syn" or iM.lower() == "~int_syn" or iM.lower() == "~int-syn" or iM.lower() == "~intermediate syn":
+                    elif iMlower == "~is" or iMlower == "~int syn" or iMlower == "~int_syn" or iMlower == "~int-syn" or iMlower == "~intermediate syn":
                         Q["glycosidicBondOrientation"][i].append("anti")
                         Q["glycosidicBondOrientation"][i].append("syn")
                         foundGlycosidicBondOrientation = True
 
-                    elif iM.lower() == "glyco" or iM.lower() == "glycosidic":
+                    elif iMlower == "~solitary" or iMlower == "~sol":
+                        Q["solitary"][i].append(False)
+                        foundSolitaryConstraint = True
+
+                    elif iMlower == "solitary" or iMlower == "sol":
+                        Q["solitary"][i].append(True)
+                        foundSolitaryConstraint = True
+
+                    elif iMlower == "glyco" or iMlower == "glycosidic":
                         Q["showGlycosidicBondOrientation"] = True
                         foundGlycosidicBondOrientation = True
 
-                    elif "chi" in iM.lower():
-                        fields = iM.lower().replace("(","_").replace(")","")
+                    elif "chi" in iMlower:
+                        fields = iMlower.replace("(","_").replace(")","")
                         fields = fields.replace("[","_").replace("]","")
                         fields = fields.replace(":","_")
                         fields = fields.split('_')
@@ -794,8 +1165,12 @@ def calculateQueryConstraints(Q):
                         else:
                             Q["errorMessage"].append('Could not parse chi constraint %d' % i)
 
-                    elif "chainlength" in iM.lower():
-                        fields = iM.lower().replace("(","_").replace(")","")
+                    elif "chainlength" in iMlower:
+                        # chain length constraints
+                        # chainLength_1000_2000 to get chain length between 1000 and 2000
+                        # chainlength_2000_inf
+                        # chainlength_500_200 to get chain length outside [200,500]
+                        fields = iMlower.replace("(","_").replace(")","")
                         fields = fields.replace("[","_").replace("]","")
                         fields = fields.replace(":","_")
                         fields = fields.split('_')
@@ -820,13 +1195,13 @@ def calculateQueryConstraints(Q):
                             Q["errorMessage"].append('Could not parse chainlength constraint %d' % i)
 
                     else:
-                        # for example an unrecognized modified nucleotide
-                        Q["requiredUnitType"][i].append(iM)
-                        Q["errorMessage"].append('Did not recognize %s' % iM)
+                        Q["errorMessage"].append('Did not recognize constraint %s' % iM)
 
 
             if len(Q["requiredMoleculeType"][i]) == 0:
-                Q["requiredMoleculeType"][i] = ['RNA']               # default constraint
+                # no constraint on UnitType
+                # default constraint on molecule type
+                Q["requiredMoleculeType"][i] = set(['RNA','DNA'])            # default constraint
 
         if not foundGlycosidicBondOrientation:
             del Q["glycosidicBondOrientation"]
@@ -834,6 +1209,8 @@ def calculateQueryConstraints(Q):
             del Q["chiAngle"]
         if not foundChainLength:
             del Q["chainLength"]
+        if not foundSolitaryConstraint:
+            del Q["solitary"]
 
         # for unary constraints, we need to consider the possibility of things separated by spaces or commas
         # could be "AG" for RNA A or G
@@ -849,8 +1226,8 @@ def calculateQueryConstraints(Q):
 
     Q["activeInteractions"] = []
 
-    for i in range(0,Q["numpositions"]):
-        for j in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
+        for j in range(0,Q["numPositions"]):
             if 'requiredInteractions' in Q:
                 Q["activeInteractions"].extend(Q["requiredInteractions"][i][j])
             if 'prohibitedInteractions' in Q:
@@ -862,20 +1239,27 @@ def calculateQueryConstraints(Q):
         Q["activeInteractions"].remove("and")
 
     if not "requiredMoleculeType" in Q or not Q["requiredMoleculeType"]:
-        Q["requiredMoleculeType"] = [["RNA"]] * Q["numpositions"]
+        if "repSetType" in Q and "DNA" in Q["repSetType"] and "RNA" in Q["repSetType"]:
+            Q["requiredMoleculeType"] = [["DNA","RNA"]] * Q["numPositions"]
+        elif "repSetType" in Q and "DNA" in Q["repSetType"]:
+            Q["requiredMoleculeType"] = [["DNA"]] * Q["numPositions"]
+        else:
+            Q["requiredMoleculeType"] = [["RNA"]] * Q["numPositions"]
 
     if Q["type"] == "mixed" or Q["type"] == "geometric":
+        # determine the type of each unit to facilitate retrieving its information
+        # this must be fragile with modified nucleotides and amino acids
         if not "queryMoleculeType" in Q:
-            Q["queryMoleculeType"] = [None] * Q["numpositions"]
-            for i in range(Q["numpositions"]):
+            Q["queryMoleculeType"] = [None] * Q["numPositions"]
+            for i in range(Q["numPositions"]):
                 Q["queryMoleculeType"][i] = getMoleculeType(Q["unitID"][i])
 
     if not "locationWeight" in Q:
-        Q["locationWeight"] = [1] * Q["numpositions"]
+        Q["locationWeight"] = [1] * Q["numPositions"]
 
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         s = sum(Q["locationWeight"])
-        Q["locationWeight"][i] = Q["numpositions"] * Q["locationWeight"][i]/s
+        Q["locationWeight"][i] = Q["numPositions"] * Q["locationWeight"][i]/s
 
     # incorporate query units into the search constraints
     if Q["type"] == "geometric" or Q["type"] == "mixed":
@@ -885,26 +1269,26 @@ def calculateQueryConstraints(Q):
             Q["userMessage"].append("No discrepancy specified, using 0.3")
         Q["requireddistanceminimum"] = defaultdict(dict)
         Q["requireddistancemaximum"] = defaultdict(dict)
-        Q["SSCutoff"] = [None] * Q["numpositions"] # SSCutoff = sum of squares cutoff
+        Q["SSCutoff"] = [None] * Q["numPositions"] # SSCutoff = sum of squares cutoff
         Q["largestMaxRange"] = 0
-        Q["distance"] = np.zeros((Q["numpositions"],Q["numpositions"]))
+        Q["distance"] = np.zeros((Q["numPositions"],Q["numPositions"]))
         s = 0
 
-        for i in range(0,Q["numpositions"]):
+        for i in range(0,Q["numPositions"]):
             s = s + Q["locationWeight"][i]
 
-            Q["SSCutoff"][i] = (Q["numpositions"]**2)*(Q["discrepancy"]**2)*s;
-            for j in range(i+1,Q["numpositions"]):
+            Q["SSCutoff"][i] = (Q["numPositions"]**2)*(Q["discrepancy"]**2)*s;
+            for j in range(i+1,Q["numPositions"]):
 
                 Q["distance"][i][j] = np.linalg.norm(Q["centers"][i] -Q["centers"][j])
                 Q["distance"][j][i] = Q["distance"][i][j]
 
-                if Q["numpositions"] > 2:
+                if Q["numPositions"] > 2:
                     wi = Q["locationWeight"][i]
                     wj = Q["locationWeight"][j]
-                    delta = math.sqrt((wi + wj) / (wi * wj)) * Q["numpositions"] * Q["discrepancy"]
+                    delta = math.sqrt((wi + wj) / (wi * wj)) * Q["numPositions"] * Q["discrepancy"]
                 else:
-                    delta = Q["numpositions"] * Q["discrepancy"]
+                    delta = Q["numPositions"] * Q["discrepancy"]
 
                 Q["requireddistanceminimum"][i][j] = Q["distance"][i][j] - delta
                 Q["requireddistancemaximum"][i][j] = Q["distance"][i][j] + delta
@@ -914,104 +1298,94 @@ def calculateQueryConstraints(Q):
                 Q["largestMaxRange"] = max(Q["largestMaxRange"],Q["distance"][i][j] + delta)
 
 
-    # note what molecule type we are searching for, to load the right chains
+    # note what molecule type we are searching for, to load the right chains and restrict to the right residues
     searchingRNA = False
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         if 'RNA' in Q["requiredMoleculeType"][i]:
             searchingRNA = True
     searchingDNA = False
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         if 'DNA' in Q["requiredMoleculeType"][i]:
             searchingDNA = True
     searchingProtein = False
-    for i in range(0,Q["numpositions"]):
+    for i in range(0,Q["numPositions"]):
         if 'protein' in Q["requiredMoleculeType"][i]:
             searchingProtein = True
 
     # process the given list of files to search and resolve into chains and IFEs
     IFEList = []            # accumulate all chain and PDB names
-    unit_data_file = []     # list of files stored in DATAPATH + '/units'
-    for search_file in Q["searchFiles"]:
+    unit_data_file = []     # list of files stored in DATAPATHUNITS
+    # unit_file_id_to_chains = defaultdict(list)   # map from file_id of unit_data_file to list of chains
+
+    search_file_list = []
+
+    # process any wildcards
+    if "searchFiles" in Q:
+        for search_file in Q["searchFiles"]:
+            if "*" in search_file:
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Found wildcard in %s' % search_file)
+
+                search_file = search_file.strip()
+
+                (path_to_file,search_filename) = os.path.split(search_file)
+
+                if os.path.exists(path_to_file):
+                    if Q.get('printQueryDetails',False):
+                        print('  query_processing: Found path %s' % path_to_file)
+                    file_list = os.listdir(path_to_file)
+
+                    import fnmatch
+
+                    if Q.get('printQueryDetails',False):
+                        print('  query_processing: Found %d files to search' % len(file_list))
+
+                    # Loop over the filenames
+                    for filename in file_list:
+                        if fnmatch.fnmatch(filename, "*.pdb"):
+                            search_file_list.append(os.path.join(path_to_file,filename))
+            else:
+                search_file_list.append(search_file)
+
+    # loop over the specified search files
+    for search_file in search_file_list:
 
         search_file = search_file.strip()
+
+        (path_to_file,search_filename) = os.path.split(search_file)
+
+        # not sure exactly how this works when search_file already has a path; probably OK
+        search_file_id = search_filename.replace('.gz','').replace('.cif','').replace('.pdb','')
 
         if len(search_file) == 0:
             continue
 
         # look up representative sets, if requested, and replace with IFE names
-        if "nrlist" in search_file:           # referring to lists that are posted online
-            listLoaded = False
-            pathAndFileName = os.path.join(DATAPATH,'units','Representative_sets.pickle')
+        # putting the URL in searchFiles is deprecated as of 2024-09-27 because it's too fragile to have users make a URL
+        # but this code stays for backward compatibility
+        # Example: 	"https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/3.0A/csv"
+        # Example:  "https://rna.bgsu.edu/rna3dhub/nrlist/download/3.300/NMR/csv"
+        if "nrlist" in search_file:           # referring to lists that are posted online, an older method
 
-            # check in local file of representative sets first, in case already loaded
-            if os.path.exists(pathAndFileName):
-                with open(pathAndFileName, 'rb') as fh:
-                    representativeSets = pickle.load(fh)
-                if search_file in representativeSets and len(representativeSets[search_file]) > 0:
-                    IFEList.extend(representativeSets[search_file])
-                    listLoaded = True
+            # make sure that search_file fits the pattern; avoid code injection
+            fields = search_file.split("/")
+            if not len(fields[6].split(".")) == 2 or not fields[6].split(".")[0].isdigit() or not fields[6].split(".")[1].isdigit():
+                Q['errorMessage'].append("Invalid representative set %s, using 3.300" % fields[6])
+                fields[6] = "3.300"
+            if not fields[7] in ["1.5A","2.0A","2.5A","3.0A","3.5A","4.0A","all","NMR"]:
+                Q['errorMessage'].append("Invalid resolution %s, using 3.0A" % fields[7])
+                fields[7] = "3.0A"
+            search_file = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (fields[6],fields[7])
 
-            if not listLoaded:
-                newList = []
+            if not "repSetRelease" in Q:
+                Q["repSetRelease"] = fields[6]
 
-                # requesting NMR structures only
-                # this is a bit of a hack
-                if 'NMR/csv' in search_file:
-                    url = search_file.replace('NMR/csv','all/csv')
-                    NMRonly = True
-                else:
-                    url = search_file
-                    NMRonly = False
+            if not "repSetResolution" in Q:
+                Q["repSetResolution"] = fields[7]
 
-                try:
-                    # download representative set list from URL given in search_file variable
-                    if sys.version_info[0] < 3:
-                        f = urllib.urlopen(url)          # python 2
-                    else:
-                        f = urllib.request.urlopen(url)  # python 3
-                    myfile = f.read()
-                except Exception as e:
-                    Q["errorMessage"].append("Not able to download representative set %s" % search_file)
-                    print("Not able to download representative set; check the internet connection.")
-                    print(e)
-                    myfile = []
+            continue
 
-                if "Arial" in str(myfile):
-                    print("Problem with downloading representative set, got:")
-                    print(myfile)
-                elif len(myfile) > 0:
-                    allLines = myfile.split(b'\n')
-                    for line in allLines:
-                        # CSV file, split by comma
-                        fields = line.split(b",")
-                        if len(fields) > 1:
-                            # second column has representative IFE; remove ""
-                            IFE = fields[1].replace(b'"',b'')
-                            if NMRonly:
-                                if len(IFE) >= 4:
-                                    if not "PDB_data_file" in Q:
-                                        Q["PDB_data_file"] = readPDBDatafile()  # available PDB structures, resolutions, chains
-
-                                    pdb_id = IFE[0:4]
-                                    if pdb_id in list(Q["PDB_data_file"].keys()):
-                                        if 'method' in list(Q["PDB_data_file"][pdb_id].keys()):
-                                            if 'NMR' in Q["PDB_data_file"][pdb_id]['method']:
-                                                newList.append(IFE.decode("ascii"))
-                            elif len(IFE) > 1:
-                                newList.append(IFE.decode("ascii"))
-
-                    IFEList.extend(newList)
-
-                    if os.path.exists(pathAndFileName):
-                        with open(pathAndFileName, 'rb') as fh:
-                            representativeSets = pickle.load(fh)
-                    else:
-                        representativeSets = {}
-
-                    representativeSets[search_file] = newList
-                    pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
-
-        elif "|" in search_file:
+        if "|" in search_file:
             # a chain or IFE is specified
             chains = search_file.split("+")
             for k in range(0,len(chains)):
@@ -1021,97 +1395,248 @@ def calculateQueryConstraints(Q):
                 chains[k] = "|".join(fields)
             IFEList.append("+".join(chains))
 
-        elif len(search_file) == 4 and not "|" in search_file and not "." in search_file:
+            continue
+
+        if not "|" in search_file:
             # process as a PDB id
-            # if RNA or DNA is being searched for, convert any 4-letter PDB IDs to strings with chain strings separated by + signs
-            # which is how RNA chains are stored in .pickle files for speed
+            # if RNA or DNA is being searched for, convert any PDB IDs to strings
+            # with chain strings separated by + signs
+            # That way, all chains will be searched together, not individually
+            # Then you can find motifs that have nucleotides from two or more chains
             # not needed for protein because they are not stored by chain
 
-            # load mapping from PDB id to chain and other information, if not already done
-            if not "PDB_data_file" in Q:
-                Q["PDB_data_file"] = readPDBDatafile()  # available PDB structures, resolutions, chains
+            search_file_id_upper = search_file_id.upper()
 
-            search_file = search_file.upper()
+            Q,chains = get_pdb_chains(Q,search_file_id_upper,searchingRNA,searchingDNA)
 
-            chains = []
-
-            if search_file in Q["PDB_data_file"].keys():
-
-                #print(Q["PDB_data_file"][search_file])
-
-                if searchingRNA and 'RNA' in Q["PDB_data_file"][search_file]['chains']:
-                    chains += ["|".join([search_file,'1',x]) for x in Q["PDB_data_file"][search_file]['chains']['RNA']]
-                if searchingDNA and 'DNA' in Q["PDB_data_file"][search_file]['chains']:
-                    chains += ["|".join([search_file,'1',x]) for x in Q["PDB_data_file"][search_file]['chains']['DNA']]
+            if len(chains) > 0:
                 IFEList.append("+".join(chains))
-                # print("Found these chains %s in %s" % (chains,file))
-            else:
-                print("Could not find %s in units/NA_datafile.pickle" % search_file)
 
-                # read directory listing for units directory, get filenames that include search_file in the name
-                units_path = os.path.join(DATAPATH,'units')
-                if os.path.exists(units_path):
-                    # get directory listing
-                    file_list = os.listdir(units_path)
-                    # Loop over the filenames
-                    for filename in file_list:
-                        # Check if the search_file string is in the filename
-                        print(filename)
-                        if search_file in filename:
-                            fields = filename.split("_")
-                            print(fields)
-                            chains += fields[2]
+                if Q.get('printQueryDetails',False):
+                    print("  query_processing: Found chains %s in PDB file %s" % (chains,search_file_id_upper))
 
-                    if len(chains) == 0:
-                        # no pre-computed pairwise annotations found
-                        # attempt to annotate pairs from the .cif file
+                continue
 
-
-                else:
-                    Q["errorMessage"].append("Data directory %s does not exist" % units_path)
-
-
-
-
-        elif SERVER:
-            print('  Unknown file %s' % search_file)
+        # on the server, only PDB files will be searched
+        # if we got this far, search_file is not a file from PDB
+        if "PDBONLY" in Q and Q["PDBONLY"]:
+            print('Error: Unknown file %s' % search_file)
             Q["errorMessage"].append("Did not recognize %s as a file from the Protein Data Bank" % search_file)
+            continue
 
-        else:
-            # process as a user-defined file ... but that may not work
-
-            print('  query_processing: Processing %s as a local file' % search_file)
+        # Process search_file that is not from PDB
+        # look for .pickle files for search_file in the units directory
+        units_path = os.path.join(Q["DATAPATHUNITS"])
+        if os.path.exists(units_path):
 
             # read the units folder to see what chains are available and list those
+            # read directory listing for units directory, get filenames that include search_file in the name
             if not unit_data_file:
-                unit_data_file = readUnitFileNames(Q["PDB_data_file"])
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Running readUnitFilenames to find previously processed unit files')
+                if "PDB_data_file" in Q:
+                    unit_data_file = readUnitFileNames(Q,Q["PDB_data_file"])
+                else:
+                    unit_data_file = readUnitFileNames(Q,set())
 
-            #print("  query_processing: list of local chain files found:")
-            #print(unit_data_file)
-
-            if search_file in unit_data_file.keys():
-
-                print("  query_processing: found the chains in %s in the units directory" % search_file)
-
+            if search_file_id in unit_data_file:
                 # found the list of chains in the /units directory
                 chains = []
-                if searchingRNA and 'NA' in unit_data_file[search_file]['chains']:
-                    chains += ["|".join([search_file,'1',x]) for x in unit_data_file[search_file]['chains']['NA']]
-                if searchingDNA and 'NA' in Q["PDB_data_file"][search_file]['chains']:
-                    chains += ["|".join([search_file,'1',x]) for x in unit_data_file[search_file]['chains']['NA']]
+                if (searchingRNA or searchingDNA) and 'NA' in unit_data_file[search_file_id]['chains']:
+                    chains += ["|".join([search_file_id,'1',x]) for x in unit_data_file[search_file_id]['chains']['NA']]
                 IFEList.append("+".join(chains))
 
+                continue
+
+        # if search_file already has a path and the file exists
+        if os.path.exists(search_file) or os.path.exists(search_file + ".gz"):
+            from fr3d.search.file_reading import processPDBFile
+
+            if Q.get('printQueryDetails',False):
+               print('  query_processing: About to run processPDBFile')
+            chains, file_id, messages = processPDBFile(Q,search_file,search_file_id)
+
+            if Q.get('printQueryDetails',False):
+                print('  query_processing: Ran processPDBFile')
+                # print(chains)
+                # print(file_id)
+                # print(messages)
+
+            IFEList.append("+".join(chains))
+            continue
+
+        # look for file in the cif or pdb directory
+        # if no .pickle files are available, process the .cif or .pdb file
+        Q, CIFPATH = get_CIFPATH(Q)
+
+        if CIFPATH and os.path.exists(CIFPATH):
+            if Q.get('printQueryDetails',False):
+               print('  query_processing: Looking for %s in %s' % (search_file_id,CIFPATH))
+
+            CIFPATH_search_file = os.path.join(CIFPATH,search_file)
+
+            if os.path.exists(CIFPATH_search_file):
+
+                from fr3d.search.file_reading import processPDBFile
+
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: about to run processPDBFile')
+                chains, file_id, messages = processPDBFile(Q,CIFPATH_search_file)
+
+                if Q.get('printQueryDetails',False):
+                    print('  query_processing: Ran processPDBFile')
+                    print(chains)
+                    print(file_id)
+                    print(messages)
+
+                IFEList.append("+".join(chains))
+                continue
+
+        print('Error: Unable to find search file %s' % search_file)
+        Q["errorMessage"].append("Unable to find search file %s" % search_file)
+
+    # load representative set, if requested
+    # users can directly specify these two variables in Q
+    # repSetResolution can be 'NMR' to get only NMR files
+    if "repSetRelease" in Q and "repSetResolution" in Q:
+        if not "PDB_data_file" in Q:
+            Q = readPDBDatafile(Q)  # available PDB structures, resolutions, chains
+
+        # make sure that Q["repSetType"] is a list of "RNA" or "DNA"
+        if "repSetType" in Q:
+            if type(Q["repSetType"]) == str:
+                Q["repSetType"] = Q["repSetType"].upper().split(",")
+        else:
+            Q["repSetType"] = ["RNA"]
+
+        if Q.get("repSetResolution","all") == "entire":
+            # search the entire set of PDB files in the "all" resolution
+            repSetResolution = 'all'
+        else:
+            repSetResolution = Q.get("repSetResolution","all")
+
+        for repSetType in Q["repSetType"]:
+            if repSetType == "RNA":
+                # https://rna.bgsu.edu/rna3dhub/nrlist/download/4.32/all/csv
+                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/%s/%s/csv" % (Q["repSetRelease"],repSetResolution)
+            elif repSetType == "DNA":
+                url = "https://rna.bgsu.edu/rna3dhub/nrlist/download/dna/%s/%s/csv" % (Q["repSetRelease"],repSetResolution)
+
+            repSetKey = (repSetType,Q["repSetRelease"],Q["repSetResolution"])
+
+            # check in local file of representative sets first, in case the list is already downloaded
+            # faster, and works better when working offline
+            newList = []
+            pathAndFileName = os.path.join(Q["OUTPUTPATH"],'representative_sets.pickle')
+            if os.path.exists(pathAndFileName):
+                with open(pathAndFileName, 'rb') as fh:
+                    representativeSets = pickle.load(fh)
+                if repSetKey in representativeSets and len(representativeSets[repSetKey]) > 0:
+                    newList = sorted(set(representativeSets[repSetKey]),reverse=True)
+
+            if len(newList) == 0:
+                # need to download the representative set
+
+                # requesting NMR structures only
+                if Q['repSetResolution'] == 'NMR':
+                    # this is a bit of a hack
+                    url = url.replace('NMR/csv','all/csv')
+                    NMRonly = True
+                else:
+                    NMRonly = False
+
+                try:
+                    # download representative set list from URL
+                    if sys.version_info[0] < 3:
+                        f = urllib.urlopen(url)          # python 2
+                        myfile = f.read()
+                    else:
+                        f = urllib.request.urlopen(url)  # python 3
+                        myfile = f.read().decode('utf-8')    # decode from bytes to string
+                except Exception as e:
+                    Q["errorMessage"].append("Not able to download representative set %s" % url)
+                    print("Error: Not able to retrieve or download representative set")
+                    print(e)
+                    myfile = []
+
+                if "Arial" in str(myfile):
+                    print("Error: Problem with downloading representative set, got:")
+                    print(myfile)
+                elif len(myfile) > 0:
+                    allLines = myfile.split('\n')
+                    for line in allLines:
+                        # CSV file, split by comma
+                        fields = line.split(",")
+                        if len(fields) > 1:
+                            if Q["repSetResolution"] == "entire":
+                                # keep all PDB identifiers in the equivalence class
+                                newList += [x.replace('"','').split("|")[0] for x in fields[2:]]
+                            else:
+                                # second column has representative IFE; remove ""
+                                IFE = fields[1].replace('"','')
+                                if NMRonly:
+                                    file_id = IFE.split("|")[0]
+                                    if file_id in list(Q["PDB_data_file"]):
+                                        if 'method' in list(Q["PDB_data_file"][file_id]):
+                                            if 'NMR' in Q["PDB_data_file"][file_id]['method']:
+                                                newList.append(IFE.decode("ascii"))
+                                                # newList.append(IFE)
+                                elif len(IFE) > 1:
+                                    newList.append(IFE)
+
+                    if os.path.exists(pathAndFileName):
+                        with open(pathAndFileName, 'rb') as fh:
+                            representativeSets = pickle.load(fh)
+                    else:
+                        representativeSets = {}
+
+                    # make sure no file is listed twice
+                    # alphabetical order can be nice, but then searches seem to slow down as they run
+                    newList = sorted(set(newList),reverse = True)
+
+                    representativeSets[repSetKey] = newList
+                    pickle.dump(representativeSets, open(pathAndFileName, "wb" ), 2)
+
+        IFEList += newList
+
+    # combine IFEs from the same 3D structure into one list of chains to search
+    # also use just the PDB id if there is a PDB plus ife chains
+    pdb_to_chains = {}
+    for ife in IFEList:
+        if len(ife) == 0:
+            continue
+        fields = ife.split("|")
+        pdb = fields[0]
+        if len(fields) == 1:
+            # only a pdb id, use all chains for what we are searching here
+            Q,chains = get_pdb_chains(Q,pdb,searchingRNA,searchingDNA)
+
+            if len(chains) > 0:
+                pdb_to_chains[pdb] = set(chains)
             else:
-                # if none are available yet, load the .cif or .pdb file
-                from file_reading import processPDBFile
-                chains, messages = processPDBFile(search_file)
-                IFEList.append("+".join(chains))
+                print("No appropriate nucleic acid chains found in %s" % pdb)
 
-    Q["searchFiles"] = [x for x in IFEList if len(x) > 0]
+        elif pdb in pdb_to_chains:
+            if len(pdb_to_chains[pdb]) > 0:
+                # already has chains, just add more chains, and do not duplicate chains
+                pdb_to_chains[pdb] = pdb_to_chains[pdb] | set(ife.split("+"))
+        else:
+            # record the chains
+            pdb_to_chains[pdb] = set(ife.split("+"))
 
+    searchFiles = []
+    for pdb, chains in pdb_to_chains.items():
+        if len(pdb_to_chains[pdb]) > 0:
+            # chains from IFEs
+            searchFiles.append("+".join(pdb_to_chains[pdb]))
+        else:
+            # whole PDB file ... should not happen
+            searchFiles.append(pdb)
 
-    #set cutoffs for geometric or mixed searches
-    if(Q["type"] == "geometric" or Q["type"] == "mixed"):
+    Q["searchFiles"] = searchFiles
+
+    # set cutoffs for geometric or mixed searches
+    if Q["type"] == "geometric" or Q["type"] == "mixed":
         cutoff = Q['SSCutoff'] #rename sscutoffs
         for i in range(len(cutoff)):
             if cutoff[i] != 'Inf':

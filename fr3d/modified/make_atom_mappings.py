@@ -1,0 +1,671 @@
+"""
+Read a set of manual mappings from a file atom_mappings_manual.txt
+Loop over a list of modified nucleotides from CSV file modified_nt_list.csv
+For each modified nucleotide, download the corresponding .cif file
+Determine the parent nucleotide
+Read the parent nucleotide .cif file
+Map the atoms of the modified nucleotide to the parent nucleotide
+"""
+
+import json
+import os
+import pdbx
+import requests
+import sys
+from sys import argv
+
+# import the version of urlretrieve appropriate to the Python version
+if sys.version_info[0] < 3:
+    from urllib import urlretrieve as urlretrieve
+else:
+    from urllib.request import urlretrieve as urlretrieve
+
+
+def read_monomer_cif(mod_nt):
+    """
+    One function to read all necessary data from the .cif file for this project
+    """
+
+    # set the filename for the .cif file
+    if mod_nt in ["PRN"]:
+        # Windows restriction on using PRN as a filename
+        filename = os.path.join("cif_files","data_" + mod_nt + ".cif")
+    else:
+        filename = os.path.join("cif_files",mod_nt + ".cif")
+
+    if not os.path.exists(filename):
+        # download from RCSB website and store in the cif folder
+        if not os.path.exists("cif_files"):
+            os.mkdir("cif_files")
+
+        url = "https://files.rcsb.org/ligands/download/%s.cif" % mod_nt
+        urlretrieve(url,filename)
+
+    if not os.path.exists(filename):
+        print("Could not find %s" % filename)
+        return None
+
+    # Open the CIF file for the modified nucleotide
+    cif = open(filename)
+    data = []
+    pRd = pdbx.reader.PdbxReader(cif)
+    pRd.read(data)
+    cif.close()
+    data = data[0]
+
+    category_names = data.get_object_name_list()
+    cif_data = {}
+
+    for category_name in category_names:
+        # print('category_name',category_name)
+
+        cif_data[category_name] = []
+        category = data.get_object(category_name)
+
+        row_count = category.row_count
+        # print('  row_count',row_count)
+
+        for i in range(row_count):
+            row = {}
+            for item_name in category.item_name_list:
+                # print('    ',item_name)
+                name = item_name.split('.')[1]
+                # print('    ',name)
+                # print('    ',mod_nt,category_name,i,item_name,category.get_value(name,i))
+                row[name] = category.get_value(name,i)
+            cif_data[category_name].append(row)
+            # if category_name == "chem_comp":
+            #     print(row)
+
+    return cif_data
+
+
+def map_atom_to_neighbors(cif_data):
+    """
+    Create a dictionary whose keys are atoms and whose values are a set of neighboring atoms
+    """
+
+    atom_to_neighbor_atoms = {}
+
+    for row in cif_data['chem_comp_bond']:
+        # get the two interacting atoms
+        atom1 = row['atom_id_1']
+        atom2 = row['atom_id_2']
+
+        # add entries to the dictionary
+        if not atom1 in atom_to_neighbor_atoms:    # not already a key in the dictionary
+            atom_to_neighbor_atoms[atom1] = set([])  # start with an empty set
+        if not atom2 in atom_to_neighbor_atoms:    # not already a key in the dictionary
+            atom_to_neighbor_atoms[atom2] = set([])  # start with an empty set
+
+        # store the connection in both directions
+        atom_to_neighbor_atoms[atom1].add(atom2)
+        atom_to_neighbor_atoms[atom2].add(atom1)
+
+    return atom_to_neighbor_atoms
+
+
+def reverse_map(A_to_B):
+    """
+    Reverse an atom mapping
+    """
+
+    B_to_A = {}
+    for A,B in A_to_B.items():
+        B_to_A[B] = A
+
+    return B_to_A
+
+
+def process_one_modified_nt(mod_nt,mappings=[]):
+    """
+    Input mod_nt is a string telling the name of a modified nucleotide like 'PSU' or '2MG'
+    The function reads the corresponding .cif file, determines the parent nucleotide,
+    reads the parent .cif file, and finds as many corresponding atoms as possible.
+
+    It also reads a file of manual mappings.
+    each manual mapping is a 4-tuple like ("A","N9","ZAD","N9")
+    if a modified nucleotide is not mappable, the entry will be like ("","","YRR","")
+    to simply indicate the mapping of modified nucleotide to standard, use ("A","","ZAD","") with no atoms
+    """
+
+    standard_nt = None
+    manual_mappings = []
+
+    # show details for modified nucleotides in this list
+    verbose_list = ['A1ELZ']
+    verbose_list = []
+
+    # check if the manual mappings say that no mapping is possible
+    if len(mappings) > 0:
+        standard_nt = mappings[0][0]
+        if len(standard_nt) == 0:
+            # manually annotated that mod_nt does not map to a nucleotide
+            return None, []
+
+    # read the .cif file for the modified nucleotide
+    mod_data = read_monomer_cif(mod_nt)
+
+    # print(mod_data['chem_comp'][0]['mon_nstd_parent_comp_id'])
+    # print(mod_data['chem_comp'][0]['one_letter_code'])
+
+    NA_type = mod_data['chem_comp'][0].get('type',None)
+    cif_standard_nt = mod_data['chem_comp'][0].get('mon_nstd_parent_comp_id',None)
+    one_letter_code = mod_data['chem_comp'][0].get('one_letter_code',None)
+
+    print("NA_type from cif file:           %s" % (NA_type))
+    print("standard_nt from .cif file:      %s" % (cif_standard_nt))
+    print("one_letter_code from .cif file:  %s" % (one_letter_code))
+    print("standard_nt from manual mapping: %s" % (standard_nt))
+
+    # get a list of atoms in the modified nucleotide
+    mod_atoms = set([])
+    for row in mod_data['chem_comp_atom']:
+        mod_atoms.add(row['atom_id'])
+
+    # use standard_nt from the .cif file
+    if cif_standard_nt and not standard_nt:
+        standard_nt = cif_standard_nt
+
+    # standard nts that we are not going to model
+    if standard_nt == "DI":
+        standard_nt = "DG"
+
+    if standard_nt == "DU" and "RNA" in NA_type:
+        standard_nt = "U"
+    elif standard_nt == "DU" and "DNA" in NA_type:
+        # keep it in the DNA family, even though deoxy U is the standard nt
+        standard_nt = "DT"
+
+    # map these like the others, so their plot gets made
+    if mod_nt in ["A","C","G","U","DA","DC","DG","DT"]:
+        standard_nt = mod_nt
+
+    output = ""    # start accumulating a string of output
+
+    # if there is no parent in the .cif file, use atoms in the .cif file to guess the parent
+    if not standard_nt:
+        if 'N9' in mod_atoms and 'O6' in mod_atoms:
+            standard_nt = 'G'
+        elif 'N9' in mod_atoms and 'N6' in mod_atoms:
+            standard_nt = 'A'
+        elif 'N1' in mod_atoms and 'N4' in mod_atoms:
+            standard_nt = 'C'
+        elif 'N1' in mod_atoms and 'O4' in mod_atoms:
+            standard_nt = 'U'
+
+        old_standard_nt = None
+        if standard_nt in ["A","C","G"] and not "O2'" in mod_atoms:
+            old_standard_nt = "D" + standard_nt
+        elif standard_nt == "U" and not "O2'" in mod_atoms:
+            old_standard_nt = "DT"
+
+        if standard_nt in ["A","C","G"] and "DNA" in NA_type:
+            standard_nt = "D" + standard_nt
+        elif standard_nt in ["A","C","G"] and "RNA" in NA_type:
+            pass
+        elif standard_nt in ["A","C","G"] and not "O2'" in mod_atoms:
+            standard_nt = "D" + standard_nt
+        elif standard_nt == "U" and not "O2'" in mod_atoms:
+            standard_nt = "DT"
+
+        if not standard_nt == old_standard_nt:
+            print("%s changed from %s to %s" % (mod_nt,old_standard_nt,standard_nt))
+
+        print('Making a guess that the parent of %s is %s' % (mod_nt,standard_nt))
+        output += 'Making a guess that the parent of %s is %s\n' % (mod_nt,standard_nt)
+
+        if not standard_nt:
+            standard_nt = input("What standard nucleotide should %s be mapped to? (none for none) " % mod_nt)
+            if standard_nt.lower() == "none":
+                standard_nt = 'None'
+                no_mapping = "\t\t%s" % (mod_nt)
+                output += no_mapping + "\n"
+                manual_mappings.append(no_mapping)
+                return "", manual_mappings
+            else:
+                new_mapping = "%s\t\t%s\n" % (standard_nt,mod_nt)
+                output += new_mapping
+                manual_mappings.append(new_mapping)
+
+    print("Standard nucleotide we use is:     %s" % standard_nt)
+
+    # error messages
+    # resolve them by adding the appropriate entry to atom_mappings_manual.txt
+    if "," in standard_nt:
+        output = "%s is two parents combined (%s) and we have no plan for which one to map\n" % (mod_nt, standard_nt)
+        return output, []
+
+    if not standard_nt in ['A','C','G','U','DA','DC','DG','DT']:
+        output = "mon_nstd_parent_comp_id %s is not a nucleotide %s\n" % (standard_nt,mod_nt)
+        return output, []
+
+    if standard_nt == "None" or standard_nt == None:
+        output = "No standard nucleotide identified for %s\n" % (mod_nt)
+        return output, []
+
+    parent_data = read_monomer_cif(standard_nt)
+
+    parent_atoms = set([])
+    for row in parent_data['chem_comp_atom']:
+        parent_atoms.add(row['atom_id'])
+
+    mod_atom_to_neighbors = map_atom_to_neighbors(mod_data) # Gives a set of atoms and its corresponding neighbors for the mod
+    # print(mod_atom_to_neighbors)
+    par_atom_to_neighbors = map_atom_to_neighbors(parent_data)
+    # print(par_atom_to_neighbors)
+
+    # use manual mappings to get started
+    # In some nucleotides, C1' attaches to an atom different from N1/N9
+    # In those cases, add the next match, then the algorithm may handle the rest.
+    # In other cases, C1' has a different name like C1G or C1A
+    # In other cases, the atom names are all different, so the algorithm needs more help
+
+    # keep track of parent atom to modified atom mapping
+    standard_to_mod = {}
+    mod_to_par = {}
+
+    for mapping in mappings:
+        if mapping[1] and mapping[3]:
+            if mod_nt in verbose_list:
+                print("Mapping %s to %s" % (mapping[1],mapping[3]))
+            standard_to_mod[mapping[1]] = mapping[3]
+            mod_to_par[mapping[3]] = mapping[1]
+
+    if not "C1'" in standard_to_mod and "C1'" in mod_atom_to_neighbors and "C1'" in par_atom_to_neighbors:
+        # The usual starting point is the C1' atom
+        standard_to_mod["C1'"] = "C1'"   # map C1' to C1'
+        mod_to_par["C1'"] = "C1'"        # map C1' to C1'
+
+    # # reverse the mappings listed so far; then they don't need to be typed twice
+    # mod_to_par = reverse_map(standard_to_mod)
+
+    # new atom(s) that the algorithm should spread from
+    new_par_atoms = list(standard_to_mod.keys())
+
+    if len(new_par_atoms) == 0:
+        print("Not sure what atom to start at with %s" % mod_nt)
+
+        p2 = input("What should standard %s atom should we map? (enter to skip) " % (standard_nt))
+        if len(p2) > 0:
+            m2 = input("What should standard %s atom %s map to in %s? (enter to skip) " % (standard_nt,p2,mod_nt))
+            if len(m2) > 0:
+                standard_to_mod[p2] = m2
+                mod_to_par[m2] = p2
+                new_par_atoms.append(p2)
+                manual_mappings.append("%s\t%s\t%s\t%s\n" % (standard_nt,p2,mod_nt,m2))
+
+    unresolved_par_atoms = set()  # atoms we were confused about at some point and not resolved
+
+    if len(new_par_atoms) > 0:
+        while len(new_par_atoms) > 0:
+            par_atoms = new_par_atoms  # parent atoms that were recently mapped
+            new_par_atoms = []
+            for par_atom in par_atoms:
+                mod_atom = standard_to_mod[par_atom]
+                if mod_atom in mod_atom_to_neighbors:
+                    mod_neighbors = (mod_atom_to_neighbors[mod_atom]) - set(mod_to_par.keys()) # subtracts out previously mapped atoms
+                else:
+                    for ma in sorted(mod_atom_to_neighbors.keys()):
+                        print(ma, mod_atom_to_neighbors[ma])
+                    print('Warning: Atom %s has no neighbors' % (mod_atom))
+                par_neighbors = (par_atom_to_neighbors[par_atom]) - set(standard_to_mod.keys()) # subtracts out previously mapped atoms
+
+                # find neighboring atoms that have the same names and map them
+                new_atoms = mod_neighbors & par_neighbors
+                for new_atom in new_atoms:
+                    if new_atom in ['H21','H22','H41','H42','H61','H62','H71','H72','H73',"H5'","H5''","H2''"]:
+                        # don't map these, since they are often switched and can be inferred later
+                        pass
+                    elif new_atom == "H2'" and standard_nt in ["DA","DC","DG","DT"]:
+                        # DNA has H2' and H2''
+                        pass
+                    else:
+                        if mod_nt in verbose_list:
+                            print("Mapping %s to %s" % (new_atom,new_atom))
+                        standard_to_mod[new_atom] = new_atom
+                        mod_to_par[new_atom] = new_atom
+                        new_par_atoms.append(new_atom)
+
+                # special cases of atom naming conventions
+                if "OP1" in par_neighbors and "O1P" in mod_neighbors:
+                    standard_to_mod["OP1"] = "O1P"
+                    mod_to_par["O1P"] = "OP1"
+                    new_par_atoms.append("OP1")
+
+                if "OP1" in par_neighbors and "O1A" in mod_neighbors:
+                    standard_to_mod["OP1"] = "O1A"
+                    mod_to_par["O1A"] = "OP1"
+                    new_par_atoms.append("OP1")
+
+                if "OP2" in par_neighbors and "O2P" in mod_neighbors:
+                    standard_to_mod["OP2"] = "O2P"
+                    mod_to_par["O2P"] = "OP2"
+                    new_par_atoms.append("OP2")
+
+                if "OP2" in par_neighbors and "O2A" in mod_neighbors:
+                    standard_to_mod["OP2"] = "O2A"
+                    mod_to_par["O2A"] = "OP2"
+                    new_par_atoms.append("OP2")
+
+                if "OP3" in par_neighbors and "O3P" in mod_neighbors:
+                    standard_to_mod["OP3"] = "O3P"
+                    mod_to_par["O3P"] = "OP3"
+                    new_par_atoms.append("OP3")
+
+                # take these out of consideration, so we can focus on unmapped atoms
+                mod_diff_atoms = mod_neighbors - new_atoms
+                par_diff_atoms = par_neighbors - new_atoms
+
+                # if there is exactly one neighboring atom that does not have the same name
+                if len(mod_diff_atoms) == 1 and len(par_diff_atoms) == 1:
+                    par_diff_atom = list(par_diff_atoms)[0]
+
+                    if par_diff_atom[0] == 'H' and 'H' in [x[0] for x in new_atoms]:
+                        # don't map a hydrogen atom when there are other hydrogens to map here
+                        pass
+                    else:
+                        mod_diff_atom = list(mod_diff_atoms)[0]
+                        print("%-5s maps to %-5s" % (par_diff_atom, mod_diff_atom))
+                        standard_to_mod[par_diff_atom] = mod_diff_atom
+                        mod_to_par[mod_diff_atom] = par_diff_atom
+                        new_par_atoms.append(par_diff_atom)
+                # elif len(mod_diff_atoms) == 2 and len(par_diff_atoms) == 2:
+                #     # if no new parent atoms were assigned, we may be stuck, so maybe ask the user
+
+                #     # print(par_diff_atoms)
+                #     # print(mod_diff_atoms)
+                #     p1, p2 = sorted(par_diff_atoms)
+                #     m1, m2 = sorted(mod_diff_atoms)
+                #     print('Wondering how to map %s and %s to %s and %s' % (p1,p2,m1,m2))
+
+                #     if not p1.startswith('H') and not p1.startswith('OP'):
+                #         unresolved_par_atoms.add(p1)
+                #     if not p2.startswith('H') and not p2.startswith('OP'):
+                #         unresolved_par_atoms.add(p2)
+
+                    # if (p1[0] == m1[0] and p1[0] != m2[0]) or (p2[0] == m2[0] and p2[0] != m1[0]):
+                    #     print('Guessing a map of %s to %s and %s to %s but not using it' % (p1,m1,p2,m2))
+                    #     # standard_to_mod[p1] = m1
+                    #     # mod_to_par[m1] = p1
+                    #     # new_par_atoms.append(p1)
+
+                    #     # standard_to_mod[p2] = m2
+                    #     # mod_to_par[m2] = p2
+                    #     # new_par_atoms.append(p2)
+                    # else:
+                    #     pass
+                    #     #print("Neighbors %s and %s, still not sure what to do" % (par_diff_atoms,mod_diff_atoms))
+
+                else:
+                    if len(mod_diff_atoms) > 0 or len(par_diff_atoms) > 0:
+                        print(str(par_diff_atoms) + " and " + str(mod_diff_atoms) + " has no atom names that match")
+
+                        pda = set([x for x in par_diff_atoms if not x.startswith('H')])
+                        mda = set([x for x in mod_diff_atoms if not x.startswith('H')])
+
+                        if len(pda) == 2 and len(mda) == 2:
+                            # these are worth checking again manually, few false positives
+                            print(pda)
+                            print(mda)
+                            unresolved_par_atoms |= pda
+
+            if len(new_par_atoms) == 0:
+
+                print("Last chance to check atoms")
+                print(unresolved_par_atoms)
+                print(standard_to_mod.keys())
+
+                # no new parent atoms were just mapped, so we may be done
+                unresolved_par_atoms = unresolved_par_atoms - set(standard_to_mod.keys())
+                if len(unresolved_par_atoms) > 0:
+                    # parent atoms we were unsure about earlier are still not mapped
+
+                    for p1 in unresolved_par_atoms:
+                        m1 = input("What should standard %s atom %s map to in %s? (enter to skip) " % (standard_nt,p1,mod_nt))
+                        if len(m1) > 0:
+                            standard_to_mod[p1] = m1
+                            mod_to_par[m1] = p1
+                            new_par_atoms.append(p1)
+                            manual_mappings.append("%s\t%s\t%s\t%s\n" % (standard_nt,p1,mod_nt,m1))
+
+        # loop over keys, get the value, make a string for m
+        for par_atom in sorted(standard_to_mod.keys()):
+            mod_atom = standard_to_mod[par_atom]
+            # output four columns for a spreadsheet
+
+            if mod_atom in mod_atoms:
+                output += "%s\t%s\t%s\t%s\n" % (standard_nt,par_atom,mod_nt,mod_atom)
+            else:
+                # Over time, the atom list in the .cif file can change, making manual mappings obsolete
+                output += "Warning: %s not in %s\n" % (mod_atom,mod_nt)
+
+    else:
+        output = "Not sure what atom to start at with %s \n" % mod_nt
+
+    if mod_nt in verbose_list:
+        # stop execution here so we can review
+        input("Press Enter to continue ...")
+
+    return output, manual_mappings
+
+
+def download_nakb_modified_nt_list():
+    # download the current list of modified nucleotides from NAKB
+    # parse JSON object into a dictionary
+    url = "https://www.nakb.org/node/solr/nakb/select?q=status:REL&facet=true&facet.field=nonstandard&facet.limit=100000&rows=0"
+    nakb_list = []
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        nakb_dict = response.json()
+        nakb_list = nakb_dict['facet_counts']['facet_fields']['nonstandard']
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching the data: {e}")
+    except json.JSONDecodeError as e:
+        print(f"An error occurred while parsing JSON: {e}")
+
+    mod_to_count = {}
+    for i in range(0,len(nakb_list),2):
+        mod_nt = nakb_list[i]
+        mod_nt_count = int(nakb_list[i+1])
+        mod_to_count[mod_nt] = mod_nt_count
+
+    if not "I" in mod_to_count:
+        mod_to_count["I"] = 38
+
+    return mod_to_count
+
+
+def map_all_modified_nucleotides(focus_list = []):
+    """
+    Procedure for mapping atoms of non-standard nucleotides
+    First, get a list of non-standard nucleotides
+    Go to http://www.nakb.org/searchterms.html
+    Check Nonstandard NA residues, copy and paste into a spreadsheet, save as CSV format
+    Copy the list into atom_mappings.txt, preserving the rows for A, C, G, U, DA, DC, DG, DT
+    Second, run make_atom_mappings.py which will download necessary .cif files and make a first mapping
+    The output file is called atom_mappings.txt, which contains mappings and messages
+    Third, run refine_atom_mappings.py to fill in missing atoms
+
+    """
+
+    mod_to_count = {}
+
+    # read the list of modified nucleotides from NAKB if it exists
+    if os.path.exists('modified_nt_list.csv'):
+        with open('modified_nt_list.csv','r') as f:
+            lines = f.read()                # read the entire file
+            lines = lines.replace("\r","")  # remove \r return characters
+            lines = lines.replace('"','')   # remove double quotes
+            lines = lines.split("\n")       # split on newline character, return a list
+
+            for line in lines:
+                if 'Rank' in line:
+                    continue            # skip the header line
+                fields = line.split(",")
+                mod_nt = fields[1]
+                mod_nt_count = int(fields[2])
+                mod_to_count[mod_nt] = mod_nt_count
+
+    print('Found %4d modified nucleotides in modified_nt_list.csv' % len(mod_to_count.keys()))
+
+    # read manual mappings
+    modified_to_mappings = {}
+    with open("atom_mappings_manual.txt","r") as f:
+        lines = f.readlines()
+
+    count_lines_from_NAKB = 0
+    count_nts_from_NAKB = set()
+    count_unmappable = 0
+    for line in lines:
+        # make it easy to comment out lines with #
+        if line.startswith("#"):
+            continue
+        fields = line.replace("\n","").split("\t")
+
+        if len(fields) >= 3:
+            # OK to have more than 4 fields, but only the first 4 are used
+            if len(fields) == 4:
+                parent,par_atom,modified,mod_atom = fields[0:4]
+            else:
+                parent,par_atom,modified = fields[0:3]
+                mod_atom = ""
+            if not modified in modified_to_mappings:
+                modified_to_mappings[modified] = []
+            modified_to_mappings[modified].append((parent,par_atom,modified,mod_atom))
+
+            if modified in mod_to_count:
+                count_nts_from_NAKB.add(modified)
+                count_lines_from_NAKB += 1
+                if parent == "":
+                    count_unmappable += 1
+
+    print("Found %4d modified nucleotides in atom_mappings_manual.txt" % len(modified_to_mappings.keys()))
+    print("Found %4d modified residues in atom_mappings_manual that are also on the NAKB list" % len(count_nts_from_NAKB))
+    print("Found %4d lines in atom_mappings_manual.txt that pertain to residues from NAKB" % count_lines_from_NAKB)
+    print("Found %4d modified residues with no parent indicated" % count_unmappable)
+    # input("Press Enter to continue")
+
+    nakb_mod_to_count = download_nakb_modified_nt_list()
+
+    # use nakb numbers to override local numbers and add any new nucleotides
+    for mod_nt,mod_nt_count in nakb_mod_to_count.items():
+        mod_to_count[mod_nt] = mod_nt_count
+
+    print('Found %4d modified nucleotides between modified_nt_list.csv and NAKB' % len(mod_to_count.keys()))
+
+    # add any mapped nucleotides that are not in the list to the list
+    added_count = 0
+    for mod_nt in modified_to_mappings.keys():
+        if not mod_nt in mod_to_count:
+            mod_to_count[mod_nt] = 0
+            added_count += 1
+            print('  Found %s in atom_mappings_manual.txt' % mod_nt)
+
+    print('Found %4d additional modified nucleotides from atom_mappings_manual.txt' % added_count)
+
+    # process each modified nucleotide and make provisional mappings
+    output = ""
+    unmapped_mod_nt = []
+    c = 1
+    for mod_nt, mod_nt_count in sorted(mod_to_count.items(), key=lambda x: x[1], reverse=True):
+
+        if focus_list and not mod_nt in focus_list:
+            continue
+
+        mod_nt_url = "https://www.rcsb.org/ligand/" + mod_nt  # for viewing
+        print("")
+        print("Processing number %3d %4s which has count %4d and url %s" % (c,mod_nt,mod_nt_count,mod_nt_url))
+
+        new_output = ""
+        if mod_nt in modified_to_mappings:
+            manual_mappings = modified_to_mappings[mod_nt]
+        else:
+            manual_mappings = []
+        new_output, new_manual_mappings = process_one_modified_nt(mod_nt,manual_mappings)
+        if new_output:
+            output += new_output
+
+        if not new_output:
+            unmapped_mod_nt.append(mod_nt)
+
+        c += 1
+
+        if len(new_manual_mappings) > 0:
+            with open("atom_mappings_manual.txt","rt") as f:
+                manual_lines = f.readlines()
+            with open("atom_mappings_manual.txt","wt") as f:
+                for line in manual_lines:
+                    f.write(line)
+                    fields = line.split("\t")
+                    if len(fields) < 3:
+                        continue
+                    if fields[2] == mod_nt and len(new_manual_mappings) > 0:
+                        for manual_line in new_manual_mappings:
+                            f.write(manual_line)
+                        new_manual_mappings = []
+                if len(new_manual_mappings) > 0:
+                    for manual_line in new_manual_mappings:
+                        f.write(manual_line)
+
+    if len(focus_list) == 0:
+        with open("atom_mappings_provisional.txt","w") as f:
+            f.write(output)
+    else:
+        with open("atom_mappings_provisional_temp.txt","w") as f:
+            f.write(output)
+
+    # notify about unmapped nucleotides
+    # accumulate release dates
+    date_mod_nt = []
+    for mod_nt in unmapped_mod_nt:
+        cif_data = read_monomer_cif(mod_nt)
+        date_mod_nt.append((cif_data['chem_comp'][0]['pdbx_initial_date'],mod_nt))
+
+    # read .json file to see which nucleotides were noted before
+    # a nucleotide with an old release date might have only recently appeared in a polymer
+    with open("modified_to_change_data.json",'rt') as f:
+        modified_to_change_data = json.load(f)
+    previously_processed_mod_nt = set(modified_to_change_data.keys())
+
+    for i, x in enumerate(sorted(date_mod_nt)):
+        date,mod_nt = x
+        if mod_nt in previously_processed_mod_nt:
+            print("%3d %s %s" % (i+1,date,mod_nt))
+        else:
+            print("%3d %s %s (not in modified_to_change_data.json)" % (i+1,date,mod_nt))
+
+    print("Did not map the %d nonstandard residues above." % len(unmapped_mod_nt))
+    print("Release dates are shown so you can see recent ones that may need attention.")
+    print("You can view them in unmapped.html")
+
+    with open("unmapped.html","w") as f:
+        f.write("<html>\n")
+        f.write("<head>\n")
+        f.write("<title>Unmapped residues</title>\n")
+        f.write("</head>\n")
+        f.write("<body>\n")
+        c = 0
+        for date,mod_nt in sorted(date_mod_nt):
+            c += 1
+            f.write("<h2>%s number %d of %d released %s</h2>\n" % (mod_nt,c,len(unmapped_mod_nt),date))
+            f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank">%s in ligand explorer</a><br>\n' % (mod_nt,mod_nt))
+            f.write('<a href="https://www.rcsb.org/ligand/%s" target = "_blank"><img src="https://cdn.rcsb.org/images/ccd/unlabeled/%s/%s.svg" height="300"></a>\n' % (mod_nt,mod_nt[0],mod_nt))
+        f.write("</body>\n")
+        f.write("</html>\n")
+
+if __name__=="__main__":
+
+    # Process command line arguments, if any
+
+    print("arguments")
+    print(argv)
+
+    if len(argv) == 1:
+        map_all_modified_nucleotides()
+    elif len(argv) == 2:
+        mod_nt = argv[1].split(",")
+        print('Got modified nucleotides %s' % mod_nt)
+        map_all_modified_nucleotides(mod_nt)
+        # print(process_one_modified_nt(mod_nt))

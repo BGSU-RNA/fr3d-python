@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    plot-phosphate-interactions.py reads a data file and plots points to represent
-    base-base phosphate interactions.
+plot-phosphate-interactions.py reads a data file and plots points to represent
+base-base phosphate interactions.
 """
 
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,17 +14,13 @@ import os
 from collections import defaultdict
 import urllib
 
-from fr3d.localpath import outputText
 from fr3d.localpath import outputNAPairwiseInteractions
-from fr3d.localpath import contact_list_file
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputHTML
 from fr3d.localpath import storeMatlabFR3DPairs
-from class_limits import nt_nt_cutoffs
 
 from NA_pairwise_interactions import map_PDB_list_to_PDB_IFE_dict
 from draw_residues import draw_base
-
 
 if sys.version_info[0] < 3:
     from urllib import urlopen
@@ -52,26 +48,95 @@ def load_basepair_annotations(filename,all_pair_types):
 #=======================================================================
 def load_Matlab_FR3D_pairs(PDBID):
     """
-    download annotations of RNA basepairs from http://rna.bgsu.edu/pairs/
+    download matlab-annotated BPh and BR pairs from sites like
+    https://rna.bgsu.edu/rna3dhub/pdb/4V9F/interactions/matlab/basephosphate/tsv
+    """
+
+    interactionToTriples = defaultdict(list)
+
+    pairsFileName = PDBID + '_NA_backbone_matlab' + '.pickle'
+    pathAndFileName = os.path.join(storeMatlabFR3DPairs,pairsFileName)
+
+    if not os.path.exists(pathAndFileName):
+        url = "https://rna.bgsu.edu/rna3dhub/pdb/%s/interactions/matlab/basephosphate/tsv" % PDBID
+        print("Downloading from %s, saving in %s" % (url,pathAndFileName))
+
+        try:
+            response = urlopen(url)
+            lines = response.read().decode('utf-8').splitlines()
+        except:
+            pass
+
+        url = "https://rna.bgsu.edu/rna3dhub/pdb/%s/interactions/matlab/baseribose/tsv" % PDBID
+        print("Downloading from %s, saving in %s" % (url,pathAndFileName))
+
+        try:
+            response = urlopen(url)
+            lines += response.read().decode('utf-8').splitlines()
+        except:
+            pass
+
+        for line in lines:
+            fields = line.split("\t")
+            if len(fields) >= 3:
+                unit1 = fields[0].strip()
+                unit2 = fields[2].strip()
+                interaction = fields[1].strip()
+                interactionToTriples[interaction].append((unit1,unit2,'0'))
+
+        # for interaction in interactionToTriples:
+        #     print(interactionToTriples[interaction])
+
+        with open(pathAndFileName,'wb') as f:
+            pickle.dump(interactionToTriples, f)
+
+    if os.path.exists(pathAndFileName):
+        print("Loading %s" % (pathAndFileName))
+        try:
+            interactionToTriples = pickle.load(open(pathAndFileName,"rb"), encoding = 'latin1')
+        except:
+            print("Could not read "+pairsFileName+", it may not be available")
+            try:
+                os.remove(pathAndFileName)
+                print("Removed unsuccessful file %s" % pathAndFileName)
+            except:
+                print("Could not remove file %" % pathAndFileName)
+
+    interactionToPairs = {}
+    print("Interaction keys %s" % sorted(interactionToTriples.keys()))
+    for interaction in interactionToTriples.keys():
+        interactionToPairs[interaction] = [(a,b) for a,b,c in interactionToTriples[interaction]]
+
+    return interactionToPairs
+
+
+def load_Matlab_FR3D_pairs_old(PDBID):
+    """
+    download annotations of RNA basepairs from https://rna.bgsu.edu/pairs/
     Those are triples of (unit_id1,unit_id2,crossingnumber)
     """
 
     interactionToTriples = defaultdict(list)
 
-    pairsFileName = PDBID + '_RNA_pairs' + '.pickle'
-    pathAndFileName = storeMatlabFR3DPairs + pairsFileName
+    pairsFileName = PDBID + '_NA_pairs_matlab' + '.pickle'
+    pathAndFileName = os.path.join(storeMatlabFR3DPairs,pairsFileName)
 
     if not os.path.exists(pathAndFileName):
-        print("Downloading %s to %s" % (pairsFileName,pathAndFileName))
-        if sys.version_info[0] < 3:
-            urllib.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
-        else:
-            urllib.request.urlretrieve("http://rna.bgsu.edu/pairs/"+pairsFileName, pathAndFileName) # testing
+        url = "https://rna.bgsu.edu/pairs/"+pairsFileName
+        print("Downloading from %s to %s" % (url,pathAndFileName))
 
+        try:
+            if sys.version_info[0] < 3:
+                urllib.urlretrieve(url, pathAndFileName) # testing
+            else:
+                urllib.request.urlretrieve(url, pathAndFileName) # testing
+        except:
+            print("Could not download from %s" % pairsFileName)
         # note:  if the file is not present on the server, a text file with a 404 error will be downloaded
         # so it will look like a file was downloaded, but it's not the file you need!
 
     if os.path.exists(pathAndFileName):
+        print("Loading %s" % (pathAndFileName))
         if sys.version_info[0] < 3:
             try:
                 interactionToTriples = pickle.load(open(pathAndFileName,"rb"))
@@ -94,10 +159,12 @@ def load_Matlab_FR3D_pairs(PDBID):
                     print("Could not remove file %" % pathAndFileName)
 
     interactionToPairs = {}
+    print("Interaction keys %s" % sorted(interactionToTriples.keys()))
     for interaction in interactionToTriples.keys():
         interactionToPairs[interaction] = [(a,b) for a,b,c in interactionToTriples[interaction]]
 
     return interactionToPairs
+
 #=======================================================================
 def reverse(pair):
     return (pair[1],pair[0])
@@ -142,7 +209,7 @@ def make_confusion_matrix(confusionMatrix, interaction_list):
 #=======================================================================
 def focused_confusion_matrix(confusionMatrix, interaction_list):
     """
-    List the non-zero elements of the confusion matrix.  Easier to focus then.
+    List the non-zero elements of the confusion matrix.
     """
 
     output = ""
@@ -153,32 +220,38 @@ def focused_confusion_matrix(confusionMatrix, interaction_list):
                 output += 'Matlab %6s is Python %6s %6d times' % (interaction,interaction2,confusionMatrix[interaction][interaction2])
                 if not interaction == interaction2:
                     if interaction == '' and interaction2.startswith('n'):
-                        output += '  <--- nothing/near'
-                    elif interaction2 == '' and interaction.startswith('n'):
-                        output += '  <--- near/nothing'
+                        output += '  nothing to near'
+                    elif interaction == '':
+                        output += '  nothing to true'
+                    elif interaction.startswith('n') and interaction2 == '':
+                        output += '  near to nothing'
                     elif interaction in interaction2:
-                        output += '  <--- true/near'
-                    elif interaction2 in interaction:
-                        output += '  <--- near/true'
+                        output += '  true to near'
+                    elif interaction.startswith('n') and interaction2 in interaction:
+                        output += '  near to true'
                     elif interaction.startswith('n') and interaction2.startswith('n'):
-                        output += '  <--- near/near'
+                        output += '  different near category'
                     elif interaction.startswith('4') and interaction2.startswith('3'):
-                        output += '  <--- 4 becomes 3'
+                        output += '  4 becomes 3'
                     elif interaction.startswith('4') and interaction2.startswith('5'):
-                        output += '  <--- 4 becomes 5'
+                        output += '  4 becomes 5'
                     elif interaction.startswith('8') and interaction2.startswith('7'):
-                        output += '  <--- 8 becomes 7'
+                        output += '  8 becomes 7'
                     elif interaction.startswith('8') and interaction2.startswith('9'):
-                        output += '  <--- 8 becomes 9'
+                        output += '  8 becomes 9'
                     else:
-                        output += '  <--- more significant change'
+                        output += '  more significant change'
                 output += '\n'
 
     return output
 
 #=======================================================================
 def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
-    """Creates a 2x9 plot to show which annotations were found by passed in language and not found by other passed in language"""
+    """
+    Creates a 2x9 plot to show which annotations were found by passed in language
+    and not found by other passed in language
+    """
+
     if ordering == "python":
         other = "matlab"
     elif ordering == "matlab":
@@ -189,7 +262,7 @@ def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
     print("\n\nAnnotations that were found by %s and not by %s" % (ordering, other))
 
     # print_function = getattr(__builtin__, 'print')
-    # border = ['----','----','----','----','----','----','----','----', '----','----','----']
+    border = ['----','----','----','----','----','----','----','----', '----','----','----']
     # print_function(*interaction_list, sep='\t')
     # print_function(*border, sep = "\t")
     # for category in interaction_list:
@@ -206,31 +279,32 @@ def plot_unmatched_pairs(interactionDict, interaction_list, ordering):
 if __name__=="__main__":
 
     DNA = False
-    make_plots = False
     make_plots = True
+    make_plots = False
+
+    verbose = 0
 
     PDB_list = ['7K00']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
-    PDB_list = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv']
+    PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/3.237/2.5A/csv']
+    PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/3.285/2.0A/csv']
+    PDB_list = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/3.350/2.0A/csv']
     PDB_list = ['4V9F']
 
-    #PDB LIST and Skip Files####
-    PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
-
-    all_PDB_ids = sorted(PDB_IFE_Dict.keys())
-    print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
     PDB_skip_set = set(['1R9F','5NXT','4KTG'])
 
-    pair_to_data = defaultdict(dict)\
+    pair_to_data = defaultdict(dict)
 
     # Load Matlab annotations for BPh and BR
     print('Loading Matlab annotations of these files')
     pair_to_Matlab_BPh_annotation = defaultdict(str)
     pair_to_Matlab_BR_annotation = defaultdict(str)
     PDB_IFE_Dict = map_PDB_list_to_PDB_IFE_dict(PDB_list)
-    all_PDB_ids = PDB_IFE_Dict.keys()
+    all_PDB_ids = sorted(PDB_IFE_Dict.keys())
+    print("Loading NA-pairwise-interactions from %d PDB files" % len(all_PDB_ids))
 
     for PDB_id in all_PDB_ids:
+        if PDB_id in PDB_skip_set:
+            continue
         interaction_to_pairs = load_Matlab_FR3D_pairs(PDB_id)
         num_pairs = 0
         for interaction in interaction_to_pairs.keys():
@@ -249,7 +323,7 @@ if __name__=="__main__":
 
     print("Skipping %d PDB files because they have no Matlab annotation to compare to" % len(PDB_skip_set))
 
-    # Load FR3D Python Annotations##
+    # Load FR3D Python Annotations
     # load output files from NA_pairwise_interactions
     all_PDB_ids = list(set(all_PDB_ids) - PDB_skip_set)
     print("Loading Python annotations from %d PDB files" % len(all_PDB_ids))
@@ -258,7 +332,7 @@ if __name__=="__main__":
 
     not_loaded = []
     for PDB in all_PDB_ids:
-        pair_to_data_file = outputNAPairwiseInteractions + "%s_pairs_v1.pickle" % PDB
+        pair_to_data_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % PDB)
         print("Reading %s" % pair_to_data_file)
         try:
             new_dict = pickle.load(open(pair_to_data_file,'rb'))
@@ -290,11 +364,11 @@ if __name__=="__main__":
             # near interactions
             interaction_list.append("n%d%s" % (i,bb_type))
 
-        print('Processing these interactions:')
-        print(interaction_list)
+    print('Processing these interactions:')
+    print(interaction_list)
 
     for base in base_seq_list:
-        # Data collection for confusion matrix #######
+        # Data collection for confusion matrix
         # each main key represents annotations found in python. The Keys within represent annotations found in matlab #
         # This dictionary is used to detect instances where python and matlab agree vs where they disagree ####
 
@@ -323,13 +397,13 @@ if __name__=="__main__":
             if not datapoint['nt1_seq'] == base:
                 continue
 
-            # eliminate Python annotations of alternate locations other than A
             fields1 = pair[0].split("|")
 
             # some PDB ids are not annotated by Matlab, just skip them here
             if fields1[0] in PDB_skip_set:
                 continue
 
+            # eliminate Python annotations of alternate locations other than A
             if len(fields1) > 5 and not fields1[5] == 'A':
                 continue
 
@@ -362,13 +436,14 @@ if __name__=="__main__":
             if python_BPh_annotation or python_BR_annotation or matlab_BPh_annotation or matlab_BR_annotation:
                 c += 1
 
-                if not python_BPh_annotation == matlab_BPh_annotation:
-                    message = '%s Matlab %5s becomes Python %5s %s' % (base,matlab_BPh_annotation,python_BPh_annotation,datapoint['url'])
-                    messages.append(message)
+                if verbose >= 1:
+                    if not python_BPh_annotation == matlab_BPh_annotation:
+                        message = '%s Matlab %5s becomes Python %5s %s' % (base,matlab_BPh_annotation,python_BPh_annotation,datapoint['url'])
+                        messages.append(message)
 
-                if not python_BR_annotation == matlab_BR_annotation:
-                    message = '%s Matlab %5s becomes Python %5s %s' % (base,matlab_BR_annotation,python_BR_annotation,datapoint['url'])
-                    messages.append(message)
+                    if not python_BR_annotation == matlab_BR_annotation:
+                        message = '%s Matlab %5s becomes Python %5s %s' % (base,matlab_BR_annotation,python_BR_annotation,datapoint['url'])
+                        messages.append(message)
 
                 #######
                 # Add record of annotations by pair
@@ -428,6 +503,7 @@ if __name__=="__main__":
                         else:
                             color = red
                             size = 5
+
                         colors2d.append(color)
                         sizes.append(size)
                         xvalues.append(point[0])
@@ -447,7 +523,7 @@ if __name__=="__main__":
             ax.scatter(xvalues,yvalues,color=colors2d,marker=".",s=sizes)
             ax.set_title('x and y for %d %s %s' % (c,base,interaction_list[0]), rotation=0)
 
-            draw_base(base,'default',2,ax)
+            draw_base(base,'default',2,ax,1,'center')
 
             # show all plots for this interaction_list
             figManager = plt.get_current_fig_manager()
@@ -457,7 +533,7 @@ if __name__=="__main__":
             print('Saved plot in %s' % figure_save_file)
 
             plt.savefig(figure_save_file)
-            #plt.show()
+            # plt.show()
             plt.close()
 
         ### Display confusion matrix ##
@@ -469,7 +545,7 @@ if __name__=="__main__":
 
         ## Store confusion matrix and messages in a text file
         filename = os.path.join(outputNAPairwiseInteractions, 'confusionMatrix_%s_%s.txt' % (base,bb_type))
-        with open(filename, 'w') as f:
+        with open(filename, 'wt') as f:
             f.writelines(cm)
             for message in messages:
                 f.writelines(message + "\n")

@@ -3,21 +3,12 @@ from fr3d.data.base import AtomProxy
 from fr3d.data.atoms import Atom
 from fr3d import definitions as defs
 from fr3d.geometry.superpositions import besttransformation
-from fr3d.geometry import angleofrotation as angrot
+from fr3d.geometry import angleofrotation
 import numpy as np
 import sys
 from fr3d.unit_ids import encode
 
-
-from fr3d.data.mapping import *
-
-# from fr3d.data.mapping import parent_atom_to_modified
-# from fr3d.data.mapping import parent_atom_to_modified
-# from fr3d.data.mapping import modified_atom_to_parent
-# from fr3d.data.mapping import modified_base_to_parent
-# from fr3d.data.mapping import modified_base_atom_list
-# from fr3d.data.mapping import modified_base_to_hydrogens
-# from fr3d.data.mapping import modified_base_to_hydrogens_coordinates
+from fr3d.modified.mapping import *
 
 NHBondLength=1
 
@@ -187,6 +178,7 @@ class Component(EntitySelector):
             self.centers.define('nt_phosphate', atoms)
 
         # attempt to add sugar and phosphate centers for all modified nucleotides
+        # better would be to map the standard atoms to their modified atoms
         if self.sequence in modified_base_to_parent:
             atoms = defs.nt_sugar['A']
             self.centers.define('nt_sugar', atoms)
@@ -201,6 +193,11 @@ class Component(EntitySelector):
             atoms = defs.aa_backbone[self.sequence]
             self.centers.define('aa_backbone', atoms)
 
+        # if no center has been defined yet, use all atoms to define a center
+        # this should work well for ions, waters, and ligands
+        if len(self.centers.definitions()) == 0:
+            self.centers.define('geometric', [atom.name for atom in self._atoms])
+
     def atoms(self, **kwargs):
         """Get, filter and sort the atoms in this component. Access is as
         described by EntitySelector.
@@ -210,7 +207,7 @@ class Component(EntitySelector):
         """
 
         name = kwargs.get('name')
-        
+
         if sys.version_info[0] < 3:
             if isinstance(name, basestring):
                 definition = self.centers.definition(name)
@@ -221,8 +218,8 @@ class Component(EntitySelector):
                 definition = self.centers.definition(name)
                 if definition:
                     kwargs['name'] = definition
-            
-            
+
+
         return EntitySelector(self._atoms, **kwargs)
 
     def coordinates(self, **kwargs):
@@ -300,7 +297,7 @@ class Component(EntitySelector):
             # loop over mapped base atoms in the modified nucleotide
             # parent base atom
             for atom in self.atoms(name=list(modified_base_atom_list[self.sequence])):
-                #redundant. Last check should be sufficient. 
+                #redundant. Last check should be sufficient.
                 parent_atom_name = modified_atom_to_parent[self.sequence][atom.name]
                 #if atom.name in defs.NAbasecoordinates[modified_base_to_parent[self.sequence]]:
                 if parent_atom_name in baseheavy:
@@ -325,14 +322,15 @@ class Component(EntitySelector):
             rotation_matrix, fitted, meanR, rmsd, sse, meanS = \
                 besttransformation(R, S)
         except:
-            if len(R) != len(S):
-                print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
-            elif len(R) < 3:
-                print("%s Rotation matrix calculation failed, %d new atoms" % (self.unit_id(),len(R)))
-            elif len(S) < 3:
-                print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
-            else:
-                print("%s Rotation matrix calculation failed, not sure why" % self.unit_id())
+            pass
+            # if len(R) != len(S):
+            #     print("%s Rotation matrix calculation failed, sizes %d and %d" % (self.unit_id(),len(R),len(S)))
+            # elif len(R) < 3:
+            #     print("%s Rotation matrix calculation failed, %d base atoms" % (self.unit_id(),len(R)))
+            # elif len(S) < 3:
+            #     print("%s Rotation matrix calculation failed, %d standard atoms" % (self.unit_id(),len(S)))
+            # else:
+            #     print("%s Rotation matrix calculation failed, not sure why" % self.unit_id())
 
             return None
 
@@ -368,14 +366,14 @@ class Component(EntitySelector):
         def get_amino_hydrogen_coords(self, heavy, amino1, amino2):
             """
             Helper function to retrieve the coordinates of amino hydrogens and specified heavy atom.
-            Seperate processing for modified nucleotides. 
+            Seperate processing for modified nucleotides.
             If modified nucleotide has a mapping, checks to see if the atom maps to the name of the passed in parent.
             Returns 3 triples of atom coordinates of a (heavy_atom, amino_hydrogen_#1, amino_hydrogen_#2)
             """
             amino1coords = None
             amino2coords = None
             # Standard base
-            if self.sequence in defs.NAbasehydrogens:         
+            if self.sequence in defs.NAbasehydrogens:
                 for atom in self._atoms:
                     if atom.name == heavy:
                         heavy = (atom.x, atom.y, atom.z)
@@ -387,22 +385,26 @@ class Component(EntitySelector):
             elif self.sequence in modified_base_to_parent:
                 for atom in self._atoms:
                     if atom.name in modified_base_atom_list[self.sequence]: # Weed out backbone atoms
-                        if parent_atom_to_modified[self.sequence][atom.name] == heavy: # parent_atom_to_modified[PSU][C5] would return N1 of parent 
-                            heavy = (atom.x, atom.y, atom.z)
-                        elif parent_atom_to_modified[self.sequence][atom.name] == amino1:
-                            amino1coords = (atom.x, atom.y, atom.z)
-                        elif parent_atom_to_modified[self.sequence][atom.name] == amino2:
-                            amino2coords = (atom.x, atom.y, atom.z)
+                        if atom.name in parent_atom_to_modified[self.sequence]:
+                            if parent_atom_to_modified[self.sequence][atom.name] == heavy:
+                                heavy = (atom.x, atom.y, atom.z)
+                            elif parent_atom_to_modified[self.sequence][atom.name] == amino1:
+                                amino1coords = (atom.x, atom.y, atom.z)
+                            elif parent_atom_to_modified[self.sequence][atom.name] == amino2:
+                                amino2coords = (atom.x, atom.y, atom.z)
             return heavy, amino1coords, amino2coords
-        
+
         amino1coords = None
         amino2coords = None
         heavy = None
         dist1 = 0
         dist2 = 0
 
+        if self.rotation_matrix is None:
+            return
+
         try:
-            # add or fix hydrogens for standard bases (only on base)
+            # add or fix base hydrogens for standard bases
             if self.sequence in defs.NAbasehydrogens:
                 hydrogens = set(defs.NAbasehydrogens[self.sequence]) # All hydrogens that should be present on this base
                 already = set([atom.name for atom in self._atoms]) # hydrogens that are already observed in the 3D structure
@@ -461,7 +463,9 @@ class Component(EntitySelector):
                                                 y=newcoordinates[0, 1],
                                                 z=newcoordinates[0, 2]))
 
-            # repeat similar logic but for modified nucleotides. Written out twice so that modified nucleotides logic doesn't slow down normal bases as they're much less frequent.
+            # repeat similar logic but for modified nucleotides.
+            # Code is written out twice so that modified nucleotides logic doesn't slow down
+            # normal bases as they're much less frequent.
             elif self.sequence in modified_base_to_parent:
                 already = []
                 for atom in self._atoms:
@@ -503,9 +507,12 @@ class Component(EntitySelector):
                                             atom.x = amino1coords[0]
                                             atom.y = amino1coords[1]
                                             atom.z = amino1coords[2]
-                else: # hydrogens aren't observed already. If the heavy atom has a mapping to the parent, infer hydrogen with parent hydrogens coordinates with modified hydrogens name
+                else:
+                    # hydrogens aren't observed already.
+                    # If the heavy atom has a mapping to the parent,
+                    # infer hydrogen with parent hydrogen coordinates with modified hydrogen name
                     hydrogens = modified_base_to_hydrogens[self.sequence]
-                    coordinates = modified_base_to_hydrogens_coordinates[self.sequence]
+                    coordinates = modified_base_to_hydrogen_coordinates[self.sequence]
                     for hydrogenatom in hydrogens:
                         hydrogencoordinates = coordinates[hydrogenatom]
                         newcoordinates = self.base_center + \
@@ -516,7 +523,8 @@ class Component(EntitySelector):
                                                 z=newcoordinates[0, 2]))
 
         except:
-            print("%s Adding hydrogens failed" % self.unit_id())
+            pass
+            # print("%s Adding hydrogens failed" % self.unit_id())
 
 
     def infer_amino_acid_hydrogens(self):
@@ -894,7 +902,8 @@ class Component(EntitySelector):
                 self._atoms.append(Atom(name="HG22",x=A2[0],y=A2[1],z=A2[2]))
 
         except:
-                print("%s Adding hydrogens failed" % self.unit_id())
+            pass
+            # print("%s Adding hydrogens failed" % self.unit_id())
 
 
     def transform(self, transform_matrix):
@@ -1111,7 +1120,7 @@ class Component(EntitySelector):
     def angle_between_normals(self, aa_residue):
         vec1 = self.normal_calculation()
         vec2 = aa_residue.normal_calculation()
-        return angrot.angle_between_planes(vec1, vec2)
+        return angleofrotation.angle_between_planes(vec1, vec2)
 
     def normal_calculation(self):
         key = self.sequence

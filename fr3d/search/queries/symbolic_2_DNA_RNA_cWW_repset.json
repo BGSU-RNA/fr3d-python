@@ -1,0 +1,18 @@
+{
+"numpositions": 2,
+"constraintMatrix,1,1": "DNA",
+"constraintMatrix,1,2": "cWW",
+"constraintMatrix,2,2": "RNA",
+"repSetType": "RNA",
+"repSetResolution": "2.5A",
+"repSetRelease": "3.363",
+"printInputQuery": 1,
+"printProcessedQuery": 1,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 0,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 0,
+"printTimer": 1
+}

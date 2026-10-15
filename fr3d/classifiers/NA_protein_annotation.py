@@ -2,9 +2,28 @@
 """
 Created on Wed Nov 26 12:44:30 2014 @author: Poorna Roy
 Name: RNA-protein detection
+Detect and plot RNA base- amino acid interactions.
 """
 
-"""Detect and plot RNA base- amino acid interactions."""
+from collections import defaultdict
+import csv
+from datetime import datetime
+import math
+from math import floor
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+import os
+from os import path
+import pickle
+import random
+import sys
+from time import time
+if sys.version_info[0] < 3:
+    import urllib
+else:
+    import urllib.request
+
 from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
@@ -24,37 +43,15 @@ from fr3d.definitions import HB_donors
 from fr3d.definitions import HB_weak_donors
 from fr3d.definitions import HB_acceptors
 
-from discrepancy import matrix_discrepancy
-import numpy as np
-import csv
-import sys
-if sys.version_info[0] < 3:
-    import urllib
-else:
-    import urllib.request
-import pickle
-import math
-
-import matplotlib.pyplot as plt
-from collections import defaultdict
-from mpl_toolkits.mplot3d import Axes3D
-# note that fr3d.localpath does not synchronize with Git, so you can change it locally to point to your own directory structure
-from fr3d.localpath import outputText
-from fr3d.localpath import outputBaseAAFG
-from fr3d.localpath import contact_list_file
+from fr3d.geometry.discrepancy import matrix_discrepancy
 from fr3d.localpath import inputPath
+from fr3d.localpath import outputNAPairwiseInteractions
 from fr3d.localpath import outputHTML
 from fr3d.data.base import EntitySelector
 
+from fr3d.classifiers.NA_pairwise_interactions import load_structure
+from fr3d.classifiers.NA_pairwise_interactions import get_parent_as_RNA
 from fr3d.ordering.greedyInsertion import orderWithPathLengthFromDistanceMatrix
-
-#from fr3d.classifiers.base_aafg import distance_metrics
-from datetime import datetime
-from math import floor
-import os
-from os import path
-
-from time import time
 
 HB_donor_hydrogens = {}
 HB_donor_hydrogens['A'] = {"N6":["1H6","2H6"], "C2":["H2"], "C8":["H8"], "O2'":[]}
@@ -386,44 +383,6 @@ def myTimer(state,data={}):
 
     return data
 
-def get_structure(filename):
-
-    if ".pdb" in filename:
-        filename = filename.replace(".cif","")
-
-    if os.path.exists(filename+".pickle"):
-        print("  Loading " + filename + ".pickle")
-        structure = pickle.load(open(filename+".pickle","rb"))
-        return structure
-    print(filename)
-    if not os.path.exists(filename):
-        mmCIFname = filename[-8:]               # last 8 characters ... awkward
-        print("  Downloading "+mmCIFname)
-        print("https://files.rcsb.org/download/%s" % mmCIFname)
-        if sys.version_info[0] < 3:
-            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 2
-        else:
-            urllib.urlretrieve("http://files.rcsb.org/download/%s" % mmCIFname, filename)  # python 3
-        #f = urllib.urlopen("https://files.rcsb.org/download/%s" % mmCIFname)
-        #myfile = f.read()
-        #print(myfile[0:1000])
-        #with open(filename, 'w') as outfile:
-            #outfile.write(myfile)
-
-    # uncomment the following line to focus on downloading CIF files; sometimes it hangs and you restart
-#    raise Exception("Skipping CIF reading for now")
-
-    with open(filename, 'rb') as raw:
-        print("  Loading " + filename)
-        structure = Cif(raw).structure()
-        """All RNA bases are placed in the standard orientation.
-        Rotation matrix is calculated for each base."""
-
-        structure.infer_amino_acid_hydrogens()  # add hydrogens to amino acids
-
-#        pickle.dump(structure,open(filename+".pickle","wb"))  # larger file sizes than .cif ... not sure why
-
-        return structure
 
 def build_atom_to_unit_part_list():
 
@@ -453,10 +412,12 @@ def build_atom_to_unit_part_list():
 
 
 def find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance):
-    """Find all atoms within atom_atom_min_distance of each other,
-    one from a nt, one from an aa, and report these"""
-    # build a set of cubes and record which bases are in which cube
-    # also record which other cubes are neighbors of each cube
+    """
+    Find all atoms within atom_atom_min_distance of each other,
+    one from a nt, one from an aa, and report these
+    build a set of cubes and record which bases are in which cube
+    also record which other cubes are neighbors of each cube
+    """
 
     atom_atom_min_distance_squared = atom_atom_min_distance**2
     contact_list = []
@@ -525,10 +486,12 @@ def find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance):
     return contact_list
 
 def find_neighbors(bases, amino_acids, screen_distance_cutoff, IFE, nt_reference="C1'", aa_reference="aa_fg"):
-    """Finds all amino acids for which center of "aa_part" is within
+    """
+    Find all amino acids for which center of "aa_part" is within
     specified distance of center of bases
     For annotating files in a representative set, it also screens for the
-    base being in the given IFE. """
+    base being in the given IFE.
+    """
 
     # build a set of cubes and record which bases are in which cube
     # also record which other cubes are neighbors of each cube
@@ -568,7 +531,7 @@ def find_neighbors(bases, amino_acids, screen_distance_cutoff, IFE, nt_reference
                 aaCubeList[key].append(aa)
             else:
                 aaCubeList[key] = [aa]
-        else:
+        elif not aa.sequence in ["GLY"]:
             print("  Missing center coordinates for " + str(aa))
 
     return baseCubeList, baseCubeNeighbors, aaCubeList
@@ -643,12 +606,8 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
     count_pair = 0
     list_aa_coord = []
     list_base_coord = []
-    aaList_len = None
-    new_aaList_len = None
     list_base_aa = []
-    hbond_aa_dict = {}
-    contact_list = []
-    output = []
+    aa_unit_id_to_pairs = {}
 
     max_screen_distance = 0
 
@@ -740,23 +699,33 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                             base_aa = None
                             edge = None
                             face = None
-                            if interaction in ["pseudopair","SHB","perpendicular-edge","other-edge"]:
-                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
-                                interaction_parameters["angle-in-plane"] = angle
-                                base_aa = (base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)
-                                (face,height) = detect_face(aa_residue, aa_coordinates)
+                            annotation = None  # pWF, s3F,
+                            (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
+                            interaction_parameters["angle-in-plane"] = angle
+                            (face,height) = detect_face(aa_residue, aa_coordinates)
 
-                            elif interaction in ["stacked","pi-pi-stacking","cation-pi","perpendicular-stacking","other-stack"]:
-                                (face,height) = detect_face(aa_residue, aa_coordinates)
-                                base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
-                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
+                            if interaction == "pseudopair":
+                                annotation = "p%sF" % edge    # p for pseudopair, base edge, F for functional group
+                            elif interaction == "other-edge":
+                                annotation = "np%sF" % edge    # np for near pair, base edge, F for functional group
+                            elif interaction == "SHB":
+                                annotation = "h%sF" % edge    # h for hydrogen bond, base edge, F for functional group
+                            elif interaction == "perpendicular-edge":
+                                annotation = "o%sF" % edge    # o for orthogonal, base edge, F for functional group
+                            elif interaction == "stacked":
+                                annotation = "s%sF" % face    # s for stack, base face, F for functional group
+                            elif interaction == "other-stack":
+                                annotation = "ns%sF" % face    # ns for near stack, base face, F for functional group
+                            elif interaction == "pi-pi-stacking":
+                                annotation = "i%sF" % face    # i for i's in pi, base face, F for functional group
+                            elif interaction == "cation-pi":
+                                annotation = "c%sF" % face    # c for cation, base face, F for functional group
+                            elif interaction == "perpendicular-stacking":
+                                annotation = "e%sF" % face    # e is a new letter, base face, F for functional group
 
-                            else:
-                                (face,height) = detect_face(aa_residue, aa_coordinates)
-                                base_aa = (base_residue, aa_residue, interaction, face, standard_aa, interaction_parameters)
-                                (edge,angle) = detect_base_edge(base_residue, base_coordinates,aa_residue, aa_coordinates)
+                            base_aa = (base_residue, annotation, aa_residue, interaction, edge, face, standard_aa, interaction_parameters)
 
-                            if base_aa is not None:
+                            if annotation is not None:
                                 list_base_aa.append(base_aa)
 
                                 for base_atom in base_residue.atoms():
@@ -764,43 +733,26 @@ def annotate_interactions(bases, amino_acids, screen_distance_cutoff, baseCubeLi
                                 for aa_atom in aa_residue.atoms():
                                     list_aa_coord.append(aa_coordinates)
 
-                            # detect one amino acid interacting with two bases
+                            # save data to detect one amino acid interacting with two bases
                             if interaction in ["pseudopair","SHB"]:
-                                if aa_residue.unit_id() in hbond_aa_dict:
-                                    hbond_aa_dict[aa_residue.unit_id()].append((base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters))
-#                                    print("  %s makes hbonds with %d bases" % (aa_residue.unit_id(),len(hbond_aa_dict[aa_residue.unit_id()])))
+                                if aa_residue.unit_id() in aa_unit_id_to_pairs:
+                                    aa_unit_id_to_pairs[aa_residue.unit_id()].append(base_aa)
+                                #    print("  %s makes hbonds with %d bases" % (aa_residue.unit_id(),len(aa_unit_id_to_pairs[aa_residue.unit_id()])))
                                 else:
-                                    hbond_aa_dict[aa_residue.unit_id()] = [(base_residue, aa_residue, interaction, edge, standard_aa, interaction_parameters)]
-
-                            #try:
-                                #output.append((base_residue.unit_id(),aa_residue.unit_id(),base_residue.sequence,aa_residue.sequence,standard_aa_center[0],standard_aa_center[1],standard_aa_center[2],aa_coordinates['CA'][0],aa_coordinates['CA'][1],aa_coordinates['CA'][2],interaction,edge,face))
-                            #except:
-                                #print("Missing CA")
-
-
-    save_path = '/Users/katelandsipe/Documents/Research/FR3D/nt_aa_interactions'
-    #output_file = "nt_aa_coordinates_3A"
-    #protein_aa_interactions = os.path.join(save_path, output_file+".csv")
-    #file = open(protein_aa_interactions, 'a+')
-
-    #writing the data into the file
-    #with file:
-        #write = csv.writer(file)
-        #write.writerows(output)
-
-    #file.close()
+                                    aa_unit_id_to_pairs[aa_residue.unit_id()] = [base_aa]
 
     print("  Found %d nucleotide-amino acid pairs" % count_pair)
     print("  Recorded %d nucleotide-amino acid pairs" % len(list_base_aa))
     print("  Maximum screen distance for actual contacts is %8.4f" % max_screen_distance)
 
-    return list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict
+    return list_base_aa, list_aa_coord, list_base_coord, aa_unit_id_to_pairs
 
 def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_center, base_atoms):
-    """ This function works with base and aa in standard position """
+    """
+    This function works with base and aa in standard position
+    """
     squared_xy_dist_list = []
 
-    """Defines different sets of amino acids"""
     planar_aa = set (["ARG", "ASN", "ASP", "GLU", "GLN", "HIS", "PHE", "TRP", "TYR"])
     stacked_aliphatic = set(["ALA", "CYS", "ILE", "LEU", "MET", "PRO", "SER", "THR", "VAL"])
     # Note:  LYS and GLY are not in the previous lists
@@ -848,8 +800,6 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
                     return ("perpendicular-edge",{"hydrogen-bonds":hydrogen_bond_list,"angle-between-planes":angle})
 
         if aa_residue.sequence in shb_aa:
-#            base_seq = base_residue.sequence
-#            base_atoms = NAbaseheavyatoms[base_seq]
             if num_hydrogen_bonds >= 1:
                 return ("SHB",{"hydrogen-bonds":hydrogen_bond_list})
 
@@ -858,7 +808,8 @@ def type_of_interaction(base_residue, aa_residue, aa_coordinates, standard_aa_ce
     return ("other",{"dist-xy-from-center":min_dist,"hydrogen-bonds":hydrogen_bond_list})
 
 def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
-    """Calculates number of Hydrogen bonds between amino acid part and base_part
+    """
+    Calculates number of hydrogen bonds between amino acid part and base_part
     and returns the number and a list of pairs of atoms from (base,aa)
     """
 
@@ -946,8 +897,6 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                     hbondtext += aa_residue.sequence +"\t"+ aa_atom.name +"\t"+ str(distance_limit_vdw[aa_residue.sequence][aa_atom.name])
                     hbondtext += "\t"+ str(h_bond_ideal_distance) +"\t"+ str(distance) +"\t"+ str(h_bond_over_distance)
 
-#                print("hbond\t"+hbondtext)
-
                 if distance > h_bond_ideal_distance + 0.4:
                     continue
                     h_bond_over_distance = distance - h_bond_ideal_distance
@@ -956,7 +905,6 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                     # loop through hydrogens whose locations are known
                     for hydrogen_atom in base_residue.atoms(name=HB_donor_hydrogens[base_key][base_atom.name]):
                         hb_angle = calculate_hb_angle(base_atom.coordinates(),hydrogen_atom.coordinates(),aa_atom.coordinates())
-#                            print("hb_angle %10.8f" % hb_angle)
                         if hb_angle > hb_angle_cutoff:
                             if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
                                 if aa_key == "HIS":
@@ -973,7 +921,6 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                     # for O2', coordinates of H are not known, so check angles separately
                     if base_atom.name == "O2'":
                         hb_angle = calculate_hb_angle(base_residue.centers["C2'"],base_atom.coordinates(),aa_atom.coordinates())
-#                        print("C2'-O2'-A angle %10.8f" % hb_angle)
                         if hb_angle > 80:
                             if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
                                 if aa_key == "HIS":
@@ -985,7 +932,6 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                             hydrogen_bond_list.append((base_atom.name,"O2'H",aa_atom.name+flip_name,h_bond_ideal_distance,distance,hb_angle))
                             used_base_atoms.append(base_atom.name)
                             used_aa_atoms.append(aa_atom.name)
-
 
                 elif base_atom.name in base_acceptors and aa_atom.name in aa_donors:
                     # check OH group on certain amino acids; coordinates of H are not known
@@ -999,9 +945,6 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
                             carbon = "CB"
 
                         hb_angle = calculate_hb_angle(aa_residue.centers[carbon],aa_atom.coordinates(),base_atom.coordinates())
-#                        if hb_angle:
-#                            print("%s-OH-%s angle %10.8f ------------ http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (carbon,base_atom.name,hb_angle,base_residue.unit_id(),aa_residue.unit_id()))
-
                         if hb_angle > 80:
                             if not base_atom.name in used_base_atoms and not aa_atom.name in used_aa_atoms:
                                 n = n + 1
@@ -1030,13 +973,13 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
             hydrogen_bond_list = hb0
         else:
             print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n)+" $$$$$$$$$$$$$$$$$")
-#    print(aa_residue.unit_id(),hydrogen_bond_list[])
 
-    if len(hydrogen_bond_list) > 0:
+    if False and len(hydrogen_bond_list) > 0:
         for hbond in hydrogen_bond_list:
             print(hbond)
-        print("http://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base_residue.unit_id(),aa_residue.unit_id()))
+        print("https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base_residue.unit_id(),aa_residue.unit_id()))
         print("")
+
     return (n,hydrogen_bond_list)
 
 def stacking_planar_annotation (base_residue, aa_residue, min_dist):
@@ -1186,24 +1129,23 @@ def detect_base_edge(base_residue, base_coordinates, aa_residue, aa_coordinates)
     angle_aa = np.arctan2(y,x)         # values -pi to pi
     angle_deg = (180*angle_aa)/np.pi # values -180 to 180
 
-    purine = set(["A", "G", "DA", "DG"])
-    pyrimidine = set(["C", "U", "DC", "DT"])
+    parent = get_parent_as_RNA(base_residue.sequence)
 
-    if base_residue.sequence in purine:
+    if parent in ["A","G"]:
         if -14 <= angle_deg <= 104:
-            return ("fgWC",angle_deg)
+            return ("W",angle_deg)
         elif 104 < angle_deg or aa_center_x < -1.3:
-            return ("fgH",angle_deg)
+            return ("H",angle_deg)
         else:
-            return ("fgS",angle_deg)
+            return ("S",angle_deg)
 
-    elif base_residue.sequence in pyrimidine:
+    elif parent in ["C","U"]:
         if -32 <= angle_deg <= 86:
-            return ("fgWC",angle_deg)
+            return ("W",angle_deg)
         elif 86 < angle_deg or aa_center_x < -0.37:
-            return ("fgH",angle_deg)
+            return ("H",angle_deg)
         else:
-            return ("fgS",angle_deg)
+            return ("S",angle_deg)
 
 def detect_face(aa_residue, aa_coordinates):
     aa_z =[]
@@ -1214,9 +1156,9 @@ def detect_face(aa_residue, aa_coordinates):
 
     mean_z = np.mean(aa_z)
     if mean_z <= 0:
-        return ("fgs5",mean_z)
+        return ("5",mean_z)
     else:
-        return ("fgs3",mean_z)
+        return ("3",mean_z)
 
 def unit_vector(v):
     return v / np.linalg.norm(v)
@@ -1228,9 +1170,10 @@ def text_output(result_list):
             target.write("\r\n")
             target.close
 
-def csv_output(result_list):
-    if sys.version_info[0] < 3:    
-        with open(outputBaseAAFG % PDB, 'wb') as csvfile:
+def write_csv_output(outputNAPairwiseInteractions,file_id,result_list):
+    filename = os.path.join(outputNAPairwiseInteractions,file_id + "_nt_aa.txt")
+    if sys.version_info[0] < 3:
+        with open(filename, 'wb') as csvfile:
             fieldnames = ['RNA ID', 'AA ID', 'RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge', 'Param']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
@@ -1239,13 +1182,13 @@ def csv_output(result_list):
                 aa = aa_residue.unit_id()
                 #print base, aa, interaction
                 base_component = str(base).split("|")
-                aa_component = str(aa).split("|")
+                aa_fields = str(aa).split("|")
                 writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], \
                     'RNA residue':base_component[3],'RNA residue number': base_component[4],\
-                    'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],\
-                    'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
-    else: 
-        with open(outputBaseAAFG % PDB, 'w', newline='') as csvfile:
+                    'Protein Chain ID':aa_fields[2],'AA residue': aa_fields[3],\
+                    'AA residue number': aa_fields[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
+    else:
+        with open(filename, 'w', newline='') as csvfile:
             fieldnames = ['RNA ID', 'AA ID', 'RNA Chain ID', 'RNA residue','RNA residue number','Protein Chain ID', 'AA residue','AA residue number', 'Interaction', 'Edge', 'Param']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
@@ -1254,20 +1197,26 @@ def csv_output(result_list):
                 aa = aa_residue.unit_id()
                 #print base, aa, interaction
                 base_component = str(base).split("|")
-                aa_component = str(aa).split("|")
+                aa_fields = str(aa).split("|")
                 writer.writerow({'RNA ID': base, 'AA ID': aa, 'RNA Chain ID': base_component[2], \
                     'RNA residue':base_component[3],'RNA residue number': base_component[4],\
-                    'Protein Chain ID':aa_component[2],'AA residue': aa_component[3],\
-                    'AA residue number': aa_component[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
- 
+                    'Protein Chain ID':aa_fields[2],'AA residue': aa_fields[3],\
+                    'AA residue number': aa_fields[4], 'Interaction': interaction, 'Edge': edge, 'Param': param})
 
-        """for base_residue, aa_residue,interaction in result_list:
-                    base_component = str(base_residue).split("|")
-                    aa_component = str(aa_residue).split("|")
-                    writer.writerow({'RNA Chain ID': base_component[2], 'RNA residue':base_component[3],\
-                    'RNA residue number': base_component[4],'Protein Chain ID':ChainNames[PDB][aa_component[2]],\
-                    'AA residue': aa_component[3],'AA residue number': aa_component[4], 'Interaction': interaction})"""
 
+def write_tsv_output(outputNAPairwiseInteractions,file_id,result_list):
+    # write output in tab separated value format with a header line
+    filename = os.path.join(outputNAPairwiseInteractions,file_id + "_nt_aa.txt")
+
+    fieldnames = ['nt_id','interaction','aa_id','param']
+    with open(filename, 'wt') as tsvfile:
+        tsvfile.write("\t".join(fieldnames)+"\n")
+        for base_residue, annotation, aa_residue, interaction, edge, face, standard_aa_center, param in result_list:
+            if annotation:
+                base = base_residue.unit_id()
+                aa = aa_residue.unit_id()
+                url = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (base,aa)
+                tsvfile.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (base,annotation,aa,interaction,url,param))
 
 
 def draw_base(base_seq, ax):
@@ -1477,112 +1426,201 @@ def WriteProteinUnits(PDB,amino_acids):
         pickle.dump((ids,chainPositions,centers,rotations), handle, protocol = 2)  # protocol 2 is safe for Python 2.7
 
 
-def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
+def make_heatmap_text(discrepancy_matrix,labels):
+    """
+    write discrepancy data in 2022 list format
+    """
 
-    SERVER = False
+    if np.size(discrepancy_matrix) == 0:
+        return ''
+
+    # store discrepancy data in a js script
+    # name the div in which the heatmap should appear
+    discrepancy_text = '<script type="text/javascript">\nvar data =   ["#heatmap",['
+
+    # second element is a matrix with the numerical values of the discrepancy
+    # writing both upper and lower triangles of the matrix
+    s = discrepancy_matrix.shape[0]
+    s = len(labels)
+    for c in range(0,s):
+        discrepancy_text += '['     # start a row of the discrepancy matrix
+        #ife1 = candidates[c]['unit_id_1']
+        for d in range(0,s):
+            #ife2 = candidates[d]['unit_id_2']
+            discrepancy_text += "%.4f" % discrepancy_matrix[c][d]  # one entry
+            if d < s-1:
+                discrepancy_text += ','  # commas between entries in a row
+            else:
+                discrepancy_text += '],\n'  # end a row, newline
+
+    discrepancy_text += '],\n'           # end the matrix, continue the list
+
+    # third element is a list of labels of instances
+    discrepancy_text += '['              # start list of instances
+    for c, label in enumerate(labels):
+        discrepancy_text += '"' + label + '"'    # label each row
+        if c < s-1:
+            discrepancy_text += ","  # commas between instances
+        else:
+            discrepancy_text += "]]" # end list of instances, end list of data
+
+    discrepancy_text += '\n</script>'
+
+    return discrepancy_text
+
+
+def writeInteractionsHTML(base_aa_annotation_to_list,outputHTML,version,aa_part):
+
     SERVER = True
-    if not SERVER:
+    SERVER = False
+    if SERVER:
+        JS1 = '<script src="https://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="https://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'   # special code to superimpose bases
+        JS3 = '<script src="https://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
+        JS4 = '<script src="https://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
+        JS5 = '<script type="text/javascript" src="https://rna.bgsu.edu/webfr3d/js/heatmap_2024.js"></script>'
+        JS6 = '<script src="./js/sort.table.js" type="text/javascript"></script>'
+        JS7 = '<script src="./js/shift.click.checkbox.js" type="text/javascript"></script>'
+        CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
+        CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
+    else:
         JS1 = '<script src="./js/JSmol.min.nojq.js"></script>'
-        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolTools.bp.js"></script>'
         JS3 = '<script src="./js/imagehandlinglocal.js"></script>'
         JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
-        JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+        JS5 = '<script type="text/javascript" src="./js/heatmap_2024.js"></script>'
         JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
-        JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
+        JS6 = '<script src="./js/sort.table.js" type="text/javascript"></script>'
+        JS7 = '<script src="./js/shift.click.checkbox.js" type="text/javascript"></script>'
         CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
         CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
-
-    else:
-        JS1 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
-        JS2 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
-        JS2 = '<script src="./js/jquery.jmolToolsRNAProtein.js"></script>'   # special code to superimpose bases
-        JS3 = '<script src="http://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
-        JS4 = '<script src="http://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
-        JS5 = '<script type="text/javascript" src="http://rna.bgsu.edu/webfr3d/js/heatmap.js"></script>'
-        JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
-        JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
-        CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
-        CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
-
-    # not working yet, so omit:
-    JS6 = ""
-    JS7 = ""
 
     count_pair = 0
+    for key in sorted(base_aa_annotation_to_list.keys()):
+        key_fields = key.split("_")
+        num_instances = len(base_aa_annotation_to_list[key])
+        pagetitle = key
+        htmlfilename = pagetitle
+        if len(version) > 0:
+            htmlfilename += "_" + version
 
-    for key in allInteractionDictionary:
-        pagetitle = key.replace(" ","-")
-        htmlfilename = key.replace(" ","-") + version
+        print("Writing HTML file for %-11s with %3d instances in %s.html" % (key,num_instances,htmlfilename))
 
-#        print("Writing HTML file for "+key+" in "+htmlfilename+".html, found "+ str(len(allInteractionDictionary[key])) + " instances")
+        queryNote = "<h2>%s</h2>\n%d instances<br>\n" % (pagetitle,num_instances)
 
-        fields = key.split("_")
-        print(fields[0]+"\t"+fields[1]+"\t"+fields[2]+"\t"+fields[3]+"\t"+str(len(allInteractionDictionary[key])))
-        count_pair += len(allInteractionDictionary[key])
+        count_pair += num_instances
 
-        # limit the number of instances shown, to be able to compute and display discrepancy
-        numForDiscrepancy = min(300,len(allInteractionDictionary[key]))
+        # make a table of counts of other base, aa pairs in this annotation type,
+        # with links to the files when the count is not zero
+        # find all annotations made for this base and amino acid
+        all_annotations = set()
+        for k in base_aa_annotation_to_list.keys():
+            k_fields = k.split("_")
+            if key_fields[0] == k_fields[0] and key_fields[1] == k_fields[1]:
+                all_annotations.add(k_fields[2])
+        all_annotations = sorted(all_annotations)
 
-        # calculate discrepancies between all instances, up to 300
+        link_text = 'Switch to other interaction(s) made by this base and amino acid: '
+        for annotation in all_annotations:
+            k = "%s_%s_%s" % (key_fields[0],key_fields[1],annotation)
+            if len(version) > 0:
+                href = k + "_" + version + ".html"
+            else:
+                href = k + ".html"
+            link_text += '<a href="%s">%s </a>' % (href,annotation)
+        link_text += '<br>Switch nt-aa combination:<br>'
+        link_text += '<table style="white-space:nowrap;" id="links">\n'
+        link_text += '<thead><tr><th></th>'
+        for aa in all_aa_list:
+            link_text += '<th>%s</th>' % aa
+        link_text += "</tr></thead>\n"
+        annotation = key_fields[2]
+        for base in ["A","C","G","U"]:
+            link_text += "<tr><td>%s</td>" % base
+            for aa in all_aa_list:
+                k = "%s_%s_%s" % (base,aa,annotation)
+                if k in base_aa_annotation_to_list:
+                    if len(version) > 0:
+                        href = k + "_" + version + ".html"
+                    else:
+                        href = k + ".html"
+                    link_text += '<td><a href="%s">%d</td>' % (href,len(base_aa_annotation_to_list[k]))
+                else:
+                    link_text += '<td></td>'
+            link_text += "</tr>\n"
+        link_text += "</table>"
+
+        heatmap_max = 300
+
+        # limit the number of instances shown in the heatmap, to be able to compute and display discrepancy
+        numForDiscrepancy = min(heatmap_max,num_instances)
+
+        if num_instances > heatmap_max:
+            base_aa_annotation_to_list[key] = sorted(base_aa_annotation_to_list[key], key=lambda x : random.random())
+
+        # calculate discrepancies between all instances, up to heatmap_max
         discrepancy = np.zeros((numForDiscrepancy,numForDiscrepancy))
         for i in range(0,numForDiscrepancy):
-            instance_1 = allInteractionDictionary[key][i]
-            aa_1 = instance_1[4]
+            aa_1 = base_aa_annotation_to_list[key][i][6]    # first aa in standard location
             for j in range(i+1,numForDiscrepancy):
-                instance_2 = allInteractionDictionary[key][j]
-                aa_2 = instance_2[4]
+                aa_2 = base_aa_annotation_to_list[key][j][6] # second aa in standard location
                 s = 0
                 for atom_name in aa_fg[aa_1.sequence]:
                     d = distance_between_vectors(aa_1.centers[atom_name],aa_2.centers[atom_name])
                     if d:
                         s += d**2
 
-                discrepancy[i][j] = np.sqrt(s)/len(aa_fg[aa_1.sequence])  # average distance between corresponding atoms
+                # record average distance between corresponding atoms
+                discrepancy[i][j] = np.sqrt(s)/len(aa_fg[aa_1.sequence])
                 discrepancy[j][i] = discrepancy[i][j]
-                # discrepancy[j][i] = np.linalg.norm(standard_aa_center_1 - standard_aa_center_2)
 
+        # use greedy insertion up to 100 times to find a decent ordering of the instances
+        newOrder, bestPathLength, distances = orderWithPathLengthFromDistanceMatrix(discrepancy,min(100,numForDiscrepancy))
 
-        # base_aa = (base_residue, aa_residue, interaction, edge, standard_aa_center, param)
+        # append any indices beyond the ones in the heatmap, in random order
+        for i in range(heatmap_max+1,num_instances):
+            newOrder.append(i)
 
-        # use greedy insertion 100 times to find a decent ordering of the instances
-        newOrder, bestPathLength, distances = orderWithPathLengthFromDistanceMatrix(discrepancy,10)
+        # re-order the discrepancy matrix
+        discrepancy_matrix = np.zeros((numForDiscrepancy,numForDiscrepancy))
+        for i in range(0,numForDiscrepancy):
+            for j in range(0,numForDiscrepancy):
+                discrepancy_matrix[i][j] = discrepancy[newOrder[i]][newOrder[j]]
 
-        # rewrite the list of instances, limiting it to numForDiscrepancy
-        newList = []
+        # re-order the list of instances
+        base_aa_list = []
         for i in range(0,len(newOrder)):
-            newList.append(allInteractionDictionary[key][newOrder[i]])
-        allInteractionDictionary[key] = newList
+            base_aa_list.append(base_aa_annotation_to_list[key][newOrder[i]])
 
         # write out text for radio boxes to display each individual interaction
         i = 1
-        queryNote = "<h2>"+pagetitle+"</h2>\n"
-
-        candidatelist = '<table style="white-space:nowrap;" id="table">\n'
-        candidatelist += '<thead><tr><th><span onclick="sortTable(1)">Number</span></th>'
-        candidatelist += '<th>View</th>'
-        candidatelist += '<th><span onclick="sortTable(3)">Nucleotide</span></th>'
-        candidatelist += '<th><span onclick="sortTable(4)">Amino acid</span></th>'
-        candidatelist += '<th><span onclick="sortTable(5)">Interaction</span></th>'
-        candidatelist += '<th><span onclick="sortTable(6)">Edge</span></th>'
-        candidatelist += '<th><span onclick="sortTable(7)">a.a. x</span></th>'
-        candidatelist += '<th><span onclick="sortTable(8)">a.a. y</span></th>'
-        candidatelist += '<th><span onclick="sortTable(9)">a.a. z</span></th>'
-        param = allInteractionDictionary[key][0][5]
+        candidatelist = '<table style="white-space:nowrap;" id="instances">\n'
+        candidatelist += '<tr><th><span onclick="sortTable(0,\'instances\',\'numeric\')">Number</span></th>'
+        candidatelist += '<th><span onclick="sortTable(1,\'instances\',\'checkbox\')">View</th>'
+        candidatelist += '<th><span onclick="sortTable(2,\'instances\',\'alpha\')">Nucleotide</span></th>'
+        candidatelist += '<th><span onclick="sortTable(3,\'instances\',\'alpha\')">Amino acid</span></th>'
+        candidatelist += '<th><span onclick="sortTable(4,\'instances\',\'alpha\')">Interaction</span></th>'
+        candidatelist += '<th><span onclick="sortTable(5,\'instances\',\'alpha\')">Annotation</span></th>'
+        candidatelist += '<th><span onclick="sortTable(6,\'instances\',\'numeric\')">a.a. x</span></th>'
+        candidatelist += '<th><span onclick="sortTable(7,\'instances\',\'numeric\')">a.a. y</span></th>'
+        candidatelist += '<th><span onclick="sortTable(8,\'instances\',\'numeric\')">a.a. z</span></th>'
+        param = base_aa_list[0][7]
         param_list = sorted(list(param.keys()))
-        col = 9
+        col = 8
         for header in param_list:
             col += 1
-            candidatelist += '<th><span onclick="sortTable(%d)">%s</span></th>' % (col,header)
-        candidatelist += "</tr></thead>\n"
-        candidatelist += '<tbody id="table_rows">\n'
-        for base_id, aa_id, interaction, edge, standard_aa, param in allInteractionDictionary[key]:
+            candidatelist += '<th><span onclick="sortTable(%d,\'instances\',\'alpha\')">%s</span></th>' % (col,header)
+        candidatelist += "</tr>\n"
+        # candidatelist += '<tbody id="table_rows">\n'
+        for base_id, annotation, aa_id, interaction, edge, face, standard_aa, param in base_aa_list:
             candidatelist += '<tr><td>'+str(i)+'.</td><td><label><input type="checkbox" id="'+str(i-1)+'" class="jmolInline" data-coord="'
             candidatelist += base_id +","+ aa_id
             candidatelist += '">&nbsp</td>'
             candidatelist += '<td>%s</td>' % base_id
             candidatelist += '<td>%s</td>' % aa_id
             candidatelist += '<td>%s</td>' % interaction
-            candidatelist += '<td>%s</td>' % edge
+            candidatelist += '<td>%s</td>' % annotation
             candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][0]
             candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][1]
             candidatelist += '<td>%0.4f</td>' % standard_aa.centers[aa_part][2]
@@ -1597,39 +1635,37 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
 
             candidatelist += '</tr>\n'
             i += 1
-        candidatelist += '</tbody></table>\n'
+        # candidatelist += '</tbody></table>\n'
+        candidatelist += '</table>\n'
         candidatelist = candidatelist
 
         # write out text to tell what values to put in the heat map
-        discrepancyText = ''
-        for c in range(0,numForDiscrepancy):
-            instance1 = allInteractionDictionary[key][c][0]  # id of base
-            for d in range(0,numForDiscrepancy):
-                instance2 = allInteractionDictionary[key][d][0]  # id of base
-
-                discrepancyText += '{"discrepancy": ' + str(discrepancy[newOrder[c]][newOrder[d]])
-                discrepancyText += ', "ife1": "' + str(c+1) + "-" + instance1 + '", "ife1_index": ' + str(c)
-                discrepancyText += ', "ife2": "' + str(d+1) + "-" + instance2 + '", "ife2_index": ' + str(d) + '}'
-                if c < numForDiscrepancy-1 or d < numForDiscrepancy-1:
-                    discrepancyText += ',\n'
+        labels = []
+        for i,c in enumerate(base_aa_list):
+            if i < numForDiscrepancy:
+                labels.append(c[0])
+        discrepancy_text = make_heatmap_text(discrepancy_matrix,labels)
 
         # read template.html into one string
-#        with open(outputHTML+'/localtemplate.html', 'r') as myfile:
-        with open('template.html', 'r') as myfile:
+        with open('../search/template.html', 'r') as myfile:
+        # with open('template.html', 'r') as myfile:
             template = myfile.read()
 
-        # replace ###PAGETITLE### with pagetitle
+        template = template.replace("F_icon","P_icon")
         template = template.replace("###PAGETITLE###",pagetitle)
-
-        # replace ###CANDIDATELIST### with candidatelist
+        template = template.replace("###QUERYNAME###",queryNote)
+        template = template.replace("###SEEMODIFYQUERY###",link_text)
+        template = template.replace("###seeCSVOutput###","")
+        template = template.replace("###DESCRIPTION###","")
         template = template.replace("###CANDIDATELIST###",candidatelist)
 
-        # replace ###DISCREPANCYDATA### with discrepancyText
-        discrepancyText = "var data =  [\n" + discrepancyText + "]"
-        discrepancyText = '<script type="text/javascript">\n' + discrepancyText + '\n</script>'
-        template = template.replace("###DISCREPANCYDATA###",discrepancyText)
+        if np.size(discrepancy_matrix) > 0:
+            template = template.replace("###JS5###",JS5)    # include heatmap.js code
+            template = template.replace("###DISCREPANCYDATA###",discrepancy_text)
+        else:
+            template = template.replace("###JS5###","")    # do not display a heat map
+            template = template.replace("###DISCREPANCYDATA###","")
 
-        template = template.replace("###QUERYNAME###",queryNote)
         template = template.replace("###JS1###",JS1)
         template = template.replace("###JS2###",JS2)
         template = template.replace("###JS3###",JS3)
@@ -1641,36 +1677,36 @@ def writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part):
         template = template.replace("###CSS1###",CSS1)
         template = template.replace("###CSS2###",CSS2)
 
-        # write htmlfilename
-        with open(outputHTML+'/'+htmlfilename+'.html', 'w') as myfile:
+        template = template.replace("###MESSAGES###","")
+
+        # write html file
+        with open(os.path.join(outputHTML,htmlfilename+'.html'), 'wt') as myfile:
             myfile.write(template)
 
     print("Wrote out %d pairwise interactions" % count_pair)
 
-        # upload the files to /var/www/html/RNAprotein
 
 def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
 
-    SERVER = False
     SERVER = True
-    if not SERVER:
-        JS1 = '<script src="./js/JSmol.min.nojq.js"></script>'
-        JS2 = '<script src="./js/jquery.jmolToolsAATwoBase.js"></script>'
-        JS3 = '<script src="./js/imagehandlinglocal.js"></script>'
-        JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
-        JS5 = '<script type="text/javascript" src="./js/heatmap.js"></script>'
+    SERVER = False
+    if SERVER:
+        JS1 = '<script src="https://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="https://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsAATwoBase.js"></script>'   # special code to superimpose bases
+        JS3 = '<script src="https://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
+        JS4 = '<script src="https://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
+        JS5 = '<script type="text/javascript" src="https://rna.bgsu.edu/webfr3d/js/heatmap_2024.js"></script>'
         JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
         JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
         CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
         CSS2 = '<link rel="stylesheet" type="text/css" href="./css/scroll_table_addon.css"/>'
-
     else:
-        JS1 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jsmol/JSmol.min.nojq.js"></script>'
-        JS2 = '<script src="http://rna.bgsu.edu/rna3dhub/js/jquery.jmolTools.js"></script>'
-        JS2 = '<script src="./js/jquery.jmolToolsAATwoBase.js"></script>'   # special code to superimpose bases
-        JS3 = '<script src="http://rna.bgsu.edu/webfr3d/js/imagehandling.js"></script>'
-        JS4 = '<script src="http://rna.bgsu.edu/webfr3d/js/jmolplugin.js" type="text/javascript"></script>'
-        JS5 = '<script type="text/javascript" src="http://rna.bgsu.edu/webfr3d/js/heatmap.js"></script>'
+        JS1 = '<script src="./js/JSmol.min.nojq.js"></script>'
+        JS2 = '<script src="./js/jquery.jmolToolsAATwoBase.js"></script>'
+        JS3 = '<script src="./js/imagehandlinglocal.js"></script>'
+        JS4 = '<script src="./js/jmolplugin.js" type="text/javascript"></script>'
+        JS5 = '<script type="text/javascript" src="./js/heatmap_2024.js"></script>'
         JS6 = '<script src="./js/scroll_table_addon.js"></script>'   # scrollable table
         JS7 = '<script src="./js/table_js.js"></script>'   # scrollable table
         CSS1 = '<link rel="stylesheet" type="text/css" href="./css/table_style.css">'
@@ -1686,11 +1722,12 @@ def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
         pagetitle = key.replace(" ","-")
         htmlfilename = key.replace(" ","-") + version
 
-#        print("Writing HTML file for "+key+" in "+htmlfilename+".html, found "+ str(len(allAATwoBaseDictionary[key])) + " instances")
+        num_instances = len(allAATwoBaseDictionary[key])
 
-        fields = key.split("_")
         print(key+"\t"+str(len(allAATwoBaseDictionary[key])))
         count_pair += len(allAATwoBaseDictionary[key])
+
+        queryNote = "<h2>%s</h2> with %d instances\n" % (pagetitle,num_instances)
 
         # limit the number of instances shown, to be able to compute and display discrepancy
         numForDiscrepancy = min(300,len(allAATwoBaseDictionary[key]))
@@ -1729,8 +1766,6 @@ def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
 
         # write out text for radio boxes to display each individual interaction
         i = 1
-        queryNote = "<h2>"+pagetitle+"</h2>\n"
-
         candidatelist = '<table style="white-space:nowrap;" id="table">\n'
         candidatelist += '<thead><tr><th><span onclick="sortTable(1)">Number</span></th>'
         candidatelist += '<th>View</th>'
@@ -1840,13 +1875,15 @@ PDB_List = ['4v9f']
 PDB_List = ['6TPQ']
 PDB_List = ['4KTG']
 PDB_List = ['4KTG']
-PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
-version = "_3.217_3.0"
 PDB_List = ['4V9F']
+PDB_List = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/4.4/2.0A/csv']
+PDB_List = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/4.4/2.5A/csv']
 
+version = "2025-09-16"
+version = "2.5A"
 
-ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
+ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 
 base_seq_list = ['A']
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
@@ -1865,7 +1902,7 @@ base_aa_screen_distance = 18    #
 nt_reference = "C1'"
 aa_reference = "aa_fg"
 
-hasNoProteinFilename = inputPath % "hasNoProtein.pickle"
+hasNoProteinFilename = os.path.join(inputPath,"hasNoProtein.pickle")
 hasNoProteinFilename = hasNoProteinFilename.replace(".cif","")
 try:
     hasNoProtein = pickle.load(open(hasNoProteinFilename,"rb"))
@@ -1884,7 +1921,9 @@ WriteProteinInteractionFile = True
 WriteProteinUnitsFile = False
 WriteProteinInteractionFile = False
 
-"""Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions"""
+"""
+Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent functions
+"""
 if __name__=="__main__":
 
     timerData = myTimer("start")
@@ -1892,24 +1931,20 @@ if __name__=="__main__":
     aa_part = 'aa_fg'               # other choices would be ... aa_linker and aa_backbone
     base_part = 'base'
 
-    allInteractionDictionary = defaultdict(list)
+    base_aa_annotation_to_list = defaultdict(list)
     allAATwoBaseDictionary = defaultdict(list)
 
     result_nt_aa = []               # for accumulating a complete list over all PDB files
 
-    outputDataFile = outputBaseAAFG % ""
-    outputDataFile = outputDataFile.replace("aa-fg_base_.csv","RNAProtein"+version+".pickle")
-
+    outputDataFile = os.path.join(outputNAPairwiseInteractions,'RNAProtein_%s.pickle' % version)
     timerData = myTimer("Making PDB list",timerData)
+    PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
 
-    if ReadPickleFile:
+    if ReadPickleFile and os.path.exists(outputDataFile):
         print("Reading " + outputDataFile)
         timerData = myTimer("Reading pickle file",timerData)
-        allInteractionDictionary,allAATwoBaseDictionary,PDB_List = pickle.load(open(outputDataFile,'rb'))
-        writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
-        writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
+        base_aa_annotation_to_list,allAATwoBaseDictionary,PDB_IFE_Dict = pickle.load(open(outputDataFile,'rb'))
     else:
-        PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
         for PDB in PDB_List:
             if "nrlist" in PDB and "NR_" in PDB:            # referring to an equivalence class online
                                           # download the entire representative set,
@@ -1929,9 +1964,17 @@ if __name__=="__main__":
                         PDB_IFE_Dict[newPDB] += "+" + newIFE
 
             elif "nrlist" in PDB:           # referring to a representative set online
-                f = urllib.urlopen(PDB)
-                myfile = f.read()
+                # fix next line for python 3.11
+                # PDB is actually a URL; open that and download the text
+
+                # f = urllib.urlopen(PDB)
+                # myfile = f.read()
+                # alllines = myfile.split("\n")
+
+                f = urllib.request.urlopen(PDB)
+                myfile = f.read().decode('utf-8')
                 alllines = myfile.split("\n")
+
                 for line in alllines:
                     fields = line.split(",")
 
@@ -1950,8 +1993,7 @@ if __name__=="__main__":
             else:
                 PDB_IFE_Dict[PDB] = ""            # indicates to process the whole PDB file
 
-        print(PDB_IFE_Dict)
-
+        # print(PDB_IFE_Dict)
 
         counter = 0
         count_pair = 0
@@ -1969,22 +2011,18 @@ if __name__=="__main__":
 
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
+            # attempt to identify the main file identifier, could be a 4-character pdb id
+            file_id = PDB.replace(".cif","").replace(".pdb","").replace(".gz","")
 
-            structure = get_structure(inputPath % PDB)
+            filename = os.path.join(inputPath,PDB)
 
-            try:
-                #structure = get_structure(inputPath % PDB)
-                aaa=1
-            except:
-                print("Could not load structure")
-                continue
+            structure, message = load_structure(filename)
 
             IFE = PDB_IFE_Dict[PDB]
             if len(IFE) == 0:
                 bases = structure.residues(sequence= base_seq_list)  # load just the types of bases in base_seq_list
             else:
                 chain_ids = []
-                print(IFE)
                 chains = IFE.split("+")
                 for chain in chains[1:]:            #skip element zero, leading +
                     fields = chain.split("|")
@@ -2019,7 +2057,8 @@ if __name__=="__main__":
 
             # find atom-atom contacts
             timerData = myTimer("Finding atom-atom contacts",timerData)
-            contact_list = find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance)
+            contact_list = []
+            # contact_list = find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance)
 
             # find neighbors in order to annotate base-aa_fg interactions
             timerData = myTimer("Finding neighbors",timerData)
@@ -2031,31 +2070,31 @@ if __name__=="__main__":
 
             # annotate base-aa_fg interactions
             timerData = myTimer("Annotating interactions",timerData)
-            list_base_aa, list_aa_coord, list_base_coord, hbond_aa_dict = annotate_interactions(bases, amino_acids, base_aa_screen_distance, baseCubeList, baseCubeNeighbors, aaCubeList)
+            list_base_aa, list_aa_coord, list_base_coord, aa_unit_id_to_pairs = annotate_interactions(bases, amino_acids, base_aa_screen_distance, baseCubeList, baseCubeNeighbors, aaCubeList)
 
             timerData = myTimer("Recording interactions",timerData)
 
-            # accumulate list of interacting units by base, amino acid, interaction type, and edges
-            for base_residue, aa_residue, interaction, edge, standard_aa, param in list_base_aa:
+            # accumulate list of interacting units by base, amino acid, annotation
+            for base_residue, annotation, aa_residue, interaction, edge, face, standard_aa, param in list_base_aa:
                 base = base_residue.unit_id()
-                # skip symmetry operated instances; generally these are just duplicates anyway
-                if not "||||" in str(base):
-                    aa = aa_residue.unit_id()
-                    base_component = str(base).split("|")
-                    aa_component = str(aa).split("|")
-                    key = base_component[3]+"_"+aa_component[3]+"_"+interaction+"_"+edge
+                base_fields = base.split("|")
+                parent = get_parent_as_RNA(base_fields[3])
+                aa = aa_residue.unit_id()
+                aa_fields = aa.split("|")
+                if annotation and (len(base_fields) < 9 or len(aa_fields) < 9):
+                    # has an annotation and not both symmetry operated
+                    print("  ",base,annotation,aa,interaction)
+                    key = parent+"_"+aa_fields[3]+"_"+annotation
+                    base_aa_annotation_to_list[key].append((base,annotation,aa,interaction,edge,face,standard_aa,param))  # store tuples
                     count_pair += 1
-                    allInteractionDictionary[key].append((base,aa,interaction,edge,standard_aa,param))  # store tuples
 
             # accumulate a list of amino acids hydrogen bonding with more than one base
-            for aa_unit_id in hbond_aa_dict:
-                if len(hbond_aa_dict[aa_unit_id]) > 1:
-                    # skip symmetry operated instances; generally these are just duplicates anyway
-                    if not "||||" in str(aa_unit_id):
-                        group = hbond_aa_dict[aa_unit_id]
-                        key = group[0][1].sequence + "-" + group[0][0].sequence + "-" + group[1][0].sequence
-                        key = group[0][1].sequence
-                        allAATwoBaseDictionary[key].append(group)
+            # for aa_unit_id in aa_unit_id_to_pairs:
+            #     if len(aa_unit_id_to_pairs[aa_unit_id]) > 1:
+            #         group = aa_unit_id_to_pairs[aa_unit_id]
+            #         key = group[0][1].sequence + "-" + group[0][0].sequence + "-" + group[1][0].sequence
+            #         key = group[0][1].sequence
+            #         allAATwoBaseDictionary[key].append(group)
 
             """ 3D plots of base-aa interactions
             for base, aa, interaction in list_base_aa:
@@ -2075,28 +2114,25 @@ if __name__=="__main__":
                 plt.title('%s with ' % base_seq +'%s' % aa + ' %s' % aa_part)
                 plt.show()
                           """
-            #accumulate a full list of resultant RNA-aa pairs
-    #        result_nt_aa.extend(list_base_aa)
 
-            #writing out output files
-            #text_output(result_nt_aa)
+            write_tsv_output(outputNAPairwiseInteractions,PDB,list_base_aa)
+            # write_csv_output(list_base_aa)
+            print("  Wrote output to " + outputNAPairwiseInteractions)
 
-            csv_output(list_base_aa)
-            print("  Wrote output to " + outputBaseAAFG % PDB)
-
-            with open(contact_list_file % PDB, 'w') as clf:
-                clf.writelines(contact_list)
-
-            myTimer("summary",timerData)
+            if len(contact_list) > 0:
+                with open(os.path.join(outputNAPairwiseInteractions,PDB+"_contact.txt"), 'wt') as clf:
+                    clf.writelines(contact_list)
 
         print("Recorded %d pairwise interactions" % count_pair)
 
-        # when appropriate, write out HTML files
-        if len(PDB_IFE_Dict) > 100:
+        if max(len(PDB_List),len(PDB_IFE_Dict)) > 100:
             print("Writing " + outputDataFile)
-            timerData = myTimer("Writing HTML files",timerData)
-            pickle.dump((allInteractionDictionary,allAATwoBaseDictionary,PDB_List),open(outputDataFile,"wb"))
-            writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
-            writeInteractionsHTML(allInteractionDictionary,outputHTML,version,aa_part)
+            pickle.dump((base_aa_annotation_to_list,allAATwoBaseDictionary,PDB_IFE_Dict),open(outputDataFile,"wb"))
+
+    # when appropriate, write out HTML files
+    if max(len(PDB_List),len(PDB_IFE_Dict)) > 100:
+        timerData = myTimer("Writing HTML files",timerData)
+        writeInteractionsHTML(base_aa_annotation_to_list,outputHTML,version,aa_part)
+        # writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
 
     myTimer("summary",timerData)

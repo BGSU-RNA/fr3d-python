@@ -1,0 +1,19 @@
+{
+"name": "symbolic_4_Stacked_cWW_GC", 
+"numpositions": 4, 
+"searchFiles": ["7K00"], 
+"constraintMatrix,1,4": "cWW CG GC", 
+"constraintMatrix,2,1": "next", 
+"constraintMatrix,2,3": "cWW CG GC", 
+"constraintMatrix,3,2": ">", 
+"constraintMatrix,4,3": "next", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

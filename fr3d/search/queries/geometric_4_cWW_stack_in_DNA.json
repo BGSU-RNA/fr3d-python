@@ -1,0 +1,20 @@
+{
+"name": "geometric_4_cWW_stack_in_DNA", 
+"unitID": ["2N1Q|2|A|G|234", "2N1Q|2|A|C|284", "2N1Q|1|A|C|233", "2N1Q|1|A|G|285"], 
+"numpositions": 4, 
+"discrepancy": 0.5, 
+"searchFiles": ["7JQQ"], 
+"constraintMatrix,1,1": "DNA", 
+"constraintMatrix,2,2": "DNA", 
+"constraintMatrix,3,3": "DNA", 
+"constraintMatrix,4,4": "DNA", 
+"printInputQuery": 1, 
+"printProcessedQuery": 0, 
+"printSearchFiles": 10, 
+"printSearchingFile": 1, 
+"printNotEnoughUnits": 1, 
+"printListLengths": 0, 
+"printFoundCandidates": 1, 
+"printFoundPossibilities": 0, 
+"printTimer": 1
+}

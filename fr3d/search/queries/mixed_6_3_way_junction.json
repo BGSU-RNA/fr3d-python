@@ -1,0 +1,22 @@
+{
+"numpositions": 5,
+"unitID": ["8VTW|1|1A|G|30","8VTW|1|1A|C|31","8VTW|1|1A|G|474","8VTW|1|1A|G|481","8VTW|1|1A|C|509","8VTW|1|1A|C|510"],
+"unittype": ["RNA", "RNA", "RNA", "RNA", "RNA", "RNA"],
+"discrepancy": 1.0,
+"searchFiles": ["5J7L"],
+"constraintMatrix,1,2": "bSS",
+"constraintMatrix,2,3": "cWW",
+"constraintMatrix,3,4": "bSS",
+"constraintMatrix,4,5": "cWW",
+"constraintMatrix,5,6": "bSS",
+"constraintMatrix,1,6": "cWW",
+"printInputQuery": 1,
+"printProcessedQuery": 0,
+"printSearchFiles": 10,
+"printSearchingFile": 1,
+"printNotEnoughUnits": 1,
+"printListLengths": 0,
+"printFoundCandidates": 1,
+"printFoundPossibilities": 0,
+"printTimer": 1
+}

@@ -3,17 +3,26 @@
 .ropeproject/
 .python-version
 build/
+cif_files/
 dist/
 fr3d.egg-info/
 files/*.cifatoms
 .agignore
 tags
+localpath.py
+fr3d_configuration.py
+oldStructures.py
+skipped/
+diagnostic/
+base_plots/
+backbone_plots/
+r3dcid_output/
+r3dcid_data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-localpath.py
-fr3d/localpath.py
 
 # C extensions
 *.so
