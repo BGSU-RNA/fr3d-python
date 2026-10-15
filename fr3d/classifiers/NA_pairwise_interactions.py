@@ -1245,9 +1245,10 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         else:
             interaction_to_list_of_tuples = crossing_bss_loops(bases,interaction_to_pair_list,{})
 
-            with open('pdb_with_overlapping_chains','a') as f:
-                for s1,c1,s2,c2 in overlapping_chains:
-                    f.write("%s\t%s\t%s\t%s\t%s\n" % (file_id,s1,c1,s2,c2))
+            if verbose > 3:
+                with open('pdb_with_overlapping_chains.txt','a') as f:
+                    for s1,c1,s2,c2 in overlapping_chains:
+                        f.write("%s\t%s\t%s\t%s\t%s\n" % (file_id,s1,c1,s2,c2))
 
         if 'bSS' in interaction_to_list_of_tuples:
             category_to_interactions['bss'] = set(['bSS'])
