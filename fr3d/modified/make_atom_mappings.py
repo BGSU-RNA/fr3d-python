@@ -29,14 +29,14 @@ def read_monomer_cif(mod_nt):
     # set the filename for the .cif file
     if mod_nt in ["PRN"]:
         # Windows restriction on using PRN as a filename
-        filename = os.path.join("cif","data_" + mod_nt + ".cif")
+        filename = os.path.join("cif_files","data_" + mod_nt + ".cif")
     else:
-        filename = os.path.join("cif",mod_nt + ".cif")
+        filename = os.path.join("cif_files",mod_nt + ".cif")
 
     if not os.path.exists(filename):
         # download from RCSB website and store in the cif folder
-        if not os.path.exists("cif"):
-            os.mkdir("cif")
+        if not os.path.exists("cif_files"):
+            os.mkdir("cif_files")
 
         url = "https://files.rcsb.org/ligands/download/%s.cif" % mod_nt
         urlretrieve(url,filename)

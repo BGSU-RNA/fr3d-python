@@ -157,7 +157,7 @@ else:
             parent_atom_to_color[parent][a] = element_to_cpk_color(element)
 
 
-def read_component_from_file_or_download(mod_nt, cif_dir="cif"):
+def read_component_from_file_or_download(mod_nt, cif_dir="cif_files"):
     """
     Read one CCD component from cif/<ID>.cif, downloading it from RCSB if missing.
     """
