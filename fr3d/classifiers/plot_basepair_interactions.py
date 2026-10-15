@@ -1418,7 +1418,6 @@ def load_curated_pairs():
     # cWW_A-U_1,1s72_0_A_1242_1_555_0_U_1122_1_555
     # cSS_G-U_1,4ybb_AA_G_1268_1_555_AA_U_1326_1_555
 
-    curated_pairs_filename = 'curated_files_list.csv'
     curated_pairs_filename = 'curated_list_2026-02-20.csv'
 
     print("Reading %s" % curated_pairs_filename)
@@ -1427,8 +1426,11 @@ def load_curated_pairs():
     pair_to_interaction_curated = {}
     interactions = set()
 
-    with open(curated_pairs_filename,'rt') as file:
-        lines = file.readlines()
+    if os.path.exists(curated_pairs_filename):
+        with open(curated_pairs_filename,'rt') as file:
+            lines = file.readlines()
+    else:
+        lines = []
 
     for line in lines:
         if len(line) < 30:
