@@ -20,6 +20,8 @@ else:
 from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
+from fr3d.modified.modified_base_to_parent import modified_base_to_parent
+
 
 # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
 # Try this way:
@@ -261,20 +263,38 @@ class Cif(object):
 
     def __load_chem_comp__(self):
         """
-        Record the type of each chemical component,
-        such as 'RNA linking' and 'DNA linking'
+        Map the type of each unit (like A, DA, PSU, MG, etc.) to a useful type.
+        This is stored in some, maybe all, .cif files.
+        Many modified nucleotides are stored as non-polymer.
         """
 
         chem = {}
+
+        # the .cif file may have a mapping already, then read it
         if hasattr(self, 'chem_comp'):
             for obj in self.chem_comp:
                 chem[obj['id']] = obj
-        else:
-            # create an exhaustive listing of common components in case they are needed
-            for base in ['A','C','G','U']:
+
+        # create an exhaustive listing of common components in case they are needed
+        for base in ['A','C','G','U']:
+            if not base in chem:
                 chem[base] = {'type':'RNA linking'}
-            for base in ['DA','DC','DG','DT']:
+        for base in ['DA','DC','DG','DT']:
+            if not base in chem:
                 chem[base] = {'type':'DNA linking'}
+
+        # make it easy to get all RNA, DNA modified nucleotides
+        # overwrites the chem_comp of modified nucleotides
+        for modified, parent in modified_base_to_parent.items():
+            if modified in ['A','C','G','U','DA','DC','DG','DT']:
+                continue
+            if parent in ['A','C','G','U']:
+                chem[modified] = {'type':'RNA'}
+            if parent in ['DA','DC','DG','DT']:
+                chem[modified] = {'type':'DNA'}
+
+        if False:
+            # code that was used before we had mappings for all modified nucleotides
 
             # look for other components like modified nucleotides
             chain_to_chem = {}  # track known chain types
@@ -293,7 +313,7 @@ class Cif(object):
                         comp_id_to_chain[comp_id] = chain_id
 
             # inherit the type from other components in the same chain
-            for comp_id, chain in comp_id_to_chain.items():
+            for comp_id, chain_id in comp_id_to_chain.items():
                 if chain_id in chain_to_chem:
                     chem[comp_id] = chain_to_chem[chain_id]
 
@@ -374,7 +394,7 @@ class Cif(object):
         for row in filtered:
             current_chain = row['pdb_strand_id']
             insertion_code = row['pdb_ins_code']
-            if insertion_code == '.':
+            if insertion_code == '.' or insertion_code == '':
                 insertion_code = None
                 # Should this be empty string or None?
                 # None, to match the key you get above
@@ -404,7 +424,7 @@ class Cif(object):
             prev = key
             unit_ids = mapping.get(key, [None])
             seq_data = (pdb, current_chain, row['mon_id'], number)
-            seq_id = '%s|Sequence|%s|%s|%s' % seq_data
+            seq_id = '%s|sequence|%s|%s|%s' % seq_data
             if insertion_code:
                 seq_id += ('|||%s' % insertion_code)
 
