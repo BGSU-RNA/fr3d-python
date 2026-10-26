@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fr3d"
-version = "0.0.2"
+version = "1.0.0"
 description = "Python implementation of FR3D"
 authors = [{name="Craig L. Zirbel and others", email="zirbel@bgsu.edu"}]
 license = { text = "Apache-2.0"}
@@ -15,5 +15,5 @@ dependencies = [
 	"biopython"
 ]
 
-[tools.setuptools]
-packages = ["fr3d"]
+[tool.setuptools.packages.find]
+include = ["fr3d*"]

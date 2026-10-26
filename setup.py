@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fr3d',
-    version='0.0.1',
+    version='1.0.0',
     packages=find_packages(include=['fr3d', 'fr3d.*']),
     include_package_data=True,
     url='',
