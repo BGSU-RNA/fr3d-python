@@ -336,6 +336,9 @@ class Component(EntitySelector):
 
         self.rotation_matrix = rotation_matrix
 
+        # print('rotation_matrix',rotation_matrix,rotation_matrix.shape,type(rotation_matrix))
+        # print('meanR',meanR,meanR.shape,type(meanR))
+
         # map the origin out to where the center of the base should be
         if self.sequence in defs.NAbaseheavyatoms:
             # standard bases are designed to have meanS zero; less work
@@ -345,6 +348,7 @@ class Component(EntitySelector):
             # this comes out as a numpy matrix?  different than meanR above
             base_center = np.subtract(meanR,np.dot(rotation_matrix,meanS))
             self.base_center = np.array([base_center[0,0],base_center[0,1],base_center[0,2]])
+            # self.base_center = base_center.flatten()
 
         """ For the life of me, I could not figure out any other way of
         converting base_center from a 2d array to a 1d array.
@@ -461,7 +465,18 @@ class Component(EntitySelector):
                         self._atoms.append(Atom(name=hydrogenatom,
                                                 x=newcoordinates[0, 0],
                                                 y=newcoordinates[0, 1],
-                                                z=newcoordinates[0, 2]))
+                                                z=newcoordinates[0, 2],
+                                                pdb=self.pdb,
+                                                model=self.model,
+                                                chain=self.chain,
+                                                component_id=self.sequence,
+                                                component_number=self.number,
+                                                component_index=self.index,
+                                                insertion_code=self.insertion_code,
+                                                alt_id=self.alt_id,
+                                                type=self.type,
+                                                symmetry=self.symmetry,
+                                                polymeric=self.polymeric))
 
             # repeat similar logic but for modified nucleotides.
             # Code is written out twice so that modified nucleotides logic doesn't slow down
@@ -520,7 +535,19 @@ class Component(EntitySelector):
                         self._atoms.append(Atom(name=hydrogenatom,
                                                 x=newcoordinates[0, 0],
                                                 y=newcoordinates[0, 1],
-                                                z=newcoordinates[0, 2]))
+                                                z=newcoordinates[0, 2],
+                                                pdb=self.pdb,
+                                                model=self.model,
+                                                chain=self.chain,
+                                                component_id=self.sequence,
+                                                component_number=self.number,
+                                                component_index=self.index,
+                                                insertion_code=self.insertion_code,
+                                                alt_id=self.alt_id,
+                                                type=self.type,
+                                                symmetry=self.symmetry,
+                                                polymeric=self.polymeric))
+
 
         except:
             pass
