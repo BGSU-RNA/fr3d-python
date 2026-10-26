@@ -602,6 +602,13 @@ def calculateQueryConstraints(Q):
     to maintain the specified geometric discrepancy cutoff.
     """
 
+    # infer query type from other fields being present
+    if not "type" in Q:
+        if "unitID" in Q:
+            Q["type"] = "mixed"     # no need to identify "geometric"
+        else:
+            Q["type"] = "symbolic"
+
     # If interactionMatrix is part of Q, then parse it and overwrite various other fields of Q
     if "interactionMatrix" in Q and not Q["interactionMatrix"]:
         del Q["interactionMatrix"]
