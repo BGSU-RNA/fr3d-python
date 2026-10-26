@@ -56,26 +56,34 @@ class Structure(object):
             # the following need to match how the residues are listed in files like 1R3O.cif,
             # including uppercase and lowercase versions
             desired_types = []
-            if 'RNA' in kwargs['type']:
-                desired_types.extend(['RNA linking', 'RNA LINKING', 'RNA OH 3 prime terminus', 'L-RNA linking', 'L-RNA LINKING'])
-            if 'DNA' in kwargs['type']:
-                desired_types.extend(['DNA linking', 'DNA LINKING', 'DNA OH 3 prime terminus', 'L-DNA linking', 'L-DNA LINKING'])
+            if 'RNA' in kwargs['type'] or 'RNA linking' in kwargs['type']:
+                desired_types.extend(['RNA linking', 'RNA LINKING', 'RNA OH 3 prime terminus', 'L-RNA linking', 'L-RNA LINKING', 'RNA'])
+            if 'DNA' in kwargs['type'] or 'DNA linking' in kwargs['type']:
+                desired_types.extend(['DNA linking', 'DNA LINKING', 'DNA OH 3 prime terminus', 'L-DNA linking', 'L-DNA LINKING', 'DNA'])
             if 'PNA' in kwargs['type']:
                 # for PNA like CPN
                 desired_types.extend(['peptide-like'])
-            if 'SOLITARY' in kwargs['type'] or "NON-POLYMER" in kwargs['type']:
-                # for ligands like ATP, GTP, etc.,
+            if 'SOLITARY' in kwargs['type']:
+                # for ligands like ATP, GTP, etc., which may be associated with a protein chain
                 # also for structures like 2N4J that have chains like 8XA, 8XC that are "NON-POLYMER"
                 add_solitary = True
             else:
                 add_solitary = False
+
+            if type(kwargs['type']) == str:
+                kwargs['type'] = kwargs['type'].split(",") + desired_types
+            else:
+                kwargs['type'].extend(desired_types)
+
+            print('structures.py:')
+            print(kwargs)
 
             # if 'NON-POLYMER' in kwargs['type']:
             #     # for chains like 2N4J made all of 8XA, 8XC, that are "NON-POLYMER"
             #     # but NON-POLYMER also picks up lots of protein chains, so that is too broad
             #     desired_types.extend(['non-polymer','NON-POLYMER'])
 
-            if len(desired_types) > 0:
+            if False and len(desired_types) > 0:
                 # special treatment to get full RNA and/or DNA chains
                 # including modified residues with whatever chem_comp.type
                 # As long as a chain has one of the desired_types, the whole chain should be included
@@ -125,21 +133,23 @@ class Structure(object):
                 #     print(r.chain, r.type, r.index)
                 # return [r for r in residues if not r.index == None]
 
-                if add_solitary:
-                    # load modified nucleotide mappings
-                    from fr3d.modified.mapping import modified_base_to_parent
+                # if add_solitary:
+                #     # load modified nucleotide mappings
+                #     from fr3d.modified.mapping import modified_base_to_parent
 
-                    # loop over all residues in the structure again, subject to kwargs
-                    all_residues = EntitySelector(self._residues, **kwargs)
-                    all_res = []
-                    for r in all_residues:
-                        if (r.chain in chains and not r.index == None) or r.sequence in modified_base_to_parent:
-                            all_res.append(r)
-                else:
-                    # loop over all residues in the structure again, subject to kwargs
-                    all_res = EntitySelector(self._residues, chain=list(chains), **kwargs)
+                #     # loop over all residues in the structure again, subject to kwargs
+                #     all_residues = EntitySelector(self._residues, **kwargs)
+                #     all_res = []
+                #     for r in all_residues:
+                #         if (r.chain in chains and not r.index == None) or r.sequence in modified_base_to_parent:
+                #             all_res.append(r)
+                #     return all_res
 
-                return all_res
+                # else:
+                #     # loop over all residues in the structure again, subject to kwargs
+                #     all_res = EntitySelector(self._residues, chain=list(chains), **kwargs)
+
+                #     return all_res
 
 
         # only return polymeric units, which skips ions, ligands, water
