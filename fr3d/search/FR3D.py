@@ -269,7 +269,7 @@ def fr3d_search(Q,timerData=None):
         # using clock time not CPU time
         if cputime() - lastWriteTime > Q["REFRESHTIME"]:
             # for geometric or mixed searches, sort candidates by discrepancy from query
-            if((Q["type"] == "geometric" or Q["type"] == "mixed")):
+            if Q["type"] == "geometric" or Q["type"] == "mixed":
                 candidates.sort(key = lambda candidate: candidate["discrepancy"])
 
             # limit the number of candidates to output
