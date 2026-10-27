@@ -794,7 +794,7 @@ class Table(object):
             self.columns = self.block.getItemNameList()
         else:
             self.columns = self.block.item_name_list
-        self.columns = [re.sub('_.+\.', '', name) for name in self.columns]
+        self.columns = [re.sub(r'_.+\.', '', name) for name in self.columns]
 
         if self.rows is None:
             if sys.version_info[0] < 3:
