@@ -75,9 +75,6 @@ class Structure(object):
             else:
                 kwargs['type'].extend(desired_types)
 
-            print('structures.py:')
-            print(kwargs)
-
             # if 'NON-POLYMER' in kwargs['type']:
             #     # for chains like 2N4J made all of 8XA, 8XC, that are "NON-POLYMER"
             #     # but NON-POLYMER also picks up lots of protein chains, so that is too broad
