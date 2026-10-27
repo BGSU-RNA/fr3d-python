@@ -8,7 +8,6 @@ import functools as ft
 import copy
 import sys
 import numpy as np
-import os
 
 if sys.version_info[0] < 3:
     from itertools import ifilter as filter # old name
@@ -23,22 +22,13 @@ from fr3d.data import Structure
 from fr3d.modified.modified_base_to_parent import modified_base_to_parent
 
 
-# Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-# Try this way:
+# Some old structures need special processing for the sake of the server and naming conventions.
 try:
     # if this .py file exists, it will be used
     from fr3d.cif.oldStructures import oldStructures
 except:
     # otherwise, use an empty list
     oldStructures = []
-
-"""
-# This did not seem to work, maybe because of trying to rely on a relative path, which is fragile
-if os.path.exists('./oldStructures.py'):
-    from oldStructures import oldStructures
-else:
-    oldStructures = []
-"""
 
 COMPLEX_SYMBOLS = set('()-')
 
@@ -226,24 +216,37 @@ class Cif(object):
                                 if not op['id'] in previous_id:
                                     assemblies[asym_id].append(op)
                             continue
-                        #Others have a crystal frame transformation
-                        elif 'X' in operator:# or 'P' in operator: # P moves coordinates into a "standard" icosahedral point symmettry frame
+                        # Others have a crystal frame transformation
+                        elif 'X' in operator:
                             #X# moves x,y,z into crystallographic positions.
                             #op = self._operators['I'] #Just apply Identity
                             pass # I don't think we need to apply anything.
+                        elif 'H' in operator:
+                            # operator H got applied to HOH atoms but not nucleotides, cannot figure out why
+                            continue
                         elif 'P' in operator:  # P moves coordinates into a "standard" icosahedral point symmettry frame
                             if self.pdb in oldStructures:
                                 op = self._operators[operator]  # For our database, unit id needs to be the same as it used to be so this is for backward compatibility with unit ids created for and used by the BGSU database.
                                                                # This is only applied for the structures in the old structures list.
+                            else:
+                                continue
                         else: #Normal case
                             if '(' in operator or ')' in operator:
                                 operator = operator.replace("(","")
                                 operator = operator.replace(")","")
                             op = self._operators[operator]
 
-                        previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
+                        previous_id = [x['id'] for x in assemblies[asym_id]] # avoid applying the same operator twice.
                         if not op['id'] in previous_id:
                             assemblies[asym_id].append(op)
+
+        # print('reader.py __load_assemblies__')
+        # print(type(assemblies))
+        # print(assemblies.keys())
+        # for key, value in assemblies.items():
+        #     for operators in value:
+        #         print('PDB chain',key,'is mapped with operator id',operators['id'])
+
         return assemblies
 
     def __load_entities__(self):
@@ -455,6 +458,10 @@ class Cif(object):
         pass
 
     def __group_alt_atoms__(self, atoms):
+        """
+        Process a group of atoms that come from the same residue but possibly with
+        more than one alt id, to make complete atom sets if possible
+        """
         def ordering_key(atoms):
             return atoms[0].alt_id
 
@@ -462,15 +469,15 @@ class Cif(object):
         for atom in atoms:
             alt_id_to_atoms[atom.alt_id].append(atom)
 
-        if len(alt_id_to_atoms) == 1:
-            # only one alt_id, all atoms go with that one
-            return list(alt_id_to_atoms.values())
-
-        # print('Incoming atoms:')
+        # print('reader.py __group_alt_atoms__ Incoming atoms:')
         # for alt_id in alt_id_to_atoms.keys():
         #     print("alt_id: ", alt_id)
         #     for atom in alt_id_to_atoms[alt_id]:
-        #         print(atom.pdb,atom.model,atom.chain,atom.component_id,atom.component_number,atom.alt_id, atom.name)
+        #         print(atom.pdb,atom.model,atom.chain,atom.component_id,atom.component_number,atom.alt_id, atom.name, atom.alt_id, atom.insertion_code, atom.symmetry)
+
+        if len(alt_id_to_atoms) == 1:
+            # only one alt_id, all atoms go with that one
+            return list(alt_id_to_atoms.values())
 
         # there is more than one alt_id, which could be None(.), A, B, C, etc.
 
@@ -516,6 +523,7 @@ class Cif(object):
             )
         # sort atoms by pdb, model, chain and then group by key defined above
         # in Python 3.8, sorted cannot have None values; this also works in 2.7
+        # non-polymeric residues have component_index None or 0 so they are listed first
         mapping = it.groupby(sorted(self.__atoms__(pdb), key=lambda x: (x.pdb or '',x.model or '',x.chain or '',x.component_index or 0,x.component_id or '',x.insertion_code or '',x.symmetry or '')), key)
 
         for comp_id, all_atoms in mapping:
@@ -528,15 +536,8 @@ class Cif(object):
                 if alt_id == '.':
                     alt_id = None
 
-                # print('%s|%s|%s|%s|%s index %s type %s' % (first.pdb, first.model, first.chain, first.component_id, first.component_number, first.component_index, component_type))
-
-                """
-                # testing
-                if comp_id[4] == 67:
-                    for each_atom in atoms:
-                        print(comp_id,first.insertion_code,alt_id,each_atom.name,each_atom.x,each_atom.y,each_atom.z)
-                    print("")
-                """
+                # if 'HOH' == first.component_id or "G" == first.component_id:
+                #     print('%s|%s|%s|%s|%s|%s|%s|%s|%s index %s type %s' % (first.pdb, first.model, first.chain, first.component_id, first.component_number, first.name, alt_id or '', first.insertion_code or '', first.symmetry, first.component_index, component_type))
 
                 yield Component(
                     atoms,
@@ -553,6 +554,7 @@ class Cif(object):
                     polymeric=first.polymeric,
                 )
 
+
     def __atoms__(self, pdb):
 
         # some integrative structures have no atom_site block, so no units fr3d can process
@@ -560,7 +562,7 @@ class Cif(object):
             return []
 
         # Some old structures need special processing for the sake of the BGSU RNA server and
-        # naming conventions. Default to this for these structures.
+        # naming conventions.
         if self.pdb in oldStructures:
             if hasattr(self, '_assemblies.values()'):
                 max_operators = max(len(op) for op in list(self._assemblies.values()))
@@ -603,7 +605,7 @@ class Cif(object):
             max_operators = max(len(op) for op in list(self._assemblies.values()))
         except:
             #if there aren't any operators, there should be one operator applied and it's the identity
-            max_operators=1
+            max_operators = 1
 
         if not self._assemblies:
             if sys.version_info[0] < 3:
@@ -644,6 +646,19 @@ class Cif(object):
                 with_operators = list(map(operator, zipped))
                 filtered = filter(None, with_operators)
                 atoms.append(map(lambda a: self.__atom__(*a), filtered))
+
+                # printing here for diagnostics only; making these lists makes the output empty
+
+                # if index == 49:
+                #     new_atoms = list(map(lambda a: self.__atom__(*a), filtered))
+                #     for a in new_atoms:
+                #         print(a)
+
+                # new_atoms = list(map(lambda a: self.__atom__(*a), filtered))
+                # for a in new_atoms:
+                #     if 'HOH' in str(a) or '|G|' in str(a):
+                #         print('__atoms__',index,a,a.symmetry)
+
         return it.chain.from_iterable(atoms)
 
     def __atom__(self, pdb, atom, symmetry):
