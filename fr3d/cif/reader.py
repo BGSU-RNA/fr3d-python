@@ -738,7 +738,7 @@ class Cif(object):
 
     def has_table(self, name):
         block_name = re.sub('^_', '', name)
-        block = self.data.getObj(block_name)
+        block = self.data.get_object(block_name)
         return bool(block)
 
     def operators(self, asym_id):
