@@ -25,60 +25,60 @@ class BasicSelectionTest(TestCase):
 
     def test_can_iterate_over_all(self):
         val = len(list(EntitySelector(self.atoms)))
-        self.assertEquals(4, val)
+        self.assertEqual(4, val)
 
     def test_matches_everything_with_empty_filter(self):
         filter = {}
         val = len(list(EntitySelector(self.atoms), **filter))
-        self.assertEquals(4, val)
+        self.assertEqual(4, val)
 
     def test_gives_nothing_if_no_match(self):
         val = list(EntitySelector(self.atoms, name='bob'))
-        self.assertEquals([], val)
+        self.assertEqual([], val)
 
     def test_can_select_by_one_name(self):
         val = list(EntitySelector(self.atoms, name='a1'))
-        self.assertEquals([self.atoms[0]], val)
+        self.assertEqual([self.atoms[0]], val)
 
     def test_can_select_with_list_of_names(self):
         val = sorted(EntitySelector(self.atoms, name=['a1', 'c2']),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[0], self.atoms[3]], val)
+        self.assertEqual([self.atoms[0], self.atoms[3]], val)
 
     def test_can_select_with_tuple_of_names(self):
         val = sorted(EntitySelector(self.atoms, name=('a1', 'c2')),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[0], self.atoms[3]], val)
+        self.assertEqual([self.atoms[0], self.atoms[3]], val)
 
     def test_can_select_with_set_of_names(self):
         val = sorted(EntitySelector(self.atoms, name=set(['a1', 'c2'])),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[0], self.atoms[3]], val)
+        self.assertEqual([self.atoms[0], self.atoms[3]], val)
 
     def test_can_filter_by_function(self):
         val = sorted(EntitySelector(self.atoms, x=lambda x: x >= 2),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[1], self.atoms[2]], val)
+        self.assertEqual([self.atoms[1], self.atoms[2]], val)
 
     def test_can_filter_by_function_using_object(self):
         val = sorted(EntitySelector(self.atoms, _=lambda a: a.x >= 2),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[1], self.atoms[2]], val)
+        self.assertEqual([self.atoms[1], self.atoms[2]], val)
 
     def test_can_filter_by_several(self):
         val = sorted(EntitySelector(self.atoms, name=('a1', 'c2'), type='N'),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[3]], val)
+        self.assertEqual([self.atoms[3]], val)
 
     def test_it_does_not_fail_if_missing_attribute_used(self):
         val = sorted(EntitySelector(self.atoms, name3=('a1', 'c2'), type='N'),
                      key=lambda a: a.name)
-        self.assertEquals([], val)
+        self.assertEqual([], val)
 
     def test_can_filter_by_method_to_find_one(self):
         comp_id = '1S72|1|A|C|1'
         val = list(EntitySelector(self.atoms, component_unit_id=comp_id))
-        self.assertEquals([self.atoms[2]], val)
+        self.assertEqual([self.atoms[2]], val)
 
     def test_can_filter_using_op(self):
         val = list(EntitySelector(self.atoms, type=ft.partial(op.eq, 'C')))
@@ -94,4 +94,4 @@ class BasicSelectionTest(TestCase):
         ids = ['1S72|1|A|C|1', '1S72|1|A|C|3']
         val = sorted(EntitySelector(self.atoms, component_unit_id=ids),
                      key=lambda a: a.name)
-        self.assertEquals([self.atoms[0], self.atoms[2]], val)
+        self.assertEqual([self.atoms[0], self.atoms[2]], val)

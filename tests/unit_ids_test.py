@@ -22,7 +22,7 @@ class ResidueUnitIDTest(TestCase):
             'insertion_code': None,
             'symmetry': '1_555'
         }
-        self.assertEquals(val, ans)
+        self.assertEqual(val, ans)
 
     def test_decodes_short_with_default_data(self):
         val = decode('2AVY|1|A|C|50')

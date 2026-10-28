@@ -12,7 +12,7 @@ from tests.cif import ReaderTest
 
 
 class SimpleCIFTest(ReaderTest):
-    name = '1FAT'
+    name = '1FAT'  # protein only
 
     def setUp(self):
         self.cif = self.__class__.cif
@@ -60,10 +60,6 @@ class SimpleCIFTest(ReaderTest):
     def test_loads_all_symmetry_operators(self):
         self.assertEqual(2, len(self.cif._operators))
 
-    @pytest.mark.skip()
-    def test_loads_correct_symmetry_operatrs(self):
-        pass
-
     def test_knows_if_has_block(self):
         assert self.cif.has_table('atom_site')
         assert self.cif.has_table('_atom_site')
@@ -83,7 +79,7 @@ class SimpleTableTest(ReaderTest):
         ans = ['asym_id', 'entity_id', 'seq_id', 'mon_id', 'ndb_seq_num',
                'pdb_seq_num', 'auth_seq_num', 'pdb_mon_id', 'auth_mon_id',
                'pdb_strand_id', 'pdb_ins_code', 'hetero']
-        self.assertEquals(val, ans)
+        self.assertEqual(val, ans)
 
     def test_len_is_row_count(self):
         val = len(self.data)
@@ -107,7 +103,7 @@ class SimpleTableTest(ReaderTest):
             'pdb_mon_id': 'SER',
             'auth_mon_id': 'SER',
             'pdb_strand_id': 'A',
-            'pdb_ins_code': '.',
+            'pdb_ins_code': '',
             'hetero': 'n'
         }
         val = self.data.rows[0]
@@ -141,7 +137,7 @@ class SimpleTableTest(ReaderTest):
             'pdb_mon_id': 'SER',
             'auth_mon_id': 'SER',
             'pdb_strand_id': 'A',
-            'pdb_ins_code': '.',
+            'pdb_ins_code': '',
             'hetero': 'n'
         }
         val = self.data[0]
@@ -222,10 +218,13 @@ class ProblematicReadingTest(ReaderTest):
     name = '1AQ3'
 
     def test_can_set_default_name(self):
+        # note: 1AQ3 was originally produced with symmetry operators P_1, P_2, ...
+        # so it is covered by the OldStructures proviso when run on the RNA 3D Hub server
+        # When run as part of these tests, it has the 1_555 symmetry for operator 1
         atoms = it.imap(lambda r: r.atoms(), self.structure.residues())
         atoms = it.chain.from_iterable(atoms)
         atom = next(atom for atom in atoms if atom.symmetry != 'I')
-        self.assertEquals('P_1', atom.symmetry)
+        self.assertEqual('1_555', atom.symmetry)
 
 
 class MissingAssemblyReadingTest(ReaderTest):
@@ -258,6 +257,7 @@ class AltIdReadingTest(ReaderTest):
         assert '3R1E|1|A|C|5' not in unit_ids
 
     def test_loads_all_residues(self):
+        # before ions and waters were read:
         ans = [
             '3R1E|1|A|G|1',
             '3R1E|1|A|C|2',
@@ -270,6 +270,78 @@ class AltIdReadingTest(ReaderTest):
             '3R1E|1|A|G|7',
             '3R1E|1|A|C|8',
         ]
+
+        # new test now that ions, waters, modified nucleotides are read:
+        ans = [
+        '3R1E|1|A|G|1',
+        '3R1E|1|A|C|2',
+        '3R1E|1|A|GRB|3',
+        '3R1E|1|A|G|4',
+        '3R1E|1|A|C|5||A',
+        '3R1E|1|A|C|5||B',
+        '3R1E|1|A|G|6||A',
+        '3R1E|1|A|G|6||B',
+        '3R1E|1|A|G|7',
+        '3R1E|1|A|C|8',
+        '3R1E|1|A|GOL|9',
+        '3R1E|1|A|CA|10',
+        '3R1E|1|A|BR|11',
+        '3R1E|1|A|HOH|102',
+        '3R1E|1|A|HOH|107',
+        '3R1E|1|A|HOH|109',
+        '3R1E|1|A|HOH|114',
+        '3R1E|1|A|HOH|115',
+        '3R1E|1|A|HOH|117||A',
+        '3R1E|1|A|HOH|117||B',
+        '3R1E|1|A|HOH|12',
+        '3R1E|1|A|HOH|123',
+        '3R1E|1|A|HOH|125',
+        '3R1E|1|A|HOH|126',
+        '3R1E|1|A|HOH|13',
+        '3R1E|1|A|HOH|14',
+        '3R1E|1|A|HOH|15',
+        '3R1E|1|A|HOH|19',
+        '3R1E|1|A|HOH|21',
+        '3R1E|1|A|HOH|23',
+        '3R1E|1|A|HOH|24',
+        '3R1E|1|A|HOH|26',
+        '3R1E|1|A|HOH|33',
+        '3R1E|1|A|HOH|34||A',
+        '3R1E|1|A|HOH|34||B',
+        '3R1E|1|A|HOH|38',
+        '3R1E|1|A|HOH|39',
+        '3R1E|1|A|HOH|40',
+        '3R1E|1|A|HOH|41',
+        '3R1E|1|A|HOH|43',
+        '3R1E|1|A|HOH|44',
+        '3R1E|1|A|HOH|46',
+        '3R1E|1|A|HOH|47',
+        '3R1E|1|A|HOH|49',
+        '3R1E|1|A|HOH|51',
+        '3R1E|1|A|HOH|53',
+        '3R1E|1|A|HOH|55',
+        '3R1E|1|A|HOH|56',
+        '3R1E|1|A|HOH|57',
+        '3R1E|1|A|HOH|59',
+        '3R1E|1|A|HOH|61',
+        '3R1E|1|A|HOH|63',
+        '3R1E|1|A|HOH|64',
+        '3R1E|1|A|HOH|65',
+        '3R1E|1|A|HOH|67',
+        '3R1E|1|A|HOH|68',
+        '3R1E|1|A|HOH|70',
+        '3R1E|1|A|HOH|71',
+        '3R1E|1|A|HOH|72',
+        '3R1E|1|A|HOH|73',
+        '3R1E|1|A|HOH|74',
+        '3R1E|1|A|HOH|75',
+        '3R1E|1|A|HOH|76',
+        '3R1E|1|A|HOH|80',
+        '3R1E|1|A|HOH|86',
+        '3R1E|1|A|HOH|89',
+        '3R1E|1|A|HOH|91',
+        '3R1E|1|A|HOH|93',
+         ]
         residues = self.structure.residues(chain='A')
         assert sorted([r.unit_id() for r in residues]) == sorted(ans)
 

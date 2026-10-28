@@ -32,7 +32,7 @@ class BasicTest(ExperimentalSequenceMappingTest):
         assert self.mapping['1GID|1|A|C|260'] == {
             'index': 157,
             'unit_id': '1GID|1|A|C|260',
-            'seq_id': '1GID|Sequence|A|C|260',
+            'seq_id': '1GID|sequence|A|C|260',
             'seq_unit': 'C',
             'number': 260,
             'chain': 'A',
@@ -79,8 +79,8 @@ class MultipleChainTest(ExperimentalSequenceMappingTest):
         chain_of = lambda d: decode(d['unit_id'])['chain']
         chain_a = [d['index'] for d in self.data if chain_of(d) == 'A']
         chain_b = [d['index'] for d in self.data if chain_of(d) == 'B']
-        assert chain_a == range(0, 158)
-        assert chain_b == range(0, 158)
+        assert chain_a == list(range(0, 158))
+        assert chain_b == list(range(0, 158))
 
 
 class LargeSequenceMappingTest(ExperimentalSequenceMappingTest):
@@ -101,12 +101,12 @@ class MutipleEntriesInExpSeqTest(ExperimentalSequenceMappingTest):
 
     def test_can_map_exp_seq(self):
         assert self.data == [
-            {'number': 1, 'index': 0, 'seq_unit': 'U', 'unit_id': '1I9K|1|A|U|1', 'seq_id': '1I9K|Sequence|A|U|1', 'chain': 'A'},
-            {'number': 2, 'index': 1, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|2', 'seq_id': '1I9K|Sequence|A|C|2', 'chain': 'A'},
-            {'number': 3, 'index': 2, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|3', 'seq_id': '1I9K|Sequence|A|C|3', 'chain': 'A'},
-            {'number': 4, 'index': 3, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|4', 'seq_id': '1I9K|Sequence|A|C|4', 'chain': 'A'},
-            {'number': 5, 'index': 4, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|5', 'seq_id': '1I9K|Sequence|A|C|5', 'chain': 'A'},
-            {'number': 6, 'index': 5, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|6', 'seq_id': '1I9K|Sequence|A|C|6', 'chain': 'A'},
+            {'number': 1, 'index': 0, 'seq_unit': 'U', 'unit_id': '1I9K|1|A|U|1', 'seq_id': '1I9K|sequence|A|U|1', 'chain': 'A'},
+            {'number': 2, 'index': 1, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|2', 'seq_id': '1I9K|sequence|A|C|2', 'chain': 'A'},
+            {'number': 3, 'index': 2, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|3', 'seq_id': '1I9K|sequence|A|C|3', 'chain': 'A'},
+            {'number': 4, 'index': 3, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|4', 'seq_id': '1I9K|sequence|A|C|4', 'chain': 'A'},
+            {'number': 5, 'index': 4, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|5', 'seq_id': '1I9K|sequence|A|C|5', 'chain': 'A'},
+            {'number': 6, 'index': 5, 'seq_unit': 'C', 'unit_id': '1I9K|1|A|C|6', 'seq_id': '1I9K|sequence|A|C|6', 'chain': 'A'},
         ]
 
 
@@ -124,40 +124,41 @@ class WithMissingTest(ExperimentalSequenceMappingTest):
         assert len(missing) == 1522 - 1506
 
 
-class WithNoIdentityOperator(ExperimentalSequenceMappingTest):
-    name = '4OQ8'
-    chains = 'B'
+# omit this test because 4OQ8 now has symmetry operators ASM_1 to ASM_60
+# class WithNoIdentityOperator(ExperimentalSequenceMappingTest):
+#     name = '4OQ8'
+#     chains = 'B'
 
-    def test_it_maps_all_residues(self):
-        assert len(self.data) == 20
+#     def test_it_maps_all_residues(self):
+#         assert len(self.data) == 20
 
-    def test_maps_both_symmetry_operators(self):
-        ops = set(decode(d['unit_id'])['symmetry'] for d in self.data)
-        assert ops == set(['P_P', 'P_1'])
+#     def test_maps_both_symmetry_operators(self):
+#         ops = set(decode(d['unit_id'])['symmetry'] for d in self.data)
+#         assert ops == set(['P_P', 'P_1'])
 
-    def test_it_creates_correct_mappings(self):
-        assert self.data == [
-            {'number': 161, 'index': 0, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|161||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|161', 'chain': 'B'},
-            {'number': 161, 'index': 0, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|161||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|161', 'chain': 'B'},
-            {'number': 162, 'index': 1, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|162||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|162', 'chain': 'B'},
-            {'number': 162, 'index': 1, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|162||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|162', 'chain': 'B'},
-            {'number': 163, 'index': 2, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|163||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|163', 'chain': 'B'},
-            {'number': 163, 'index': 2, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|163||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|163', 'chain': 'B'},
-            {'number': 164, 'index': 3, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|164||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|164', 'chain': 'B'},
-            {'number': 164, 'index': 3, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|164||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|164', 'chain': 'B'},
-            {'number': 165, 'index': 4, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|165||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|165', 'chain': 'B'},
-            {'number': 165, 'index': 4, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|165||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|165', 'chain': 'B'},
-            {'number': 166, 'index': 5, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|166||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|166', 'chain': 'B'},
-            {'number': 166, 'index': 5, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|166||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|166', 'chain': 'B'},
-            {'number': 167, 'index': 6, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|167||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|167', 'chain': 'B'},
-            {'number': 167, 'index': 6, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|167||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|167', 'chain': 'B'},
-            {'number': 168, 'index': 7, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|168||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|168', 'chain': 'B'},
-            {'number': 168, 'index': 7, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|168||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|168', 'chain': 'B'},
-            {'number': 169, 'index': 8, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|169||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|169', 'chain': 'B'},
-            {'number': 169, 'index': 8, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|169||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|169', 'chain': 'B'},
-            {'number': 170, 'index': 9, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|170||A||P_1', 'seq_id': '4OQ8|Sequence|B|A|170', 'chain': 'B'},
-            {'number': 170, 'index': 9, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|170||A||P_P', 'seq_id': '4OQ8|Sequence|B|A|170', 'chain': 'B'},
-        ]
+#     def test_it_creates_correct_mappings(self):
+#         assert self.data == [
+#             {'number': 161, 'index': 0, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|161||A||P_1', 'seq_id': '4OQ8|sequence|B|A|161', 'chain': 'B'},
+#             {'number': 161, 'index': 0, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|161||A||P_P', 'seq_id': '4OQ8|sequence|B|A|161', 'chain': 'B'},
+#             {'number': 162, 'index': 1, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|162||A||P_1', 'seq_id': '4OQ8|sequence|B|A|162', 'chain': 'B'},
+#             {'number': 162, 'index': 1, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|162||A||P_P', 'seq_id': '4OQ8|sequence|B|A|162', 'chain': 'B'},
+#             {'number': 163, 'index': 2, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|163||A||P_1', 'seq_id': '4OQ8|sequence|B|A|163', 'chain': 'B'},
+#             {'number': 163, 'index': 2, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|163||A||P_P', 'seq_id': '4OQ8|sequence|B|A|163', 'chain': 'B'},
+#             {'number': 164, 'index': 3, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|164||A||P_1', 'seq_id': '4OQ8|sequence|B|A|164', 'chain': 'B'},
+#             {'number': 164, 'index': 3, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|164||A||P_P', 'seq_id': '4OQ8|sequence|B|A|164', 'chain': 'B'},
+#             {'number': 165, 'index': 4, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|165||A||P_1', 'seq_id': '4OQ8|sequence|B|A|165', 'chain': 'B'},
+#             {'number': 165, 'index': 4, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|165||A||P_P', 'seq_id': '4OQ8|sequence|B|A|165', 'chain': 'B'},
+#             {'number': 166, 'index': 5, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|166||A||P_1', 'seq_id': '4OQ8|sequence|B|A|166', 'chain': 'B'},
+#             {'number': 166, 'index': 5, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|166||A||P_P', 'seq_id': '4OQ8|sequence|B|A|166', 'chain': 'B'},
+#             {'number': 167, 'index': 6, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|167||A||P_1', 'seq_id': '4OQ8|sequence|B|A|167', 'chain': 'B'},
+#             {'number': 167, 'index': 6, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|167||A||P_P', 'seq_id': '4OQ8|sequence|B|A|167', 'chain': 'B'},
+#             {'number': 168, 'index': 7, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|168||A||P_1', 'seq_id': '4OQ8|sequence|B|A|168', 'chain': 'B'},
+#             {'number': 168, 'index': 7, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|168||A||P_P', 'seq_id': '4OQ8|sequence|B|A|168', 'chain': 'B'},
+#             {'number': 169, 'index': 8, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|169||A||P_1', 'seq_id': '4OQ8|sequence|B|A|169', 'chain': 'B'},
+#             {'number': 169, 'index': 8, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|169||A||P_P', 'seq_id': '4OQ8|sequence|B|A|169', 'chain': 'B'},
+#             {'number': 170, 'index': 9, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|170||A||P_1', 'seq_id': '4OQ8|sequence|B|A|170', 'chain': 'B'},
+#             {'number': 170, 'index': 9, 'seq_unit': 'A', 'unit_id': '4OQ8|1|B|A|170||A||P_P', 'seq_id': '4OQ8|sequence|B|A|170', 'chain': 'B'},
+#         ]
 
 
 class WithNoIdentityOperators2(ExperimentalSequenceMappingTest):
@@ -166,20 +167,21 @@ class WithNoIdentityOperators2(ExperimentalSequenceMappingTest):
 
     def test_maps_both_symmetry_operators(self):
         ops = set(decode(d['unit_id'])['symmetry'] for d in self.data)
-        assert ops == set(['P_P', 'P_1'])
+        assert ops == set(['1_555', 'ASM_2', 'ASM_3', 'ASM_4'])
 
 
 class WithNonStandardModel(ExperimentalSequenceMappingTest):
+    # when originally released, model number in 4R3I was 0
     name = '4R3I'
     chains = 'B'
 
     def test_can_generate_mapping_to_model_0(self):
         assert self.data == [
-            {'index': 0, 'seq_id': '4R3I|Sequence|B|G|1', 'seq_unit': 'G', 'number': 1, 'unit_id': '4R3I|0|B|G|1', 'chain': 'B'},
-            {'index': 1, 'seq_id': '4R3I|Sequence|B|G|2', 'seq_unit': 'G', 'number': 2, 'unit_id': '4R3I|0|B|G|2', 'chain': 'B'},
-            {'index': 2, 'seq_id': '4R3I|Sequence|B|6MZ|3', 'seq_unit': '6MZ', 'number': 3, 'unit_id': '4R3I|0|B|6MZ|3', 'chain': 'B'},
-            {'index': 3, 'seq_id': '4R3I|Sequence|B|C|4', 'seq_unit': 'C', 'number': 4, 'unit_id': '4R3I|0|B|C|4', 'chain': 'B'},
-            {'index': 4, 'seq_id': '4R3I|Sequence|B|U|5', 'seq_unit': 'U', 'number': 5, 'unit_id': '4R3I|0|B|U|5', 'chain': 'B'},
+            {'index': 0, 'seq_id': '4R3I|sequence|B|G|1', 'seq_unit': 'G', 'number': 1, 'unit_id': '4R3I|0|B|G|1', 'chain': 'B'},
+            {'index': 1, 'seq_id': '4R3I|sequence|B|G|2', 'seq_unit': 'G', 'number': 2, 'unit_id': '4R3I|0|B|G|2', 'chain': 'B'},
+            {'index': 2, 'seq_id': '4R3I|sequence|B|6MZ|3', 'seq_unit': '6MZ', 'number': 3, 'unit_id': '4R3I|0|B|6MZ|3', 'chain': 'B'},
+            {'index': 3, 'seq_id': '4R3I|sequence|B|C|4', 'seq_unit': 'C', 'number': 4, 'unit_id': '4R3I|0|B|C|4', 'chain': 'B'},
+            {'index': 4, 'seq_id': '4R3I|sequence|B|U|5', 'seq_unit': 'U', 'number': 5, 'unit_id': '4R3I|0|B|U|5', 'chain': 'B'},
         ]
 
 
@@ -189,12 +191,12 @@ class WithDuplicateEntries(ExperimentalSequenceMappingTest):
 
     def test_it_creates_correct_number_of_mappings(self):
         # 14 (unosbered) + 2 * 18 (observed with 2 alt ids each)
-        self.assertEquals(50, len(self.data))
+        self.assertEqual(50, len(self.data))
 
     def test_it_can_map_to_none(self):
         assert None in self.mapping
-        assert self.mapping['4X4N|Sequence|G|C|20'] == {
-            'seq_id': '4X4N|Sequence|G|C|20',
+        assert self.mapping['4X4N|sequence|G|C|20'] == {
+            'seq_id': '4X4N|sequence|G|C|20',
             'unit_id': None,
             'index': 19,
             'number': 20,
@@ -205,14 +207,14 @@ class WithDuplicateEntries(ExperimentalSequenceMappingTest):
     def test_it_takes_the_first_entry(self):
         assert self.mapping['4X4N|1|G|A|29||A'] == {
             'index': 28,
-            'seq_id': '4X4N|Sequence|G|A|29',
+            'seq_id': '4X4N|sequence|G|A|29',
             'unit_id': '4X4N|1|G|A|29||A',
             'number': 29,
             'seq_unit': 'A',
             'chain': 'G',
         }
         assert self.mapping['4X4N|1|G|G|29||B'] == {
-            'seq_id': '4X4N|Sequence|G|A|29',
+            'seq_id': '4X4N|sequence|G|A|29',
             'unit_id': '4X4N|1|G|G|29||B',
             'seq_unit': 'A',
             'number': 29,
@@ -220,7 +222,7 @@ class WithDuplicateEntries(ExperimentalSequenceMappingTest):
             'chain': 'G',
         }
         assert self.mapping['4X4N|1|G|U|30||A'] == {
-            'seq_id': '4X4N|Sequence|G|U|30',
+            'seq_id': '4X4N|sequence|G|U|30',
             'unit_id': '4X4N|1|G|U|30||A',
             'seq_unit': 'U',
             'number': 30,
@@ -229,7 +231,7 @@ class WithDuplicateEntries(ExperimentalSequenceMappingTest):
         }
         assert self.mapping['4X4N|1|G|C|30||B'] == {
             'unit_id': '4X4N|1|G|C|30||B',
-            'seq_id': '4X4N|Sequence|G|U|30',
+            'seq_id': '4X4N|sequence|G|U|30',
             'seq_unit': 'U',
             'number': 30,
             'index': 29,
@@ -242,11 +244,11 @@ class WithAltidsTest(ExperimentalSequenceMappingTest):
     chains = 'L'
 
     def test_it_builds_all_mappings(self):
-        self.assertEquals(16, len(self.data))
+        self.assertEqual(16, len(self.data))
 
     def test_it_build_mappings_using_alt_ids(self):
         assert self.mapping['2G32|1|L|0C|90||A'] == {
-            'seq_id': '2G32|Sequence|L|0C|90',
+            'seq_id': '2G32|sequence|L|0C|90',
             'seq_unit': '0C',
             'unit_id': '2G32|1|L|0C|90||A',
             'number': 90,
@@ -269,7 +271,7 @@ class WithInsertionCodes(ExperimentalSequenceMappingTest):
         assert self.mapping['4V6F|1|AB|A|1|||M'] == {
             'unit_id': '4V6F|1|AB|A|1|||M',
             'index': 0,
-            'seq_id': '4V6F|Sequence|AB|A|1|||M',
+            'seq_id': '4V6F|sequence|AB|A|1|||M',
             'seq_unit': 'A',
             'number': 1,
             'chain': 'AB',

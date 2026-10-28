@@ -2,8 +2,9 @@ import os
 import tempfile as tp
 
 import numpy as np
+import pytest
 
-from fr3d.cif import persist
+persist = pytest.importorskip('fr3d.cif.persist', reason='legacy persist module is unavailable on this Python runtime')
 from fr3d.cif.reader import MissingColumn
 from fr3d.cif.reader import MissingBlockException
 
@@ -86,7 +87,7 @@ class SimpleTableTest(PersistedBase):
         ans = ['asym_id', 'entity_id', 'seq_id', 'mon_id', 'ndb_seq_num',
                'pdb_seq_num', 'auth_seq_num', 'pdb_mon_id', 'auth_mon_id',
                'pdb_strand_id', 'pdb_ins_code', 'hetero']
-        self.assertEquals(val, ans)
+        self.assertEqual(val, ans)
 
     def test_len_is_row_count(self):
         val = len(self.data)

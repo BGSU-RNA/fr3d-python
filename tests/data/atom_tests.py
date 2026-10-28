@@ -41,10 +41,10 @@ class AlternativeAtomTest(ut.TestCase):
                          symmetry='PP')
 
     def test_has_a_unit_id(self):
-        self.assertEquals('4OQ8|1|A|SER|27|CA|A||PP', self.atom.unit_id())
+        self.assertEqual('4OQ8|1|A|SER|27|CA|A||PP', self.atom.unit_id())
 
     def test_has_a_component_id(self):
-        self.assertEquals('4OQ8|1|A|SER|27||A||PP',
+        self.assertEqual('4OQ8|1|A|SER|27||A||PP',
                           self.atom.component_unit_id())
 
 
@@ -63,18 +63,18 @@ class AtomTransformationTest(ut.TestCase):
     def test_transform_moves_coordiantes(self):
         val = [self.trans.x, self.trans.y, self.trans.z]
         ans = [-1.0, 97.240, -2.0]
-        self.assertEquals(ans, val)
+        self.assertEqual(ans, val)
 
     def test_transform_preserves_unit_id(self):
         val = self.trans.unit_id()
         ans = self.atom.unit_id()
-        self.assertEquals(ans, val)
+        self.assertEqual(ans, val)
 
     def test_perserves_the_type(self):
-        self.assertEquals('Bob', self.trans.type)
+        self.assertEqual('Bob', self.trans.type)
 
     def test_perserves_the_polymeric(self):
-        self.assertEquals(True, self.trans.polymeric)
+        self.assertEqual(True, self.trans.polymeric)
 
 
 class AtomUnitIdTest(ut.TestCase):
@@ -94,4 +94,4 @@ class AtomUnitIdTest(ut.TestCase):
                     polymeric=False)
         val = atom.component_unit_id()
         ans = '3V27|1|A|G|94|||A'
-        self.assertEquals(ans, val)
+        self.assertEqual(ans, val)

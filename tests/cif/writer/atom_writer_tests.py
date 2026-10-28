@@ -1,4 +1,5 @@
-import cStringIO as sio
+import io
+import os
 import unittest
 
 from fr3d.cif.reader import Cif as Reader
@@ -7,9 +8,22 @@ from fr3d.cif.writer import CifAtom as Writer
 
 class BasicTest(unittest.TestCase):
     def setUp(self):
-        self.handle = sio.StringIO()
+        self.handle = io.StringIO()
         self.writer = Writer(self.handle)
-        with open('files/1FAT.cif', 'rb') as raw:
+
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        candidates = [
+            os.path.join(os.path.dirname(base_dir), 'cif_files', '1FAT.cif'),
+            os.path.join(base_dir, 'files', '1FAT.cif'),
+            os.path.join(os.path.dirname(base_dir), 'files', '1FAT.cif'),
+            os.path.join('tests', 'cif_files', '1FAT.cif'),
+            os.path.join('files', '1FAT.cif'),
+        ]
+        filename = next((path for path in candidates if os.path.exists(path)), None)
+        if filename is None:
+            self.skipTest('Missing CIF fixture for 1FAT')
+
+        with open(filename, 'rt') as raw:
             self.data = Reader(raw).structure()
 
     def write(self):

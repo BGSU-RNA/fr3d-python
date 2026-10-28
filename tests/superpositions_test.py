@@ -6,6 +6,11 @@ from numpy.testing import assert_almost_equal
 from fr3d.geometry.superpositions import besttransformation
 from fr3d.geometry.angleofrotation import angle_of_rotation
 
+
+def _rotation_from_besttransformation(a, b):
+    result = besttransformation(a, b)
+    return result[0]
+
 class TransformationTest(TestCase):
 
     def setUp(self):
@@ -21,7 +26,7 @@ class TransformationTest(TestCase):
                    [0.0000, -1.0000, 0.0000],
                    [1.0000, 0.0000, 0.0000],
                    [0.0000, 0.0000, -1.0000]])
-        self.transformation, _, _, _, _ = besttransformation(a, b)
+        self.transformation = _rotation_from_besttransformation(a, b)
 
     def test_can_transform_a_3_x_6(self):
         ans = array([[0.0000, 1.0000, 0.0000],
@@ -39,11 +44,11 @@ class TransformationTest(TestCase):
         ans = array([[0.0000, 1.0000, 0.0000],
                      [-1.0000, 0.0000, 0.0000],
                      [0.0000, 0.0000, 1.0000]])
-        rotation, _, _, _, _ = besttransformation(a, b)
+        rotation = _rotation_from_besttransformation(a, b)
         assert_almost_equal(ans, rotation)
 
     def test_can_transform_a_4_x_3_45degreexrotation(self):
-        theta = numpy.pi/4.0        
+        theta = numpy.pi/4.0
         ans = array([[1.0000, 0.0000, 0.0000],
                      [0.0000, numpy.cos(theta), -1*numpy.cos(theta)],
                      [0.0000, numpy.sin(theta), numpy.cos(theta)]])
@@ -54,14 +59,14 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _, _ = besttransformation(a, b)
+        rotation = _rotation_from_besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
         assert_almost_equal(angle, 45.0*numpy.pi/180.)
 
-        
+
     def test_can_transform_a_4_x_3_45degreeyrotation(self):
-        theta=numpy.pi/4.0        
+        theta=numpy.pi/4.0
         ans = array([[numpy.cos(theta), 0.0000, numpy.sin(theta)],
                      [0.0000, 1.0000, 0.0000],
                      [-1*numpy.sin(theta), 0.0000, numpy.cos(theta)]])
@@ -72,13 +77,13 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _, _ = besttransformation(a, b)
+        rotation = _rotation_from_besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
         assert_almost_equal(angle, 45.0*numpy.pi/180.)
 
     def test_can_transform_a_4_x_3_45degreezrotation(self):
-        theta = numpy.pi/4.0        
+        theta = numpy.pi/4.0
         ans = array([[numpy.cos(theta), -1*numpy.sin(theta), 0.0000],
                      [numpy.sin(theta), numpy.cos(theta), 0.0000],
                      [0.0000, 0.0000, 1.0000]])
@@ -89,7 +94,7 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _, _ = besttransformation(a, b)
+        rotation = _rotation_from_besttransformation(a, b)
         assert_almost_equal(ans, rotation)
         angle = angle_of_rotation(rotation)
         assert_almost_equal(angle, 45.0*numpy.pi/180.)
@@ -115,5 +120,5 @@ class TransformationTest(TestCase):
         J = numpy.ones((4, 4))
         meana = numpy.dot(J,a)/4.0
         b = numpy.dot(a-meana,ans)
-        rotation, _, _, _, _ = besttransformation(a, b)
+        rotation = _rotation_from_besttransformation(a, b)
         assert_almost_equal(ans, rotation)
