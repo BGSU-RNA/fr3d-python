@@ -54,13 +54,9 @@ napair_basepair_path = 'C:/Users/zirbel/Documents/PythonFR3D/data/pairs_napair'
 
 OUTPUTPATH = "C:/Users/zirbel/Documents/PythonFR3D/output/"
 
-#Updated modified nucleotide mappings from atom_mappings_refined.txt
-from fr3d.modified.mapping import modified_base_atom_list,parent_atom_to_modified,modified_atom_to_parent,modified_base_to_parent
-
 from fr3d.ordering.orderBySimilarity import treePenalizedPathLength
 from fr3d.ordering.orderBySimilarity import standardOrder
 
-from fr3d.classifiers.NA_pairwise_interactions import get_parent
 from fr3d.classifiers.NA_pairwise_interactions import get_parent_as_RNA
 
 JS1 = '  <script src="./js/JSmol.min.nojq.js"></script>'
