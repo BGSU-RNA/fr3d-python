@@ -9,6 +9,11 @@ A few basepairs have "alternative" geometries like cWWa; use basepair,alternativ
 cWB is for Table 13 in Leontis-Stombaugh-Westhof, WC-bifurcated interactions; use basepair,cwb
 To get near, lower, alternative, and cwb use category basepair_detail
 
+The covalent annotation p_1 means "precedes by 1 in the experimental chain sequence".
+Similarly with p_124 when there is a gap of length 123 between observed nucleotides.
+
+Interactions are explained at https://rna.bgsu.edu/rna3dhub/pages/interactions
+
 Usage examples:
 python NA_pairwise_interactions.py 4TNA
 python NA_pairwise_interactions.py -c basepair,stacking 4TNA
@@ -2178,6 +2183,11 @@ def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, ca
     Loop through bases, sort by model, symmetry, chain, and
     record the distance in the chain between successive
     observed nucleotides.
+    p_1 means "precedes by 1 in the experimental chain sequence"
+    For example, in 8GLP|1|L5|C|517	p_1	8GLP|1|L5|G|518
+    Other numbers mean there is a gap in the observed nucleotides compared to the chain sequence, like
+    8GLP|1|L5|G|518	p_124	8GLP|1|L5|G|642
+    Only the closest relations are annotated; there is no point saying 8GLP|1|L5|C|516	p_2	8GLP|1|L5|G|518
     """
 
     nts_to_sort = defaultdict(list)
