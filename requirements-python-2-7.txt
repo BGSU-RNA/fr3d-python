@@ -20,5 +20,5 @@ singledispatch==3.4.0.3
 six==1.14.0
 subprocess32==3.5.4
 typing==3.7.4.1
-virtualenv==20.0.18
+virtualenv==21.14.13
 zipp==1.2.0
