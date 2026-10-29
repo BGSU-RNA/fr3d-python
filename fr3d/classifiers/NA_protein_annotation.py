@@ -5,16 +5,14 @@ Name: RNA-protein detection
 Detect and plot RNA base- amino acid interactions.
 """
 
+import argparse
 from collections import defaultdict
 import csv
-from datetime import datetime
 import math
 from math import floor
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import os
-from os import path
 import pickle
 import random
 import sys
@@ -24,7 +22,6 @@ if sys.version_info[0] < 3:
 else:
     import urllib.request
 
-from fr3d.cif.reader import Cif
 from fr3d.definitions import RNAconnections
 from fr3d.definitions import NAbaseheavyatoms
 from fr3d.definitions import NAbasehydrogens
@@ -47,7 +44,6 @@ from fr3d.geometry.discrepancy import matrix_discrepancy
 from fr3d.localpath import inputPath
 from fr3d.localpath import outputNAPairwiseInteractions
 from fr3d.localpath import outputHTML
-from fr3d.data.base import EntitySelector
 
 from fr3d.classifiers.NA_pairwise_interactions import load_structure
 from fr3d.classifiers.NA_pairwise_interactions import get_parent_as_RNA
@@ -972,7 +968,7 @@ def count_hydrogen_bonds(base_residue, aa_residue, base_atoms):
             n = n0        # use the first set of hydrogen bonds
             hydrogen_bond_list = hb0
         else:
-            print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n)+" $$$$$$$$$$$$$$$$$")
+            print("  Found a flipped amino acid "+aa_residue.unit_id()+" "+base_key+" "+aa_key+" "+str(n))
 
     if False and len(hydrogen_bond_list) > 0:
         for hbond in hydrogen_bond_list:
@@ -1412,7 +1408,6 @@ def WriteProteinUnits(PDB,amino_acids):
     rotations = []
     for my_tuple in new_all_aa_list:
         if len(my_tuple[3]) == 3:
-#            print(my_tuple)
             ids.append(my_tuple[0])
             chainPositions.append(my_tuple[2])
             centers.append(my_tuple[3])
@@ -1420,9 +1415,7 @@ def WriteProteinUnits(PDB,amino_acids):
         else:
             print("missing center",my_tuple)
 
-    dataPathUnits = "C:/Users/zirbel/Dropbox/2018 FR3D intersecting pairs/data/units/"
-
-    with open(dataPathUnits + PDB + '_protein.pickle', 'wb') as handle:
+    with open(os.path.join(outputNAPairwiseInteractions,PDB + '_protein.pickle'), 'wb') as handle:
         pickle.dump((ids,chainPositions,centers,rotations), handle, protocol = 2)  # protocol 2 is safe for Python 2.7
 
 
@@ -1852,32 +1845,125 @@ def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
 
         # upload the files to /var/www/html/RNAprotein
 
-#=======================================================================
 
-"""Inputs a list of PDBs of interest to generate super-imposed plots"""
-PDB_List = ['5AJ3']
-PDB_List = ['6hiv']
-PDB_List = ['3QRQ','5J7L']
-PDB_List = ['5J7L']
-PDB_List = ['4V9F','4YBB','4Y4O','6AZ3','4P95']
-PDB_List = ['3BT7']
-PDB_List = ['5I4A']
-PDB_List = ['6A2H']
-PDB_List = ['4V9F']
-PDB_List = ['3JB9']
-PDB_List = ['1OCT']
-PDB_List = ['4v9fFH.pdb']
-PDB_List = ['4V9F|1|9']
-PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
-PDB_List = ['4V51','4V9K']
-PDB_List = ['6WJR']
-PDB_List = ['4v9f']
-PDB_List = ['6TPQ']
-PDB_List = ['4KTG']
-PDB_List = ['4KTG']
-PDB_List = ['4V9F']
-PDB_List = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/4.4/2.0A/csv']
-PDB_List = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/4.4/2.5A/csv']
+def annotate_nt_protein(PDB,timerData):
+    # attempt to identify the main file identifier, could be a 4-character pdb id
+    file_id = PDB.replace(".cif","").replace(".pdb","").replace(".gz","")
+
+    filename = os.path.join(inputPath,PDB)
+
+    structure, message = load_structure(filename)
+
+    IFE = PDB_IFE_Dict[PDB]
+    if len(IFE) == 0:
+        bases = structure.residues(sequence= base_seq_list)  # load just the types of bases in base_seq_list
+    else:
+        chain_ids = []
+        chains = IFE.split("+")
+        for chain in chains[1:]:            #skip element zero, leading +
+            fields = chain.split("|")
+            chain_ids.append(fields[2])
+        bases = structure.residues(chain = chain_ids, sequence= base_seq_list)
+
+    numBases = 0
+    for base in bases:
+        numBases += 1
+
+    amino_acids = structure.residues(sequence=aa_list)
+
+    # if desired, write files for FR3D
+    if WriteProteinUnitsFile:
+        timerData = myTimer("Writing units file",timerData)
+        WriteProteinUnits(PDB,amino_acids)
+
+    numAA = 0
+    for aa in amino_acids:
+        numAA += 1
+
+        if PlotAA and not aa.sequence in AlreadyPlotted:
+            timerData = myTimer("Plotting amino acids",timerData)
+            PlotAndAnalyzeAAHydrogens(aa)
+            AlreadyPlotted[aa.sequence] = 1
+
+    print("  Found " + str(numBases) + " bases and " + str(numAA) + " amino acids in " + PDB)
+
+    if numAA == 0:
+        hasNoProtein.append(PDB)
+        pickle.dump(hasNoProtein,open(hasNoProteinFilename,"wb"))
+
+    # find atom-atom contacts
+    timerData = myTimer("Finding atom-atom contacts",timerData)
+    contact_list = []
+    # contact_list = find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance)
+
+    # find neighbors in order to annotate base-aa_fg interactions
+    timerData = myTimer("Finding neighbors",timerData)
+    print("  Finding neighbors in " + PDB)
+    nt_reference = "base"
+    aa_reference = "aa_fg"
+    base_aa_screen_distance = 10
+    baseCubeList, baseCubeNeighbors, aaCubeList = find_neighbors(bases, amino_acids, base_aa_screen_distance, PDB_IFE_Dict[PDB], nt_reference, aa_reference)
+
+    # annotate base-aa_fg interactions
+    timerData = myTimer("Annotating interactions",timerData)
+    list_base_aa, list_aa_coord, list_base_coord, aa_unit_id_to_pairs = annotate_interactions(bases, amino_acids, base_aa_screen_distance, baseCubeList, baseCubeNeighbors, aaCubeList)
+
+    timerData = myTimer("Recording interactions",timerData)
+    count_pair = 0
+
+    # accumulate list of interacting units by base, amino acid, annotation
+    for base_residue, annotation, aa_residue, interaction, edge, face, standard_aa, param in list_base_aa:
+        base = base_residue.unit_id()
+        base_fields = base.split("|")
+        parent = get_parent_as_RNA(base_fields[3])
+        aa = aa_residue.unit_id()
+        aa_fields = aa.split("|")
+        if annotation and (len(base_fields) < 9 or len(aa_fields) < 9):
+            # has an annotation and not both symmetry operated
+            print("  ",base,annotation,aa,interaction)
+            key = parent+"_"+aa_fields[3]+"_"+annotation
+            base_aa_annotation_to_list[key].append((base,annotation,aa,interaction,edge,face,standard_aa,param))  # store tuples
+            count_pair += 1
+
+    # accumulate a list of amino acids hydrogen bonding with more than one base
+    # for aa_unit_id in aa_unit_id_to_pairs:
+    #     if len(aa_unit_id_to_pairs[aa_unit_id]) > 1:
+    #         group = aa_unit_id_to_pairs[aa_unit_id]
+    #         key = group[0][1].sequence + "-" + group[0][0].sequence + "-" + group[1][0].sequence
+    #         key = group[0][1].sequence
+    #         allAATwoBaseDictionary[key].append(group)
+
+    """ 3D plots of base-aa interactions
+    for base, aa, interaction in list_base_aa:
+        base_seq = base.sequence
+        aa= aa.sequence
+
+        draw_base(base_seq, ax)
+        draw_aa(aa, ax)
+        #draw_aa_cent(aa, aa_part, ax)
+
+        ax.set_xlabel('X Axis')
+        ax.set_ylabel('Y Axis')
+        ax.set_zlabel('Z Axis')
+        ax.set_xlim3d(10, -15)
+        ax.set_ylim3d(10, -15)
+        ax.set_zlim3d(10, -15)
+        plt.title('%s with ' % base_seq +'%s' % aa + ' %s' % aa_part)
+        plt.show()
+                    """
+
+    print("Recorded %d pairwise interactions" % count_pair)
+
+
+    write_tsv_output(outputNAPairwiseInteractions,PDB,list_base_aa)
+    # write_csv_output(list_base_aa)
+    print("  Wrote output to " + outputNAPairwiseInteractions)
+
+    if len(contact_list) > 0:
+        with open(os.path.join(outputNAPairwiseInteractions,PDB+"_contact.txt"), 'wt') as clf:
+            clf.writelines(contact_list)
+
+#=======================================================================
 
 version = "2025-09-16"
 version = "2.5A"
@@ -1926,6 +2012,48 @@ Inputs base, amino acid, aa_part of interest and cut-off distance for subsequent
 """
 if __name__=="__main__":
 
+    # allow user to specify input and output paths
+    parser = argparse.ArgumentParser()
+    parser.add_argument('PDBfiles', type=str, nargs='+', help='.cif filename(s)')
+    parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
+    parser.add_argument('-i', "--input", help='Input Path')
+    parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
+    parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2,3)')
+    parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
+
+    problem = False
+    args = parser.parse_args()
+
+    # Process command line arguments
+    if args.input:
+        inputPath = args.input
+    else:
+        if not inputPath:
+            inputPath = ""
+
+    if args.output:
+        outputNAPairwiseInteractions = args.output     # set output path
+    else:
+        if not outputNAPairwiseInteractions:
+            outputNAPairwiseInteractions = ""
+
+    if args.format:
+        outputFormat = args.format
+    else:
+        outputFormat = 'txt'
+
+    if args.chain:
+        chain_id = args.chain
+    else:
+        chain_id = None
+
+    if args.verbose:
+        verbose = int(args.verbose)
+
+    entry_id = args.PDBfiles[0].split(",")
+
+    problem = False
+
     timerData = myTimer("start")
 
     aa_part = 'aa_fg'               # other choices would be ... aa_linker and aa_backbone
@@ -1936,15 +2064,45 @@ if __name__=="__main__":
 
     result_nt_aa = []               # for accumulating a complete list over all PDB files
 
-    outputDataFile = os.path.join(outputNAPairwiseInteractions,'RNAProtein_%s.pickle' % version)
+    outputDataFile = os.path.join(outputNAPairwiseInteractions,'NA_protein_%s.pickle' % version)
     timerData = myTimer("Making PDB list",timerData)
     PDB_IFE_Dict = defaultdict(str)      # accumulate PDB-IFE pairs
 
-    if ReadPickleFile and os.path.exists(outputDataFile):
+    # process user-specified list of PDBs
+    if len(entry_id) > 0 and not entry_id[0] == 'all':
+        for PDB in entry_id:
+            annotate_nt_protein(PDB,timerData)
+    elif ReadPickleFile and os.path.exists(outputDataFile):
         print("Reading " + outputDataFile)
         timerData = myTimer("Reading pickle file",timerData)
         base_aa_annotation_to_list,allAATwoBaseDictionary,PDB_IFE_Dict = pickle.load(open(outputDataFile,'rb'))
-    else:
+    elif entry_id[0] == 'all':
+
+        """Inputs a list of PDBs of interest to generate super-imposed plots"""
+        PDB_List = ['5AJ3']
+        PDB_List = ['6hiv']
+        PDB_List = ['3QRQ','5J7L']
+        PDB_List = ['5J7L']
+        PDB_List = ['4V9F','4YBB','4Y4O','6AZ3','4P95']
+        PDB_List = ['3BT7']
+        PDB_List = ['5I4A']
+        PDB_List = ['6A2H']
+        PDB_List = ['4V9F']
+        PDB_List = ['3JB9']
+        PDB_List = ['1OCT']
+        PDB_List = ['4v9fFH.pdb']
+        PDB_List = ['4V9F|1|9']
+        PDB_List = ['5KCR', '4WOI', '6C4I', '5JC9', '5L3P', '5KPW', '3J9Y', '3J9Z', '6BU8', '5WF0', '4V55', '4V54', '4V57', '4V56', '4V50', '4V53', '4V52', '4WF1', '5H5U', '4V5B', '5WFS', '5O2R', '5WFK', '5LZD', '5LZA', '6O9J', '6O9K', '6ORL', '6ORE', '3R8O', '3R8N', '4V85', '5MDV', '5MDW', '4V80', '4U27', '4U26', '4U25', '4U24', '4U20', '5KPS', '6GXM', '5KPX', '4U1U', '3JBU', '4V9P', '3JBV', '6Q9A', '6DNC', '4U1V', '6GXO', '5IQR', '5NWY', '4V9C', '6OSK', '4V9D', '4V9O', '5MGP', '6Q97', '3JCJ', '5J91', '3JCD', '3JCE', '6I7V', '6GXN', '4V64', '5J7L', '5AFI', '6BY1', '6ENU', '4V7V', '4V7U', '4V7T', '4V7S', '3JA1', '6ENF', '6OUO', '6ENJ', '5JU8', '5J8A', '6GWT', '4YBB', '5NP6', '5J88', '5U9G', '5U9F', '4V6D', '4V6E', '4V6C', '5JTE', '6OT3', '5J5B', '4WWW', '6OSQ', '5U4J', '5MDZ', '5U4I', '6NQB', '5UYQ', '5UYP', '5MDY', '5WDT', '6H4N', '5UYK', '4V89', '5UYM', '5UYL', '5UYN', '5WE6', '5WE4', '5KCS', '4V4Q', '4V4H', '5IT8']
+        PDB_List = ['4V51','4V9K']
+        PDB_List = ['6WJR']
+        PDB_List = ['4v9f']
+        PDB_List = ['6TPQ']
+        PDB_List = ['4KTG']
+        PDB_List = ['4KTG']
+        PDB_List = ['4V9F']
+        PDB_List = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/4.4/2.0A/csv']
+        PDB_List = ['https://rna.bgsu.edu/rna3dhub/nrlist/download/4.4/2.5A/csv']
+
         for PDB in PDB_List:
             if "nrlist" in PDB and "NR_" in PDB:            # referring to an equivalence class online
                                           # download the entire representative set,
@@ -1996,7 +2154,6 @@ if __name__=="__main__":
         # print(PDB_IFE_Dict)
 
         counter = 0
-        count_pair = 0
 
         # loop through 3D structures and annotate interactions
         PDBs = PDB_IFE_Dict.keys()
@@ -2011,128 +2168,17 @@ if __name__=="__main__":
 
             print("Reading file " + PDB + ", which is number "+str(counter)+" out of "+str(len(PDB_IFE_Dict)))
             timerData = myTimer("Reading CIF files",timerData)
-            # attempt to identify the main file identifier, could be a 4-character pdb id
-            file_id = PDB.replace(".cif","").replace(".pdb","").replace(".gz","")
 
-            filename = os.path.join(inputPath,PDB)
-
-            structure, message = load_structure(filename)
-
-            IFE = PDB_IFE_Dict[PDB]
-            if len(IFE) == 0:
-                bases = structure.residues(sequence= base_seq_list)  # load just the types of bases in base_seq_list
-            else:
-                chain_ids = []
-                chains = IFE.split("+")
-                for chain in chains[1:]:            #skip element zero, leading +
-                    fields = chain.split("|")
-                    chain_ids.append(fields[2])
-                bases = structure.residues(chain = chain_ids, sequence= base_seq_list)
-
-            numBases = 0
-            for base in bases:
-                numBases += 1
-
-            amino_acids = structure.residues(sequence=aa_list)
-
-            # if desired, write files for FR3D
-            if WriteProteinUnitsFile:
-                timerData = myTimer("Writing units file",timerData)
-                WriteProteinUnits(PDB,amino_acids)
-
-            numAA = 0
-            for aa in amino_acids:
-                numAA += 1
-
-                if PlotAA and not aa.sequence in AlreadyPlotted:
-                    timerData = myTimer("Plotting amino acids",timerData)
-                    PlotAndAnalyzeAAHydrogens(aa)
-                    AlreadyPlotted[aa.sequence] = 1
-
-            print("  Found " + str(numBases) + " bases and " + str(numAA) + " amino acids in " + PDB)
-
-            if numAA == 0:
-                hasNoProtein.append(PDB)
-                pickle.dump(hasNoProtein,open(hasNoProteinFilename,"wb"))
-
-            # find atom-atom contacts
-            timerData = myTimer("Finding atom-atom contacts",timerData)
-            contact_list = []
-            # contact_list = find_atom_atom_contacts(bases,amino_acids,atom_atom_min_distance)
-
-            # find neighbors in order to annotate base-aa_fg interactions
-            timerData = myTimer("Finding neighbors",timerData)
-            print("  Finding neighbors in " + PDB)
-            nt_reference = "base"
-            aa_reference = "aa_fg"
-            base_aa_screen_distance = 10
-            baseCubeList, baseCubeNeighbors, aaCubeList = find_neighbors(bases, amino_acids, base_aa_screen_distance, PDB_IFE_Dict[PDB], nt_reference, aa_reference)
-
-            # annotate base-aa_fg interactions
-            timerData = myTimer("Annotating interactions",timerData)
-            list_base_aa, list_aa_coord, list_base_coord, aa_unit_id_to_pairs = annotate_interactions(bases, amino_acids, base_aa_screen_distance, baseCubeList, baseCubeNeighbors, aaCubeList)
-
-            timerData = myTimer("Recording interactions",timerData)
-
-            # accumulate list of interacting units by base, amino acid, annotation
-            for base_residue, annotation, aa_residue, interaction, edge, face, standard_aa, param in list_base_aa:
-                base = base_residue.unit_id()
-                base_fields = base.split("|")
-                parent = get_parent_as_RNA(base_fields[3])
-                aa = aa_residue.unit_id()
-                aa_fields = aa.split("|")
-                if annotation and (len(base_fields) < 9 or len(aa_fields) < 9):
-                    # has an annotation and not both symmetry operated
-                    print("  ",base,annotation,aa,interaction)
-                    key = parent+"_"+aa_fields[3]+"_"+annotation
-                    base_aa_annotation_to_list[key].append((base,annotation,aa,interaction,edge,face,standard_aa,param))  # store tuples
-                    count_pair += 1
-
-            # accumulate a list of amino acids hydrogen bonding with more than one base
-            # for aa_unit_id in aa_unit_id_to_pairs:
-            #     if len(aa_unit_id_to_pairs[aa_unit_id]) > 1:
-            #         group = aa_unit_id_to_pairs[aa_unit_id]
-            #         key = group[0][1].sequence + "-" + group[0][0].sequence + "-" + group[1][0].sequence
-            #         key = group[0][1].sequence
-            #         allAATwoBaseDictionary[key].append(group)
-
-            """ 3D plots of base-aa interactions
-            for base, aa, interaction in list_base_aa:
-                base_seq = base.sequence
-                aa= aa.sequence
-
-                draw_base(base_seq, ax)
-                draw_aa(aa, ax)
-                #draw_aa_cent(aa, aa_part, ax)
-
-                ax.set_xlabel('X Axis')
-                ax.set_ylabel('Y Axis')
-                ax.set_zlabel('Z Axis')
-                ax.set_xlim3d(10, -15)
-                ax.set_ylim3d(10, -15)
-                ax.set_zlim3d(10, -15)
-                plt.title('%s with ' % base_seq +'%s' % aa + ' %s' % aa_part)
-                plt.show()
-                          """
-
-            write_tsv_output(outputNAPairwiseInteractions,PDB,list_base_aa)
-            # write_csv_output(list_base_aa)
-            print("  Wrote output to " + outputNAPairwiseInteractions)
-
-            if len(contact_list) > 0:
-                with open(os.path.join(outputNAPairwiseInteractions,PDB+"_contact.txt"), 'wt') as clf:
-                    clf.writelines(contact_list)
-
-        print("Recorded %d pairwise interactions" % count_pair)
+            annotate_nt_protein(PDB,timerData)
 
         if max(len(PDB_List),len(PDB_IFE_Dict)) > 100:
             print("Writing " + outputDataFile)
             pickle.dump((base_aa_annotation_to_list,allAATwoBaseDictionary,PDB_IFE_Dict),open(outputDataFile,"wb"))
 
-    # when appropriate, write out HTML files
-    if max(len(PDB_List),len(PDB_IFE_Dict)) > 100:
-        timerData = myTimer("Writing HTML files",timerData)
-        writeInteractionsHTML(base_aa_annotation_to_list,outputHTML,version,aa_part)
-        # writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
+        # when appropriate, write out HTML files
+        if max(len(PDB_List),len(PDB_IFE_Dict)) > 100:
+            timerData = myTimer("Writing HTML files",timerData)
+            writeInteractionsHTML(base_aa_annotation_to_list,outputHTML,version,aa_part)
+            # writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part)
 
     myTimer("summary",timerData)
