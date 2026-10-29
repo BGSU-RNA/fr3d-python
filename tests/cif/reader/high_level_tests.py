@@ -289,7 +289,7 @@ class DuplicateWithPointSymmetryTest(ReaderTest):
 
 
 class UniqueUnitIdsTest(ReaderTest):
-    name = '5AJ3'
+    name = '1S72'
 
     def test_it_has_no_duplicate_unit_ids(self):
         val = len(set(r.unit_id() for r in self.structure.residues()))
