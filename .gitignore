@@ -3,7 +3,7 @@
 .ropeproject/
 .python-version
 build/
-cif_files/
+modified/cif_files/
 dist/
 fr3d.egg-info/
 files/*.cifatoms
