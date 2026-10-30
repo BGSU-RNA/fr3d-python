@@ -4296,56 +4296,86 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                 f.write('"%s","%s","%s"\n' % (a,b,c))
 
 
-def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,chain,unit_id_to_sequence_position,modified):
+def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,chains,structure):
     """
     For each chain, write interactions according to category,
     and within each category, write by annotation.
     Other than that, the interactions are listed in no particular order.
+    This format works well with R2DT as implemented at EBI
     """
 
     import json
 
-    # loop over types of output files requested
-    for category in categories.keys():
-        filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + chain + "_" + category + ".json")
+    # get all chain sequence positions
+    if chains:
+        bases = structure.residues(chain = chains, type = ["RNA","DNA"])  # load all RNA/DNA nucleotides
+    else:
+        bases = structure.residues(type = ["RNA","DNA"])  # load all RNA/DNA nucleotides
 
-        output = {}
-        output["pdb_id"] = file_id
-        output["chain_id"] = chain
-        output["modified"] = modified
+    chain_unit_id_to_sequence_position = {}
+    chain_modified = {}
+    for base in bases:
+        chain = base.chain
+        if not chain in chain_unit_id_to_sequence_position:
+            chain_unit_id_to_sequence_position[chain] = {}
+            chain_modified[chain] = []
+        chain_unit_id_to_sequence_position[chain][base.unit_id()] = base.index
 
-        annotations = []
-        for interaction in category_to_interactions[category]:
-            inter = interaction
-            if "n" in interaction:
-                continue
-            if "cWB" in interaction or "cBW" in interaction:
-                continue
-            if category == 'basepair':
-                # capitalize base edges, simplify alternative categories
-                inter = interaction.replace("w","W").replace("s","S").replace("h","H").replace("a","").replace("b","")
-            # if this category has a restricted list of interactions to output
-            if len(categories[category]) == 0 or inter in categories[category]:
-                for a,b,c in interaction_to_list_of_tuples[interaction]:
-                    fields1 = a.split("|")
-                    fields2 = b.split("|")
-                    if fields1[2] == chain and fields2[2] == chain:
-                        if a in unit_id_to_sequence_position and b in unit_id_to_sequence_position:
-                            if unit_id_to_sequence_position[a] < unit_id_to_sequence_position[b]:
-                                ann = {}
-                                ann["seq_id1"]  = str(unit_id_to_sequence_position[a])
-                                ann["3d_id1"]   = fields1[4]
-                                ann["nt1"]      = fields1[3]
-                                ann["unit1"]    = fields1[3]
-                                ann["bp"]       = inter
-                                ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
-                                ann["nt2"]      = fields2[3]
-                                ann["unit2"]    = fields2[3]
-                                ann["3d_id2"]   = fields2[4]
-                                ann["crossing"] = str(c)
-                                #{"seq_id1":"1","3d_id1":"13","nt1":"C","bp":"cWW","seq_id2":"71","nt2":"G","3d_id2":"83","crossing":"0"}
+        fields = base.unit_id().split('|')
+        if not fields[3] in ['A','C','G','U','DA','DC','DG','DT']:
+            modif = {}
+            modif['seq_id'] = str(base.index)
+            modif['nt1'] = fields[3]
+            modif['unit1'] = fields[3]
+            modif['3d_id'] = fields[4]
+            chain_modified[chain].append(modif)
 
-                                annotations.append(ann)
+    for chain in list(chain_unit_id_to_sequence_position.keys()):
+        unit_id_to_sequence_position = chain_unit_id_to_sequence_position[chain]
+        modified = sorted(chain_modified[chain],key = lambda x : int(x['seq_id']))
+
+        # loop over types of output files requested
+        for category in categories.keys():
+            filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + chain + "_" + category + ".json")
+
+            output = {}
+            output["pdb_id"] = file_id
+            output["chain_id"] = chain
+            output["modified"] = modified
+
+            annotations = []
+            for interaction in sorted(category_to_interactions[category]):
+                inter = interaction
+                if "n" in interaction:
+                    continue
+                if "cWB" in interaction or "cBW" in interaction:
+                    continue
+                if category == 'basepair':
+                    # capitalize base edges, simplify alternative categories
+                    inter = interaction.replace("w","W").replace("s","S").replace("h","H").replace("a","").replace("b","")
+                # if this category has a restricted list of interactions to output
+                if len(categories[category]) == 0 or inter in categories[category]:
+                    for a,b,c in sorted(interaction_to_list_of_tuples[interaction],key = lambda x : unit_id_to_sequence_position.get(x[0],0)):
+                        fields1 = a.split("|")
+                        fields2 = b.split("|")
+                        if fields1[2] == chain and fields2[2] == chain:
+                            if a in unit_id_to_sequence_position and b in unit_id_to_sequence_position:
+                                if unit_id_to_sequence_position[a] < unit_id_to_sequence_position[b]:
+                                    ann = {}
+                                    ann["seq_id1"]  = str(unit_id_to_sequence_position[a])
+                                    ann["3d_id1"]   = fields1[4]
+                                    ann["nt1"]      = fields1[3]
+                                    ann["unit1"]    = fields1[3]
+                                    ann["bp"]       = inter
+                                    ann["seq_id2"]  = str(unit_id_to_sequence_position[b])
+                                    ann["nt2"]      = fields2[3]
+                                    ann["unit2"]    = fields2[3]
+                                    ann["3d_id2"]   = fields2[4]
+                                    ann["crossing"] = str(c)
+                                    # example
+                                    #{"seq_id1":"1","3d_id1":"13","nt1":"C","bp":"cWW","seq_id2":"71","nt2":"G","3d_id2":"83","crossing":"0"}
+
+                                    annotations.append(ann)
 
         output["annotations"] = annotations
 
@@ -4354,7 +4384,7 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
 
 
 #=======================================================================
-def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, output_format):
+def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPairwiseInteractions='', category='basepair', output_format='txt'):
 
     if isinstance(entry_id,str):
         entry_id = entry_id.split(",")
@@ -4488,33 +4518,10 @@ def generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseIn
 
         if output_format == 'txt':
             write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
+        elif output_format == 'json':
+            write_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
         elif output_format == 'ebi_json':
-            if chains:
-                bases = structure.residues(chain = chains, type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-            else:
-                bases = structure.residues(type = ["RNA linking","DNA linking"])  # load all RNA/DNA nucleotides
-
-            chain_unit_id_to_sequence_position = {}
-            chain_modified = {}
-            for base in bases:
-                chain = base.chain
-                if not chain in chain_unit_id_to_sequence_position:
-                    chain_unit_id_to_sequence_position[chain] = {}
-                    chain_modified[chain] = []
-                chain_unit_id_to_sequence_position[chain][base.unit_id()] = base.index
-
-                fields = base.unit_id().split('|')
-                if not fields[3] in ['A','C','G','U','DA','DC','DG','DT']:
-                    modif = {}
-                    modif['seq_id'] = str(base.index)
-                    modif['nt1'] = fields[3]
-                    modif['unit1'] = fields[3]
-                    modif['3d_id'] = fields[4]
-                    chain_modified[chain].append(modif)
-
-            for chain in list(chain_unit_id_to_sequence_position.keys()):
-                write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories, category_to_interactions, chain, chain_unit_id_to_sequence_position[chain],chain_modified[chain])
-
+            write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories, category_to_interactions, chains, structure)
         else:
             if verbose >= 0:
                 print('  Output format %s not recognized' % output_format)
@@ -4536,7 +4543,7 @@ if __name__=="__main__":
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
     parser.add_argument('-c', "--category", help='Interaction category or categories (%s)' % all_categories)
-    parser.add_argument('-f', "--format", help='Output format (txt,ebi_json)')
+    parser.add_argument('-f', "--format", help='Output format (txt,json,ebi_json)')
     parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2,3)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
