@@ -4224,7 +4224,7 @@ def write_unit_data_file(PDB,unit_data_path,structure):
                 print("  Wrote unit data file %s" % filename)
 
 
-def write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,format):
+def write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,output_format):
     """
     Write interactions according to category, and within each
     category, write by annotation.
@@ -4272,7 +4272,7 @@ def write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_o
         ordered = sorted(quads_to_write, key=lambda x: (int(x[0].split("|")[1]) or 0,x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1],x[2]))
 
         # write output tab delimited
-        if format == 'txt':
+        if output_format == 'txt':
             filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + category + ".txt")
             with open(filename,'w') as f:
                 for o in ordered:
@@ -4319,14 +4319,13 @@ def write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_o
                 d['units'].append(ud)
             output['loops'].append(d)
 
-        if format == 'txt':
+        if output_format == 'txt':
             filename = os.path.join(outputNAPairwiseInteractions,file_id + "_loops.txt")
             with open(filename,'w') as f:
                 for a,b,c in loop_list:
                     f.write('"%s","%s","%s"\n' % (a,b,c))
 
-
-    if format == 'json':
+    if output_format == 'json':
         import json
         filename = os.path.join(outputNAPairwiseInteractions,file_id + "_interactions.json")
         with open(filename,'w') as f:
@@ -4449,10 +4448,18 @@ def write_datapoint_file(outputNAPairwiseInteractions,file_id,interaction_to_lis
 
 
 #=======================================================================
-def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPairwiseInteractions='', category='basepair', output_format='txt'):
-
-    if isinstance(entry_id,str):
-        entry_id = entry_id.split(",")
+def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPairwiseInteractions='', category='basepair', output_format='txt', return_format='dictionary'):
+    """
+    Annotate pairwise interactions in one entry_id with its chain_id
+    Get .cif file from inputPath
+    Write any output files to outputNAPairwiseInteractions
+    Annotate interaction categories in category, a comma-separated list
+    Write output files in the formats listed in output_formats, a comma-separated list
+    Return data in the single format indicated in return_format:
+        'dictionary' first has category for interaction type, then a list of dictionaries for each interaction
+        'interaction_to_tuples' is a dictionary mapping specific interaction type like cWW to a triple of unit ids and crossing number
+        'pandas' produces a dataframe with one row for each interaction, with category indicated; does not include loops
+    """
 
     # dictionary to control what specific annotations are output, in a file named for the key
     # empty list means to output all interactions in that category
@@ -4515,17 +4522,20 @@ def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPair
             print("  Attempting to create output path %s" % outputNAPairwiseInteractions)
         os.mkdir(outputNAPairwiseInteractions)
 
-    # process additional arguments as PDB files
-    PDBs = []  # list of (path,filename) entries
-    entries = entry_id
-    for entry in entries:
-        # identify path to the PDB file, if any
-        path_split = os.path.split(entry)   # produces a tuple
+    # identify path to the PDB file, if any
+    path_split = os.path.split(entry_id)   # produces a tuple
 
-        if len(path_split[0]) > 0:
-            PDBs.append(path_split)
-        else:
-            PDBs.append((inputPath,entry))
+    if len(path_split[0]) > 0:
+        path, file_id = path_split
+    else:
+        path = inputPath
+        file_id = entry_id
+
+    # where to look for the cif or pdb file
+    filename = os.path.join(path,file_id)
+
+    # remove extensions to leave a clean file_id, like 4TNA
+    file_id = file_id.replace(".cif","").replace(".pdb","").replace(".gz","")
 
     # annotate each PDB file
     timerData = myTimer("start")
@@ -4533,12 +4543,7 @@ def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPair
     counter = 0
 
     if chain_id:
-        if len(entry_id) > 1:
-            if verbose >= 0:
-                print("  Chain argument can only be used with a single PDB file")
-            PDBs = []
-        else:
-            chains = chain_id.split(",")
+        chains = chain_id.split(",")
     else:
         chains = []
 
@@ -4550,52 +4555,37 @@ def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPair
         focused_basepair_cutoffs = {}
         ideal_hydrogen_bonds = {}
 
-    """
-    for combination in ideal_hydrogen_bonds:
-        for LW in ideal_hydrogen_bonds[combination]:
-            print(combination, LW, ideal_hydrogen_bonds[combination][LW])
-    """
+    counter += 1
 
-    for path, PDB in PDBs:
-        counter += 1
+    timerData = myTimer("Read CIF files",timerData)
 
-        # attempt to identify the main file identifier, could be a 4-character pdb id
-        file_id = PDB.replace(".cif","").replace(".pdb","").replace(".gz","")
+    # suppress error messages, but report failures at the end
+    structure, messages = load_structure(filename,file_id)
 
-        filename = os.path.join(path,PDB)
+    if not structure:
+        for message in messages:
+            failed_structures.append((file_id,message))
 
-        if verbose >= 1:
-            print("  Reading file %s, which is number %d out of %d" % (filename, counter, len(PDBs)))
-        timerData = myTimer("Read CIF files",timerData)
+    interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
+    timerData = myTimer("Record interactions",timerData)
+    if verbose >= 1:
+        print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
-        # suppress error messages, but report failures at the end
-        structure, messages = load_structure(filename,file_id)
+    output = None
+    if 'txt' in output_format:
+        output = write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'txt')
 
-        if not structure:
-            for message in messages:
-                failed_structures.append((file_id,message))
-            continue
+    if 'json' in output_format:
+        output = write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'json')
 
-        interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories,focused_basepair_cutoffs,ideal_hydrogen_bonds,chains,timerData)
-        timerData = myTimer("Record interactions",timerData)
-        if verbose >= 1:
-            print("  Recording interactions in %s" % outputNAPairwiseInteractions)
+    if 'ebi_json' in output_format:
+        write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories, category_to_interactions, chains, structure)
 
-        if 'txt' in output_format:
-            write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'txt')
+    if 'pickle' in output_format:
+        write_pickle_output(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples)
 
-        if 'json' in output_format:
-            write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'json')
-
-        if 'ebi_json' in output_format:
-            write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories, category_to_interactions, chains, structure)
-
-        if 'pickle' in output_format:
-            write_pickle_output(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples)
-
-        if 'datapoint' in categories:
-            write_datapoint_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
-
+    if 'datapoint' in categories:
+        write_datapoint_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
 
     if verbose >= 1:
         myTimer("summary",timerData)
@@ -4605,6 +4595,27 @@ def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPair
                 print("  %s %s" % message)
         else:
             print("All files read successfully")
+
+    if return_format == 'pandas':
+        import pandas
+        if not output:
+            output = write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'')
+        rows = []
+        for category, interactions in output.items():
+            if category == 'loops':
+                continue
+            for d in interactions:
+                d['category']    = category
+                rows.append(d)
+
+        return pandas.DataFrame(rows)
+
+    elif return_format == 'dictionary':
+        if not output:
+            output = write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'')
+        return output
+    elif return_format == 'interaction_to_tuples':
+        return interaction_to_list_of_tuples
 
 
 if __name__=="__main__":
@@ -4671,5 +4682,8 @@ if __name__=="__main__":
 
     entry_ids = args.PDBfiles[0].split(",")
 
-    generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
+    for counter, entry_id in enumerate(entry_ids):
+        if verbose >= 1 and len(entry_ids) > 1:
+            print("  Reading file %s, which is number %d out of %d" % (entry_id, counter, len(entry_ids)))
+        generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
 
