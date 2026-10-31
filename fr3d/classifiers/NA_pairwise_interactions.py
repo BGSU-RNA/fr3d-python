@@ -1235,7 +1235,7 @@ def annotate_nt_nt_interactions(bases, center_center_distance_cutoff, baseCubeLi
         break
 
     if verbose >= 1:
-        print("  Found %d nucleotide-nucleotide interactions in %s" % (count_pair,file_id))
+        print("  Found %d %s interactions in %s" % (count_pair,", ".join(categories.keys()),file_id))
 
     if verbose >= 3:
         print("  Maximum screen distance for standard contacts is %8.4f" % max_center_center_distance)
@@ -1905,7 +1905,7 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
             if loop:
                 full_loop, loop_counter = fill_in_strands_of_loop(loop,unit_id_to_fields,MCS_index_to_unit_id,loop_counter)
                 if full_loop:
-                    full_loop['merged_from'] = [len(all_loops)]
+                    full_loop['merged_from'] = [full_loop['identifier']]
                     all_loops.append(full_loop)
 
                     if verbose == 4:
@@ -2038,17 +2038,11 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                     ids1 = loop1['border_unit_ids']
                     new_loop = []
 
-                    # put u1,u2 pair at start and end of loop0 and loop1
-                    # ids0 = keep_loop_ids(ids0,u1,u2)
-                    # ids1 = keep_loop_ids(ids1,u1,u2)
-
                     if verbose == 4:
                         print('    Merging loops')
-                        print('    ids0 is %s' % ids0)
-                        print('    ids1 is %s' % ids1)
+                        print('    %s bordered by %s' % (loop0['identifier'],ids0))
+                        print('    %s bordered by %s' % (loop1['identifier'],ids1))
                         print('    cWW pair to merge on is %s to %s' % (u1,u2))
-                        print('    ids0 is %s' % ids0)
-                        print('    ids1 is %s' % ids1)
 
                     if len(ids0) == 2:
                         # easy to merge HL into IL or junction
@@ -2088,12 +2082,13 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                             i += 1
 
                     if verbose == 4:
-                        print("    new loop is: %s" % new_loop)
+                        print("    new loop is bordered by: %s" % new_loop)
 
                     full_loop, loop_counter = fill_in_strands_of_loop(new_loop,unit_id_to_fields,MCS_index_to_unit_id,loop_counter)
                     if full_loop:
+                        full_loop['identifier'] = full_loop['identifier']
+                        full_loop['status'] = 'merged'
                         full_loop['merged_from'] = loop0['merged_from'] + loop1['merged_from']
-                        full_loop['identifier'] = full_loop['identifier'].replace('single','merged')
                         all_loops.append(full_loop)
 
                         loop_index = len(all_loops)-1
@@ -2107,10 +2102,14 @@ def crossing_bss_loops(bases,interaction_to_pair_list,categories):
                         if verbose == 4:
                             for i, unitid in enumerate(full_loop['unit_ids']):
                                 print('  %s %2s %s %s' % (full_loop['type'],i,full_loop['border_indicators'][i],unitid))
+                            if len(full_loop['merged_from']) > 1:
+                                print('  Merged from these loops: %s' % full_loop['merged_from'])
                             print()
 
-                            if len(full_loop['merged_from']) > 2:
-                                print('  Merged from these loop indices: %s' % full_loop['merged_from'])
+        # single loops 'merged_from' should be an empty list
+        for i in range(0,len(all_loops)):
+            if all_loops[i]['status'] == 'single':
+                all_loops[i]['merged_from'] = []
 
         # stuff the loops in here, even though they don't fit the rest of the pattern
         interaction_to_list_of_tuples['loops'] = all_loops
@@ -2175,7 +2174,8 @@ def fill_in_strands_of_loop(loop,unit_id_to_fields,MCS_index_to_unit_id,loop_cou
         full_loop['border_unit_ids'] = loop
         full_loop['unit_ids'] = all_unit_ids
         full_loop['border_indicators'] = all_border_indicators
-        full_loop['identifier'] = '%s_%s_%03d_single' % (loop_type,file_id,loop_counter[loop_type])
+        full_loop['identifier'] = '%s_%s_%03d' % (loop_type,file_id,loop_counter[loop_type])
+        full_loop['status'] = 'single'
     return full_loop, loop_counter
 
 def annotate_covalent_connections(nucleotides, interaction_to_list_of_tuples, category_to_interactions, timerData):
@@ -4224,18 +4224,18 @@ def write_unit_data_file(PDB,unit_data_path,structure):
                 print("  Wrote unit data file %s" % filename)
 
 
-def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data):
+def write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,format):
     """
     Write interactions according to category, and within each
     category, write by annotation.
     """
 
+    output = {}
+
     # loop over types of output files requested
     for category in categories:
         if category in ["near","lower","alternative","cwb","loops","datapoint"]:
             continue
-
-        filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + category + ".txt")
 
         quads_to_write = []
         # loop over all interactions found in this category
@@ -4264,36 +4264,87 @@ def write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_li
                         quads_to_write.append((a,inter,b,c))
                     else:
                         if interaction == 'oo_distance':
-                            # also write a distance and a url to view the interaction
-                            # print(itpl)
+                            # also write a distance
                             u1, u2, crossing, a1, a2, distance = itpl
-                            url = "https://rna.bgsu.edu/rna3dhub/display3D/unitid/%s,%s" % (u1,u2)
-                            quads_to_write.append((a1,inter,a2,crossing,"%0.4f" % distance,url))
+                            quads_to_write.append((u1,inter,u2,crossing,"%0.4f" % distance,a1,a2))
 
         # sort quads by model, first chain, first number, first unit id (for alt id, insertion code, symmetry), interaction
         ordered = sorted(quads_to_write, key=lambda x: (int(x[0].split("|")[1]) or 0,x[0].split("|")[2],int(x[0].split("|")[4]),x[0],x[1],x[2]))
-        with open(filename,'w') as f:
-            for o in ordered:
-                if len(o) == 4:
-                    f.write("%s\t%s\t%s\t%s\n" % (o))
-                elif len(o) == 6:
-                    f.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (o))
 
-    if 'datapoint' in categories:
-        # name for file with pairs and datapoint variable about annotations
-        pair_to_datapoint_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % file_id)
-        pickle.dump(pair_to_data,open(pair_to_datapoint_file,"wb"),5)
-        print('  Wrote classification datapoint file %s with %d pairs' % (pair_to_datapoint_file,len(pair_to_data)/2))
+        # write output tab delimited
+        if format == 'txt':
+            filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + category + ".txt")
+            with open(filename,'w') as f:
+                for o in ordered:
+                    if len(o) == 4:
+                        f.write("%s\t%s\t%s\t%s\n" % (o))
+                    elif len(o) > 4:
+                        f.write("%s\t%s\t%s\t%s\t%s\n" % (o[5],o[1],o[6],o[3],o[4]))
+
+        # save output in dictionaries
+        output[category] = []
+        for o in ordered:
+            d = {}
+            d['unit_id_1']   = o[0]
+            d['interaction'] = o[1]
+            d['unit_id_2']   = o[2]
+            d['crossing']    = o[3]
+            if len(o) > 4:
+                d['distance']  = o[4]
+                d['atom_id_1'] = o[5]
+                d['atom_id_2'] = o[6]
+            output[category].append(d)
+
 
     if 'loops' in interaction_to_list_of_tuples:
         # follow format used by https://rna.bgsu.edu/rna3dhub/loops/download_with_breaks/8GLP
-        filename = os.path.join(outputNAPairwiseInteractions,file_id + "_loops.txt")
+
+        loop_list = []
+        output['loops'] = []
+        for full_loop in interaction_to_list_of_tuples['loops']:
+            a = full_loop['identifier']
+            b = ",".join(full_loop['unit_ids'])
+            c = ",".join(full_loop['border_indicators'])
+            loop_list.append((a,b,c))
+
+            d = {}
+            d['loop_id'] = full_loop['identifier']
+            d['status']  = full_loop['status']
+            d['merged_from'] = full_loop['merged_from']
+            d['units'] = []
+            for i in range(len(full_loop['unit_ids'])):
+                ud = {}
+                ud['unit_id'] = full_loop['unit_ids'][i]
+                ud['border_indicator'] = full_loop['border_indicators'][i]
+                d['units'].append(ud)
+            output['loops'].append(d)
+
+        if format == 'txt':
+            filename = os.path.join(outputNAPairwiseInteractions,file_id + "_loops.txt")
+            with open(filename,'w') as f:
+                for a,b,c in loop_list:
+                    f.write('"%s","%s","%s"\n' % (a,b,c))
+
+
+    if format == 'json':
+        import json
+        filename = os.path.join(outputNAPairwiseInteractions,file_id + "_interactions.json")
         with open(filename,'w') as f:
-            for full_loop in interaction_to_list_of_tuples['loops']:
-                a = full_loop['identifier']
-                b = ",".join(full_loop['unit_ids'])
-                c = ",".join(full_loop['border_indicators'])
-                f.write('"%s","%s","%s"\n' % (a,b,c))
+            f.write(json.dumps(output))
+
+    return output
+
+
+def write_pickle_output(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples):
+    """
+    Write interactions in the same format as FR3D uses, and which can be downloaded
+    from URLs like https://rna.bgsu.edu/pairs/4TNA_NA_pairs.pickle
+    """
+
+    pdb_filename = os.path.join(outputNAPairwiseInteractions,file_id+'_NA_pairs.pickle')
+    with open(pdb_filename, 'wb') as fh:
+        # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
+        pickle.dump(interaction_to_list_of_tuples, fh, 2)
 
 
 def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,chains,structure):
@@ -4336,6 +4387,10 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
 
         # loop over types of output files requested
         for category in categories.keys():
+            if not category == 'basepair':
+                # EBI only needs basepairs
+                continue
+
             filename = os.path.join(outputNAPairwiseInteractions,file_id + "_" + chain + "_" + category + ".json")
 
             output = {}
@@ -4377,10 +4432,20 @@ def write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_
 
                                     annotations.append(ann)
 
-        output["annotations"] = annotations
+            output["annotations"] = annotations
 
-        with open(filename,'w') as f:
-            f.write(json.dumps(output))
+            with open(filename,'w') as f:
+                f.write(json.dumps(output))
+
+
+def write_datapoint_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data):
+    """
+    Write a file with lots of diagnostic information for development purposes
+    """
+    # name for file with pairs and datapoint variable about annotations
+    pair_to_datapoint_file = os.path.join(outputNAPairwiseInteractions,"%s_datapoint.pickle" % file_id)
+    pickle.dump(pair_to_data,open(pair_to_datapoint_file,"wb"),5)
+    print('  Wrote classification datapoint file %s with %d pairs' % (pair_to_datapoint_file,len(pair_to_data)/2))
 
 
 #=======================================================================
@@ -4516,15 +4581,21 @@ def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPair
         if verbose >= 1:
             print("  Recording interactions in %s" % outputNAPairwiseInteractions)
 
-        if output_format == 'txt':
-            write_txt_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
-        elif output_format == 'json':
-            write_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
-        elif output_format == 'ebi_json':
+        if 'txt' in output_format:
+            write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'txt')
+
+        if 'json' in output_format:
+            write_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,'json')
+
+        if 'ebi_json' in output_format:
             write_ebi_json_output_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories, category_to_interactions, chains, structure)
-        else:
-            if verbose >= 0:
-                print('  Output format %s not recognized' % output_format)
+
+        if 'pickle' in output_format:
+            write_pickle_output(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples)
+
+        if 'datapoint' in categories:
+            write_datapoint_file(outputNAPairwiseInteractions,file_id,interaction_to_list_of_tuples,categories,category_to_interactions,pair_to_data)
+
 
     if verbose >= 1:
         myTimer("summary",timerData)
@@ -4535,6 +4606,7 @@ def generatePairwiseAnnotation(entry_id, chain_id='', inputPath='', outputNAPair
         else:
             print("All files read successfully")
 
+
 if __name__=="__main__":
 
     # allow user to specify input and output paths
@@ -4543,7 +4615,7 @@ if __name__=="__main__":
     parser.add_argument('-o', "--output", help="Output Location of Pairwise Interactions")
     parser.add_argument('-i', "--input", help='Input Path')
     parser.add_argument('-c', "--category", help='Interaction category or categories (%s)' % all_categories)
-    parser.add_argument('-f', "--format", help='Output format (txt,json,ebi_json)')
+    parser.add_argument('-f', "--format", help='Output format (txt,json,ebi_json,pickle,datapoint)')
     parser.add_argument('-v', "--verbose", help='Verbose level (0,1,2,3)')
     parser.add_argument("--chain", help='Chain or chains separated by commas, no spaces; only for one PDB file')
 
@@ -4564,7 +4636,12 @@ if __name__=="__main__":
             outputNAPairwiseInteractions = ""
 
     if args.format:
-        outputFormat = args.format
+        outputFormats = set(args.format.split(","))
+        all_formats = set(['txt','json','ebi_json','pickle','datapoint'])
+        unrecognized = outputFormats - all_formats
+        outputFormat = ",".join(outputFormats & all_formats)
+        if unrecognized:
+            print('  Unrecognized output format %s, using %s' % (",".join(unrecognized),outputFormat))
     else:
         outputFormat = 'txt'
 
@@ -4578,13 +4655,21 @@ if __name__=="__main__":
     else:
         category = 'basepair'
 
+    if not 'basepair' in category:
+        # need to annotate basepairs to get crossing number
+        category = ",".join(category.split(",") + ['basepair'])
+
     if "all" in category:
+        category = all_categories
+
+    if "pickle" in outputFormat:
+        # need to annotate all interactions to produce the format used by FR3D
         category = all_categories
 
     if args.verbose:
         verbose = int(args.verbose)
 
-    entry_id = args.PDBfiles[0].split(",")
+    entry_ids = args.PDBfiles[0].split(",")
 
     generatePairwiseAnnotation(entry_id, chain_id, inputPath, outputNAPairwiseInteractions, category, outputFormat)
 
