@@ -237,18 +237,8 @@ def writeNAPairwiseInteractions(structure,DATAPATHPAIRS,messages=[]):
     for category in all_categories.split(","):
         categories[category] = []
 
-    # categories['basepair'] = []
-    # categories['basepair_detail'] = []
-    # categories['stacking'] = []
-    # categories['sO'] = []
-    # categories['BPh'] = []
-    # categories['BR'] = []
-    # categories['sugar_ribose'] = []
-    # categories['coplanar'] = []
-
     interaction_to_list_of_tuples, category_to_interactions, timerData, pair_to_data = annotate_nt_nt_in_structure(structure,categories)
 
-    # used RNA_pairs until September 2024
     pdb_filename = os.path.join(DATAPATHPAIRS,structure.pdb+'_NA_pairs.pickle')
     with open(pdb_filename, 'wb') as fh:
         # Use 2 for "HIGHEST_PROTOCOL" for Python 2.3+ compatibility.
@@ -756,6 +746,7 @@ def readNAPairsFileRaw(Q, file_id, alternate = ""):
             # try to download .pickle file of pairwise interactions
             if not Q.get("computePairsLocally",False) or not file_id in Q.get("PDB_data_file",[]) or alternate:
                 # try to download annotations of this structure from RNA 3D Hub
+                # Example: https://rna.bgsu.edu/pairs/4TNA_NA_pairs.pickle
                 url = "https://rna.bgsu.edu/pairs" + alternate + "/" + pairsFileName
                 try:
                     urlretrieve(url, pathAndFileName) # testing
