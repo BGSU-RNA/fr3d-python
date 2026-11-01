@@ -4,7 +4,7 @@ configparser==4.0.2
 contextlib2==0.6.0.post1
 cycler==0.10.0
 distlib==0.3.0
-filelock==3.0.12
+filelock==4.2.1
 importlib-metadata==1.6.0
 importlib-resources==1.4.0
 kiwisolver==1.1.0
