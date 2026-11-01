@@ -8,7 +8,7 @@ setup(
     packages=find_packages(include=['fr3d', 'fr3d.*']),
     include_package_data=True,
     url='',
-    install_requires=["numpy", "scipy", "mmcif-pdbx; python_version >= '3.0'"],
+    install_requires=["numpy", "scipy", "mmcif-pdbx; python_version >= '3.0'", "pickle"],
     description='Python implementation of FR3D',
     long_description="",
     data_files=[('fr3d/data',['fr3d/modified/atom_mappings.txt']),('fr3d/classifiers', ['fr3d/classifiers/template.html','fr3d/classifiers/H_bonding_Atoms_from_Isostericity_Table.csv'])]
